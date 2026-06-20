@@ -106,3 +106,8 @@ data class CategoryUpsertRequestDto(
     val name: String,
     val description: String = "",
 )
+
+@Serializable
+data class StockSummaryResponseDto(
+    val data: Map<String, Double> = emptyMap(),
+)

@@ -10,15 +10,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,28 +30,51 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.saleStatusAccentColor
+import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
+import com.bendey.restaurant.core.domain.sales.BILLING_FILTER_STATUSES
 import com.bendey.restaurant.core.domain.sales.SaleDetail
+import com.bendey.restaurant.core.domain.sales.SaleListSummary
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
+import com.bendey.restaurant.core.domain.sales.billingStatusLabel
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
+import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
+import com.bendey.restaurant.core.domain.sales.canResendToSunat
+import com.bendey.restaurant.core.domain.sales.canSendToSunat
+import com.bendey.restaurant.core.domain.sales.canShowOfficialSunatPdf
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
+import com.bendey.restaurant.core.domain.sales.convertedToLabel
+import com.bendey.restaurant.core.domain.sales.isConverted
+import com.bendey.restaurant.core.domain.sales.saleStatusDisplayLabel
+import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
+import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,16 +84,30 @@ fun VentasScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val context = LocalContext.current
+    val listState = rememberLazyListState()
 
     LaunchedEffect(state.snackMessage) {
         if (state.snackMessage != null) viewModel.consumeSnackMessage()
     }
 
+    LaunchedEffect(listState, state.hasMore, state.loading) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= info.totalItemsCount - 3
+        }
+            .distinctUntilChanged()
+            .collect { nearEnd ->
+                if (nearEnd && state.hasMore && !state.loading) viewModel.loadMore()
+            }
+    }
+
     val billingHint = when (state.tab) {
-        VentasTab.FACTURACION, VentasTab.CREDITOS ->
-            " · Estados SUNAT en vivo"
+        VentasTab.FACTURACION, VentasTab.CREDITOS -> " · SUNAT en vivo"
         else -> ""
     }
+
     PullToRefreshBox(
         isRefreshing = state.loading && state.sales.isEmpty(),
         onRefresh = viewModel::refresh,
@@ -79,7 +116,7 @@ fun VentasScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             BendeyScreenToolbar(
                 title = "Ventas",
-                subtitle = "${state.fromDate} → ${state.toDate} · ${state.total} registros$billingHint",
+                subtitle = "${state.total} registros$billingHint",
                 actions = {
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
@@ -88,8 +125,26 @@ fun VentasScreen(
             )
             VentasTabRow(
                 selected = state.tab,
+                sunatEnabled = state.sunatEnabled,
                 onSelect = viewModel::selectTab,
             )
+            VentasFiltersSection(
+                state = state,
+                paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                onSearchChange = viewModel::setSearchQuery,
+                onDatePreset = viewModel::setDatePreset,
+                onFromDateChange = viewModel::setFromDate,
+                onToDateChange = viewModel::setToDate,
+                onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                onBillingStatusChange = viewModel::setBillingStatusFilter,
+            )
+            if (state.listSummary.paymentTotals.isNotEmpty()) {
+                SalesPaymentSummaryRow(
+                    summary = state.listSummary,
+                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                    currency = currency,
+                )
+            }
             if (state.error != null && state.sales.isEmpty() && state.selectedSaleId == null) {
                 Text(
                     state.error.orEmpty(),
@@ -98,12 +153,13 @@ fun VentasScreen(
                 )
             } else if (state.sales.isEmpty() && !state.loading) {
                 Text(
-                    "Sin ventas en el periodo",
+                    "No hay comprobantes en esta sección",
                     color = BendeyColors.OnSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
                 )
             } else {
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize(),
@@ -111,17 +167,17 @@ fun VentasScreen(
                     items(state.sales, key = { it.id }) { sale ->
                         SaleRow(
                             sale = sale,
+                            tab = state.tab,
+                            sunatEnabled = state.sunatEnabled,
                             currency = currency,
                             onClick = { viewModel.openSaleDetail(sale.id) },
                         )
                     }
-                    if (state.hasMore) {
+                    if (state.loading && state.sales.isNotEmpty()) {
                         item {
                             Text(
-                                "Desliza para cargar más…",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
+                                "Cargando más…",
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
                                 color = BendeyColors.OnSurfaceVariant,
                             )
                         }
@@ -137,14 +193,22 @@ fun VentasScreen(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
             SaleDetailSheet(
+                tab = state.tab,
+                sunatEnabled = state.sunatEnabled,
                 loading = state.detailLoading,
                 detail = state.detail,
                 printing = state.detailPrinting,
+                billingBusy = state.billingBusy,
                 currency = currency,
-                error = if (state.voidDialogOpen) null else state.error,
+                error = if (state.voidDialogOpen || state.emitDialogOpen) null else state.error,
                 onReprint = viewModel::reprintSelectedSale,
+                onOpenPdf = viewModel::openReceiptModal,
                 onVoidCreditNote = viewModel::openVoidCreditNote,
                 onCancelNota = viewModel::openCancelNota,
+                onEmitElectronic = viewModel::openEmitElectronic,
+                onSendSunat = viewModel::sendToSunat,
+                onResendSunat = viewModel::resendToSunat,
+                onOpenOfficialPdf = { viewModel.openOfficialSunatPdf(context) },
             )
         }
     }
@@ -160,11 +224,47 @@ fun VentasScreen(
             onConfirm = viewModel::confirmVoid,
         )
     }
+
+    if (state.emitDialogOpen) {
+        EmitElectronicDialog(
+            docKind = state.emitDocKind,
+            seriesId = state.emitSeriesId,
+            issueDate = state.emitIssueDate,
+            series = state.filteredEmitSeries,
+            loading = state.emitSubmitting,
+            error = state.error,
+            onDocKindChange = viewModel::setEmitDocKind,
+            onSeriesChange = viewModel::setEmitSeriesId,
+            onIssueDateChange = viewModel::setEmitIssueDate,
+            onDismiss = viewModel::dismissEmitDialog,
+            onConfirm = viewModel::confirmEmitElectronic,
+        )
+    }
+
+    ReceiptPrintModal(
+        open = state.receiptModalOpen,
+        printData = state.receiptPrintData,
+        saleNumber = state.receiptSaleNumber,
+        total = state.receiptTotal,
+        hasPrinter = state.receiptHasPrinter,
+        busyAction = state.receiptBusy,
+        onPrint = viewModel::printFromReceiptModal,
+        onShareWhatsApp = { viewModel.shareReceiptViaWhatsApp(context) },
+        onOpenPdf = { format ->
+            val pdfFormat = when (format) {
+                ReceiptPdfFormatUi.TICKET -> ReceiptPdfFormat.TICKET
+                ReceiptPdfFormatUi.A4 -> ReceiptPdfFormat.A4
+            }
+            viewModel.openReceiptPdf(context, pdfFormat)
+        },
+        onDismiss = viewModel::dismissReceiptModal,
+    )
 }
 
 @Composable
 private fun VentasTabRow(
     selected: VentasTab,
+    sunatEnabled: Boolean,
     onSelect: (VentasTab) -> Unit,
 ) {
     Row(
@@ -174,7 +274,9 @@ private fun VentasTabRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        VentasTab.entries.forEach { tab ->
+        VentasTab.entries.filter { tab ->
+            tab != VentasTab.CREDITOS || sunatEnabled
+        }.forEach { tab ->
             FilterChip(
                 selected = tab == selected,
                 onClick = { onSelect(tab) },
@@ -184,23 +286,133 @@ private fun VentasTabRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SaleRow(
-    sale: SaleSummary,
-    currency: NumberFormat,
-    onClick: () -> Unit,
+private fun VentasFiltersSection(
+    state: VentasUiState,
+    paymentMethods: List<PaymentMethodOption>,
+    onSearchChange: (String) -> Unit,
+    onDatePreset: (VentasDatePreset) -> Unit,
+    onFromDateChange: (String) -> Unit,
+    onToDateChange: (String) -> Unit,
+    onPaymentMethodChange: (String) -> Unit,
+    onBillingStatusChange: (String) -> Unit,
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        BendeyTextField(
+            value = state.searchQuery,
+            onValueChange = onSearchChange,
+            label = "Buscar por número",
+            modifier = Modifier.fillMaxWidth(),
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            VentasDatePreset.entries.forEach { preset ->
+                FilterChip(
+                    selected = state.datePreset == preset,
+                    onClick = { onDatePreset(preset) },
+                    label = { Text(preset.label) },
+                )
+            }
+        }
+        if (state.datePreset == VentasDatePreset.CUSTOM) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyTextField(
+                    value = state.fromDate,
+                    onValueChange = onFromDateChange,
+                    label = "Desde (AAAA-MM-DD)",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = state.toDate,
+                    onValueChange = onToDateChange,
+                    label = "Hasta (AAAA-MM-DD)",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        FilterDropdown(
+            label = "Método de pago",
+            value = state.paymentMethodFilter,
+            options = listOf("" to "Todos") + paymentMethods.map { it.code to it.name },
+            onSelect = onPaymentMethodChange,
+        )
+        if (state.tab == VentasTab.FACTURACION && state.sunatEnabled) {
+            FilterDropdown(
+                label = "Estado SUNAT",
+                value = state.billingStatusFilter,
+                options = listOf("" to "Todos") + BILLING_FILTER_STATUSES.map {
+                    it to billingStatusLabel(it)
+                },
+                onSelect = onBillingStatusChange,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FilterDropdown(
+    label: String,
+    value: String,
+    options: List<Pair<String, String>>,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == value }?.second ?: label
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            options.forEach { (code, text) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = {
+                        onSelect(code)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaleRow(
+    sale: SaleSummary,
+    tab: VentasTab,
+    sunatEnabled: Boolean,
+    currency: NumberFormat,
+    onClick: () -> Unit,
+) {
+    BendeyManagementCard(onClick = onClick) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -229,6 +441,15 @@ private fun SaleRow(
                     style = MaterialTheme.typography.labelSmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
+                if (tab == VentasTab.NOTAS && sale.isConverted()) {
+                    convertedToLabel(sale.convertedTo, sale.electronicIssueSaleId)?.let { ref ->
+                        BendeyStatusChip(
+                            label = "Convertida a $ref",
+                            accentColor = BendeyColors.Info,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -237,8 +458,8 @@ private fun SaleRow(
                     color = BendeyColors.Primary,
                 )
                 BendeyStatusChip(
-                    label = sale.billingStatus ?: sale.status,
-                    accentColor = sale.status.accentColor(),
+                    label = saleStatusDisplayLabel(sale.status, sale.billingStatus),
+                    accentColor = saleStatusAccentColor(sale.status, sale.billingStatus),
                 )
             }
         }
@@ -247,14 +468,22 @@ private fun SaleRow(
 
 @Composable
 private fun SaleDetailSheet(
+    tab: VentasTab,
+    sunatEnabled: Boolean,
     loading: Boolean,
     detail: SaleDetail?,
     printing: Boolean,
+    billingBusy: String?,
     currency: NumberFormat,
     error: String?,
     onReprint: () -> Unit,
+    onOpenPdf: () -> Unit,
     onVoidCreditNote: () -> Unit,
     onCancelNota: () -> Unit,
+    onEmitElectronic: () -> Unit,
+    onSendSunat: () -> Unit,
+    onResendSunat: () -> Unit,
+    onOpenOfficialPdf: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -268,7 +497,15 @@ private fun SaleDetailSheet(
             else -> {
                 Text(detail.displayNumber, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("${detail.docType} · ${detail.issueDate}", color = BendeyColors.OnSurfaceVariant)
+                detail.billingStatus?.let {
+                    Text("Estado SUNAT: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
+                }
                 detail.contactName?.let { Text("Cliente: $it") }
+                if (detail.isConverted()) {
+                    convertedToLabel(detail.convertedTo, detail.electronicIssueSaleId)?.let { ref ->
+                        Text("Convertida a $ref", color = BendeyColors.Info)
+                    }
+                }
                 HorizontalDivider()
                 Text("Ítems", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 detail.items.forEach { line ->
@@ -313,23 +550,246 @@ private fun SaleDetailSheet(
                     enabled = detail.printData != null && !printing,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                if (detail.canVoidWithCreditNote()) {
-                    OutlinedButton(
-                        onClick = onVoidCreditNote,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Anular con nota de crédito", color = BendeyColors.Error)
-                    }
+                OutlinedButton(
+                    onClick = onOpenPdf,
+                    enabled = detail.printData != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Ver / compartir PDF")
                 }
-                if (detail.canCancelNotaVenta()) {
-                    OutlinedButton(
-                        onClick = onCancelNota,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Anular nota de venta", color = BendeyColors.Error)
+                when (tab) {
+                    VentasTab.NOTAS -> {
+                        if (detail.canIssueElectronicFromNota(sunatEnabled)) {
+                            BendeyPrimaryButton(
+                                text = "Emitir boleta o factura",
+                                onClick = onEmitElectronic,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (detail.canCancelNotaVenta()) {
+                            OutlinedButton(onClick = onCancelNota, modifier = Modifier.fillMaxWidth()) {
+                                Text("Anular nota de venta", color = BendeyColors.Error)
+                            }
+                        }
+                    }
+                    VentasTab.FACTURACION -> {
+                        if (canSendToSunat(detail.billingStatus)) {
+                            BendeyPrimaryButton(
+                                text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
+                                onClick = onSendSunat,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (canResendToSunat(detail.billingStatus)) {
+                            OutlinedButton(
+                                onClick = onResendSunat,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
+                                )
+                            }
+                        }
+                        if (canShowOfficialSunatPdf(detail.billingStatus)) {
+                            OutlinedButton(
+                                onClick = onOpenOfficialPdf,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    if (billingBusy == "pdf") "Abriendo PDF…" else "Ver PDF oficial SUNAT",
+                                )
+                            }
+                        }
+                        if (detail.canVoidWithCreditNote()) {
+                            OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
+                                Text("Anular con nota de crédito", color = BendeyColors.Error)
+                            }
+                        }
+                    }
+                    VentasTab.CREDITOS -> {
+                        if (canSendToSunat(detail.billingStatus)) {
+                            BendeyPrimaryButton(
+                                text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
+                                onClick = onSendSunat,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (canResendToSunat(detail.billingStatus)) {
+                            OutlinedButton(
+                                onClick = onResendSunat,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
+                                )
+                            }
+                        }
+                        if (canShowOfficialSunatPdf(detail.billingStatus)) {
+                            OutlinedButton(
+                                onClick = onOpenOfficialPdf,
+                                enabled = billingBusy == null,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    if (billingBusy == "pdf") "Abriendo PDF…" else "Ver PDF oficial SUNAT",
+                                )
+                            }
+                        }
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EmitElectronicDialog(
+    docKind: String,
+    seriesId: Int?,
+    issueDate: String,
+    series: List<com.bendey.restaurant.core.domain.billing.DocumentSeries>,
+    loading: Boolean,
+    error: String?,
+    onDocKindChange: (String) -> Unit,
+    onSeriesChange: (Int) -> Unit,
+    onIssueDateChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    var kindExpanded by remember { mutableStateOf(false) }
+    var seriesExpanded by remember { mutableStateOf(false) }
+    val kindLabel = if (docKind == "01") "Factura (01)" else "Boleta (03)"
+    val seriesLabel = series.firstOrNull { it.id == seriesId }?.displayLabel ?: "Seleccionar serie"
+
+    AlertDialog(
+        onDismissRequest = { if (!loading) onDismiss() },
+        title = { Text("Emitir comprobante electrónico") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Genera boleta o factura desde esta nota de venta.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                ExposedDropdownMenuBox(
+                    expanded = kindExpanded,
+                    onExpandedChange = { kindExpanded = it },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedTextField(
+                        value = kindLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Tipo") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kindExpanded) },
+                    )
+                    ExposedDropdownMenu(expanded = kindExpanded, onDismissRequest = { kindExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Boleta (03)") },
+                            onClick = { onDocKindChange("03"); kindExpanded = false },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Factura (01)") },
+                            onClick = { onDocKindChange("01"); kindExpanded = false },
+                        )
+                    }
+                }
+                ExposedDropdownMenuBox(
+                    expanded = seriesExpanded,
+                    onExpandedChange = { seriesExpanded = it },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    OutlinedTextField(
+                        value = seriesLabel,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Serie") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = seriesExpanded) },
+                    )
+                    ExposedDropdownMenu(expanded = seriesExpanded, onDismissRequest = { seriesExpanded = false }) {
+                        series.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item.displayLabel) },
+                                onClick = {
+                                    onSeriesChange(item.id)
+                                    seriesExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                BendeyTextField(
+                    value = issueDate,
+                    onValueChange = onIssueDateChange,
+                    label = "Fecha emisión (AAAA-MM-DD)",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let {
+                    Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            BendeyPrimaryButton(
+                text = if (loading) "Generando…" else "Emitir",
+                onClick = onConfirm,
+                enabled = !loading && seriesId != null,
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !loading) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+@Composable
+private fun SalesPaymentSummaryRow(
+    summary: SaleListSummary,
+    paymentMethods: List<PaymentMethodOption>,
+    currency: NumberFormat,
+) {
+    fun methodLabel(code: String): String =
+        paymentMethods.find { it.code == code }?.name ?: code.replace('_', ' ')
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        summary.paymentTotals.forEach { pt ->
+            androidx.compose.material3.Card(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+            ) {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Text(
+                        methodLabel(pt.method),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BendeyColors.OnSurfaceVariant,
+                        maxLines = 1,
+                    )
+                    Text(
+                        currency.format(pt.total),
+                        fontWeight = FontWeight.Bold,
+                        color = BendeyColors.Primary,
+                    )
+                    if (pt.count > 0) {
+                        Text("${pt.count} ventas", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                    }
+                }
             }
         }
     }
@@ -390,11 +850,4 @@ private fun VoidReasonDialog(
             }
         },
     )
-}
-
-private fun String.accentColor() = when {
-    contains("paid", ignoreCase = true) || contains("emit", ignoreCase = true) ||
-        contains("accept", ignoreCase = true) -> BendeyColors.Success
-    contains("cancel", ignoreCase = true) || contains("void", ignoreCase = true) -> BendeyColors.Error
-    else -> BendeyColors.AccentTeal
 }

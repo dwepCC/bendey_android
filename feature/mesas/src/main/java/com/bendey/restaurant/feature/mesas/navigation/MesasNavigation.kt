@@ -12,7 +12,11 @@ import com.bendey.restaurant.feature.mesas.MesasScreen
 
 fun NavGraphBuilder.mesasGraph(navController: NavHostController) {
     composable(BendeyRoutes.MESAS_ADMIN) {
-        MesasAdminScreen()
+        MesasAdminScreen(
+            onOpenSession = { sessionId ->
+                navController.navigate(BendeyRoutes.mesa(sessionId))
+            },
+        )
     }
     composable(BendeyRoutes.MESAS) {
         MesasScreen(

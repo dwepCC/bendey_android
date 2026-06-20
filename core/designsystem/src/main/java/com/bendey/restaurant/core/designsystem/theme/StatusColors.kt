@@ -17,3 +17,13 @@ fun ComandaStatus.accentColor(): Color = when (this) {
     ComandaStatus.LISTA -> BendeyColors.KitchenListo
     ComandaStatus.ENTREGADA -> BendeyColors.KitchenEntregado
 }
+
+fun saleStatusAccentColor(status: String, billingStatus: String?): Color {
+    val key = (billingStatus ?: status).trim().lowercase()
+    return when {
+        key in setOf("accepted", "observed", "paid", "pagado", "issued", "emitido") -> BendeyColors.Success
+        key in setOf("cancelled", "canceled", "cancelado", "rejected", "voided", "error") -> BendeyColors.Error
+        key in setOf("pending", "sent", "open", "abierto", "draft") -> BendeyColors.Warning
+        else -> BendeyColors.AccentTeal
+    }
+}

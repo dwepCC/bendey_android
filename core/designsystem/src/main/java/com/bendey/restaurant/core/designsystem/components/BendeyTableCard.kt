@@ -112,14 +112,18 @@ private fun TableMetaFooter(
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        if (occupied) {
-            MetaLine("Cap.", "${table.capacity}")
-            table.totalAmount?.takeIf { it > 0 }?.let { amount ->
-                MetaLine("Total", currency.format(amount), emphasize = true)
-            } ?: MetaLine("Consumo", "Activo")
-        } else {
-            MetaLine("Cap.", "${table.capacity} pers.")
-            MetaLine("Estado", "Disponible")
+        MetaLine("Cap.", "${table.capacity} pers.")
+        when {
+            occupied -> {
+                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it") }
+                table.waiterName?.takeIf { it.isNotBlank() }?.let { MetaLine("Mozo", it) }
+                table.totalAmount?.takeIf { it > 0 }?.let { amount ->
+                    MetaLine("Total", currency.format(amount), emphasize = true)
+                }
+            }
+            table.status == TableStatus.RESERVADA -> {
+                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it") }
+            }
         }
     }
 }
@@ -166,10 +170,10 @@ fun BendeyTableStatsRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        StatDot("Libre", libre, BendeyColors.TableLibre)
-        StatDot("Ocup.", ocupada, BendeyColors.TableOcupada)
-        StatDot("Res.", reservada, BendeyColors.TableReservada)
-        StatDot("Cons.", enConsumo, BendeyColors.TableEnConsumo)
+        StatDot("Libres", libre, BendeyColors.TableLibre)
+        StatDot("Ocupadas", ocupada, BendeyColors.TableOcupada)
+        StatDot("Reservadas", reservada, BendeyColors.TableReservada)
+        StatDot("Consum.", enConsumo, BendeyColors.TableEnConsumo)
     }
 }
 
@@ -191,13 +195,7 @@ private fun StatDot(label: String, count: Int, color: Color) {
                 .background(color),
         )
         Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = color,
-        )
-        Text(
-            text = label,
+            text = "$count $label",
             style = MaterialTheme.typography.labelSmall,
             color = BendeyColors.OnSurfaceVariant,
         )

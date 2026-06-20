@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.mapper.toDomain
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.auth.TenantRepository
@@ -21,6 +22,7 @@ class TenantRepositoryImpl @Inject constructor(
     private val publicApi: PublicApi,
     private val sessionManager: SessionManager,
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
 ) : TenantRepository {
 
     override suspend fun resolveTenantByRuc(ruc: String): Result<TenantBinding> = runCatching {
@@ -41,6 +43,7 @@ class TenantRepositoryImpl @Inject constructor(
     }
 
     override suspend fun clearTenant() {
+        operationalDataCache.clearAll()
         sessionManager.clearTenant()
         tenantRetrofitProvider.invalidate()
     }
@@ -56,6 +59,7 @@ class TenantRepositoryImpl @Inject constructor(
 class AuthRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
     private val sessionManager: SessionManager,
+    private val operationalDataCache: OperationalDataCache,
 ) : AuthRepository {
 
     override suspend fun loginWithEmail(email: String, password: String): Result<UserSession> = runCatching {
@@ -86,6 +90,7 @@ class AuthRepositoryImpl @Inject constructor(
     }.recoverCatching { throw NetworkErrorMapper.map(it) }
 
     override suspend fun logout() {
+        operationalDataCache.clearAll()
         sessionManager.clearUserSession()
     }
 }

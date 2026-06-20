@@ -6,6 +6,8 @@ import com.bendey.restaurant.core.data.printer.PrinterPreferencesStore
 import com.bendey.restaurant.core.data.printer.PrinterSettings
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
+import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
+import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.platform.printing.escpos.ComandaItem
 import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
@@ -37,6 +39,8 @@ data class PrinterTestUiState(
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
+    val comandasByArea: Map<String, PrinterSlotConfig> = emptyMap(),
+    val editingAreaKey: String? = null,
     val pairedDevices: List<BluetoothDeviceInfo> = emptyList(),
     val loading: Boolean = false,
     val statusMessage: String? = null,
@@ -58,14 +62,37 @@ class PrinterTestViewModel @Inject constructor(
         refreshPairedDevices()
         viewModelScope.launch {
             cachedSettings = printerPreferencesStore.settings.first()
-            applySlotToUi(cachedSettings, PrinterSlot.COMANDAS)
+            applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
         }
     }
 
     fun selectSlot(slot: PrinterSlot) {
         persistCurrentSlotToCache()
         cachedSettings = cachedSettings.withSlot(_uiState.value.selectedSlot, readSlotFromUi())
-        applySlotToUi(cachedSettings, slot)
+        applySlotToUi(cachedSettings, slot, editingAreaKey = null)
+    }
+
+    fun editComandaArea(areaKey: String) {
+        if (_uiState.value.selectedSlot != PrinterSlot.COMANDAS) {
+            selectSlot(PrinterSlot.COMANDAS)
+        }
+        persistCurrentSlotToCache()
+        val config = cachedSettings.comandasByArea[areaKey] ?: cachedSettings.comandas
+        applyAreaConfigToUi(areaKey, config)
+    }
+
+    fun clearComandaArea(areaKey: String) {
+        cachedSettings = cachedSettings.withComandaArea(areaKey, null)
+        _uiState.update { it.copy(comandasByArea = cachedSettings.comandasByArea) }
+        if (_uiState.value.editingAreaKey == areaKey) {
+            applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
+        }
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun backToDefaultComandaPrinter() {
+        persistCurrentSlotToCache()
+        applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
     }
 
     fun setConnectionType(type: PrinterConnectionType) {
@@ -120,6 +147,41 @@ class PrinterTestViewModel @Inject constructor(
     }
 
     fun printComandaSample() = printSample(SampleKind.COMANDA)
+
+    fun printComandaAreaSample(areaKey: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(loading = true, error = null, statusMessage = null) }
+            persistAll()
+            val settings = cachedSettings
+            val target = settings.targetForComandaArea(areaKey) ?: run {
+                _uiState.update { it.copy(loading = false, error = "Configure impresora para esta área") }
+                return@launch
+            }
+            val label = areaTicketLabel("Mesa 05", areaKey)
+            when (val result = printerRepository.printComanda(
+                target,
+                ComandaPrintInput(
+                    tableName = label,
+                    orderNumber = 42,
+                    waiterName = "Maria Lopez",
+                    items = listOf(
+                        ComandaItem(
+                            productName = PreparationArea.fromApi(areaKey).label,
+                            quantity = 1.0,
+                            notes = "Prueba área",
+                        ),
+                    ),
+                ),
+            )) {
+                is PrintResult.Success -> _uiState.update {
+                    it.copy(loading = false, statusMessage = "Comanda de prueba ($areaKey) enviada")
+                }
+                is PrintResult.Error -> _uiState.update {
+                    it.copy(loading = false, error = result.message)
+                }
+            }
+        }
+    }
 
     fun printPrecuentaSample() = printSample(SampleKind.PRECUENTA)
 
@@ -233,7 +295,14 @@ class PrinterTestViewModel @Inject constructor(
     }
 
     private fun persistCurrentSlotToCache() {
-        cachedSettings = cachedSettings.withSlot(_uiState.value.selectedSlot, readSlotFromUi())
+        val state = _uiState.value
+        val config = readSlotFromUi()
+        cachedSettings = if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey != null) {
+            cachedSettings.withComandaArea(state.editingAreaKey, config)
+        } else {
+            cachedSettings.withSlot(state.selectedSlot, config)
+        }
+        _uiState.update { it.copy(comandasByArea = cachedSettings.comandasByArea) }
     }
 
     private fun persistAll() {
@@ -249,11 +318,16 @@ class PrinterTestViewModel @Inject constructor(
         }
     }
 
-    private fun applySlotToUi(settings: PrinterSettings, slot: PrinterSlot) {
-        val config = settings.configFor(slot)
+    private fun applySlotToUi(settings: PrinterSettings, slot: PrinterSlot, editingAreaKey: String?) {
+        val config = if (slot == PrinterSlot.COMANDAS && editingAreaKey != null) {
+            settings.comandasByArea[editingAreaKey] ?: settings.comandas
+        } else {
+            settings.configFor(slot)
+        }
         _uiState.update {
             it.copy(
                 selectedSlot = slot,
+                editingAreaKey = if (slot == PrinterSlot.COMANDAS) editingAreaKey else null,
                 connectionType = config.connectionType,
                 bluetoothAddress = config.bluetoothAddress,
                 tcpHost = config.tcpHost.ifBlank { "192.168.1.100" },
@@ -261,6 +335,22 @@ class PrinterTestViewModel @Inject constructor(
                 paperWidth = config.paperWidth,
                 autoPrintComandas = settings.autoPrintComandas,
                 autoPrintDocuments = settings.autoPrintDocuments,
+                comandasByArea = settings.comandasByArea,
+            )
+        }
+    }
+
+    private fun applyAreaConfigToUi(areaKey: String, config: PrinterSlotConfig) {
+        _uiState.update {
+            it.copy(
+                selectedSlot = PrinterSlot.COMANDAS,
+                editingAreaKey = areaKey,
+                connectionType = config.connectionType,
+                bluetoothAddress = config.bluetoothAddress,
+                tcpHost = config.tcpHost.ifBlank { "192.168.1.100" },
+                tcpPort = config.tcpPort.toString(),
+                paperWidth = config.paperWidth,
+                comandasByArea = cachedSettings.comandasByArea,
             )
         }
     }

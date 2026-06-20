@@ -1,24 +1,37 @@
 package com.bendey.restaurant.feature.ventas
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
+import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
 import com.bendey.restaurant.core.domain.billing.BillingRepository
+import com.bendey.restaurant.core.domain.billing.CheckoutMeta
+import com.bendey.restaurant.core.domain.billing.DocumentSeries
+import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.SaleDetail
-import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
+import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.realtime.billing.BillingEventsClient
 import com.bendey.restaurant.core.realtime.billing.BillingStatusEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -28,26 +41,61 @@ enum class VoidAction {
     CANCEL_NOTA,
 }
 
+enum class VentasDatePreset(val label: String) {
+    TODAY("Hoy"),
+    WEEK("7 días"),
+    MONTH("Mes"),
+    CUSTOM("Personalizado"),
+}
+
 data class VentasUiState(
     val loading: Boolean = false,
     val tab: VentasTab = VentasTab.NOTAS,
-    val sales: List<SaleSummary> = emptyList(),
+    val sales: List<com.bendey.restaurant.core.domain.sales.SaleSummary> = emptyList(),
     val total: Int = 0,
     val page: Int = 1,
+    val searchQuery: String = "",
     val fromDate: String = currentMonthStart(),
     val toDate: String = todayPeru(),
+    val datePreset: VentasDatePreset = VentasDatePreset.MONTH,
+    val paymentMethodFilter: String = "",
+    val billingStatusFilter: String = "",
+    val checkoutMeta: CheckoutMeta? = null,
+    val sunatEnabled: Boolean = false,
     val selectedSaleId: Int? = null,
     val detailLoading: Boolean = false,
     val detail: SaleDetail? = null,
     val detailPrinting: Boolean = false,
+    val billingBusy: String? = null,
     val voidDialogOpen: Boolean = false,
     val voidAction: VoidAction? = null,
     val voidReason: String = "",
     val voidSubmitting: Boolean = false,
+    val emitDialogOpen: Boolean = false,
+    val emitDocKind: String = "03",
+    val emitSeriesId: Int? = null,
+    val emitIssueDate: String = todayPeru(),
+    val emitSubmitting: Boolean = false,
+    val receiptModalOpen: Boolean = false,
+    val receiptPrintData: SalePrintData? = null,
+    val receiptSaleNumber: String = "",
+    val receiptTotal: Double = 0.0,
+    val receiptHasPrinter: Boolean = false,
+    val receiptBusy: String? = null,
     val error: String? = null,
     val snackMessage: String? = null,
+    val listSummary: com.bendey.restaurant.core.domain.sales.SaleListSummary = com.bendey.restaurant.core.domain.sales.SaleListSummary(),
 ) {
     val hasMore: Boolean get() = sales.size < total
+
+    val electronicSeries: List<DocumentSeries>
+        get() = checkoutMeta?.series.orEmpty().filter {
+            val code = it.sunatCode?.trim().orEmpty()
+            code == "01" || code == "03"
+        }
+
+    val filteredEmitSeries: List<DocumentSeries>
+        get() = electronicSeries.filter { it.sunatCode?.trim() == emitDocKind }
 }
 
 @HiltViewModel
@@ -55,16 +103,21 @@ class VentasViewModel @Inject constructor(
     private val salesRepository: SalesRepository,
     private val billingRepository: BillingRepository,
     private val documentPrintService: DocumentPrintService,
+    private val receiptPdfService: ReceiptPdfService,
     private val billingEventsClient: BillingEventsClient,
+    private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
     val uiState: StateFlow<VentasUiState> = _uiState.asStateFlow()
 
+    private var searchJob: Job? = null
+
     init {
         viewModelScope.launch {
             billingEventsClient.events.collect(::applyBillingEvent)
         }
+        warmCheckoutMeta()
         syncBillingStream(_uiState.value.tab)
         refresh()
     }
@@ -76,8 +129,68 @@ class VentasViewModel @Inject constructor(
 
     fun selectTab(tab: VentasTab) {
         if (_uiState.value.tab == tab) return
-        _uiState.update { it.copy(tab = tab, page = 1, sales = emptyList()) }
+        _uiState.update {
+            it.copy(
+                tab = tab,
+                page = 1,
+                sales = emptyList(),
+                billingStatusFilter = "",
+                paymentMethodFilter = "",
+            )
+        }
         syncBillingStream(tab)
+        refresh()
+    }
+
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query, page = 1) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(350)
+            refresh()
+        }
+    }
+
+    fun setDatePreset(preset: VentasDatePreset) {
+        val today = LocalDate.now()
+        val formatter = dateFormatter
+        val (from, to) = when (preset) {
+            VentasDatePreset.TODAY -> today to today
+            VentasDatePreset.WEEK -> today.minusDays(6) to today
+            VentasDatePreset.MONTH -> today.withDayOfMonth(1) to today
+            VentasDatePreset.CUSTOM -> {
+                val state = _uiState.value
+                LocalDate.parse(state.fromDate) to LocalDate.parse(state.toDate)
+            }
+        }
+        _uiState.update {
+            it.copy(
+                datePreset = preset,
+                fromDate = from.format(formatter),
+                toDate = to.format(formatter),
+                page = 1,
+            )
+        }
+        if (preset != VentasDatePreset.CUSTOM) refresh()
+    }
+
+    fun setFromDate(value: String) {
+        _uiState.update { it.copy(fromDate = value, datePreset = VentasDatePreset.CUSTOM, page = 1) }
+        refresh()
+    }
+
+    fun setToDate(value: String) {
+        _uiState.update { it.copy(toDate = value, datePreset = VentasDatePreset.CUSTOM, page = 1) }
+        refresh()
+    }
+
+    fun setPaymentMethodFilter(code: String) {
+        _uiState.update { it.copy(paymentMethodFilter = code, page = 1) }
+        refresh()
+    }
+
+    fun setBillingStatusFilter(status: String) {
+        _uiState.update { it.copy(billingStatusFilter = status, page = 1) }
         refresh()
     }
 
@@ -86,6 +199,29 @@ class VentasViewModel @Inject constructor(
             billingEventsClient.connect()
         } else {
             billingEventsClient.disconnect()
+        }
+    }
+
+    private fun warmCheckoutMeta() {
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
+            when (val result = billingRepository.loadCheckoutMeta(branchId)) {
+                is AppResult.Success -> {
+                    val sunat = result.data.series.any {
+                        val code = it.sunatCode?.trim().orEmpty()
+                        code == "01" || code == "03"
+                    }
+                    val hasPrinter = documentPrintService.hasConfiguredPrinter()
+                    _uiState.update {
+                        it.copy(
+                            checkoutMeta = result.data,
+                            sunatEnabled = sunat,
+                            receiptHasPrinter = hasPrinter,
+                        )
+                    }
+                }
+                else -> Unit
+            }
         }
     }
 
@@ -113,13 +249,17 @@ class VentasViewModel @Inject constructor(
                     tab = state.tab,
                     page = 1,
                     perPage = 30,
+                    query = state.searchQuery,
+                    paymentMethod = state.paymentMethodFilter,
+                    billingStatus = state.billingStatusFilter,
                 )
             ) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(
                         loading = false,
-                        sales = result.data.first,
-                        total = result.data.second,
+                        sales = result.data.sales,
+                        total = result.data.total,
+                        listSummary = result.data.summary,
                         page = 1,
                     )
                 }
@@ -144,13 +284,16 @@ class VentasViewModel @Inject constructor(
                     tab = state.tab,
                     page = nextPage,
                     perPage = 30,
+                    query = state.searchQuery,
+                    paymentMethod = state.paymentMethodFilter,
+                    billingStatus = state.billingStatusFilter,
                 )
             ) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(
                         loading = false,
-                        sales = it.sales + result.data.first,
-                        total = result.data.second,
+                        sales = it.sales + result.data.sales,
+                        total = result.data.total,
                         page = nextPage,
                     )
                 }
@@ -246,6 +389,7 @@ class VentasViewModel @Inject constructor(
                             snackMessage = result.data.message ?: "Nota de crédito encolada",
                         )
                     }
+                    syncBillingStream(VentasTab.CREDITOS)
                     refresh()
                 }
                 is AppResult.Error -> _uiState.update {
@@ -282,6 +426,162 @@ class VentasViewModel @Inject constructor(
         }
     }
 
+    fun openEmitElectronic() {
+        val detail = _uiState.value.detail ?: return
+        if (!detail.canIssueElectronicFromNota(_uiState.value.sunatEnabled)) {
+            _uiState.update { it.copy(snackMessage = "Esta nota no puede convertirse a comprobante") }
+            return
+        }
+        val defaultSeries = _uiState.value.electronicSeries.firstOrNull { it.sunatCode?.trim() == "03" }
+            ?: _uiState.value.electronicSeries.firstOrNull()
+        _uiState.update {
+            it.copy(
+                emitDialogOpen = true,
+                emitDocKind = defaultSeries?.sunatCode?.trim() ?: "03",
+                emitSeriesId = defaultSeries?.id,
+                emitIssueDate = todayPeru(),
+                error = null,
+            )
+        }
+    }
+
+    fun dismissEmitDialog() {
+        if (_uiState.value.emitSubmitting) return
+        _uiState.update { it.copy(emitDialogOpen = false, error = null) }
+    }
+
+    fun setEmitDocKind(kind: String) {
+        val series = _uiState.value.electronicSeries.filter { it.sunatCode?.trim() == kind }
+        _uiState.update {
+            it.copy(
+                emitDocKind = kind,
+                emitSeriesId = series.firstOrNull()?.id,
+            )
+        }
+    }
+
+    fun setEmitSeriesId(seriesId: Int) {
+        _uiState.update { it.copy(emitSeriesId = seriesId) }
+    }
+
+    fun setEmitIssueDate(date: String) {
+        _uiState.update { it.copy(emitIssueDate = date) }
+    }
+
+    fun confirmEmitElectronic() {
+        val state = _uiState.value
+        val detail = state.detail ?: return
+        val seriesId = state.emitSeriesId
+        if (seriesId == null) {
+            _uiState.update { it.copy(error = "Seleccione una serie") }
+            return
+        }
+        if (state.emitDocKind == "01" && detail.contact?.hasValidRuc() != true) {
+            _uiState.update { it.copy(error = "Para factura el cliente debe tener RUC (11 dígitos)") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(emitSubmitting = true, error = null) }
+            when (
+                val result = salesRepository.issueElectronicFromNota(
+                    saleId = detail.id,
+                    seriesId = seriesId,
+                    issueDate = state.emitIssueDate,
+                )
+            ) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            emitSubmitting = false,
+                            emitDialogOpen = false,
+                            selectedSaleId = null,
+                            detail = null,
+                            snackMessage = result.data.message
+                                ?: "Comprobante generado · envíelo a SUNAT desde Facturación",
+                        )
+                    }
+                    refresh()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(emitSubmitting = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun sendToSunat() {
+        val saleId = _uiState.value.detail?.id ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(billingBusy = "send", error = null) }
+            when (val result = billingRepository.sendToSunat(saleId)) {
+                is AppResult.Success -> {
+                    val status = result.data.billingStatus
+                    _uiState.update { state ->
+                        state.copy(
+                            billingBusy = null,
+                            snackMessage = result.data.message ?: "Enviado a SUNAT",
+                            detail = state.detail?.copy(billingStatus = status ?: state.detail.billingStatus),
+                            sales = state.sales.map { sale ->
+                                if (sale.id == saleId) sale.copy(billingStatus = status ?: sale.billingStatus) else sale
+                            },
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(billingBusy = null, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun resendToSunat() {
+        val saleId = _uiState.value.detail?.id ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(billingBusy = "resend", error = null) }
+            when (val result = billingRepository.resendToSunat(saleId)) {
+                is AppResult.Success -> {
+                    val status = result.data.billingStatus
+                    _uiState.update { state ->
+                        state.copy(
+                            billingBusy = null,
+                            snackMessage = result.data.message ?: "Reenviado a SUNAT",
+                            detail = state.detail?.copy(billingStatus = status ?: state.detail.billingStatus),
+                            sales = state.sales.map { sale ->
+                                if (sale.id == saleId) sale.copy(billingStatus = status ?: sale.billingStatus) else sale
+                            },
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(billingBusy = null, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openOfficialSunatPdf(context: Context) {
+        val saleId = _uiState.value.detail?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(billingBusy = "pdf") }
+            when (val result = billingRepository.downloadOfficialPdf(saleId)) {
+                is AppResult.Success -> {
+                    val uri = receiptPdfService.uriFor(result.data)
+                    withContext(Dispatchers.Main) {
+                        ReceiptShareHelper.openPdfExternal(context, uri)
+                    }
+                    _uiState.update { it.copy(billingBusy = null, snackMessage = "PDF oficial abierto") }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(billingBusy = null, snackMessage = result.message ?: "PDF no disponible")
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
     fun reprintSelectedSale() {
         val detail = _uiState.value.detail ?: return
         val printData = detail.printData ?: run {
@@ -300,6 +600,86 @@ class VentasViewModel @Inject constructor(
                         null -> "Configura impresora de documentos"
                     },
                 )
+            }
+        }
+    }
+
+    fun openReceiptModal() {
+        val detail = _uiState.value.detail ?: return
+        val printData = detail.printData ?: run {
+            _uiState.update { it.copy(snackMessage = "Sin datos para generar PDF") }
+            return
+        }
+        viewModelScope.launch {
+            val hasPrinter = documentPrintService.hasConfiguredPrinter()
+            _uiState.update {
+                it.copy(
+                    receiptModalOpen = true,
+                    receiptPrintData = printData,
+                    receiptSaleNumber = detail.displayNumber,
+                    receiptTotal = detail.total,
+                    receiptHasPrinter = hasPrinter,
+                )
+            }
+        }
+    }
+
+    fun dismissReceiptModal() {
+        _uiState.update {
+            it.copy(receiptModalOpen = false, receiptPrintData = null, receiptBusy = null)
+        }
+    }
+
+    fun printFromReceiptModal() {
+        val data = _uiState.value.receiptPrintData ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(receiptBusy = "print") }
+            val ok = documentPrintService.printSaleDocument(data, force = true)
+            _uiState.update {
+                it.copy(
+                    receiptBusy = null,
+                    snackMessage = when (ok) {
+                        true -> "Comprobante enviado a la ticketera"
+                        false -> "No se pudo imprimir"
+                        null -> "Configura impresora en Ajustes"
+                    },
+                )
+            }
+        }
+    }
+
+    fun shareReceiptViaWhatsApp(context: Context) {
+        val data = _uiState.value.receiptPrintData ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(receiptBusy = "share") }
+            try {
+                val file = receiptPdfService.generate(data, ReceiptPdfFormat.TICKET)
+                val uri = receiptPdfService.uriFor(file)
+                withContext(Dispatchers.Main) {
+                    ReceiptShareHelper.sharePdfWhatsApp(context, uri, "Comprobante ${data.number}")
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo compartir") }
+            } finally {
+                _uiState.update { it.copy(receiptBusy = null) }
+            }
+        }
+    }
+
+    fun openReceiptPdf(context: Context, format: ReceiptPdfFormat) {
+        val data = _uiState.value.receiptPrintData ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(receiptBusy = "pdf") }
+            try {
+                val file = receiptPdfService.generate(data, format)
+                val uri = receiptPdfService.uriFor(file)
+                withContext(Dispatchers.Main) {
+                    ReceiptShareHelper.openPdfExternal(context, uri)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo abrir el PDF") }
+            } finally {
+                _uiState.update { it.copy(receiptBusy = null) }
             }
         }
     }

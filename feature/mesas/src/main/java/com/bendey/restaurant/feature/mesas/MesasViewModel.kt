@@ -23,6 +23,12 @@ data class OpenTableForm(
     val staffId: Int? = null,
 )
 
+data class FloorTableSection(
+    val floorId: Int?,
+    val floorName: String,
+    val tables: List<RestaurantTable>,
+)
+
 data class MesasUiState(
     val loading: Boolean = false,
     val opening: Boolean = false,
@@ -47,6 +53,23 @@ data class MesasUiState(
         }
 
     val stats get() = filteredTables.toTableStats()
+
+    val floorSections: List<FloorTableSection>
+        get() {
+            val list = filteredTables
+            if (list.isEmpty()) return emptyList()
+            if (selectedFloorId != null) {
+                val name = floors.find { it.id == selectedFloorId }?.name ?: "Sala"
+                return listOf(FloorTableSection(selectedFloorId, name, list))
+            }
+            val sections = floors.mapNotNull { floor ->
+                val sectionTables = list.filter { it.floorId == floor.id }
+                if (sectionTables.isEmpty()) null
+                else FloorTableSection(floor.id, floor.name, sectionTables)
+            }
+            if (sections.isNotEmpty()) return sections
+            return listOf(FloorTableSection(null, "Mesas", list))
+        }
 }
 
 @HiltViewModel

@@ -68,6 +68,12 @@ data class VoidCreditNoteResult(
     val async: Boolean,
 )
 
+data class BillingActionResult(
+    val message: String?,
+    val billingStatus: String?,
+    val async: Boolean,
+)
+
 data class SalePrintData(
     val docType: String,
     val sunatCode: String = "",
@@ -104,6 +110,10 @@ data class SalePrintPayment(
 
 interface BillingRepository {
     suspend fun loadCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
+    suspend fun refreshCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
     suspend fun billSession(sessionId: Int, input: BillSessionInput): AppResult<BillSessionResult>
     suspend fun voidWithCreditNote(saleId: Int, reason: String): AppResult<VoidCreditNoteResult>
+    suspend fun sendToSunat(saleId: Int): AppResult<BillingActionResult>
+    suspend fun resendToSunat(saleId: Int): AppResult<BillingActionResult>
+    suspend fun downloadOfficialPdf(saleId: Int): AppResult<java.io.File>
 }

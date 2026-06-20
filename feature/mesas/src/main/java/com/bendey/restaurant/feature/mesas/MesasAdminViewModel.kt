@@ -28,6 +28,8 @@ data class TableFormState(
     val capacity: String = "4",
 )
 
+enum class MesasAdminViewMode { GRID, LIST }
+
 data class MesasAdminUiState(
     val loading: Boolean = true,
     val saving: Boolean = false,
@@ -42,12 +44,32 @@ data class MesasAdminUiState(
     val tableForm: TableFormState = TableFormState(),
     val deleteTableId: Int? = null,
     val deleteFloorId: Int? = null,
+    val floorsSheetOpen: Boolean = false,
+    val viewMode: MesasAdminViewMode = MesasAdminViewMode.GRID,
+    val page: Int = 0,
 ) {
+    companion object { const val PAGE_SIZE = 12 }
+
     val filteredTables: List<RestaurantTable>
         get() {
             val byFloor = floorFilterId?.let { id -> tables.filter { it.floorId == id } } ?: tables
             val term = searchQuery.trim().lowercase()
-            return if (term.isBlank()) byFloor else byFloor.filter { it.name.lowercase().contains(term) }
+            val searched = if (term.isBlank()) byFloor else {
+                byFloor.filter {
+                    it.name.lowercase().contains(term) ||
+                        floors.firstOrNull { f -> f.id == it.floorId }?.name.orEmpty().lowercase().contains(term)
+                }
+            }
+            return searched.sortedWith(compareBy({ it.floorId }, { it.name.lowercase() }))
+        }
+
+    val pageCount: Int get() = ((filteredTables.size + PAGE_SIZE - 1) / PAGE_SIZE).coerceAtLeast(1)
+
+    val paginatedTables: List<RestaurantTable>
+        get() {
+            val safePage = page.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
+            val from = safePage * PAGE_SIZE
+            return filteredTables.drop(from).take(PAGE_SIZE)
         }
 }
 
@@ -90,7 +112,7 @@ class MesasAdminViewModel @Inject constructor(
     }
 
     fun setFloorFilter(floorId: Int?) {
-        _uiState.update { it.copy(floorFilterId = floorId) }
+        _uiState.update { it.copy(floorFilterId = floorId, page = 0) }
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
             when (val result = mesasRepository.loadTables(floorId)) {
@@ -102,7 +124,23 @@ class MesasAdminViewModel @Inject constructor(
     }
 
     fun setSearchQuery(value: String) {
-        _uiState.update { it.copy(searchQuery = value) }
+        _uiState.update { it.copy(searchQuery = value, page = 0) }
+    }
+
+    fun setViewMode(mode: MesasAdminViewMode) {
+        _uiState.update { it.copy(viewMode = mode, page = 0) }
+    }
+
+    fun setPage(page: Int) {
+        _uiState.update { it.copy(page = page.coerceAtLeast(0)) }
+    }
+
+    fun openFloorsSheet() {
+        _uiState.update { it.copy(floorsSheetOpen = true) }
+    }
+
+    fun dismissFloorsSheet() {
+        _uiState.update { it.copy(floorsSheetOpen = false) }
     }
 
     fun openCreateFloor() {

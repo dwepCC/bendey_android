@@ -42,6 +42,7 @@ data class PrinterSlotConfig(
 
 data class PrinterSettings(
     val comandas: PrinterSlotConfig = PrinterSlotConfig(),
+    val comandasByArea: Map<String, PrinterSlotConfig> = emptyMap(),
     val precuenta: PrinterSlotConfig = PrinterSlotConfig(),
     val documentos: PrinterSlotConfig = PrinterSlotConfig(),
     val autoPrintComandas: Boolean = true,
@@ -51,6 +52,12 @@ data class PrinterSettings(
         PrinterSlot.COMANDAS -> comandas.toTarget()
         PrinterSlot.PRECUENTA -> precuenta.toTarget()
         PrinterSlot.DOCUMENTOS -> documentos.toTarget()
+    }
+
+    fun targetForComandaArea(areaKey: String?): PrinterTarget? {
+        val key = areaKey?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+        val config = if (key != null) comandasByArea[key] ?: comandas else comandas
+        return config.toTarget() ?: comandas.toTarget()
     }
 
     fun configFor(slot: PrinterSlot): PrinterSlotConfig = when (slot) {
@@ -63,6 +70,17 @@ data class PrinterSettings(
         PrinterSlot.COMANDAS -> copy(comandas = config)
         PrinterSlot.PRECUENTA -> copy(precuenta = config)
         PrinterSlot.DOCUMENTOS -> copy(documentos = config)
+    }
+
+    fun withComandaArea(areaKey: String, config: PrinterSlotConfig?): PrinterSettings {
+        val key = areaKey.trim().lowercase()
+        val updated = comandasByArea.toMutableMap()
+        if (config == null || !config.isConfigured) {
+            updated.remove(key)
+        } else {
+            updated[key] = config
+        }
+        return copy(comandasByArea = updated)
     }
 }
 

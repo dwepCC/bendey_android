@@ -196,9 +196,80 @@ data class BranchItem(
     val active: Boolean,
 )
 
+data class BranchFormInput(
+    val id: Int? = null,
+    val name: String = "",
+    val address: String = "",
+    val phone: String = "",
+    val isMain: Boolean = false,
+    val active: Boolean = true,
+)
+
+data class SeriesFormInput(
+    val id: Int? = null,
+    val branchId: Int? = null,
+    val docType: String = "NOTA DE VENTA",
+    val series: String = "",
+    val category: String = "venta",
+    val sunatCode: String = "00",
+    val active: Boolean = true,
+)
+
 data class RestaurantSettings(
     val hasDeletionPin: Boolean,
 )
+
+data class RestaurantStaffManagementRow(
+    val userId: Int,
+    val name: String,
+    val email: String,
+    val active: Boolean,
+    val staffId: Int?,
+    val employeeType: String,
+    val displayName: String,
+    val staffCode: String,
+    val hasPin: Boolean,
+    val staffActive: Boolean,
+    val profileComplete: Boolean,
+    val branchIds: List<Int>,
+    val branchNames: List<String>,
+)
+
+data class StaffCreateFormInput(
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val employeeType: String = "waiter",
+    val pin: String = "",
+    val branchIds: List<Int> = emptyList(),
+)
+
+data class StaffEditFormInput(
+    val userId: Int = 0,
+    val name: String = "",
+    val email: String = "",
+    val employeeType: String = "",
+    val pin: String = "",
+    val clearPin: Boolean = false,
+    val branchIds: List<Int> = emptyList(),
+    val hasPin: Boolean = false,
+)
+
+enum class RestaurantEmployeeType(val apiValue: String, val label: String) {
+    NONE("", "Sin acceso restaurante"),
+    ADMIN("admin", "Administrador"),
+    SUPERVISOR("supervisor", "Supervisor"),
+    CASHIER("cashier", "Cajero"),
+    WAITER("waiter", "Moz@"),
+    COOK("cook", "Cocina"),
+    DRIVER("driver", "Repartidor"),
+    ;
+
+    companion object {
+        fun fromApi(value: String?): RestaurantEmployeeType =
+            entries.firstOrNull { it.apiValue == value.orEmpty().trim() } ?: NONE
+    }
+}
 
 fun ModifierGroup.toFormInput() = ModifierGroupFormInput(
     name = name,

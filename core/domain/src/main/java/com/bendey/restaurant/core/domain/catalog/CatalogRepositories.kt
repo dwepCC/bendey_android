@@ -11,7 +11,9 @@ interface ModifiersRepository {
 
 interface CombosRepository {
     suspend fun listCombos(): AppResult<List<ComboItem>>
+    suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>>
     suspend fun getCombo(id: Int): AppResult<ComboFormInput>
+    suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<Double>
     suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem>
     suspend fun updateCombo(id: Int, input: ComboFormInput): AppResult<ComboItem>
     suspend fun deleteCombo(id: Int): AppResult<Unit>
@@ -35,8 +37,18 @@ interface SettingsRepository {
     suspend fun getSunatConfig(): AppResult<SunatConfig>
     suspend fun updateSunatConfig(input: SunatConfigFormInput): AppResult<SunatConfig>
     suspend fun listBranches(): AppResult<List<BranchItem>>
+    suspend fun createBranch(input: BranchFormInput): AppResult<Unit>
+    suspend fun updateBranch(id: Int, input: BranchFormInput): AppResult<Unit>
+    suspend fun deleteBranch(id: Int): AppResult<Unit>
+    suspend fun listSeries(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.billing.DocumentSeries>>
+    suspend fun createSeries(input: SeriesFormInput): AppResult<Unit>
+    suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit>
+    suspend fun deleteSeries(id: Int): AppResult<Unit>
     suspend fun getRestaurantSettings(): AppResult<RestaurantSettings>
     suspend fun updateDeletionPin(pin: String): AppResult<Unit>
+    suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>>
+    suspend fun createStaffUser(input: StaffCreateFormInput): AppResult<Unit>
+    suspend fun updateStaffUser(input: StaffEditFormInput): AppResult<Unit>
 }
 
 interface ProductImportRepository {

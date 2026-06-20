@@ -62,7 +62,7 @@ fun BendeyFormDialog(
         Surface(
             modifier = modifier
                 .fillMaxWidth(0.94f)
-                .heightIn(max = 640.dp),
+                .heightIn(max = 720.dp),
             shape = RoundedCornerShape(16.dp),
             color = BendeyColors.Surface,
             tonalElevation = 0.dp,

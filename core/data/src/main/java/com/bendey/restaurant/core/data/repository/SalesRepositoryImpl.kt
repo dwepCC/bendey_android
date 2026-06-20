@@ -2,17 +2,25 @@ package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.CancelNotaResult
+import com.bendey.restaurant.core.domain.sales.IssueElectronicResult
+import com.bendey.restaurant.core.domain.sales.SaleContactBrief
 import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SaleDetailLine
 import com.bendey.restaurant.core.domain.sales.SaleDetailPayment
+import com.bendey.restaurant.core.domain.sales.SaleListSummary
+import com.bendey.restaurant.core.domain.sales.SalePaymentTotal
+import com.bendey.restaurant.core.domain.sales.SalesListPage
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.network.api.SalesApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
+import com.bendey.restaurant.core.network.dto.IssueElectronicRequestDto
+import com.bendey.restaurant.core.network.dto.SaleContactDto
 import com.bendey.restaurant.core.network.dto.SaleDetailResponseDto
 import com.bendey.restaurant.core.network.dto.SaleDto
+import com.bendey.restaurant.core.network.dto.SaleListSummaryDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,17 +36,27 @@ class SalesRepositoryImpl @Inject constructor(
         tab: VentasTab,
         page: Int,
         perPage: Int,
-    ): AppResult<Pair<List<SaleSummary>, Int>> = apiCall {
+        query: String?,
+        paymentMethod: String?,
+        billingStatus: String?,
+    ): AppResult<SalesListPage> = apiCall {
         val filters = tab.toListFilters()
         val response = tenantRetrofitProvider.create<SalesApi>().listSales(
+            query = query?.trim()?.takeIf { it.isNotEmpty() },
             from = from,
             to = to,
             page = page,
             perPage = perPage,
             sunatCode = filters.sunatCode,
             docType = filters.docType,
+            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab == VentasTab.FACTURACION },
+            paymentMethod = paymentMethod?.trim()?.takeIf { it.isNotEmpty() },
         )
-        response.data.map { it.toDomain() } to response.total
+        SalesListPage(
+            sales = response.data.map { it.toDomain() },
+            total = response.total,
+            summary = response.summary?.toDomain() ?: SaleListSummary(),
+        )
     }
 
     override suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail> = apiCall {
@@ -49,6 +67,27 @@ class SalesRepositoryImpl @Inject constructor(
         val response = tenantRetrofitProvider.create<SalesApi>()
             .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim()))
         CancelNotaResult(message = response.message ?: "Nota de venta anulada")
+    }
+
+    override suspend fun issueElectronicFromNota(
+        saleId: Int,
+        seriesId: Int,
+        issueDate: String?,
+    ): AppResult<IssueElectronicResult> = apiCall {
+        val response = tenantRetrofitProvider.create<SalesApi>().issueElectronicFromNota(
+            saleId = saleId,
+            body = IssueElectronicRequestDto(
+                seriesId = seriesId,
+                issueDate = issueDate?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+        )
+        val sale = response.sale ?: error("Comprobante no generado")
+        IssueElectronicResult(
+            saleId = sale.id,
+            docType = sale.docType,
+            number = formatSaleNumber(sale.series, sale.number),
+            message = "Comprobante generado: ${sale.docType} ${formatSaleNumber(sale.series, sale.number)}",
+        )
     }
 }
 
@@ -69,6 +108,15 @@ private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
     val mapped = NetworkErrorMapper.map(e)
     AppResult.Error(mapped.message ?: "Error de conexión", mapped)
 }
+
+private fun SaleListSummaryDto.toDomain() = SaleListSummary(
+    sumTotal = sumTotal,
+    sumActive = sumActive,
+    countActive = countActive,
+    paymentTotals = paymentTotals.map {
+        SalePaymentTotal(method = it.method, total = it.total, count = it.count)
+    },
+)
 
 private fun SaleDto.toDomain() = SaleSummary(
     id = id,
@@ -95,6 +143,13 @@ private fun formatSaleNumber(series: String, number: String): String {
     return "$s-$n"
 }
 
+private fun SaleContactDto.toDomain() = SaleContactBrief(
+    id = id,
+    docType = docType,
+    docNumber = docNumber,
+    businessName = businessName,
+)
+
 private fun SaleDetailResponseDto.toDomain(): SaleDetail {
     val saleDto = sale ?: error("Venta no encontrada")
     return SaleDetail(
@@ -112,6 +167,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         sunatCode = saleDto.sunatCode,
         convertedTo = saleDto.convertedTo,
         electronicIssueSaleId = saleDto.electronicIssueSaleId,
+        contact = contact?.toDomain(),
         items = items.map {
             SaleDetailLine(
                 description = it.description.ifBlank { it.code },

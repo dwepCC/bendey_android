@@ -1,22 +1,19 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.data.kitchen.PRINT_DEFAULT_AREA_KEY
+import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
+import com.bendey.restaurant.core.data.kitchen.comandasToRoutingLines
+import com.bendey.restaurant.core.data.kitchen.groupLinesByPreparationArea
+import com.bendey.restaurant.core.data.kitchen.toPrintItem
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
-import com.bendey.restaurant.platform.printing.escpos.ComandaItem
+import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaItem
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaPrintInput
-import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.transport.PrintResult
 import com.bendey.restaurant.platform.printing.transport.PrinterRepository
 import com.bendey.restaurant.platform.printing.transport.PrinterTarget
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,12 +32,82 @@ class KitchenPrintService @Inject constructor(
         if (comandas.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
         if (!settings.autoPrintComandas) return null
-        val target = settings.targetFor(PrinterSlot.COMANDAS) ?: return null
-        return when (
-            printWithTarget(target, tableName, orderNumber, waiterName, comandas)
-        ) {
-            is PrintResult.Success -> true
-            is PrintResult.Error -> false
+        if (settings.comandas.toTarget() == null) return null
+        return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
+    }
+
+    /** Reimpresión manual: ignora auto-print pero requiere impresora de comandas configurada. */
+    suspend fun reprintComandaRound(
+        tableName: String?,
+        orderNumber: Int,
+        waiterName: String?,
+        comandas: List<ComandaLine>,
+    ): Boolean? {
+        if (comandas.isEmpty()) return null
+        val settings = printerPreferencesStore.settings.first()
+        if (settings.comandas.toTarget() == null) return null
+        return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
+    }
+
+    suspend fun reprintAllComandaRounds(
+        tableName: String?,
+        waiterName: String?,
+        orders: List<Pair<Int, List<ComandaLine>>>,
+    ): Boolean? {
+        if (orders.isEmpty()) return null
+        val settings = printerPreferencesStore.settings.first()
+        if (settings.comandas.toTarget() == null) return null
+        var anySuccess = false
+        var anyError = false
+        for ((orderNumber, comandas) in orders) {
+            when (printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)) {
+                true -> anySuccess = true
+                false -> anyError = true
+            }
+        }
+        return when {
+            anyError && !anySuccess -> false
+            anySuccess -> true
+            else -> false
+        }
+    }
+
+    private suspend fun printComandaRoundInternal(
+        settings: PrinterSettings,
+        tableName: String?,
+        orderNumber: Int,
+        waiterName: String?,
+        comandas: List<ComandaLine>,
+    ): Boolean {
+        val baseName = tableName ?: "Mostrador"
+        val groups = groupLinesByPreparationArea(comandasToRoutingLines(comandas))
+        var printed = 0
+        var hadError = false
+        for ((areaKey, areaLines) in groups) {
+            val printableLines = areaLines.filter { !it.isComboHeader }
+            if (printableLines.isEmpty()) continue
+            val prepArea = if (areaKey == PRINT_DEFAULT_AREA_KEY) null else areaKey
+            val target = settings.targetForComandaArea(prepArea) ?: continue
+            val ticketLabel = areaTicketLabel(baseName, areaKey)
+            when (
+                printerRepository.printComanda(
+                    target,
+                    ComandaPrintInput(
+                        tableName = ticketLabel,
+                        orderNumber = orderNumber,
+                        waiterName = waiterName,
+                        items = printableLines.map { it.toPrintItem() },
+                    ),
+                )
+            ) {
+                is PrintResult.Success -> printed++
+                is PrintResult.Error -> hadError = true
+            }
+        }
+        return when {
+            printed > 0 && !hadError -> true
+            printed > 0 -> false
+            else -> false
         }
     }
 
@@ -78,43 +145,16 @@ class KitchenPrintService @Inject constructor(
         orderNumber: Int,
         waiterName: String?,
         comandas: List<ComandaLine>,
-    ): PrintResult = printerRepository.printComanda(
-        target,
-        ComandaPrintInput(
-            tableName = tableName ?: "Mostrador",
-            orderNumber = orderNumber,
-            waiterName = waiterName,
-            items = comandas.map { it.toPrintItem() },
-        ),
-    )
-
-    private fun ComandaLine.toPrintItem() = ComandaItem(
-        productName = productName,
-        quantity = quantity,
-        notes = notes?.takeIf { it.isNotBlank() },
-        modifierLines = parseModifierLines(modifiersJson),
-    )
-
-    private fun parseModifierLines(json: String?): List<String> {
-        if (json.isNullOrBlank()) return emptyList()
-        return try {
-            when (val element = Json.parseToJsonElement(json)) {
-                is JsonArray -> element.flatMap { parseModifierElement(it) }
-                is JsonObject -> parseModifierElement(element)
-                else -> emptyList()
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun parseModifierElement(element: JsonElement): List<String> = when (element) {
-        is JsonObject -> {
-            val name = element["name"]?.jsonPrimitive?.contentOrNull
-                ?: element["option_name"]?.jsonPrimitive?.contentOrNull
-            if (!name.isNullOrBlank()) listOf(name) else emptyList()
-        }
-        is JsonArray -> element.flatMap { parseModifierElement(it) }
-        else -> emptyList()
+    ): PrintResult {
+        val printableLines = comandasToRoutingLines(comandas).filter { !it.isComboHeader }
+        return printerRepository.printComanda(
+            target,
+            ComandaPrintInput(
+                tableName = tableName ?: "Mostrador",
+                orderNumber = orderNumber,
+                waiterName = waiterName,
+                items = printableLines.map { it.toPrintItem() },
+            ),
+        )
     }
 }

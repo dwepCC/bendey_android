@@ -15,9 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -49,7 +51,23 @@ fun EmailLoginScreen(
                     .widthIn(max = 420.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                BendeyBrandLogo(height = 52.dp, showBackground = true)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Bienvenido de nuevo",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "Inicia sesión en tu cuenta para continuar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+                )
                 BendeyTextField(
                     value = state.email,
                     onValueChange = viewModel::onEmailChange,

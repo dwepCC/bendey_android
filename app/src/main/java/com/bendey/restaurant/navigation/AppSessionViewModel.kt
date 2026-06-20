@@ -2,6 +2,7 @@ package com.bendey.restaurant.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.cache.OperationalDataPreloader
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,13 +16,19 @@ import javax.inject.Inject
 class AppSessionViewModel @Inject constructor(
     private val sessionStore: UserSessionStore,
     private val authRepository: AuthRepository,
+    operationalDataPreloader: OperationalDataPreloader,
 ) : ViewModel() {
 
-    val isTenantBound: StateFlow<Boolean> = sessionStore.isTenantBoundFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    /** null = hidratando DataStore (evita flash de pantalla RUC). */
+    val isTenantBound: StateFlow<Boolean?> = sessionStore.isTenantBoundFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val isAuthenticated: StateFlow<Boolean> = sessionStore.isAuthenticatedFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    val isAuthenticated: StateFlow<Boolean?> = sessionStore.isAuthenticatedFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    init {
+        operationalDataPreloader.preloadActiveBranch()
+    }
 
     fun logout(onComplete: () -> Unit) {
         viewModelScope.launch {

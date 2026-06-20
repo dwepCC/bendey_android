@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.DashboardRepository
 import com.bendey.restaurant.core.domain.dashboard.RestaurantDashboard
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -19,16 +20,32 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
-enum class DashboardRange(val label: String, val days: Int) {
-    TODAY("Hoy", 1),
-    WEEK("7 días", 7),
-    MONTH("30 días", 30),
+enum class DashboardRange(val label: String) {
+    TODAY("Hoy"),
+    YESTERDAY("Ayer"),
+    WEEK("7 días"),
+    MONTH("30 días"),
+}
+
+fun DashboardRange.resolveDates(today: LocalDate): Pair<LocalDate, LocalDate> = when (this) {
+    DashboardRange.TODAY -> today to today
+    DashboardRange.YESTERDAY -> today.minusDays(1) to today.minusDays(1)
+    DashboardRange.WEEK -> today.minusDays(6) to today
+    DashboardRange.MONTH -> today.minusDays(29) to today
+}
+
+enum class DashboardTab(val label: String) {
+    OPERACION("Operación"),
+    CATALOGO("Catálogo"),
 }
 
 data class DashboardUiState(
     val dashboard: RestaurantDashboard = RestaurantDashboard(),
+    val catalog: CatalogAnalytics? = null,
+    val tab: DashboardTab = DashboardTab.OPERACION,
     val range: DashboardRange = DashboardRange.TODAY,
     val loading: Boolean = false,
+    val catalogLoading: Boolean = false,
     val error: String? = null,
     val branchName: String? = null,
     val userName: String = "",
@@ -80,21 +97,40 @@ class DashboardViewModel @Inject constructor(
         refresh()
     }
 
+    fun selectTab(tab: DashboardTab) {
+        _uiState.update { it.copy(tab = tab, error = null) }
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
             val today = LocalDate.now()
             val range = _uiState.value.range
-            val from = today.minusDays(range.days - 1L).format(dateFmt)
-            val to = today.format(dateFmt)
-            when (val result = dashboardRepository.loadDashboard(from = from, to = to)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, dashboard = result.data)
+            val (fromDate, toDate) = range.resolveDates(today)
+            val from = fromDate.format(dateFmt)
+            val to = toDate.format(dateFmt)
+            if (_uiState.value.tab == DashboardTab.CATALOGO) {
+                _uiState.update { it.copy(catalogLoading = true, error = null) }
+                when (val result = dashboardRepository.loadCatalogAnalytics(from = from, to = to)) {
+                    is AppResult.Success -> _uiState.update {
+                        it.copy(catalogLoading = false, catalog = result.data)
+                    }
+                    is AppResult.Error -> _uiState.update {
+                        it.copy(catalogLoading = false, error = result.message)
+                    }
+                    AppResult.Loading -> Unit
                 }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
+            } else {
+                _uiState.update { it.copy(loading = true, error = null) }
+                when (val result = dashboardRepository.loadDashboard(from = from, to = to)) {
+                    is AppResult.Success -> _uiState.update {
+                        it.copy(loading = false, dashboard = result.data)
+                    }
+                    is AppResult.Error -> _uiState.update {
+                        it.copy(loading = false, error = result.message)
+                    }
+                    AppResult.Loading -> Unit
                 }
-                AppResult.Loading -> Unit
             }
         }
     }

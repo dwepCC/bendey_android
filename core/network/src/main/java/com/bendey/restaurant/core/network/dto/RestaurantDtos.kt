@@ -58,15 +58,101 @@ data class StaffOptionDto(
 )
 
 @Serializable
+data class StaffManagementDto(
+    @SerialName("user_id") val userId: Int,
+    val name: String = "",
+    val email: String = "",
+    val active: Boolean = true,
+    @SerialName("staff_id") val staffId: Int? = null,
+    @SerialName("employee_type") val employeeType: String = "",
+    @SerialName("display_name") val displayName: String = "",
+    @SerialName("staff_code") val staffCode: String = "",
+    @SerialName("has_pin") val hasPin: Boolean = false,
+    @SerialName("staff_active") val staffActive: Boolean = false,
+    @SerialName("profile_complete") val profileComplete: Boolean = false,
+    @SerialName("branch_ids") val branchIds: List<Int> = emptyList(),
+    @SerialName("branch_names") val branchNames: List<String> = emptyList(),
+)
+
+@Serializable
+data class CreateStaffUserRequestDto(
+    val name: String,
+    val email: String,
+    val phone: String? = null,
+    @SerialName("employee_type") val employeeType: String,
+    val pin: String,
+    @SerialName("staff_code") val staffCode: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("branch_ids") val branchIds: List<Int>,
+)
+
+@Serializable
+data class CreateStaffUserResponseDto(
+    val success: Boolean = true,
+    val data: StaffManagementDto? = null,
+)
+
+@Serializable
+data class SetUserStaffRequestDto(
+    @SerialName("employee_type") val employeeType: String,
+    val pin: String? = null,
+    @SerialName("clear_pin") val clearPin: Boolean? = null,
+    @SerialName("staff_code") val staffCode: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("branch_ids") val branchIds: List<Int>? = null,
+)
+
+@Serializable
+data class SetUserStaffResponseDto(
+    val success: Boolean = true,
+    @SerialName("has_pin") val hasPin: Boolean = false,
+)
+
+@Serializable
 data class OpenSessionRequestDto(
     @SerialName("table_id") val tableId: Int? = null,
     @SerialName("staff_id") val staffId: Int? = null,
     val guests: Int? = null,
     val notes: String? = null,
     @SerialName("order_type") val orderType: String? = null,
+    @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("customer_name") val customerName: String? = null,
     @SerialName("customer_phone") val customerPhone: String? = null,
+    @SerialName("delivery_driver_id") val deliveryDriverId: Int? = null,
+    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("delivery_reference") val deliveryReference: String? = null,
+    @SerialName("estimated_minutes") val estimatedMinutes: Int? = null,
     @SerialName("save_as_draft") val saveAsDraft: Boolean? = null,
+)
+
+@Serializable
+data class CancelSessionRequestDto(
+    val reason: String,
+    val pin: String,
+)
+
+@Serializable
+data class CancelComandaRequestDto(
+    val reason: String,
+    val pin: String,
+)
+
+@Serializable
+data class OpenOrderSummaryDto(
+    val id: Int,
+    @SerialName("order_code") val orderCode: String? = null,
+    @SerialName("order_type") val orderType: String = "",
+    @SerialName("order_status") val orderStatus: String = "",
+    @SerialName("table_id") val tableId: Int? = null,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
+    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("delivery_reference") val deliveryReference: String? = null,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("total_amount") val totalAmount: Double = 0.0,
+    @SerialName("opened_at") val openedAt: String? = null,
+    val notes: String? = null,
+    @SerialName("item_count") val itemCount: Int = 0,
 )
 
 @Serializable
@@ -91,6 +177,8 @@ data class OrderItemInputDto(
     @SerialName("unit_price") val unitPrice: Double,
     val notes: String? = null,
     @SerialName("modifiers_json") val modifiersJson: String? = null,
+    @SerialName("combo_id") val comboId: Int? = null,
+    @SerialName("combo_config_json") val comboConfigJson: String? = null,
     @SerialName("igv_affectation_type") val igvAffectationType: String? = null,
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean? = null,
 )
@@ -115,6 +203,7 @@ data class ComandaDto(
     @SerialName("modifiers_json") val modifiersJson: String? = null,
     val status: String = "pendiente",
     @SerialName("preparation_area") val preparationArea: String? = null,
+    @SerialName("combo_snapshot_json") val comboSnapshotJson: String? = null,
 )
 
 @Serializable
@@ -141,8 +230,10 @@ data class KitchenComandaDto(
     @SerialName("unit_price") val unitPrice: Double = 0.0,
     val notes: String? = null,
     @SerialName("modifiers_json") val modifiersJson: String? = null,
+    @SerialName("combo_snapshot_json") val comboSnapshotJson: String? = null,
     val status: String = "pendiente",
     @SerialName("preparation_area") val preparationArea: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
     @SerialName("order_number") val orderNumber: Int? = null,
     @SerialName("order_code") val orderCode: String? = null,
     @SerialName("order_type") val orderType: String? = null,
@@ -188,6 +279,13 @@ data class SessionDetailDto(
     @SerialName("order_status") val orderStatus: String? = null,
     @SerialName("total_amount") val totalAmount: Double = 0.0,
     val notes: String? = null,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
+    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("delivery_reference") val deliveryReference: String? = null,
+    @SerialName("delivery_driver_id") val deliveryDriverId: Int? = null,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("estimated_minutes") val estimatedMinutes: Int? = null,
     val orders: List<SessionOrderDto> = emptyList(),
 )
 

@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
@@ -92,6 +93,8 @@ fun BendeyPosCatalogPane(
     modifier: Modifier = Modifier,
     sidebarCategories: Boolean = false,
     compactCards: Boolean = true,
+    posCatalogStyle: Boolean = false,
+    onScanClick: (() -> Unit)? = null,
 ) {
     if (sidebarCategories) {
         Row(modifier = modifier.fillMaxSize()) {
@@ -121,6 +124,8 @@ fun BendeyPosCatalogPane(
                 onProductClick = onProductClick,
                 modifier = Modifier.weight(1f),
                 compactCards = compactCards,
+                posCatalogStyle = posCatalogStyle,
+                onScanClick = onScanClick,
             )
         }
     } else {
@@ -136,6 +141,8 @@ fun BendeyPosCatalogPane(
             onProductClick = onProductClick,
             modifier = modifier,
             compactCards = compactCards,
+            posCatalogStyle = posCatalogStyle,
+            onScanClick = onScanClick,
         )
     }
 }
@@ -153,16 +160,23 @@ private fun CatalogGridBody(
     selectedCategoryId: Int? = null,
     onCategorySelect: ((Int?) -> Unit)? = null,
     compactCards: Boolean = true,
+    posCatalogStyle: Boolean = false,
+    onScanClick: (() -> Unit)? = null,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val columns = BendeyTabletTokens.productGridColumns(maxWidth)
+        val columns = if (posCatalogStyle) {
+            BendeyTabletTokens.posProductGridColumns(maxWidth)
+        } else {
+            BendeyTabletTokens.productGridColumns(maxWidth)
+        }
         Column(modifier = Modifier.fillMaxSize()) {
             PosCompactSearchField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
+                onScanClick = onScanClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
             )
             if (categories.isNotEmpty() && onCategorySelect != null) {
                 Row(
@@ -182,23 +196,35 @@ private fun CatalogGridBody(
             }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 72.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(products, key = { it.id }) { product ->
-                    BendeyProductCard(
-                        name = product.name,
-                        price = product.salePrice,
-                        currency = currency,
-                        imageUrl = product.imageUrl,
-                        assetsBaseUrl = assetsBaseUrl,
-                        onClick = { onProductClick(product) },
-                        badges = product.productBadges(),
-                        compact = compactCards,
-                        enabled = product.availableForSale,
-                    )
+                    if (posCatalogStyle) {
+                        BendeyPosProductCard(
+                            name = product.name,
+                            price = product.salePrice,
+                            currency = currency,
+                            imageUrl = product.imageUrl,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onClick = { onProductClick(product) },
+                            enabled = product.availableForSale,
+                        )
+                    } else {
+                        BendeyProductCard(
+                            name = product.name,
+                            price = product.salePrice,
+                            currency = currency,
+                            imageUrl = product.imageUrl,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onClick = { onProductClick(product) },
+                            badges = product.productBadges(),
+                            compact = compactCards,
+                            enabled = product.availableForSale,
+                        )
+                    }
                 }
             }
         }
@@ -210,6 +236,7 @@ private fun PosCompactSearchField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onScanClick: (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -219,14 +246,27 @@ private fun PosCompactSearchField(
         leadingIcon = {
             Icon(Icons.Default.Search, contentDescription = null, tint = BendeyColors.OnSurfaceVariant)
         },
+        trailingIcon = onScanClick?.let { scan ->
+            {
+                IconButton(onClick = scan) {
+                    Icon(
+                        Icons.Default.QrCodeScanner,
+                        contentDescription = "Escanear código",
+                        tint = BendeyColors.Primary,
+                    )
+                }
+            }
+        },
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = {}),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = BendeyColors.Primary,
             unfocusedBorderColor = BendeyColors.Outline,
+            focusedContainerColor = BendeyColors.Surface,
+            unfocusedContainerColor = BendeyColors.Surface,
         ),
     )
 }

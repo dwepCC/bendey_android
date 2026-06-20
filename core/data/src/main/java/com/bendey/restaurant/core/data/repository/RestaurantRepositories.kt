@@ -1,10 +1,12 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.restaurant.AddOrderResult
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
-import com.bendey.restaurant.core.domain.restaurant.Floor
+import com.bendey.restaurant.core.domain.restaurant.BranchOperationalStatus
+import com.bendey.restaurant.core.data.kitchen.expandKitchenItemsForKds
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
@@ -27,7 +29,16 @@ import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.AddOrderRequestDto
 import com.bendey.restaurant.core.network.dto.ComandaDto
 import com.bendey.restaurant.core.network.dto.KitchenComandaDto
+import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
+import com.bendey.restaurant.core.domain.restaurant.Floor
+import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
+import com.bendey.restaurant.core.domain.restaurant.PosSessionInput
+import com.bendey.restaurant.core.network.api.DeliveryApi
+import com.bendey.restaurant.core.network.dto.CancelComandaRequestDto
+import com.bendey.restaurant.core.network.dto.CancelSessionRequestDto
+import com.bendey.restaurant.core.network.dto.OpenOrderSummaryDto
 import com.bendey.restaurant.core.network.dto.OpenSessionRequestDto
+import com.bendey.restaurant.core.network.dto.OperationalStatusDto
 import com.bendey.restaurant.core.network.dto.OrderItemInputDto
 import com.bendey.restaurant.core.network.dto.ProductDto
 import com.bendey.restaurant.core.network.dto.PrecuentaDto
@@ -44,12 +55,20 @@ import javax.inject.Singleton
 @Singleton
 class PosRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
 ) : PosRepository {
 
-    override suspend fun loadCategories(): AppResult<List<ProductCategory>> = apiCall {
+    override suspend fun loadCategories(): AppResult<List<ProductCategory>> {
+        operationalDataCache.getCategories()?.let { return AppResult.Success(it) }
+        return fetchCategories()
+    }
+
+    override suspend fun refreshCategories(): AppResult<List<ProductCategory>> = fetchCategories()
+
+    private suspend fun fetchCategories(): AppResult<List<ProductCategory>> = apiCall {
         tenantRetrofitProvider.create<ProductsApi>().listCategories().data.map {
             ProductCategory(id = it.id, name = it.name)
-        }
+        }.also { operationalDataCache.setCategories(it) }
     }
 
     override suspend fun loadProducts(
@@ -68,16 +87,41 @@ class PosRepositoryImpl @Inject constructor(
         products to (response.total ?: products.size)
     }
 
-    override suspend fun openCounterSession(orderType: String): AppResult<OpenSessionResult> = apiCall {
+    override suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult> = apiCall {
         val api = tenantRetrofitProvider.create<RestaurantApi>()
-        val response = api.openSession(
-            OpenSessionRequestDto(
-                orderType = orderType,
-                guests = 1,
-            ),
-        )
+        val response = api.openSession(input.toDto())
         val session = response.data ?: error("Sesión no creada")
         OpenSessionResult(sessionId = session.id, orderCode = session.orderCode)
+    }
+
+    override suspend fun updatePosSession(sessionId: Int, input: PosSessionInput): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().updateSession(sessionId, input.toDto())
+    }
+
+    override suspend fun listOpenOrders(): AppResult<List<OpenOrderSummary>> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .listOpenOrders()
+            .data
+            .filter { it.orderType == "takeaway" || it.orderType == "delivery" }
+            .map { it.toDomain() }
+    }
+
+    override suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .cancelSession(sessionId, CancelSessionRequestDto(reason = reason.trim(), pin = pin.trim()))
+    }
+
+    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
+    }
+
+    override suspend fun listDeliveryDrivers(): AppResult<List<DeliveryDriverBrief>> = apiCall {
+        tenantRetrofitProvider.create<DeliveryApi>()
+            .listDeliveryDrivers(activeOnly = "true")
+            .data
+            .filter { it.active }
+            .map { DeliveryDriverBrief(id = it.id, name = it.name) }
     }
 
     override suspend fun addOrder(
@@ -159,6 +203,10 @@ class MesasRepositoryImpl @Inject constructor(
         dto.toDomain()
     }
 
+    override suspend fun closeSession(sessionId: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().closeSession(sessionId)
+    }
+
     override suspend fun createFloor(name: String, sortOrder: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().createFloor(
             FloorUpsertRequestDto(name = name, sortOrder = sortOrder),
@@ -197,7 +245,23 @@ class MesasRepositoryImpl @Inject constructor(
     override suspend fun deleteTable(id: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().deleteTable(id)
     }
+
+    override suspend fun getOperationalStatus(): AppResult<BranchOperationalStatus> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .getOperationalStatus()
+            .data
+            ?.toDomain()
+            ?: BranchOperationalStatus()
+    }
 }
+
+private fun OperationalStatusDto.toDomain() = BranchOperationalStatus(
+    openTablesCount = openTablesCount,
+    openSessionsCount = openSessionsCount,
+    pendingBillingCount = pendingBillingCount,
+    activeComandasCount = activeComandasCount,
+    hasActiveOperations = hasActiveOperations,
+)
 
 @Singleton
 class KitchenRepositoryImpl @Inject constructor(
@@ -205,7 +269,8 @@ class KitchenRepositoryImpl @Inject constructor(
 ) : KitchenRepository {
 
     override suspend fun loadKitchen(): AppResult<List<KitchenItem>> = apiCall {
-        tenantRetrofitProvider.create<RestaurantApi>().getKitchen().data.map { it.toDomain() }
+        val raw = tenantRetrofitProvider.create<RestaurantApi>().getKitchen().data.map { it.toDomain() }
+        expandKitchenItemsForKds(raw)
     }
 
     override suspend fun updateComandaStatus(
@@ -216,6 +281,11 @@ class KitchenRepositoryImpl @Inject constructor(
             comandaId,
             UpdateComandaStatusRequestDto(status = status.backendValue),
         )
+    }
+
+    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
     }
 }
 
@@ -242,13 +312,16 @@ private fun ProductDto.toDomain() = PosProduct(
 )
 
 private fun OrderItemInput.toDto() = OrderItemInputDto(
-    itemKind = "product",
+    itemKind = itemKind,
     productId = productId,
-    productCode = productCode,
+    productCode = productCode.takeIf { it.isNotBlank() },
     productName = productName,
     quantity = quantity,
     unitPrice = unitPrice,
     notes = notes?.takeIf { it.isNotBlank() },
+    modifiersJson = modifiersJson?.takeIf { it.isNotBlank() },
+    comboId = comboId,
+    comboConfigJson = comboConfigJson?.takeIf { it.isNotBlank() },
     igvAffectationType = igvAffectationType,
     priceIncludesIgv = priceIncludesIgv,
 )
@@ -260,6 +333,8 @@ private fun ComandaDto.toDomain() = ComandaLine(
     notes = notes,
     modifiersJson = modifiersJson,
     status = ComandaStatus.fromBackend(status),
+    preparationArea = preparationArea,
+    comboSnapshotJson = comboSnapshotJson,
 )
 
 private fun RestaurantTableDto.toDomain() = RestaurantTable(
@@ -289,6 +364,12 @@ private fun KitchenComandaDto.toDomain() = KitchenItem(
     customerName = customerName,
     waiterName = waiterName,
     orderType = orderType,
+    preparationArea = preparationArea,
+    comboSnapshotJson = comboSnapshotJson,
+    createdAt = createdAt,
+    sessionOpenedAt = sessionOpenedAt,
+    displayName = productName,
+    displayQuantity = quantity,
 )
 
 private fun SessionDetailDto.toDomain() = TableSessionDetail(
@@ -299,7 +380,42 @@ private fun SessionDetailDto.toDomain() = TableSessionDetail(
     guests = guests,
     orderCode = orderCode,
     totalAmount = totalAmount,
+    orderType = orderType,
+    customerName = customerName,
+    customerPhone = customerPhone,
+    deliveryAddress = deliveryAddress,
+    deliveryReference = deliveryReference,
+    deliveryDriverId = deliveryDriverId,
+    driverName = driverName,
+    notes = notes,
+    estimatedMinutes = estimatedMinutes,
     orders = orders.map { it.toDomain() },
+)
+
+private fun OpenOrderSummaryDto.toDomain() = OpenOrderSummary(
+    id = id,
+    orderCode = orderCode,
+    orderType = orderType,
+    orderStatus = orderStatus,
+    customerName = customerName,
+    customerPhone = customerPhone,
+    deliveryAddress = deliveryAddress,
+    totalAmount = totalAmount,
+    itemCount = itemCount,
+)
+
+private fun PosSessionInput.toDto() = OpenSessionRequestDto(
+    tableId = null,
+    guests = 1,
+    orderType = orderType,
+    customerName = customerName?.trim()?.takeIf { it.isNotEmpty() },
+    customerPhone = customerPhone?.trim()?.takeIf { it.isNotEmpty() },
+    deliveryDriverId = deliveryDriverId,
+    deliveryAddress = deliveryAddress?.trim()?.takeIf { it.isNotEmpty() },
+    deliveryReference = deliveryReference?.trim()?.takeIf { it.isNotEmpty() },
+    estimatedMinutes = estimatedMinutes,
+    notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+    saveAsDraft = saveAsDraft.takeIf { it },
 )
 
 private fun SessionOrderDto.toDomain() = SessionOrderSummary(
@@ -313,6 +429,9 @@ private fun SessionOrderDto.toDomain() = SessionOrderSummary(
             unitPrice = comanda.unitPrice,
             status = ComandaStatus.fromBackend(comanda.status),
             notes = comanda.notes,
+            modifiersJson = comanda.modifiersJson,
+            preparationArea = comanda.preparationArea,
+            comboSnapshotJson = comanda.comboSnapshotJson,
         )
     },
 )

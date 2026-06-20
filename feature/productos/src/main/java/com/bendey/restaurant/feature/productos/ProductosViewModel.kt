@@ -6,6 +6,8 @@ import com.bendey.restaurant.core.domain.catalog.BulkImportProgress
 import com.bendey.restaurant.core.domain.catalog.BulkImportValidationResult
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
+import com.bendey.restaurant.core.domain.catalog.BranchItem
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImportRepository
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
@@ -47,6 +49,9 @@ data class ProductosUiState(
     val searchQuery: String = "",
     val categoryFilterId: Int? = null,
     val areaFilter: PreparationArea? = null,
+    val branchFilterId: Int? = null,
+    val branches: List<BranchItem> = emptyList(),
+    val stockByProductId: Map<Int, Double> = emptyMap(),
     val categories: List<CategoryItem> = emptyList(),
     val modifierGroups: List<ModifierGroup> = emptyList(),
     val productFormOpen: Boolean = false,
@@ -76,6 +81,7 @@ class ProductosViewModel @Inject constructor(
     private val modifiersRepository: ModifiersRepository,
     private val productImportRepository: ProductImportRepository,
     private val productImageRepository: ProductImageRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val tenantBaseUrl: String? = productImageRepository.tenantAssetsBaseUrl()
@@ -87,6 +93,7 @@ class ProductosViewModel @Inject constructor(
 
     init {
         loadCategories()
+        loadBranches()
         loadModifierGroups()
         refreshProducts()
         viewModelScope.launch {
@@ -124,6 +131,11 @@ class ProductosViewModel @Inject constructor(
         refreshProducts()
     }
 
+    fun setBranchFilter(branchId: Int?) {
+        _uiState.update { it.copy(branchFilterId = branchId, page = 1) }
+        refreshProducts()
+    }
+
     fun refreshProducts() {
         viewModelScope.launch {
             val state = _uiState.value
@@ -134,13 +146,18 @@ class ProductosViewModel @Inject constructor(
                         query = state.searchQuery,
                         categoryId = state.categoryFilterId,
                         preparationArea = state.areaFilter?.apiValue,
+                        branchId = state.branchFilterId,
                         page = 1,
                         perPage = state.perPage,
                     ),
                 )
             ) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, products = result.data.first, total = result.data.second, page = 1)
+                is AppResult.Success -> {
+                    val products = result.data.first
+                    _uiState.update {
+                        it.copy(loading = false, products = products, total = result.data.second, page = 1)
+                    }
+                    loadStockForProducts(products)
                 }
                 is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
                 AppResult.Loading -> Unit
@@ -159,13 +176,18 @@ class ProductosViewModel @Inject constructor(
                         query = state.searchQuery,
                         categoryId = state.categoryFilterId,
                         preparationArea = state.areaFilter?.apiValue,
+                        branchId = state.branchFilterId,
                         page = state.page + 1,
                         perPage = state.perPage,
                     ),
                 )
             ) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, products = state.products + result.data.first, total = result.data.second, page = state.page + 1)
+                is AppResult.Success -> {
+                    val merged = state.products + result.data.first
+                    _uiState.update {
+                        it.copy(loading = false, products = merged, total = result.data.second, page = state.page + 1)
+                    }
+                    loadStockForProducts(merged)
                 }
                 is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
                 AppResult.Loading -> Unit
@@ -180,6 +202,27 @@ class ProductosViewModel @Inject constructor(
                 is AppResult.Error -> _uiState.update { it.copy(error = result.message) }
                 AppResult.Loading -> Unit
             }
+        }
+    }
+
+    private fun loadBranches() {
+        viewModelScope.launch {
+            when (val result = settingsRepository.listBranches()) {
+                is AppResult.Success -> _uiState.update { it.copy(branches = result.data.filter { it.active }) }
+                else -> Unit
+            }
+        }
+    }
+
+    private suspend fun loadStockForProducts(products: List<ProductItem>) {
+        val ids = products.filter { it.manageStock }.map { it.id }
+        if (ids.isEmpty()) {
+            _uiState.update { it.copy(stockByProductId = emptyMap()) }
+            return
+        }
+        when (val result = productsRepository.getStockSummary(ids)) {
+            is AppResult.Success -> _uiState.update { it.copy(stockByProductId = result.data) }
+            else -> Unit
         }
     }
 

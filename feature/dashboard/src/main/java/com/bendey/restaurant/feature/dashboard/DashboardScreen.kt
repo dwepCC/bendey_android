@@ -27,8 +27,16 @@ import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.TrendingFlat
 import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +61,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
+import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
+import com.bendey.restaurant.core.domain.dashboard.DashboardRecentSession
 import com.bendey.restaurant.core.domain.dashboard.DashboardTableSummary
 import com.bendey.restaurant.core.domain.dashboard.DashboardTopProduct
 import java.text.NumberFormat
@@ -75,7 +86,7 @@ fun DashboardScreen(
     val dash = state.dashboard
 
     PullToRefreshBox(
-        isRefreshing = state.loading,
+        isRefreshing = state.loading || state.catalogLoading,
         onRefresh = viewModel::refresh,
         modifier = modifier.fillMaxSize(),
     ) {
@@ -93,6 +104,33 @@ fun DashboardScreen(
                     cashLabel = state.cashLabel,
                 )
             }
+            item {
+                DateRangeFilterRow(
+                    selected = state.range,
+                    onSelect = viewModel::selectRange,
+                )
+            }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DashboardTab.entries.forEach { tab ->
+                        FilterChip(
+                            selected = state.tab == tab,
+                            onClick = { viewModel.selectTab(tab) },
+                            label = { Text(tab.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = BendeyColors.PrimaryContainer,
+                                selectedLabelColor = BendeyColors.Primary,
+                            ),
+                        )
+                    }
+                }
+            }
+            if (state.tab == DashboardTab.OPERACION) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     DashboardMetricCard(
@@ -142,6 +180,14 @@ fun DashboardScreen(
                 }
             }
             item {
+                SessionStatsRow(summary = dash.summary)
+            }
+            if (dash.recentSessions.isNotEmpty()) {
+                item {
+                    RecentSessionsSection(sessions = dash.recentSessions, currency = currency)
+                }
+            }
+            item {
                 TableStatusSection(
                     summary = dash.tableSummary,
                     onVerMapa = onOpenMesas,
@@ -160,6 +206,43 @@ fun DashboardScreen(
                     currency = currency,
                     onVerTodos = onOpenVentas,
                 )
+            }
+            item {
+                OrderTypesSection(
+                    slices = dash.orderTypes,
+                    currency = currency,
+                )
+            }
+            item {
+                PaymentMethodsSection(
+                    methods = dash.paymentMethods,
+                    currency = currency,
+                )
+            }
+            }
+            if (state.tab == DashboardTab.CATALOGO) {
+                if (state.catalogLoading && state.catalog == null) {
+                    item { CircularProgressIndicator(modifier = Modifier.padding(24.dp)) }
+                } else {
+                    state.catalog?.let { catalog ->
+                        item { CatalogKpiRow(catalog, currency) }
+                        if (catalog.topProducts.isNotEmpty()) {
+                            item { CatalogRankSection("Top productos", catalog.topProducts, currency) }
+                        }
+                        if (catalog.topCombos.isNotEmpty()) {
+                            item { CatalogRankSection("Top combos", catalog.topCombos, currency) }
+                        }
+                        if (catalog.topPresentations.isNotEmpty()) {
+                            item { CatalogRankSection("Top presentaciones", catalog.topPresentations, currency) }
+                        }
+                        if (catalog.topExtras.isNotEmpty()) {
+                            item { CatalogRankSection("Top extras", catalog.topExtras, currency) }
+                        }
+                        item { CatalogComboStats(catalog, currency) }
+                    } ?: item {
+                        Text("Sin datos de catálogo", color = BendeyColors.OnSurfaceVariant, modifier = Modifier.padding(16.dp))
+                    }
+                }
             }
             state.error?.let { error ->
                 item {
@@ -294,6 +377,7 @@ private fun DashboardMetricCard(
 private fun ChangeBadge(pct: Double, range: DashboardRange) {
     val suffix = when (range) {
         DashboardRange.TODAY -> " vs ayer"
+        DashboardRange.YESTERDAY -> " vs ant. ayer"
         DashboardRange.WEEK -> " vs sem. ant."
         DashboardRange.MONTH -> " vs mes ant."
     }
@@ -665,12 +749,361 @@ private fun TopProductRow(
 
 private fun revenueLabel(range: DashboardRange): String = when (range) {
     DashboardRange.TODAY -> "Ingresos hoy"
+    DashboardRange.YESTERDAY -> "Ingresos ayer"
     DashboardRange.WEEK -> "Ingresos (7 días)"
     DashboardRange.MONTH -> "Ingresos (30 días)"
 }
 
 private fun ordersLabel(range: DashboardRange): String = when (range) {
     DashboardRange.TODAY -> "Pedidos hoy"
+    DashboardRange.YESTERDAY -> "Pedidos ayer"
     DashboardRange.WEEK -> "Pedidos (7 días)"
     DashboardRange.MONTH -> "Pedidos (30 días)"
+}
+
+@Composable
+private fun DateRangeFilterRow(
+    selected: DashboardRange,
+    onSelect: (DashboardRange) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DashboardRange.entries.forEach { range ->
+            FilterChip(
+                selected = selected == range,
+                onClick = { onSelect(range) },
+                label = { Text(range.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = BendeyColors.Primary,
+                    selectedLabelColor = BendeyColors.OnPrimary,
+                ),
+                shape = RoundedCornerShape(10.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SessionStatsRow(
+    summary: com.bendey.restaurant.core.domain.dashboard.DashboardSummaryBlock,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        MiniStatChip(
+            label = "Cobrados",
+            value = summary.paidSessions.toString(),
+            icon = Icons.Default.CheckCircle,
+            tint = BendeyColors.Success,
+            bg = BendeyColors.SuccessContainer,
+            modifier = Modifier.weight(1f),
+        )
+        MiniStatChip(
+            label = "Abiertos",
+            value = summary.openSessions.toString(),
+            icon = Icons.Default.Schedule,
+            tint = Color(0xFFD97706),
+            bg = BendeyColors.WarningContainer,
+            modifier = Modifier.weight(1f),
+        )
+        MiniStatChip(
+            label = "Cancelados",
+            value = summary.cancelledSessions.toString(),
+            icon = Icons.Default.Cancel,
+            tint = BendeyColors.Error,
+            bg = BendeyColors.ErrorContainer,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun MiniStatChip(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    tint: Color,
+    bg: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = BendeyColors.Surface,
+        shadowElevation = 1.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(bg, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+            }
+            Column {
+                Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodsSection(
+    methods: List<com.bendey.restaurant.core.domain.dashboard.DashboardPaymentSlice>,
+    currency: NumberFormat,
+) {
+    DashboardChartCard(title = "Métodos de pago") {
+        if (methods.isEmpty()) {
+            Text("Sin pagos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        } else {
+            val max = methods.maxOf { it.amount }.coerceAtLeast(1.0)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                methods.forEach { slice ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(slice.method, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                currency.format(slice.amount),
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .background(BendeyColors.SurfaceVariant, RoundedCornerShape(4.dp)),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth((slice.amount / max).toFloat())
+                                    .height(8.dp)
+                                    .background(BendeyColors.AccentTeal, RoundedCornerShape(4.dp)),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun orderTypeLabel(type: String): String = when (type.lowercase()) {
+    "mesa", "dine_in" -> "Mesa"
+    "takeaway", "llevar", "para_llevar" -> "Para llevar"
+    "delivery" -> "Delivery"
+    "pos", "quick_sale", "mostrador" -> "Mostrador"
+    else -> type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("es", "PE")) else it.toString() }
+}
+
+@Composable
+private fun OrderTypesSection(
+    slices: List<com.bendey.restaurant.core.domain.dashboard.DashboardOrderTypeSlice>,
+    currency: NumberFormat,
+) {
+    DashboardChartCard(title = "Pedidos por tipo") {
+        if (slices.isEmpty()) {
+            Text("Sin pedidos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        } else {
+            val max = slices.maxOf { it.count }.coerceAtLeast(1)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                slices.forEach { slice ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Column(modifier = Modifier.width(88.dp)) {
+                            Text(
+                                orderTypeLabel(slice.type),
+                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                currency.format(slice.revenue),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(8.dp)
+                                .background(BendeyColors.SurfaceVariant, RoundedCornerShape(4.dp)),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth((slice.count.toDouble() / max).toFloat())
+                                    .height(8.dp)
+                                    .background(BendeyColors.Primary, RoundedCornerShape(4.dp)),
+                            )
+                        }
+                        Text(
+                            slice.count.toString(),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardChartCard(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun RecentSessionsSection(
+    sessions: List<DashboardRecentSession>,
+    currency: NumberFormat,
+) {
+    DashboardChartCard(title = "Pedidos recientes") {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            sessions.take(12).forEach { session ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            session.orderCode.ifBlank { "#${session.id}" },
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            listOfNotNull(
+                                session.tableName.takeIf { it.isNotBlank() },
+                                session.customerName.takeIf { it.isNotBlank() },
+                                session.orderType,
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Text(
+                        currency.format(session.totalAmount),
+                        fontWeight = FontWeight.Bold,
+                        color = BendeyColors.Primary,
+                    )
+                }
+            }
+            if (sessions.size > 12) {
+                Text(
+                    "${sessions.size - 12} pedidos más en el período",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CatalogKpiRow(catalog: CatalogAnalytics, currency: NumberFormat) {
+    val kpi = catalog.kpi
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        CatalogKpiCard("Ingresos", currency.format(kpi.totalRevenue), Modifier.weight(1f))
+        CatalogKpiCard("Ventas", kpi.salesCount.toString(), Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        CatalogKpiCard("Productos", String.format("%.0f", kpi.productsSold), Modifier.weight(1f))
+        CatalogKpiCard("Combos", String.format("%.0f", kpi.combosSold), Modifier.weight(1f))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
+        CatalogKpiCard("Ticket prom.", currency.format(kpi.avgTicket), Modifier.weight(1f))
+        CatalogKpiCard("Extras", currency.format(kpi.extrasRevenue), Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun CatalogKpiCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = BendeyColors.OnSurfaceVariant)
+            Text(value, fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
+        }
+    }
+}
+
+@Composable
+private fun CatalogRankSection(title: String, rows: List<CatalogAnalyticsRow>, currency: NumberFormat) {
+    DashboardChartCard(title = title) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            rows.take(10).forEachIndexed { index, row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${index + 1}. ${row.label}", modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(currency.format(row.revenue), fontWeight = FontWeight.SemiBold, color = BendeyColors.Primary)
+                        Text("×${String.format("%.0f", row.quantity)}", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CatalogComboStats(catalog: CatalogAnalytics, currency: NumberFormat) {
+    DashboardChartCard(title = "Combos") {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Ingresos combos")
+                Text(currency.format(catalog.comboRevenue), fontWeight = FontWeight.Bold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Participación")
+                Text(String.format("%.1f%%", catalog.comboParticipationPct), fontWeight = FontWeight.Bold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Ticket con combo")
+                Text(currency.format(catalog.avgTicketWithCombo))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Ticket sin combo")
+                Text(currency.format(catalog.avgTicketWithoutCombo))
+            }
+        }
+    }
 }

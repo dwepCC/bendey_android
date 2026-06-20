@@ -153,6 +153,30 @@ data class ComboDataResponseDto(
 )
 
 @Serializable
+data class ComboResolveRequestDto(
+    @SerialName("branch_id") val branchId: Int,
+    @SerialName("combo_config_json") val comboConfigJson: String = "{}",
+)
+
+@Serializable
+data class ComboResolveResponseDto(
+    val data: ResolvedComboSnapshotDto? = null,
+    @SerialName("unit_price") val unitPrice: Double? = null,
+)
+
+@Serializable
+data class ResolvedComboSnapshotDto(
+    val name: String? = null,
+    @SerialName("component_lines") val componentLines: List<ResolvedComboLineDto> = emptyList(),
+)
+
+@Serializable
+data class ResolvedComboLineDto(
+    @SerialName("product_name") val productName: String = "",
+    val quantity: Double = 1.0,
+)
+
+@Serializable
 data class ComboUpsertRequestDto(
     val name: String,
     val description: String? = null,
@@ -244,6 +268,16 @@ data class BranchDto(
     @SerialName("fiscal_domicile_code") val fiscalDomicileCode: String? = null,
     @SerialName("is_main") val isMain: Boolean = false,
     val active: Boolean? = true,
+)
+
+@Serializable
+data class BranchUpsertRequestDto(
+    val name: String,
+    val address: String = "",
+    val phone: String = "",
+    @SerialName("fiscal_domicile_code") val fiscalDomicileCode: String? = null,
+    @SerialName("is_main") val isMain: Boolean = false,
+    val active: Boolean? = null,
 )
 
 @Serializable

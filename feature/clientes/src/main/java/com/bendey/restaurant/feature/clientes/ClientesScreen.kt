@@ -41,11 +41,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -154,14 +156,9 @@ private fun ContactRow(
     onDelete: () -> Unit,
     onToggle: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-    ) {
+    BendeyManagementCard {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -216,92 +213,81 @@ private fun ContactFormDialog(
     onConsult: () -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Editar cliente" else "Nuevo cliente") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text("Tipo de documento", style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ContactDocType.entries.forEach { docType ->
-                        FilterChip(
-                            selected = form.docType == docType,
-                            onClick = { onFormChange { it.copy(docType = docType) } },
-                            label = { Text(docType.label) },
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BendeyTextField(
-                        value = form.docNumber,
-                        onValueChange = { value -> onFormChange { it.copy(docNumber = value) } },
-                        label = "N° documento *",
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (ContactDocType.supportsConsulta(form.docType.code)) {
-                        BendeyPrimaryButton(
-                            text = if (consulting) "…" else "Consultar",
-                            onClick = onConsult,
-                            enabled = !consulting && !loading,
-                            modifier = Modifier.weight(0.55f),
-                        )
-                    }
-                }
-                BendeyTextField(
-                    value = form.businessName,
-                    onValueChange = { value -> onFormChange { it.copy(businessName = value) } },
-                    label = "Nombre / Razón social *",
+        title = if (isEditing) "Editar cliente" else "Nuevo cliente",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading && !consulting,
+        loading = loading,
+    ) {
+        Text("Tipo de documento", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ContactDocType.entries.forEach { docType ->
+                FilterChip(
+                    selected = form.docType == docType,
+                    onClick = { onFormChange { it.copy(docType = docType) } },
+                    label = { Text(docType.label) },
                 )
-                BendeyTextField(
-                    value = form.tradeName,
-                    onValueChange = { value -> onFormChange { it.copy(tradeName = value) } },
-                    label = "Nombre comercial",
-                )
-                BendeyTextField(
-                    value = form.address,
-                    onValueChange = { value -> onFormChange { it.copy(address = value) } },
-                    label = "Dirección",
-                    singleLine = false,
-                )
-                BendeyTextField(
-                    value = form.ubigeo,
-                    onValueChange = { value -> onFormChange { it.copy(ubigeo = value.filter { c -> c.isDigit() }.take(6)) } },
-                    label = "Ubigeo (6 dígitos)",
-                )
-                BendeyTextField(
-                    value = form.phone,
-                    onValueChange = { value -> onFormChange { it.copy(phone = value) } },
-                    label = "Teléfono",
-                )
-                BendeyTextField(
-                    value = form.email,
-                    onValueChange = { value -> onFormChange { it.copy(email = value) } },
-                    label = "Email",
-                )
-                error?.let {
-                    Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
-                }
             }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Guardando…" else "Guardar",
-                onClick = onSave,
-                enabled = !loading && !consulting,
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BendeyTextField(
+                value = form.docNumber,
+                onValueChange = { value -> onFormChange { it.copy(docNumber = value) } },
+                label = "N° documento *",
+                modifier = Modifier.weight(1f),
             )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        },
-    )
+            if (ContactDocType.supportsConsulta(form.docType.code)) {
+                BendeyPrimaryButton(
+                    text = if (consulting) "…" else "Consultar",
+                    onClick = onConsult,
+                    enabled = !consulting && !loading,
+                    modifier = Modifier.weight(0.55f),
+                )
+            }
+        }
+        BendeyTextField(
+            value = form.businessName,
+            onValueChange = { value -> onFormChange { it.copy(businessName = value) } },
+            label = "Nombre / Razón social *",
+        )
+        BendeyTextField(
+            value = form.tradeName,
+            onValueChange = { value -> onFormChange { it.copy(tradeName = value) } },
+            label = "Nombre comercial",
+        )
+        BendeyTextField(
+            value = form.address,
+            onValueChange = { value -> onFormChange { it.copy(address = value) } },
+            label = "Dirección",
+            singleLine = false,
+        )
+        BendeyTextField(
+            value = form.ubigeo,
+            onValueChange = { value -> onFormChange { it.copy(ubigeo = value.filter { c -> c.isDigit() }.take(6)) } },
+            label = "Ubigeo (6 dígitos)",
+        )
+        BendeyTextField(
+            value = form.phone,
+            onValueChange = { value -> onFormChange { it.copy(phone = value) } },
+            label = "Teléfono",
+        )
+        BendeyTextField(
+            value = form.email,
+            onValueChange = { value -> onFormChange { it.copy(email = value) } },
+            label = "Email",
+        )
+        error?.let {
+            Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }

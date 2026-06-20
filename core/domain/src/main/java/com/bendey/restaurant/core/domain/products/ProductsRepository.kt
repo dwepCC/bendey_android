@@ -15,4 +15,5 @@ interface ProductsRepository {
     suspend fun updateCategory(id: Int, name: String, description: String = ""): AppResult<CategoryItem>
     suspend fun deleteCategory(id: Int): AppResult<Unit>
     suspend fun searchForComboEditor(query: String, page: Int = 1): AppResult<Pair<List<ProductItem>, Int>>
+    suspend fun getStockSummary(productIds: List<Int>): AppResult<Map<Int, Double>>
 }

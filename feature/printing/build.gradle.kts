@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
     implementation(project(":core:data"))
+    implementation(project(":core:domain"))
     implementation(project(":core:navigation"))
     implementation(project(":platform:printing"))
     implementation(platform(libs.androidx.compose.bom))

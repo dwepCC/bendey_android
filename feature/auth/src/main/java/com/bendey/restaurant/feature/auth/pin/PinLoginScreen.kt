@@ -14,9 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPinKeypad
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -51,6 +53,15 @@ fun PinLoginScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                BendeyBrandLogo(height = 48.dp, showBackground = true)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Ingresa tu PIN de operación",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
                 BendeyPinKeypad(
                     onDigit = viewModel::appendDigit,
                     onBackspace = viewModel::backspace,

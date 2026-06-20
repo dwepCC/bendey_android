@@ -75,6 +75,7 @@ fun BendeyNavigationSuite(
             topBar = {
                 topBar(::toggleDrawer, drawerState.isOpen)
             },
+            showBottomBar = showBottomBar && isCompact,
             bottomBar = {
                 if (showBottomBar && isCompact) {
                     BendeyBottomNavigationBar(

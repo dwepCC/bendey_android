@@ -1,8 +1,10 @@
 package com.bendey.restaurant.navigation
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -12,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -20,6 +23,8 @@ import com.bendey.restaurant.core.navigation.BendeyDrawerDestination
 import com.bendey.restaurant.core.navigation.BendeyNavigationSuite
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.core.navigation.TopLevelDestination
+import com.bendey.restaurant.core.navigation.navigateToBottomBarDestination
+import com.bendey.restaurant.core.navigation.navigateToDrawerDestination
 import com.bendey.restaurant.core.ui.components.BendeyAppHeader
 import com.bendey.restaurant.feature.auth.navigation.authGraph
 import com.bendey.restaurant.feature.caja.navigation.cajaGraph
@@ -43,17 +48,34 @@ fun BendeyAppNavHost(
     modifier: Modifier = Modifier,
     appViewModel: AppSessionViewModel = hiltViewModel(),
 ) {
-    val isTenantBound by appViewModel.isTenantBound.collectAsStateWithLifecycle(false)
-    val isAuthenticated by appViewModel.isAuthenticated.collectAsStateWithLifecycle(false)
+    val isTenantBound by appViewModel.isTenantBound.collectAsStateWithLifecycle()
+    val isAuthenticated by appViewModel.isAuthenticated.collectAsStateWithLifecycle()
     val rootNavController = rememberNavController()
 
+    val tenantBound = isTenantBound
+    val authenticated = isAuthenticated
+
+    val sessionReady = tenantBound != null && (tenantBound == false || authenticated != null)
+
     val startDestination = when {
-        !isTenantBound -> BendeyRoutes.RUC
-        !isAuthenticated -> BendeyRoutes.HOME
+        tenantBound == null -> null
+        tenantBound == false -> BendeyRoutes.RUC
+        authenticated == null -> null
+        authenticated == false -> BendeyRoutes.HOME
         else -> BendeyRoutes.MAIN
     }
 
     Box(modifier = modifier.fillMaxSize()) {
+        if (!sessionReady || startDestination == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BendeyColors.Rest900),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = BendeyColors.OnPrimary)
+            }
+        } else {
         key(startDestination) {
             NavHost(
                 navController = rootNavController,
@@ -72,6 +94,7 @@ fun BendeyAppNavHost(
                     MainShell(onShowMessage = onShowMessage)
                 }
             }
+        }
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -109,16 +132,10 @@ private fun MainShell(
             }
         },
         onNavigate = { destination ->
-            mainNavController.navigate(destination.route) {
-                launchSingleTop = true
-                restoreState = true
-                popUpTo(BendeyRoutes.DASHBOARD) { saveState = true }
-            }
+            mainNavController.navigateToBottomBarDestination(destination.route)
         },
         onDrawerNavigate = { destination ->
-            mainNavController.navigate(destination.route) {
-                launchSingleTop = true
-            }
+            mainNavController.navigateToDrawerDestination(destination.route)
         },
         onDisabledDestinationClick = { destination ->
             onShowMessage("${destination.label} estará disponible próximamente")
@@ -131,14 +148,10 @@ private fun MainShell(
         ) {
             dashboardGraph(
                 onOpenMesas = {
-                    mainNavController.navigate(BendeyRoutes.MESAS) {
-                        launchSingleTop = true
-                        restoreState = true
-                        popUpTo(BendeyRoutes.DASHBOARD) { saveState = true }
-                    }
+                    mainNavController.navigateToBottomBarDestination(BendeyRoutes.MESAS)
                 },
                 onOpenVentas = {
-                    mainNavController.navigate(BendeyRoutes.VENTAS) { launchSingleTop = true }
+                    mainNavController.navigateToDrawerDestination(BendeyRoutes.VENTAS)
                 },
             )
             printingGraph(onBack = { mainNavController.popBackStack() })

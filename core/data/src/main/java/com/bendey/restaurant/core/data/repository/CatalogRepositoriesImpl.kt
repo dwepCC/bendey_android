@@ -1,6 +1,14 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.domain.catalog.BranchFormInput
 import com.bendey.restaurant.core.domain.catalog.BranchItem
+import com.bendey.restaurant.core.domain.catalog.SeriesFormInput
+import com.bendey.restaurant.core.domain.billing.DocumentSeries
+import com.bendey.restaurant.core.network.api.CompanyApi
+import com.bendey.restaurant.core.network.dto.BranchUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.DocumentSeriesDto
+import com.bendey.restaurant.core.network.dto.SeriesCreateRequestDto
+import com.bendey.restaurant.core.network.dto.SeriesUpdateRequestDto
 import com.bendey.restaurant.core.domain.catalog.ComboBranchSetting
 import com.bendey.restaurant.core.domain.catalog.ComboFixedItem
 import com.bendey.restaurant.core.domain.catalog.ComboFormInput
@@ -33,7 +41,14 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.network.api.CombosApi
 import com.bendey.restaurant.core.network.api.DeliveryApi
 import com.bendey.restaurant.core.network.api.ModifierGroupsApi
+import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
+import com.bendey.restaurant.core.domain.catalog.StaffCreateFormInput
+import com.bendey.restaurant.core.domain.catalog.StaffEditFormInput
+import com.bendey.restaurant.core.network.api.RestaurantApi
 import com.bendey.restaurant.core.network.api.SettingsApi
+import com.bendey.restaurant.core.network.dto.CreateStaffUserRequestDto
+import com.bendey.restaurant.core.network.dto.SetUserStaffRequestDto
+import com.bendey.restaurant.core.network.dto.StaffManagementDto
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.ComboBranchSettingDto
 import com.bendey.restaurant.core.network.dto.ComboDto
@@ -93,9 +108,38 @@ class CombosRepositoryImpl @Inject constructor(
         api.listCombos().data.map { it.toListItem() }
     }
 
+    override suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>> =
+        catalogApiCall {
+            api.listCombos(branchId = branchId, activeOnly = "true").data.map { dto ->
+                com.bendey.restaurant.core.domain.pos.PosComboItem(
+                    id = dto.id,
+                    name = dto.name,
+                    description = dto.description,
+                    comboType = ComboType.fromApi(dto.comboType),
+                    basePrice = dto.basePrice,
+                    imageUrl = dto.imageUrl,
+                )
+            }
+        }
+
     override suspend fun getCombo(id: Int): AppResult<ComboFormInput> = catalogApiCall {
         api.getCombo(id).data.toFormInput()
     }
+
+    override suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<Double> =
+        catalogApiCall {
+            val response = api.resolveCombo(
+                id,
+                com.bendey.restaurant.core.network.dto.ComboResolveRequestDto(
+                    branchId = branchId,
+                    comboConfigJson = comboConfigJson.ifBlank { "{}" },
+                ),
+            )
+            response.unitPrice ?: response.data?.let { dto ->
+                // fallback if only data returned
+                0.0
+            } ?: 0.0
+        }
 
     override suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem> = catalogApiCall {
         api.createCombo(input.toDto()).data.toListItem()
@@ -207,6 +251,55 @@ class SettingsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun createBranch(input: BranchFormInput): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>().createBranch(input.toDto())
+    }
+
+    override suspend fun updateBranch(id: Int, input: BranchFormInput): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>().updateBranch(id, input.toDto())
+    }
+
+    override suspend fun deleteBranch(id: Int): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>().deleteBranch(id)
+    }
+
+    override suspend fun listSeries(branchId: Int?): AppResult<List<DocumentSeries>> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>()
+            .listSeries(branchId = branchId)
+            .data
+            .map { it.toDocumentSeries() }
+    }
+
+    override suspend fun createSeries(input: SeriesFormInput): AppResult<Unit> = catalogApiCall {
+        val branchId = input.branchId ?: error("Selecciona sucursal")
+        tenantRetrofitProvider.create<CompanyApi>().createSeries(
+            SeriesCreateRequestDto(
+                branchId = branchId,
+                docType = input.docType.trim(),
+                series = input.series.trim(),
+                category = input.category,
+                sunatCode = input.sunatCode,
+            ),
+        )
+    }
+
+    override suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>().updateSeries(
+            id,
+            SeriesUpdateRequestDto(
+                series = input.series.trim(),
+                active = input.active,
+                docType = input.docType.trim(),
+                sunatCode = input.sunatCode,
+                category = input.category,
+            ),
+        )
+    }
+
+    override suspend fun deleteSeries(id: Int): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<CompanyApi>().deleteSeries(id)
+    }
+
     override suspend fun getRestaurantSettings(): AppResult<RestaurantSettings> = catalogApiCall {
         RestaurantSettings(hasDeletionPin = api.getRestaurantSettings().hasDeletionPin)
     }
@@ -214,7 +307,55 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun updateDeletionPin(pin: String): AppResult<Unit> = catalogApiCall {
         api.updateRestaurantSettings(RestaurantSettingsUpdateRequestDto(deletionPin = pin))
     }
+
+    override suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>> = catalogApiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .listStaffManagement()
+            .data
+            .map { it.toDomain() }
+    }
+
+    override suspend fun createStaffUser(input: StaffCreateFormInput): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().createStaffUser(
+            CreateStaffUserRequestDto(
+                name = input.name.trim(),
+                email = input.email.trim(),
+                phone = input.phone.trim().ifBlank { null },
+                employeeType = input.employeeType,
+                pin = input.pin.filter { it.isDigit() },
+                branchIds = input.branchIds,
+            ),
+        )
+    }
+
+    override suspend fun updateStaffUser(input: StaffEditFormInput): AppResult<Unit> = catalogApiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().setUserStaff(
+            userId = input.userId,
+            body = SetUserStaffRequestDto(
+                employeeType = input.employeeType,
+                pin = input.pin.filter { it.isDigit() }.takeIf { it.isNotBlank() },
+                clearPin = input.clearPin.takeIf { it },
+                branchIds = input.branchIds.takeIf { it.isNotEmpty() },
+            ),
+        )
+    }
 }
+
+private fun StaffManagementDto.toDomain() = RestaurantStaffManagementRow(
+    userId = userId,
+    name = name,
+    email = email,
+    active = active,
+    staffId = staffId,
+    employeeType = employeeType,
+    displayName = displayName,
+    staffCode = staffCode,
+    hasPin = hasPin,
+    staffActive = staffActive,
+    profileComplete = profileComplete,
+    branchIds = branchIds,
+    branchNames = branchNames,
+)
 
 private inline fun <T> catalogApiCall(block: () -> T): AppResult<T> = try {
     AppResult.Success(block())
@@ -222,6 +363,24 @@ private inline fun <T> catalogApiCall(block: () -> T): AppResult<T> = try {
     val mapped = NetworkErrorMapper.map(e)
     AppResult.Error(mapped.message ?: "Error de conexión", mapped)
 }
+
+private fun BranchFormInput.toDto() = BranchUpsertRequestDto(
+    name = name.trim(),
+    address = address.trim(),
+    phone = phone.trim(),
+    isMain = isMain,
+    active = active,
+)
+
+private fun DocumentSeriesDto.toDocumentSeries() = DocumentSeries(
+    id = id,
+    branchId = branchId,
+    docType = docType,
+    series = series,
+    category = category,
+    sunatCode = sunatCode,
+    active = active,
+)
 
 private fun ModifierGroupDto.toDomain() = ModifierGroup(
     id = id,

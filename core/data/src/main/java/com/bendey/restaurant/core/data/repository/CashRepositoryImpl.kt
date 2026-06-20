@@ -2,20 +2,39 @@ package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
+import com.bendey.restaurant.core.domain.cash.CashBankAccount
+import com.bendey.restaurant.core.domain.cash.CashBankMovement
+import com.bendey.restaurant.core.domain.cash.CashCancelledSaleRow
+import com.bendey.restaurant.core.domain.cash.CashMethodTotal
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
+import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
+import com.bendey.restaurant.core.domain.cash.CashReportRow
 import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.cash.CashSession
+import com.bendey.restaurant.core.domain.cash.CashSessionBrief
+import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.model.CashSessionSnapshot
 import com.bendey.restaurant.core.network.api.CashbankApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.AddCashMovementRequestDto
+import com.bendey.restaurant.core.network.dto.AddBankMovementRequestDto
+import com.bendey.restaurant.core.network.dto.BankAccountDto
+import com.bendey.restaurant.core.network.dto.BankMovementDto
+import com.bendey.restaurant.core.network.dto.BankAccountUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.CashCancelledSaleRowDto
+import com.bendey.restaurant.core.network.dto.CashMethodTotalDto
+import com.bendey.restaurant.core.network.dto.PaymentMethodDto
+import com.bendey.restaurant.core.network.dto.PaymentMethodUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CashMovementDto
+import com.bendey.restaurant.core.network.dto.CashReportRowDto
 import com.bendey.restaurant.core.network.dto.CashSessionDto
+import com.bendey.restaurant.core.network.dto.CashSessionReportDto
 import com.bendey.restaurant.core.network.dto.CloseCashSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OpenCashSessionRequestDto
+import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,16 +76,39 @@ class CashRepositoryImpl @Inject constructor(
         sessionId: Int,
         closingBalance: Double?,
         notes: String?,
+        arqueo: Map<String, Int>?,
     ): AppResult<CashSession> = apiCall {
         val dto = tenantRetrofitProvider.create<CashbankApi>().closeSession(
             sessionId = sessionId,
             body = CloseCashSessionRequestDto(
                 closingBalance = closingBalance,
                 notes = notes?.takeIf { it.isNotBlank() },
+                arqueo = arqueo?.takeIf { it.values.any { qty -> qty > 0 } },
             ),
         ).data ?: error("No se pudo cerrar la caja")
         sessionManager.setCashSession(null)
         dto.toDomain()
+    }
+
+    override suspend fun listSessions(branchId: Int?): AppResult<List<CashSessionBrief>> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .listSessions(branchId?.takeIf { it > 0 })
+            .data
+            .map { it.toBrief() }
+    }
+
+    override suspend fun getSessionReport(sessionId: Int): AppResult<CashSessionReport> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .getSessionReport(sessionId)
+            .data
+            ?.toDomain()
+            ?: error("Reporte no disponible")
+    }
+
+    override suspend fun saveArqueo(sessionId: Int, arqueo: Map<String, Int>): AppResult<Double> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .saveArqueo(sessionId, SaveArqueoRequestDto(arqueo = arqueo))
+            .sum ?: 0.0
     }
 
     override suspend fun listMovements(sessionId: Int): AppResult<List<CashMovement>> = apiCall {
@@ -86,12 +128,143 @@ class CashRepositoryImpl @Inject constructor(
                 type = input.type.apiValue,
                 category = input.category,
                 reference = input.reference.takeIf { it.isNotBlank() },
-                paymentMethod = "cash",
+                paymentMethod = input.paymentMethod.ifBlank { "cash" },
                 amount = input.amount,
                 notes = input.notes.takeIf { it.isNotBlank() },
             ),
         ).data ?: error("Movimiento no registrado")
         dto.toDomain()
+    }
+
+    override suspend fun listPaymentMethods(): AppResult<List<CashPaymentMethod>> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .listPaymentMethods()
+            .data
+            .map { it.toPaymentMethodDomain() }
+    }
+
+    override suspend fun createPaymentMethod(
+        name: String,
+        code: String,
+        destinationType: String,
+        bankAccountId: Int?,
+    ): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().createPaymentMethod(
+            PaymentMethodUpsertRequestDto(
+                name = name,
+                code = code,
+                destinationType = destinationType,
+                bankAccountId = bankAccountId,
+            ),
+        )
+        Unit
+    }
+
+    override suspend fun updatePaymentMethod(
+        id: Int,
+        name: String,
+        code: String,
+        destinationType: String,
+        bankAccountId: Int?,
+        active: Boolean,
+    ): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().updatePaymentMethod(
+            id = id,
+            body = PaymentMethodUpsertRequestDto(
+                name = name,
+                code = code,
+                destinationType = destinationType,
+                bankAccountId = bankAccountId,
+                active = active,
+            ),
+        )
+        Unit
+    }
+
+    override suspend fun deletePaymentMethod(id: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().deletePaymentMethod(id)
+        Unit
+    }
+
+    override suspend fun listBankAccounts(): AppResult<List<CashBankAccount>> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .listBankAccounts()
+            .data
+            .map { it.toBankAccountDomain() }
+    }
+
+    override suspend fun createBankAccount(
+        name: String,
+        bankName: String,
+        accountNumber: String,
+        currency: String,
+        type: String,
+        paymentMethod: String,
+        initialBalance: Double,
+    ): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().createBankAccount(
+            BankAccountUpsertRequestDto(
+                name = name,
+                bankName = bankName,
+                accountNumber = accountNumber,
+                currency = currency,
+                type = type,
+                paymentMethod = paymentMethod,
+                initialBalance = initialBalance,
+            ),
+        )
+        Unit
+    }
+
+    override suspend fun updateBankAccount(
+        id: Int,
+        name: String,
+        bankName: String,
+        accountNumber: String,
+        type: String,
+        paymentMethod: String,
+        active: Boolean,
+    ): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().updateBankAccount(
+            id = id,
+            body = BankAccountUpsertRequestDto(
+                name = name,
+                bankName = bankName,
+                accountNumber = accountNumber,
+                type = type,
+                paymentMethod = paymentMethod,
+                active = active,
+            ),
+        )
+        Unit
+    }
+
+    override suspend fun listBankMovements(accountId: Int): AppResult<List<CashBankMovement>> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .listBankMovements(accountId)
+            .data
+            .map { it.toMovementDomain() }
+    }
+
+    override suspend fun addBankMovement(
+        accountId: Int,
+        type: String,
+        description: String,
+        reference: String,
+        amount: Double,
+        date: String,
+    ): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>().addBankMovement(
+            id = accountId,
+            body = AddBankMovementRequestDto(
+                type = type,
+                description = description,
+                reference = reference.takeIf { it.isNotBlank() },
+                amount = amount,
+                date = date,
+            ),
+        )
+        Unit
     }
 
     private suspend fun persistSnapshot(session: CashSession) {
@@ -127,7 +300,90 @@ private fun CashSessionDto.toDomain() = CashSession(
     totalExpense = totalExpense ?: 0.0,
     status = CashSessionStatus.fromApi(status),
     openedAt = openedAt,
+    closedAt = closedAt,
+    closingBalance = closingBalance,
+    difference = difference,
     notes = notes,
+    arqueoJson = arqueoJson,
+)
+
+private fun CashSessionDto.toBrief() = CashSessionBrief(
+    id = id,
+    branchName = branchName,
+    openedByName = openedByName,
+    openingBalance = openingBalance,
+    closingBalance = closingBalance,
+    expectedBalance = expectedBalance ?: currentBalance ?: openingBalance,
+    status = CashSessionStatus.fromApi(status),
+    openedAt = openedAt,
+    closedAt = closedAt,
+)
+
+private fun CashSessionReportDto.toDomain(): CashSessionReport {
+    val totalsDto = totals
+    return CashSessionReport(
+        session = session.toBrief(),
+        incomeDetail = incomeDetail.map { it.toDomain() },
+        expenseDetail = expenseDetail.map { it.toDomain() },
+        cancelledSalesDetail = cancelledSalesDetail.map { it.toDomain() },
+        salesByMethod = totalsByMethod?.sales?.map { it.toDomain() }.orEmpty(),
+        nonCashSalesByMethod = nonCashSalesByMethod.map { it.toDomain() },
+        totalIncome = totalsDto.totalIncome,
+        totalExpense = totalsDto.totalExpense,
+        totalSales = totalsDto.totalSales,
+        finalBalance = totalsDto.finalBalance,
+        totalNetSales = totalsDto.totalNetSales ?: totalsDto.totalSales,
+        totalVoidedSales = totalsDto.totalVoidedSales ?: 0.0,
+    )
+}
+
+private fun CashReportRowDto.toDomain() = CashReportRow(
+    date = date,
+    type = type,
+    docNumber = docNumber,
+    reference = reference,
+    amount = amount,
+    paymentMethod = paymentMethod,
+)
+
+private fun CashMethodTotalDto.toDomain() = CashMethodTotal(method = method, total = total)
+
+private fun CashCancelledSaleRowDto.toDomain() = CashCancelledSaleRow(
+    date = date,
+    docNumber = docNumber,
+    amount = amount,
+    paymentMethod = paymentMethod,
+    reason = reason,
+)
+
+private fun PaymentMethodDto.toPaymentMethodDomain() = CashPaymentMethod(
+    id = id,
+    name = name,
+    code = code,
+    destinationType = destinationType,
+    bankAccountId = bankAccountId,
+    active = active,
+)
+
+private fun BankAccountDto.toBankAccountDomain() = CashBankAccount(
+    id = id,
+    name = name,
+    bankName = bankName,
+    accountNumber = accountNumber,
+    currency = currency,
+    balance = balance,
+    type = type,
+    paymentMethod = paymentMethod,
+    active = active,
+)
+
+private fun BankMovementDto.toMovementDomain() = CashBankMovement(
+    id = id,
+    type = type,
+    amount = amount,
+    description = description,
+    reference = reference,
+    date = date,
 )
 
 private fun CashMovementDto.toDomain() = CashMovement(

@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.ui.layout.BendeyBottomBarInset
 
 data class BendeyNavItem(
     val route: String,
@@ -44,8 +45,8 @@ data class BendeyNavItem(
 )
 
 /**
- * Barra inferior móvil: Inicio · POS · Mesas (FAB) · Comandas · Más.
- * Alineada con el mockup del dashboard Bendey Resto.
+ * Barra inferior móvil: Inicio · Mesas · POS (FAB +) · Comandas · Más.
+ * El botón central flotante abre el POS.
  */
 @Composable
 fun BendeyBottomNavigationBar(
@@ -57,53 +58,63 @@ fun BendeyBottomNavigationBar(
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = BendeyColors.Surface,
-        shadowElevation = 12.dp,
-        tonalElevation = 0.dp,
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(BendeyBottomBarInset)
+            .navigationBarsPadding(),
     ) {
-        Row(
+        Surface(
             modifier = Modifier
-                .navigationBarsPadding()
-                .fillMaxWidth()
-                .height(64.dp)
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom,
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            color = BendeyColors.Surface,
+            shadowElevation = 12.dp,
+            tonalElevation = 0.dp,
         ) {
-            leftItems.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                leftItems.forEach { item ->
+                    BottomNavTab(
+                        selected = currentRoute == item.route,
+                        icon = item.icon,
+                        label = item.shortLabel,
+                        onClick = { onNavigate(item) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // Espacio central para el FAB flotante
+                Box(modifier = Modifier.weight(1f))
+                rightItems.forEach { item ->
+                    BottomNavTab(
+                        selected = currentRoute == item.route,
+                        icon = item.icon,
+                        label = item.shortLabel,
+                        onClick = { onNavigate(item) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 BottomNavTab(
-                    selected = currentRoute == item.route,
-                    icon = item.icon,
-                    label = item.shortLabel,
-                    onClick = { onNavigate(item) },
+                    selected = false,
+                    icon = Icons.Default.Menu,
+                    label = "Más",
+                    onClick = onMoreClick,
                     modifier = Modifier.weight(1f),
                 )
             }
-            CenterMesasFab(
-                selected = currentRoute == centerItem.route,
-                label = centerItem.shortLabel,
-                onClick = { onNavigate(centerItem) },
-                modifier = Modifier.weight(1f),
-            )
-            rightItems.forEach { item ->
-                BottomNavTab(
-                    selected = currentRoute == item.route,
-                    icon = item.icon,
-                    label = item.shortLabel,
-                    onClick = { onNavigate(item) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            BottomNavTab(
-                selected = false,
-                icon = Icons.Default.Menu,
-                label = "Más",
-                onClick = onMoreClick,
-                modifier = Modifier.weight(1f),
-            )
         }
+        CenterPosFab(
+            selected = currentRoute == centerItem.route,
+            label = centerItem.shortLabel,
+            onClick = { onNavigate(centerItem) },
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 
@@ -131,7 +142,7 @@ private fun BottomNavTab(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(top = 6.dp, bottom = 4.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -151,7 +162,7 @@ private fun BottomNavTab(
 }
 
 @Composable
-private fun CenterMesasFab(
+private fun CenterPosFab(
     selected: Boolean,
     label: String,
     onClick: () -> Unit,
@@ -163,9 +174,8 @@ private fun CenterMesasFab(
     ) {
         Box(
             modifier = Modifier
-                .offset(y = (-10).dp)
-                .size(52.dp)
-                .shadow(6.dp, CircleShape)
+                .size(56.dp)
+                .shadow(8.dp, CircleShape)
                 .clip(CircleShape)
                 .background(if (selected) BendeyColors.Rest800 else BendeyColors.Primary)
                 .clickable(
@@ -179,7 +189,7 @@ private fun CenterMesasFab(
                 imageVector = Icons.Default.Add,
                 contentDescription = label,
                 tint = BendeyColors.OnPrimary,
-                modifier = Modifier.size(28.dp),
+                modifier = Modifier.size(30.dp),
             )
         }
         Text(
@@ -187,7 +197,7 @@ private fun CenterMesasFab(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = if (selected) BendeyColors.Primary else BendeyColors.NavInactive,
-            modifier = Modifier.offset(y = (-6).dp),
+            modifier = Modifier.offset(y = 2.dp),
         )
     }
 }

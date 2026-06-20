@@ -125,6 +125,7 @@ data class ProductListQuery(
     val query: String = "",
     val categoryId: Int? = null,
     val preparationArea: String? = null,
+    val branchId: Int? = null,
     val page: Int = 1,
     val perPage: Int = 25,
 )

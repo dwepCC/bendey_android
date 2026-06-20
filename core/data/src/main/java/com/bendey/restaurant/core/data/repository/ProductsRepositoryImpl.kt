@@ -49,6 +49,7 @@ class ProductsRepositoryImpl @Inject constructor(
             perPage = query.perPage,
             categoryId = query.categoryId,
             preparationArea = query.preparationArea?.takeIf { it.isNotBlank() },
+            branchId = query.branchId,
         )
         response.data.map { it.toDomain() } to (response.total ?: response.data.size)
     }
@@ -99,6 +100,14 @@ class ProductsRepositoryImpl @Inject constructor(
 
     override suspend fun deleteCategory(id: Int): AppResult<Unit> = apiCall {
         api.deleteCategory(id)
+    }
+
+    override suspend fun getStockSummary(productIds: List<Int>): AppResult<Map<Int, Double>> = apiCall {
+        if (productIds.isEmpty()) return@apiCall emptyMap()
+        api.getStockSummary(productIds.joinToString(","))
+            .data
+            .mapKeys { (key, _) -> key.toIntOrNull() ?: 0 }
+            .filterKeys { it > 0 }
     }
 
     override suspend fun searchForComboEditor(query: String, page: Int): AppResult<Pair<List<ProductItem>, Int>> =

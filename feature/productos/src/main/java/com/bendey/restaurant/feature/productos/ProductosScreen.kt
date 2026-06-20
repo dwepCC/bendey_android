@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.products.CategoryItem
@@ -54,6 +55,7 @@ import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductosTab
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -123,6 +125,7 @@ fun ProductosScreen(
                     onSearch = viewModel::setSearchQuery,
                     onCategoryFilter = viewModel::setCategoryFilter,
                     onAreaFilter = viewModel::setAreaFilter,
+                    onBranchFilter = viewModel::setBranchFilter,
                     onEdit = viewModel::openEditProduct,
                     onDelete = viewModel::requestDeleteProduct,
                     onLoadMore = viewModel::loadMoreProducts,
@@ -234,6 +237,7 @@ private fun ProductsTabContent(
     onSearch: (String) -> Unit,
     onCategoryFilter: (Int?) -> Unit,
     onAreaFilter: (PreparationArea?) -> Unit,
+    onBranchFilter: (Int?) -> Unit,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
     onLoadMore: () -> Unit,
@@ -288,6 +292,28 @@ private fun ProductsTabContent(
                 )
             }
         }
+        if (state.branches.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = state.branchFilterId == null,
+                    onClick = { onBranchFilter(null) },
+                    label = { Text("Todas sucursales") },
+                )
+                state.branches.forEach { branch ->
+                    FilterChip(
+                        selected = state.branchFilterId == branch.id,
+                        onClick = { onBranchFilter(branch.id) },
+                        label = { Text(branch.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    )
+                }
+            }
+        }
         if (state.products.isEmpty() && !state.loading) {
             Text(
                 "Sin productos",
@@ -303,6 +329,7 @@ private fun ProductsTabContent(
                 items(state.products, key = { it.id }) { product ->
                     ProductRow(
                         product = product,
+                        stockQty = state.stockByProductId[product.id],
                         currency = currency,
                         assetsBaseUrl = assetsBaseUrl,
                         onEdit = { onEdit(product.id) },
@@ -327,20 +354,16 @@ private fun ProductsTabContent(
 @Composable
 private fun ProductRow(
     product: ProductItem,
+    stockQty: Double?,
     currency: NumberFormat,
     assetsBaseUrl: String?,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-    ) {
+    BendeyManagementCard {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -383,7 +406,10 @@ private fun ProductRow(
                         BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
                     }
                     if (product.manageStock) {
-                        BendeyStatusChip(label = "Stock", accentColor = BendeyColors.Info)
+                        val stockLabel = stockQty?.let { qty ->
+                            if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
+                        } ?: "Stock"
+                        BendeyStatusChip(label = stockLabel, accentColor = BendeyColors.Info)
                     }
                 }
             }
@@ -423,14 +449,9 @@ private fun CategoriesTabContent(
         modifier = Modifier.fillMaxSize(),
     ) {
         items(categories, key = { it.id }) { category ->
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-            ) {
+            BendeyManagementCard {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -472,144 +493,131 @@ private fun ProductFormDialog(
     onImagePicked: (ByteArray, String) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        containerColor = BendeyColors.Surface,
-        tonalElevation = 0.dp,
-        title = { Text(if (isEditing) "Editar producto" else "Nuevo producto") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                BendeyTextField(
-                    value = form.name,
-                    onValueChange = { value -> onFormChange { it.copy(name = value) } },
-                    label = "Nombre *",
-                )
-                BendeyTextField(
-                    value = form.code,
-                    onValueChange = { value -> onFormChange { it.copy(code = value) } },
-                    label = "Código",
-                )
-                BendeyTextField(
-                    value = form.salePrice,
-                    onValueChange = { value -> onFormChange { it.copy(salePrice = value) } },
-                    label = "Precio venta *",
-                )
-                ProductImageSection(form, tenantBaseUrl, onImagePicked)
-                Text("Presentaciones / variantes", style = MaterialTheme.typography.labelLarge)
-                TextButton(onClick = onTogglePresentations) {
-                    Text(if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)")
-                }
-                if (presentationsOpen) {
-                    ProductPresentationsSection(form.presentations) { list ->
-                        onFormChange { it.copy(presentations = list, hasVariants = list.any { p -> p.name.isNotBlank() }) }
-                    }
-                    TextButton(onClick = onDismissPresentations) { Text("Cerrar presentaciones") }
-                }
-                Text("Grupos de modificadores", style = MaterialTheme.typography.labelLarge)
-                ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
-                Text("Categoría", style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = form.categoryId == null,
-                        onClick = { onFormChange { it.copy(categoryId = null) } },
-                        label = { Text("Sin categoría") },
-                    )
-                    categories.forEach { category ->
-                        FilterChip(
-                            selected = form.categoryId == category.id,
-                            onClick = { onFormChange { it.copy(categoryId = category.id) } },
-                            label = { Text(category.name) },
-                        )
-                    }
-                }
-                Text("Área de preparación", style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    PreparationArea.entries.forEach { area ->
-                        FilterChip(
-                            selected = form.preparationArea == area,
-                            onClick = { onFormChange { it.copy(preparationArea = area) } },
-                            label = { Text(area.label) },
-                        )
-                    }
-                }
-                Text("Afectación IGV", style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    IgvAffectation.entries.forEach { igv ->
-                        FilterChip(
-                            selected = form.igvAffectation == igv,
-                            onClick = { onFormChange { it.copy(igvAffectation = igv) } },
-                            label = { Text(igv.code) },
-                        )
-                    }
-                }
-                ToggleRow(
-                    label = "Visible en carta (POS/mesa)",
-                    checked = form.availableForSale,
-                    onCheckedChange = { checked -> onFormChange { it.copy(availableForSale = checked) } },
-                )
-                if (IgvAffectation.isGravado(form.igvAffectation.code)) {
-                    ToggleRow(
-                        label = "Precio incluye IGV",
-                        checked = form.priceIncludesIgv,
-                        onCheckedChange = { checked -> onFormChange { it.copy(priceIncludesIgv = checked) } },
-                    )
-                }
-                ToggleRow(
-                    label = "Controlar stock",
-                    checked = form.manageStock,
-                    onCheckedChange = { checked -> onFormChange { it.copy(manageStock = checked) } },
-                )
-                if (form.manageStock && !isEditing) {
-                    BendeyTextField(
-                        value = form.initialStock,
-                        onValueChange = { value -> onFormChange { it.copy(initialStock = value) } },
-                        label = "Stock inicial",
-                    )
-                }
-                TextButton(onClick = onToggleMore) {
-                    Text(if (showMoreOptions) "Menos opciones" else "Más opciones")
-                }
-                if (showMoreOptions) {
-                    BendeyTextField(
-                        value = form.description,
-                        onValueChange = { value -> onFormChange { it.copy(description = value) } },
-                        label = "Descripción",
-                        singleLine = false,
-                    )
-                    BendeyTextField(
-                        value = form.purchasePrice,
-                        onValueChange = { value -> onFormChange { it.copy(purchasePrice = value) } },
-                        label = "Precio compra",
-                    )
-                }
-                error?.let {
-                    Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
-                }
+        title = if (isEditing) "Editar producto" else "Nuevo producto",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        BendeyTextField(
+            value = form.name,
+            onValueChange = { value -> onFormChange { it.copy(name = value) } },
+            label = "Nombre *",
+        )
+        BendeyTextField(
+            value = form.code,
+            onValueChange = { value -> onFormChange { it.copy(code = value) } },
+            label = "Código",
+        )
+        BendeyTextField(
+            value = form.salePrice,
+            onValueChange = { value -> onFormChange { it.copy(salePrice = value) } },
+            label = "Precio venta *",
+        )
+        ProductImageSection(form, tenantBaseUrl, onImagePicked)
+        Text("Presentaciones / variantes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        TextButton(onClick = onTogglePresentations) {
+            Text(if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)")
+        }
+        if (presentationsOpen) {
+            ProductPresentationsSection(form.presentations) { list ->
+                onFormChange { it.copy(presentations = list, hasVariants = list.any { p -> p.name.isNotBlank() }) }
             }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Guardando…" else "Guardar",
-                onClick = onSave,
-                enabled = !loading,
+            TextButton(onClick = onDismissPresentations) { Text("Cerrar presentaciones") }
+        }
+        Text("Grupos de modificadores", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
+        Text("Categoría", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = form.categoryId == null,
+                onClick = { onFormChange { it.copy(categoryId = null) } },
+                label = { Text("Sin categoría") },
             )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        },
-    )
+            categories.forEach { category ->
+                FilterChip(
+                    selected = form.categoryId == category.id,
+                    onClick = { onFormChange { it.copy(categoryId = category.id) } },
+                    label = { Text(category.name) },
+                )
+            }
+        }
+        Text("Área de preparación", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PreparationArea.entries.forEach { area ->
+                FilterChip(
+                    selected = form.preparationArea == area,
+                    onClick = { onFormChange { it.copy(preparationArea = area) } },
+                    label = { Text(area.label) },
+                )
+            }
+        }
+        Text("Afectación IGV", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            IgvAffectation.entries.forEach { igv ->
+                FilterChip(
+                    selected = form.igvAffectation == igv,
+                    onClick = { onFormChange { it.copy(igvAffectation = igv) } },
+                    label = { Text(igv.code) },
+                )
+            }
+        }
+        ToggleRow(
+            label = "Visible en carta (POS/mesa)",
+            checked = form.availableForSale,
+            onCheckedChange = { checked -> onFormChange { it.copy(availableForSale = checked) } },
+        )
+        if (IgvAffectation.isGravado(form.igvAffectation.code)) {
+            ToggleRow(
+                label = "Precio incluye IGV",
+                checked = form.priceIncludesIgv,
+                onCheckedChange = { checked -> onFormChange { it.copy(priceIncludesIgv = checked) } },
+            )
+        }
+        ToggleRow(
+            label = "Controlar stock",
+            checked = form.manageStock,
+            onCheckedChange = { checked -> onFormChange { it.copy(manageStock = checked) } },
+        )
+        if (form.manageStock && !isEditing) {
+            BendeyTextField(
+                value = form.initialStock,
+                onValueChange = { value -> onFormChange { it.copy(initialStock = value) } },
+                label = "Stock inicial",
+            )
+        }
+        TextButton(onClick = onToggleMore) {
+            Text(if (showMoreOptions) "Menos opciones" else "Más opciones")
+        }
+        if (showMoreOptions) {
+            BendeyTextField(
+                value = form.description,
+                onValueChange = { value -> onFormChange { it.copy(description = value) } },
+                label = "Descripción",
+                singleLine = false,
+            )
+            BendeyTextField(
+                value = form.purchasePrice,
+                onValueChange = { value -> onFormChange { it.copy(purchasePrice = value) } },
+                label = "Precio compra",
+            )
+        }
+        error?.let {
+            Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
 @Composable
@@ -622,40 +630,30 @@ private fun CategoryFormDialog(
     onFormChange: ((CategoryForm) -> CategoryForm) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        containerColor = BendeyColors.Surface,
-        tonalElevation = 0.dp,
-        title = { Text(if (isEditing) "Editar categoría" else "Nueva categoría") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                BendeyTextField(
-                    value = form.name,
-                    onValueChange = { value -> onFormChange { it.copy(name = value) } },
-                    label = "Nombre *",
-                )
-                BendeyTextField(
-                    value = form.description,
-                    onValueChange = { value -> onFormChange { it.copy(description = value) } },
-                    label = "Descripción",
-                    singleLine = false,
-                )
-                error?.let {
-                    Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Guardando…" else "Guardar",
-                onClick = onSave,
-                enabled = !loading,
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        },
-    )
+        title = if (isEditing) "Editar categoría" else "Nueva categoría",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        BendeyTextField(
+            value = form.name,
+            onValueChange = { value -> onFormChange { it.copy(name = value) } },
+            label = "Nombre *",
+        )
+        BendeyTextField(
+            value = form.description,
+            onValueChange = { value -> onFormChange { it.copy(description = value) } },
+            label = "Descripción",
+            singleLine = false,
+        )
+        error?.let {
+            Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
 @Composable

@@ -86,20 +86,33 @@ data class PosProduct(
 )
 
 data class PosCartLine(
+    val cartKey: String = "",
     val product: PosProduct,
     val quantity: Int,
     val notes: String = "",
+    val itemKind: String = "product",
+    val unitPrice: Double? = null,
+    val modifiersJson: String? = null,
+    val comboId: Int? = null,
+    val comboConfigJson: String? = null,
+    val subtitle: String? = null,
 ) {
-    val lineTotal: Double get() = product.salePrice * quantity
+    val key: String get() = cartKey.ifBlank { "p-${product.id}" }
+    val effectiveUnitPrice: Double get() = unitPrice ?: product.salePrice
+    val lineTotal: Double get() = effectiveUnitPrice * quantity
 }
 
 data class OrderItemInput(
-    val productId: Int,
-    val productCode: String,
+    val itemKind: String = "product",
+    val productId: Int? = null,
+    val productCode: String = "",
     val productName: String,
     val quantity: Double,
     val unitPrice: Double,
     val notes: String? = null,
+    val modifiersJson: String? = null,
+    val comboId: Int? = null,
+    val comboConfigJson: String? = null,
     val igvAffectationType: String? = null,
     val priceIncludesIgv: Boolean? = null,
 )
@@ -111,6 +124,8 @@ data class ComandaLine(
     val notes: String?,
     val modifiersJson: String?,
     val status: ComandaStatus,
+    val preparationArea: String? = null,
+    val comboSnapshotJson: String? = null,
 )
 
 data class AddOrderResult(
@@ -131,6 +146,20 @@ data class SessionComandaSummary(
     val unitPrice: Double,
     val status: ComandaStatus,
     val notes: String?,
+    val modifiersJson: String? = null,
+    val preparationArea: String? = null,
+    val comboSnapshotJson: String? = null,
+)
+
+fun SessionComandaSummary.toComandaLine() = ComandaLine(
+    id = id,
+    productName = productName,
+    quantity = quantity,
+    notes = notes,
+    modifiersJson = modifiersJson,
+    status = status,
+    preparationArea = preparationArea,
+    comboSnapshotJson = comboSnapshotJson,
 )
 
 data class SessionOrderSummary(
@@ -147,7 +176,45 @@ data class TableSessionDetail(
     val guests: Int,
     val orderCode: String?,
     val totalAmount: Double,
+    val orderType: String? = null,
+    val customerName: String? = null,
+    val customerPhone: String? = null,
+    val deliveryAddress: String? = null,
+    val deliveryReference: String? = null,
+    val deliveryDriverId: Int? = null,
+    val driverName: String? = null,
+    val notes: String? = null,
+    val estimatedMinutes: Int? = null,
     val orders: List<SessionOrderSummary>,
+)
+
+data class PosSessionInput(
+    val orderType: String,
+    val customerName: String? = null,
+    val customerPhone: String? = null,
+    val deliveryDriverId: Int? = null,
+    val deliveryAddress: String? = null,
+    val deliveryReference: String? = null,
+    val estimatedMinutes: Int? = null,
+    val notes: String? = null,
+    val saveAsDraft: Boolean = false,
+)
+
+data class OpenOrderSummary(
+    val id: Int,
+    val orderCode: String?,
+    val orderType: String,
+    val orderStatus: String,
+    val customerName: String?,
+    val customerPhone: String?,
+    val deliveryAddress: String?,
+    val totalAmount: Double,
+    val itemCount: Int,
+)
+
+data class DeliveryDriverBrief(
+    val id: Int,
+    val name: String,
 )
 
 data class PrecuentaLine(
@@ -178,7 +245,21 @@ data class KitchenItem(
     val customerName: String?,
     val waiterName: String?,
     val orderType: String?,
-)
+    val preparationArea: String? = null,
+    val comboSnapshotJson: String? = null,
+    val createdAt: String? = null,
+    val sessionOpenedAt: String? = null,
+    val displayKey: String = "",
+    val displayName: String = "",
+    val displayQuantity: Double = 0.0,
+    val modifierLines: List<String> = emptyList(),
+    val isComboComponent: Boolean = false,
+    val comboName: String? = null,
+) {
+    val kdsName: String get() = displayName.ifBlank { productName }
+    val kdsQuantity: Double get() = if (displayQuantity > 0) displayQuantity else quantity
+    val kdsKey: String get() = displayKey.ifBlank { id.toString() }
+}
 
 data class TableStats(
     val total: Int,

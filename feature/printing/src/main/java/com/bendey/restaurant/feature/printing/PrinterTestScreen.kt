@@ -30,7 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.printer.PrinterSlot
+import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -78,6 +80,20 @@ fun PrinterTestScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Impresora a configurar", style = MaterialTheme.typography.titleMedium)
+            if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Área: ${PreparationArea.fromApi(state.editingAreaKey).label}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = BendeyColors.Primary,
+                    )
+                    BendeyPrimaryButton("Volver a default", viewModel::backToDefaultComandaPrinter)
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PrinterSlot.entries.forEach { slot ->
                     FilterChip(
@@ -157,6 +173,39 @@ fun PrinterTestScreen(
                     onClick = { viewModel.setAutoPrintDocuments(!state.autoPrintDocuments) },
                     label = { Text("Documentos") },
                 )
+            }
+
+            if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
+                Text("Impresión por área", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Opcional: asigne una impresora distinta por cocina, bar, etc. Si no configura un área, usa la impresora por defecto.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                PreparationArea.entries.filter { it != PreparationArea.NONE }.forEach { area ->
+                    val custom = state.comandasByArea[area.apiValue]
+                    val hasCustom = custom?.isConfigured == true
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(area.label, style = MaterialTheme.typography.bodyMedium)
+                            BendeyStatusChip(
+                                label = if (hasCustom) "Impresora propia" else "Por defecto",
+                                accentColor = if (hasCustom) BendeyColors.AccentTeal else BendeyColors.OnSurfaceVariant,
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            BendeyPrimaryButton("Config", { viewModel.editComandaArea(area.apiValue) })
+                            if (hasCustom) {
+                                BendeyPrimaryButton("Quitar", { viewModel.clearComandaArea(area.apiValue) })
+                            }
+                            BendeyPrimaryButton("Probar", { viewModel.printComandaAreaSample(area.apiValue) })
+                        }
+                    }
+                }
             }
 
             Text("Impresión de prueba", style = MaterialTheme.typography.titleLarge)

@@ -32,8 +32,7 @@ fun SaleDetail.canVoidWithCreditNote(): Boolean =
 fun SaleDetail.canCancelNotaVenta(): Boolean =
     !isSaleCancelled(status) &&
         isNotaVenta(docType, sunatCode) &&
-        convertedTo.isNullOrBlank() &&
-        electronicIssueSaleId == null
+        !isConverted()
 
 fun SaleSummary.canVoidWithCreditNote(): Boolean =
     !isSaleCancelled(status) &&
@@ -44,5 +43,4 @@ fun SaleSummary.canVoidWithCreditNote(): Boolean =
 fun SaleSummary.canCancelNotaVenta(): Boolean =
     !isSaleCancelled(status) &&
         isNotaVenta(docType, sunatCode) &&
-        convertedTo.isNullOrBlank() &&
-        electronicIssueSaleId == null
+        !isConverted()

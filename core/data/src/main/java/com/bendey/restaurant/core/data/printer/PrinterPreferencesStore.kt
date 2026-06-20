@@ -13,6 +13,9 @@ import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,6 +41,7 @@ class PrinterPreferencesStore @Inject constructor(
             writeSlot(prefs, PrinterSlot.COMANDAS, settings.comandas)
             writeSlot(prefs, PrinterSlot.PRECUENTA, settings.precuenta)
             writeSlot(prefs, PrinterSlot.DOCUMENTOS, settings.documentos)
+            prefs[Keys.COMANDAS_BY_AREA] = encodeComandasByArea(settings.comandasByArea)
         }
     }
 
@@ -81,6 +85,7 @@ class PrinterPreferencesStore @Inject constructor(
         val fallback = legacy ?: PrinterSlotConfig()
         return PrinterSettings(
             comandas = if (hasMultiSlot) readSlot(PrinterSlot.COMANDAS) else fallback,
+            comandasByArea = decodeComandasByArea(this[Keys.COMANDAS_BY_AREA]),
             precuenta = if (hasMultiSlot) readSlot(PrinterSlot.PRECUENTA) else fallback,
             documentos = if (hasMultiSlot) readSlot(PrinterSlot.DOCUMENTOS) else fallback,
             autoPrintComandas = this[Keys.AUTO_PRINT] ?: true,
@@ -144,5 +149,52 @@ class PrinterPreferencesStore @Inject constructor(
         val PAPER_MM = intPreferencesKey("paper_mm")
         val AUTO_PRINT = booleanPreferencesKey("auto_print_comandas")
         val AUTO_PRINT_DOCS = booleanPreferencesKey("auto_print_documents")
+        val COMANDAS_BY_AREA = stringPreferencesKey("comandas_by_area_json")
+    }
+}
+
+@Serializable
+private data class StoredSlotConfig(
+    val connection: String = "bluetooth",
+    val bt: String = "",
+    val tcpHost: String = "",
+    val tcpPort: Int = 9100,
+    val paperMm: Int = 80,
+)
+
+private fun encodeComandasByArea(map: Map<String, PrinterSlotConfig>): String {
+    if (map.isEmpty()) return ""
+    val stored = map.mapValues { (_, cfg) ->
+        StoredSlotConfig(
+            connection = when (cfg.connectionType) {
+                PrinterConnectionType.TCP -> "tcp"
+                PrinterConnectionType.BLUETOOTH -> "bluetooth"
+            },
+            bt = cfg.bluetoothAddress,
+            tcpHost = cfg.tcpHost,
+            tcpPort = cfg.tcpPort,
+            paperMm = cfg.paperWidth.mm,
+        )
+    }
+    return Json.encodeToString(stored)
+}
+
+private fun decodeComandasByArea(json: String?): Map<String, PrinterSlotConfig> {
+    if (json.isNullOrBlank()) return emptyMap()
+    return try {
+        Json.decodeFromString<Map<String, StoredSlotConfig>>(json).mapValues { (_, stored) ->
+            PrinterSlotConfig(
+                connectionType = when (stored.connection) {
+                    "tcp" -> PrinterConnectionType.TCP
+                    else -> PrinterConnectionType.BLUETOOTH
+                },
+                bluetoothAddress = stored.bt,
+                tcpHost = stored.tcpHost,
+                tcpPort = stored.tcpPort,
+                paperWidth = PaperWidthMm.fromMm(stored.paperMm),
+            )
+        }
+    } catch (_: Exception) {
+        emptyMap()
     }
 }

@@ -28,6 +28,12 @@ class DocumentPrintService @Inject constructor(
             is PrintResult.Error -> false
         }
     }
+
+    suspend fun hasConfiguredPrinter(): Boolean {
+        val settings = printerPreferencesStore.settings.first()
+        return settings.targetFor(PrinterSlot.DOCUMENTOS) != null ||
+            settings.targetFor(PrinterSlot.COMANDAS) != null
+    }
 }
 
 private fun SalePrintData.toInput() = DocumentPrintInput(

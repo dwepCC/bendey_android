@@ -3,10 +3,17 @@ package com.bendey.restaurant.feature.caja
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
+import com.bendey.restaurant.core.domain.cash.CashBankAccount
+import com.bendey.restaurant.core.domain.cash.CashBankMovement
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
+import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
+import com.bendey.restaurant.core.domain.restaurant.BranchOperationalStatus
+import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.cash.CashSession
+import com.bendey.restaurant.core.domain.cash.CashSessionBrief
+import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +24,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+enum class CajaTab(val label: String) {
+    SESSION("Sesión"),
+    MOVEMENTS("Movimientos"),
+    REPORT("Reporte"),
+    HISTORY("Historial"),
+    CONFIG("Config"),
+}
 
 data class OpenCashForm(
     val openingBalance: String = "0",
@@ -29,32 +44,89 @@ data class MovementForm(
     val amount: String = "",
     val reference: String = "",
     val notes: String = "",
+    val paymentMethod: String = "cash",
+)
+
+data class PaymentMethodForm(
+    val id: Int? = null,
+    val name: String = "",
+    val code: String = "",
+    val destinationType: String = "cash",
+    val bankAccountId: Int? = null,
+    val active: Boolean = true,
+)
+
+data class BankAccountForm(
+    val id: Int? = null,
+    val name: String = "",
+    val bankName: String = "",
+    val accountNumber: String = "",
+    val currency: String = "PEN",
+    val type: String = "bank",
+    val paymentMethod: String = "",
+    val initialBalance: String = "0",
+    val active: Boolean = true,
+)
+
+data class BankMovementForm(
+    val type: String = "credit",
+    val description: String = "",
+    val reference: String = "",
+    val amount: String = "",
+    val date: String = java.time.LocalDate.now().toString(),
 )
 
 data class CloseCashForm(
     val closingBalance: String = "",
     val notes: String = "",
+    val useArqueo: Boolean = true,
+    val arqueo: Map<String, Int> = emptyArqueo(),
 )
 
 data class CajaUiState(
     val loading: Boolean = false,
     val actionLoading: Boolean = false,
+    val tab: CajaTab = CajaTab.SESSION,
     val session: CashSession? = null,
     val movements: List<CashMovement> = emptyList(),
+    val historySessions: List<CashSessionBrief> = emptyList(),
+    val report: CashSessionReport? = null,
+    val reportSessionId: Int? = null,
+    val reportLoading: Boolean = false,
+    val paymentMethods: List<CashPaymentMethod> = emptyList(),
+    val bankAccounts: List<CashBankAccount> = emptyList(),
+    val configLoading: Boolean = false,
+    val showPaymentMethodDialog: Boolean = false,
+    val showBankAccountDialog: Boolean = false,
+    val paymentMethodForm: PaymentMethodForm = PaymentMethodForm(),
+    val bankAccountForm: BankAccountForm = BankAccountForm(),
+    val operationalStatus: BranchOperationalStatus? = null,
+    val showBankMovementsDialog: Boolean = false,
+    val bankMovementsAccountId: Int? = null,
+    val bankMovementsAccountName: String? = null,
+    val bankMovements: List<CashBankMovement> = emptyList(),
+    val bankMovementsLoading: Boolean = false,
+    val bankMovementForm: BankMovementForm = BankMovementForm(),
     val branchName: String? = null,
     val showOpenDialog: Boolean = false,
     val showMovementDialog: Boolean = false,
     val showCloseDialog: Boolean = false,
+    val showCloseForceConfirm: Boolean = false,
+    val showArqueoDialog: Boolean = false,
     val openForm: OpenCashForm = OpenCashForm(),
     val movementForm: MovementForm = MovementForm(),
     val closeForm: CloseCashForm = CloseCashForm(),
+    val arqueoDraft: Map<String, Int> = emptyArqueo(),
     val error: String? = null,
     val snackMessage: String? = null,
-)
+) {
+    val currentBalance: Double get() = session?.expectedBalance ?: 0.0
+}
 
 @HiltViewModel
 class CajaViewModel @Inject constructor(
     private val cashRepository: CashRepository,
+    private val mesasRepository: MesasRepository,
     private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
@@ -70,6 +142,38 @@ class CajaViewModel @Inject constructor(
         refresh()
     }
 
+    fun setTab(tab: CajaTab) {
+        _uiState.update { it.copy(tab = tab, error = null) }
+        when (tab) {
+            CajaTab.REPORT -> {
+                val sessionId = _uiState.value.reportSessionId
+                    ?: _uiState.value.session?.id
+                    ?: _uiState.value.historySessions.firstOrNull()?.id
+                sessionId?.let { loadReport(it) }
+            }
+            CajaTab.HISTORY -> loadHistory()
+            CajaTab.CONFIG -> loadConfig()
+            else -> Unit
+        }
+    }
+
+    private fun loadConfig() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(configLoading = true, error = null) }
+            val methodsResult = cashRepository.listPaymentMethods()
+            val accountsResult = cashRepository.listBankAccounts()
+            _uiState.update { state ->
+                state.copy(
+                    configLoading = false,
+                    paymentMethods = (methodsResult as? AppResult.Success)?.data.orEmpty(),
+                    bankAccounts = (accountsResult as? AppResult.Success)?.data.orEmpty(),
+                    error = (methodsResult as? AppResult.Error)?.message
+                        ?: (accountsResult as? AppResult.Error)?.message,
+                )
+            }
+        }
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
@@ -82,10 +186,16 @@ class CajaViewModel @Inject constructor(
                             loading = false,
                             session = session,
                             showOpenDialog = session == null,
+                            arqueoDraft = parseArqueoJson(session?.arqueoJson),
+                            closeForm = it.closeForm.copy(
+                                closingBalance = session?.expectedBalance?.toString().orEmpty(),
+                                arqueo = parseArqueoJson(session?.arqueoJson),
+                            ),
                         )
                     }
                     session?.let { loadMovements(it.id) }
                         ?: _uiState.update { it.copy(movements = emptyList()) }
+                    loadHistory(silent = true)
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(loading = false, error = result.message)
@@ -122,9 +232,7 @@ class CajaViewModel @Inject constructor(
                     _uiState.update { it.copy(actionLoading = false, error = "Sin sucursal activa") }
                     return@launch
                 }
-            when (
-                val result = cashRepository.openSession(branchId, balance, form.notes)
-            ) {
+            when (val result = cashRepository.openSession(branchId, balance, form.notes)) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -132,6 +240,9 @@ class CajaViewModel @Inject constructor(
                             session = result.data,
                             showOpenDialog = false,
                             snackMessage = "Caja abierta",
+                            closeForm = CloseCashForm(
+                                closingBalance = result.data.expectedBalance.toString(),
+                            ),
                         )
                     }
                     loadMovements(result.data.id)
@@ -149,11 +260,20 @@ class CajaViewModel @Inject constructor(
             CashMovementType.INCOME -> "ingreso_manual"
             CashMovementType.EXPENSE -> "egreso_manual"
         }
-        _uiState.update {
-            it.copy(
-                showMovementDialog = true,
-                movementForm = MovementForm(type = type, category = category),
-            )
+        viewModelScope.launch {
+            if (_uiState.value.paymentMethods.isEmpty()) {
+                when (val result = cashRepository.listPaymentMethods()) {
+                    is AppResult.Success -> _uiState.update { it.copy(paymentMethods = result.data) }
+                    else -> Unit
+                }
+            }
+            val method = _uiState.value.paymentMethods.firstOrNull { it.active }?.code ?: "cash"
+            _uiState.update {
+                it.copy(
+                    showMovementDialog = true,
+                    movementForm = MovementForm(type = type, category = category, paymentMethod = method),
+                )
+            }
         }
     }
 
@@ -184,6 +304,7 @@ class CajaViewModel @Inject constructor(
                         amount = amount,
                         reference = form.reference,
                         notes = form.notes,
+                        paymentMethod = form.paymentMethod,
                     ),
                 )
             ) {
@@ -205,48 +326,43 @@ class CajaViewModel @Inject constructor(
         }
     }
 
-    fun showCloseDialog() {
+    fun showArqueoDialog() {
         val session = _uiState.value.session ?: return
         _uiState.update {
             it.copy(
-                showCloseDialog = true,
-                closeForm = CloseCashForm(
-                    closingBalance = session.expectedBalance.toString(),
-                ),
+                showArqueoDialog = true,
+                arqueoDraft = parseArqueoJson(session.arqueoJson),
+                error = null,
             )
         }
     }
 
-    fun dismissCloseDialog() {
-        _uiState.update { it.copy(showCloseDialog = false) }
+    fun dismissArqueoDialog() {
+        _uiState.update { it.copy(showArqueoDialog = false) }
     }
 
-    fun updateCloseForm(transform: (CloseCashForm) -> CloseCashForm) {
-        _uiState.update { it.copy(closeForm = transform(it.closeForm)) }
+    fun setArqueoQty(denomination: String, qty: Int) {
+        _uiState.update { state ->
+            state.copy(
+                arqueoDraft = state.arqueoDraft.toMutableMap().apply {
+                    this[denomination] = qty.coerceAtLeast(0)
+                },
+            )
+        }
     }
 
-    fun confirmCloseSession() {
+    fun confirmSaveArqueo() {
         val session = _uiState.value.session ?: return
-        val form = _uiState.value.closeForm
-        val closing = form.closingBalance.replace(",", ".").toDoubleOrNull()
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
-            when (
-                val result = cashRepository.closeSession(
-                    sessionId = session.id,
-                    closingBalance = closing,
-                    notes = form.notes,
-                )
-            ) {
+            when (val result = cashRepository.saveArqueo(session.id, _uiState.value.arqueoDraft)) {
                 is AppResult.Success -> {
+                    refresh()
                     _uiState.update {
                         it.copy(
                             actionLoading = false,
-                            session = null,
-                            movements = emptyList(),
-                            showCloseDialog = false,
-                            showOpenDialog = true,
-                            snackMessage = "Caja cerrada",
+                            showArqueoDialog = false,
+                            snackMessage = "Arqueo guardado · ${String.format("%.2f", result.data)}",
                         )
                     }
                 }
@@ -258,8 +374,366 @@ class CajaViewModel @Inject constructor(
         }
     }
 
+    fun showCloseDialog() {
+        val session = _uiState.value.session ?: return
+        viewModelScope.launch {
+            val operational = when (val result = mesasRepository.getOperationalStatus()) {
+                is AppResult.Success -> result.data
+                else -> null
+            }
+            _uiState.update {
+                it.copy(
+                    showCloseDialog = true,
+                    operationalStatus = operational,
+                    closeForm = CloseCashForm(
+                        closingBalance = session.expectedBalance.toString(),
+                        useArqueo = true,
+                        arqueo = parseArqueoJson(session.arqueoJson),
+                    ),
+                )
+            }
+        }
+    }
+
+    fun dismissCloseDialog() {
+        _uiState.update { it.copy(showCloseDialog = false, showCloseForceConfirm = false) }
+    }
+
+    fun updateCloseForm(transform: (CloseCashForm) -> CloseCashForm) {
+        _uiState.update { it.copy(closeForm = transform(it.closeForm)) }
+    }
+
+    fun setCloseArqueoQty(denomination: String, qty: Int) {
+        _uiState.update { state ->
+            val arqueo = state.closeForm.arqueo.toMutableMap().apply {
+                this[denomination] = qty.coerceAtLeast(0)
+            }
+            state.copy(
+                closeForm = state.closeForm.copy(
+                    arqueo = arqueo,
+                    closingBalance = sumArqueo(arqueo).toString(),
+                ),
+            )
+        }
+    }
+
+    fun requestCloseSession() {
+        val op = _uiState.value.operationalStatus
+        if (op?.hasActiveOperations == true) {
+            _uiState.update { it.copy(showCloseForceConfirm = true) }
+            return
+        }
+        confirmCloseSession()
+    }
+
+    fun dismissCloseForceConfirm() {
+        _uiState.update { it.copy(showCloseForceConfirm = false) }
+    }
+
+    fun confirmCloseSessionForced() {
+        _uiState.update { it.copy(showCloseForceConfirm = false) }
+        confirmCloseSession()
+    }
+
+    fun confirmCloseSession() {
+        val session = _uiState.value.session ?: return
+        val form = _uiState.value.closeForm
+        val closing = if (form.useArqueo) {
+            sumArqueo(form.arqueo)
+        } else {
+            form.closingBalance.replace(",", ".").toDoubleOrNull()
+        }
+        if (closing == null) {
+            _uiState.update { it.copy(error = "Indica el efectivo contado") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            val arqueo = if (form.useArqueo && form.arqueo.values.any { it > 0 }) form.arqueo else null
+            when (val result = cashRepository.closeSession(session.id, closing, form.notes, arqueo)) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            actionLoading = false,
+                            session = null,
+                            movements = emptyList(),
+                            showCloseDialog = false,
+                            showOpenDialog = true,
+                            snackMessage = "Caja cerrada",
+                            reportSessionId = result.data.id,
+                        )
+                    }
+                    loadHistory(silent = true)
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(actionLoading = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun loadReport(sessionId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(reportLoading = true, reportSessionId = sessionId, error = null) }
+            when (val result = cashRepository.getSessionReport(sessionId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(reportLoading = false, report = result.data, tab = CajaTab.REPORT)
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(reportLoading = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
+    }
+
+    fun showCreatePaymentMethod() {
+        _uiState.update { it.copy(showPaymentMethodDialog = true, paymentMethodForm = PaymentMethodForm()) }
+    }
+
+    fun showEditPaymentMethod(pm: CashPaymentMethod) {
+        _uiState.update {
+            it.copy(
+                showPaymentMethodDialog = true,
+                paymentMethodForm = PaymentMethodForm(
+                    id = pm.id,
+                    name = pm.name,
+                    code = pm.code,
+                    destinationType = pm.destinationType,
+                    bankAccountId = pm.bankAccountId,
+                    active = pm.active,
+                ),
+            )
+        }
+    }
+
+    fun dismissPaymentMethodDialog() {
+        _uiState.update { it.copy(showPaymentMethodDialog = false) }
+    }
+
+    fun updatePaymentMethodForm(transform: (PaymentMethodForm) -> PaymentMethodForm) {
+        _uiState.update { it.copy(paymentMethodForm = transform(it.paymentMethodForm)) }
+    }
+
+    fun confirmPaymentMethod() {
+        val form = _uiState.value.paymentMethodForm
+        if (form.name.isBlank() || form.code.isBlank()) {
+            _uiState.update { it.copy(error = "Nombre y código son obligatorios") }
+            return
+        }
+        if (form.destinationType == "bank_account" && form.bankAccountId == null) {
+            _uiState.update { it.copy(error = "Selecciona una cuenta bancaria") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            val result = if (form.id != null) {
+                cashRepository.updatePaymentMethod(
+                    form.id,
+                    form.name.trim(),
+                    form.code.trim(),
+                    form.destinationType,
+                    form.bankAccountId,
+                    form.active,
+                )
+            } else {
+                cashRepository.createPaymentMethod(
+                    form.name.trim(),
+                    form.code.trim(),
+                    form.destinationType,
+                    form.bankAccountId,
+                )
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    loadConfig()
+                    _uiState.update {
+                        it.copy(actionLoading = false, showPaymentMethodDialog = false, snackMessage = "Método guardado")
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun deletePaymentMethod(id: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            when (val result = cashRepository.deletePaymentMethod(id)) {
+                is AppResult.Success -> {
+                    loadConfig()
+                    _uiState.update { it.copy(actionLoading = false, snackMessage = "Método eliminado") }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun showCreateBankAccount() {
+        _uiState.update { it.copy(showBankAccountDialog = true, bankAccountForm = BankAccountForm()) }
+    }
+
+    fun showEditBankAccount(acc: CashBankAccount) {
+        _uiState.update {
+            it.copy(
+                showBankAccountDialog = true,
+                bankAccountForm = BankAccountForm(
+                    id = acc.id,
+                    name = acc.name,
+                    bankName = acc.bankName,
+                    accountNumber = acc.accountNumber,
+                    currency = acc.currency,
+                    type = acc.type,
+                    paymentMethod = acc.paymentMethod,
+                    active = acc.active,
+                ),
+            )
+        }
+    }
+
+    fun dismissBankAccountDialog() {
+        _uiState.update { it.copy(showBankAccountDialog = false) }
+    }
+
+    fun updateBankAccountForm(transform: (BankAccountForm) -> BankAccountForm) {
+        _uiState.update { it.copy(bankAccountForm = transform(it.bankAccountForm)) }
+    }
+
+    fun confirmBankAccount() {
+        val form = _uiState.value.bankAccountForm
+        if (form.name.isBlank()) {
+            _uiState.update { it.copy(error = "Ingresa un nombre para la cuenta") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            val result = if (form.id != null) {
+                cashRepository.updateBankAccount(
+                    form.id,
+                    form.name.trim(),
+                    form.bankName.trim(),
+                    form.accountNumber.trim(),
+                    form.type,
+                    form.paymentMethod,
+                    form.active,
+                )
+            } else {
+                val balance = form.initialBalance.replace(",", ".").toDoubleOrNull() ?: 0.0
+                cashRepository.createBankAccount(
+                    form.name.trim(),
+                    form.bankName.trim(),
+                    form.accountNumber.trim(),
+                    form.currency,
+                    form.type,
+                    form.paymentMethod,
+                    balance,
+                )
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    loadConfig()
+                    _uiState.update {
+                        it.copy(actionLoading = false, showBankAccountDialog = false, snackMessage = "Cuenta guardada")
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun showBankMovements(acc: CashBankAccount) {
+        _uiState.update {
+            it.copy(
+                showBankMovementsDialog = true,
+                bankMovementsAccountId = acc.id,
+                bankMovementsAccountName = acc.name,
+                bankMovementForm = BankMovementForm(),
+            )
+        }
+        loadBankMovements(acc.id)
+    }
+
+    fun dismissBankMovementsDialog() {
+        _uiState.update { it.copy(showBankMovementsDialog = false) }
+    }
+
+    fun updateBankMovementForm(transform: (BankMovementForm) -> BankMovementForm) {
+        _uiState.update { it.copy(bankMovementForm = transform(it.bankMovementForm)) }
+    }
+
+    private fun loadBankMovements(accountId: Int) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(bankMovementsLoading = true) }
+            when (val result = cashRepository.listBankMovements(accountId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(bankMovementsLoading = false, bankMovements = result.data)
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(bankMovementsLoading = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun confirmBankMovement() {
+        val accountId = _uiState.value.bankMovementsAccountId ?: return
+        val form = _uiState.value.bankMovementForm
+        val amount = form.amount.replace(",", ".").toDoubleOrNull()
+        if (form.description.isBlank() || amount == null || amount <= 0) {
+            _uiState.update { it.copy(error = "Completa descripción y monto") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            when (
+                val result = cashRepository.addBankMovement(
+                    accountId,
+                    form.type,
+                    form.description.trim(),
+                    form.reference,
+                    amount,
+                    form.date,
+                )
+            ) {
+                is AppResult.Success -> {
+                    loadConfig()
+                    loadBankMovements(accountId)
+                    _uiState.update {
+                        it.copy(actionLoading = false, bankMovementForm = BankMovementForm(date = form.date), snackMessage = "Movimiento registrado")
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    private fun loadHistory(silent: Boolean = false) {
+        viewModelScope.launch {
+            if (!silent) _uiState.update { it.copy(loading = true) }
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            when (val result = cashRepository.listSessions(branchId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        loading = if (silent) it.loading else false,
+                        historySessions = result.data.sortedByDescending { s -> s.openedAt.orEmpty() },
+                    )
+                }
+                is AppResult.Error -> if (!silent) {
+                    _uiState.update { it.copy(loading = false, error = result.message) }
+                }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     private suspend fun loadMovements(sessionId: Int) {

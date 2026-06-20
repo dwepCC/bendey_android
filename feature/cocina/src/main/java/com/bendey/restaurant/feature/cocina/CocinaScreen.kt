@@ -13,23 +13,30 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -44,11 +51,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.accentColor
+import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.VoidPinDialog
 
 private val STATUS_FILTERS = listOf(
     ComandaStatus.PENDIENTE,
@@ -65,7 +75,8 @@ fun CocinaScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var activeStatus by remember { mutableStateOf(ComandaStatus.PENDIENTE) }
-    val filtered = remember(state.items, activeStatus) { state.itemsFor(activeStatus) }
+    val filtered = remember(state, activeStatus) { state.filteredItems(activeStatus) }
+    val groups = remember(state, activeStatus) { state.orderGroups(activeStatus) }
 
     PullToRefreshBox(
         isRefreshing = state.loading,
@@ -92,6 +103,82 @@ fun CocinaScreen(
                 }
                 IconButton(onClick = viewModel::refresh) {
                     Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                CocinaViewMode.entries.forEach { mode ->
+                    FilterChip(
+                        selected = state.viewMode == mode,
+                        onClick = { viewModel.setViewMode(mode) },
+                        label = { Text(mode.label) },
+                    )
+                }
+            }
+            if (state.viewMode == CocinaViewMode.ORDERS) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    CocinaOrderTab.entries.forEach { tab ->
+                        FilterChip(
+                            selected = state.orderTab == tab,
+                            onClick = { viewModel.setOrderTab(tab) },
+                            label = { Text(tab.label) },
+                        )
+                    }
+                }
+            }
+            if (state.availableAreas.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FilterChip(
+                        selected = state.areaFilter == "all",
+                        onClick = { viewModel.setAreaFilter("all") },
+                        label = { Text("Todas áreas") },
+                    )
+                    state.availableAreas.forEach { area ->
+                        FilterChip(
+                            selected = state.areaFilter == area,
+                            onClick = { viewModel.setAreaFilter(area) },
+                            label = { Text(PreparationArea.fromApi(area).label) },
+                        )
+                    }
+                }
+            }
+            if (state.viewMode == CocinaViewMode.ORDERS && state.availableTables.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FilterChip(
+                        selected = state.tableFilter == "all",
+                        onClick = { viewModel.setTableFilter("all") },
+                        label = { Text("Todas mesas") },
+                    )
+                    state.availableTables.forEach { table ->
+                        FilterChip(
+                            selected = state.tableFilter == table,
+                            onClick = { viewModel.setTableFilter(table) },
+                            label = { Text(table) },
+                        )
+                    }
                 }
             }
             Row(
@@ -136,7 +223,8 @@ fun CocinaScreen(
                     maxWidth >= 600.dp -> 2
                     else -> 1
                 }
-                if (filtered.isEmpty() && !state.loading) {
+                val isEmpty = if (state.viewMode == CocinaViewMode.ITEMS) filtered.isEmpty() else groups.isEmpty()
+                if (isEmpty && !state.loading) {
                     Text(
                         text = "No hay ítems en «${activeStatus.label}».",
                         modifier = Modifier
@@ -145,22 +233,43 @@ fun CocinaScreen(
                         color = BendeyColors.OnSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        contentPadding = PaddingValues(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(filtered, key = { it.id }) { item ->
-                            KitchenCard(
-                                item = item,
-                                accent = activeStatus.accentColor(),
-                                advancing = state.updatingId == item.id,
-                                canAdvance = activeStatus != ComandaStatus.ENTREGADA,
-                                onAdvance = { viewModel.advanceItem(item) },
-                            )
+                } else when (state.viewMode) {
+                    CocinaViewMode.ITEMS -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(columns),
+                            contentPadding = PaddingValues(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(filtered, key = { it.kdsKey }) { item ->
+                                KitchenCard(
+                                    item = item,
+                                    accent = activeStatus.accentColor(),
+                                    advancing = state.updatingId == item.id,
+                                    canAdvance = activeStatus != ComandaStatus.ENTREGADA,
+                                    onAdvance = { viewModel.advanceItem(item) },
+                                    onVoid = { viewModel.openVoidItem(item) },
+                                )
+                            }
+                        }
+                    }
+                    CocinaViewMode.ORDERS -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(groups, key = { it.key }) { group ->
+                                KitchenOrderCard(
+                                    group = group,
+                                    accent = activeStatus.accentColor(),
+                                    updatingId = state.updatingId,
+                                    canAdvance = activeStatus != ComandaStatus.ENTREGADA,
+                                    onAdvance = viewModel::advanceItem,
+                                    onVoid = viewModel::openVoidItem,
+                                )
+                            }
                         }
                     }
                 }
@@ -174,6 +283,114 @@ fun CocinaScreen(
             }
         }
     }
+
+    val voidItem = state.voidItem
+    VoidPinDialog(
+        open = voidItem != null,
+        title = "Anular comanda",
+        description = "Se elimina el ítem de cocina.",
+        itemLabel = voidItem?.let { "${it.productName} ×${formatQty(it.quantity)}" },
+        reason = state.voidReason,
+        pin = state.voidPin,
+        loading = state.voidSubmitting,
+        error = if (voidItem != null) state.error else null,
+        onReasonChange = viewModel::setVoidReason,
+        onPinChange = viewModel::setVoidPin,
+        onDismiss = viewModel::dismissVoidDialog,
+        onConfirm = viewModel::confirmVoid,
+    )
+}
+
+@Composable
+private fun KitchenOrderCard(
+    group: KitchenOrderGroup,
+    accent: androidx.compose.ui.graphics.Color,
+    updatingId: Int?,
+    canAdvance: Boolean,
+    onAdvance: (KitchenItem) -> Unit,
+    onVoid: (KitchenItem) -> Unit,
+) {
+    val elapsed = rememberKitchenElapsed(group.items.firstOrNull()?.kitchenOpenedAt())
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(group.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    group.subtitle?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    }
+                    if (elapsed.isNotBlank()) {
+                        Text(
+                            "Abierto hace $elapsed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BendeyColors.Warning,
+                        )
+                    }
+                }
+                BendeyStatusChip(
+                    label = orderTypeLabel(group.orderType),
+                    accentColor = BendeyColors.Primary,
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            group.items.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${formatQty(item.kdsQuantity)}× ${item.kdsName}",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (canAdvance) {
+                        OutlinedButton(
+                            onClick = { onAdvance(item) },
+                            enabled = updatingId != item.id,
+                            modifier = Modifier.heightIn(min = 32.dp).padding(end = 4.dp),
+                        ) {
+                            Text(if (updatingId == item.id) "…" else "Avanzar", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    IconButton(onClick = { onVoid(item) }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                    }
+                }
+                item.notes?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.Warning)
+                }
+                item.modifierLines.forEach { line ->
+                    Text(line, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KitchenItemMetaRow(item: KitchenItem) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        item.preparationArea?.takeIf { it.isNotBlank() }?.let { area ->
+            BendeyStatusChip(
+                label = PreparationArea.fromApi(area).label,
+                accentColor = BendeyColors.AccentTeal,
+            )
+        }
+        if (item.isComboComponent && item.comboName != null) {
+            BendeyStatusChip(label = "Combo", accentColor = BendeyColors.AccentPurple)
+        }
+    }
 }
 
 @Composable
@@ -183,7 +400,9 @@ private fun KitchenCard(
     advancing: Boolean,
     canAdvance: Boolean,
     onAdvance: () -> Unit,
+    onVoid: () -> Unit,
 ) {
+    val elapsed = rememberKitchenElapsed(item.kitchenOpenedAt())
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
@@ -203,13 +422,23 @@ private fun KitchenCard(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = item.productName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Text(
+                        text = item.kdsName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onVoid, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                    }
+                }
                 Text(
                     text = itemTitle(item),
                     style = MaterialTheme.typography.labelMedium,
@@ -217,12 +446,28 @@ private fun KitchenCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (elapsed.isNotBlank()) {
+                    Text(
+                        "Abierto hace $elapsed",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BendeyColors.Warning,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                if (item.isComboComponent && item.comboName != null) {
+                    Text(
+                        "↳ ${item.comboName}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BendeyColors.AccentPurple,
+                    )
+                }
+                KitchenItemMetaRow(item)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = formatQty(item.quantity),
+                        text = formatQty(item.kdsQuantity),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                         color = accent,
@@ -236,6 +481,9 @@ private fun KitchenCard(
                         fontWeight = FontWeight.SemiBold,
                         color = BendeyColors.Warning,
                     )
+                }
+                item.modifierLines.forEach { line ->
+                    Text(line, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                 }
                 if (canAdvance) {
                     BendeyPrimaryButton(

@@ -4,7 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
+import com.bendey.restaurant.core.domain.restaurant.collectPreparationAreas
+import com.bendey.restaurant.core.domain.restaurant.collectTableNames
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
+import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,16 +17,67 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class CocinaViewMode(val label: String) {
+    ITEMS("Por ítem"),
+    ORDERS("Por pedido"),
+}
+
+enum class CocinaOrderTab(val apiValue: String?, val label: String) {
+    ALL(null, "Todos"),
+    DINE_IN("dine_in", "Mesas"),
+    DELIVERY("delivery", "Delivery"),
+    TAKEAWAY("takeaway", "Llevar"),
+}
+
+data class KitchenOrderGroup(
+    val key: String,
+    val title: String,
+    val subtitle: String?,
+    val orderType: String?,
+    val items: List<KitchenItem>,
+)
+
 data class CocinaUiState(
     val loading: Boolean = false,
     val updatingId: Int? = null,
     val items: List<KitchenItem> = emptyList(),
+    val viewMode: CocinaViewMode = CocinaViewMode.ITEMS,
+    val orderTab: CocinaOrderTab = CocinaOrderTab.ALL,
+    val areaFilter: String = "all",
+    val tableFilter: String = "all",
+    val voidItem: KitchenItem? = null,
+    val voidReason: String = "",
+    val voidPin: String = "",
+    val voidSubmitting: Boolean = false,
     val error: String? = null,
 ) {
-    fun count(status: ComandaStatus): Int = items.count { it.status == status }
+    val availableAreas: List<String> get() = collectPreparationAreas(items)
+    val availableTables: List<String> get() = collectTableNames(items)
+
+    fun count(status: ComandaStatus): Int = baseItems.count { it.status == status }
+
+    private val baseItems: List<KitchenItem>
+        get() = items.let { list ->
+            list.filter { item ->
+                val areaOk = areaFilter == "all" ||
+                    normalizePreparationAreaKey(item.preparationArea) == areaFilter
+                val tableOk = tableFilter == "all" || item.tableName == tableFilter
+                areaOk && tableOk
+            }
+        }
 
     fun itemsFor(status: ComandaStatus): List<KitchenItem> =
-        items.filter { it.status == status }
+        baseItems.filter { it.status == status }
+
+    fun filteredItems(status: ComandaStatus): List<KitchenItem> {
+        val byStatus = itemsFor(status)
+        val tab = orderTab
+        if (tab == CocinaOrderTab.ALL) return byStatus
+        return byStatus.filter { it.orderType == tab.apiValue }
+    }
+
+    fun orderGroups(status: ComandaStatus): List<KitchenOrderGroup> =
+        groupKitchenItems(filteredItems(status))
 }
 
 @HiltViewModel
@@ -53,12 +107,31 @@ class CocinaViewModel @Inject constructor(
         }
     }
 
+    fun setViewMode(mode: CocinaViewMode) {
+        _uiState.update { it.copy(viewMode = mode) }
+    }
+
+    fun setOrderTab(tab: CocinaOrderTab) {
+        _uiState.update { it.copy(orderTab = tab) }
+    }
+
+    fun setAreaFilter(area: String) {
+        _uiState.update { it.copy(areaFilter = area) }
+    }
+
+    fun setTableFilter(table: String) {
+        _uiState.update { it.copy(tableFilter = table) }
+    }
+
     fun advanceItem(item: KitchenItem) {
         val next = ComandaStatus.next(item.status.backendValue) ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(updatingId = item.id, error = null) }
             when (val result = kitchenRepository.updateComandaStatus(item.id, next)) {
-                is AppResult.Success -> refresh()
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(updatingId = null) }
+                    refresh()
+                }
                 is AppResult.Error -> _uiState.update {
                     it.copy(updatingId = null, error = result.message)
                 }
@@ -66,4 +139,87 @@ class CocinaViewModel @Inject constructor(
             }
         }
     }
+
+    fun openVoidItem(item: KitchenItem) {
+        _uiState.update {
+            it.copy(voidItem = item, voidReason = "", voidPin = "", error = null)
+        }
+    }
+
+    fun dismissVoidDialog() {
+        if (_uiState.value.voidSubmitting) return
+        _uiState.update { it.copy(voidItem = null, voidReason = "", voidPin = "") }
+    }
+
+    fun setVoidReason(reason: String) {
+        _uiState.update { it.copy(voidReason = reason) }
+    }
+
+    fun setVoidPin(pin: String) {
+        _uiState.update { it.copy(voidPin = pin.filter { it.isDigit() }.take(6)) }
+    }
+
+    fun confirmVoid() {
+        val state = _uiState.value
+        val item = state.voidItem ?: return
+        val reason = state.voidReason.trim()
+        val pin = state.voidPin.trim()
+        if (reason.isBlank() || pin.isBlank()) {
+            _uiState.update { it.copy(error = "Indique motivo y PIN") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(voidSubmitting = true, error = null) }
+            when (val result = kitchenRepository.cancelComanda(item.id, reason, pin)) {
+                is AppResult.Success -> {
+                    refresh()
+                    _uiState.update {
+                        it.copy(
+                            voidSubmitting = false,
+                            voidItem = null,
+                            voidReason = "",
+                            voidPin = "",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(voidSubmitting = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+}
+
+fun groupKitchenItems(items: List<KitchenItem>): List<KitchenOrderGroup> {
+    if (items.isEmpty()) return emptyList()
+    return items
+        .groupBy { item ->
+            item.orderCode?.takeIf { it.isNotBlank() }
+                ?: item.tableName?.takeIf { it.isNotBlank() }?.let { "mesa-$it" }
+                ?: "item-${item.id}"
+        }
+        .map { (key, groupItems) ->
+            val first = groupItems.first()
+            KitchenOrderGroup(
+                key = key,
+                title = first.tableName ?: first.orderCode ?: first.customerName ?: "Pedido",
+                subtitle = listOfNotNull(
+                    first.orderCode?.takeIf { first.tableName != null },
+                    first.waiterName,
+                    first.floorName,
+                ).joinToString(" · ").ifBlank { null },
+                orderType = first.orderType,
+                items = groupItems,
+            )
+        }
+        .sortedBy { it.title }
+}
+
+fun orderTypeLabel(type: String?): String = when (type) {
+    "dine_in" -> "Mesa"
+    "delivery" -> "Delivery"
+    "takeaway" -> "Llevar"
+    "quick_sale" -> "Directa"
+    else -> type ?: "Pedido"
 }

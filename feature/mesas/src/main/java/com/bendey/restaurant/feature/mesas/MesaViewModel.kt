@@ -3,8 +3,12 @@ package com.bendey.restaurant.feature.mesas
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.feedback.CartFeedback
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
+import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
 import com.bendey.restaurant.core.data.repository.needsOpenCashSessionForPayments
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
@@ -22,16 +26,48 @@ import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.catalog.CombosRepository
+import com.bendey.restaurant.core.domain.catalog.ModifierGroup
+import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
+import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.pos.appendCartLine
+import com.bendey.restaurant.core.domain.pos.buildComboConfigJson
+import com.bendey.restaurant.core.domain.pos.buildComboConfigureKey
+import com.bendey.restaurant.core.domain.pos.buildConfigureKey
+import com.bendey.restaurant.core.domain.pos.calcUnitPriceWithModifiers
+import com.bendey.restaurant.core.domain.pos.ComboCartConfig
+import com.bendey.restaurant.core.domain.pos.ComboConfigureState
+import com.bendey.restaurant.core.domain.pos.comboNeedsConfiguration
+import com.bendey.restaurant.core.domain.pos.decrementCartLine
+import com.bendey.restaurant.core.domain.pos.getProductExtraGroups
+import com.bendey.restaurant.core.domain.pos.modifierSummaryText
+import com.bendey.restaurant.core.domain.pos.modifiersToJson
+import com.bendey.restaurant.core.domain.pos.PosCatalogTab
+import com.bendey.restaurant.core.domain.pos.PosComboItem
+import com.bendey.restaurant.core.domain.pos.ProductConfigureState
+import com.bendey.restaurant.core.domain.pos.productNeedsConfiguration
+import com.bendey.restaurant.core.domain.pos.selectPresentation
+import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
+import com.bendey.restaurant.core.domain.pos.toggleSlotOption
+import com.bendey.restaurant.core.domain.pos.validateModifierSelection
+import com.bendey.restaurant.core.domain.pos.validateSlotSelections
+import com.bendey.restaurant.core.domain.products.ProductsRepository
+import com.bendey.restaurant.core.domain.products.toFormInput
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
-import com.bendey.restaurant.core.domain.restaurant.OrderItemInput
+import com.bendey.restaurant.core.domain.pos.toOrderItemInput
 import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
+import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
+import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.TableSessionDetail
+import com.bendey.restaurant.core.domain.restaurant.toComandaLine
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +86,10 @@ data class MesaUiState(
     val categories: List<ProductCategory> = emptyList(),
     val selectedCategoryId: Int? = null,
     val searchQuery: String = "",
+    val catalogTab: PosCatalogTab = PosCatalogTab.PRODUCTS,
+    val combos: List<PosComboItem> = emptyList(),
+    val productConfigure: ProductConfigureState? = null,
+    val comboConfigure: ComboConfigureState? = null,
     val cart: List<PosCartLine> = emptyList(),
     val checkoutOpen: Boolean = false,
     val checkoutMetaLoading: Boolean = false,
@@ -64,6 +104,15 @@ data class MesaUiState(
     val allowCheckoutDiscount: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
     val checkoutPrintNote: String? = null,
+    val receiptHasPrinter: Boolean = false,
+    val receiptBusy: String? = null,
+    val reprintingOrderId: Int? = null,
+    val reprintingAll: Boolean = false,
+    val closingMesa: Boolean = false,
+    val voidComanda: SessionComandaSummary? = null,
+    val voidReason: String = "",
+    val voidPin: String = "",
+    val voidSubmitting: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
 ) {
@@ -80,6 +129,11 @@ data class MesaUiState(
 
     val checkoutPayableTotal: Double
         get() = calcPayableTotal(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
+
+    val sessionOrders: List<SessionOrderSummary> get() = session?.orders.orEmpty()
+    val hasSentComandas: Boolean get() = sessionOrders.any { it.comandas.isNotEmpty() }
+    val canClearCart: Boolean get() = cart.isNotEmpty() && !hasSentComandas
+    val canCloseMesa: Boolean get() = sessionTotal <= 0 && cart.isEmpty() && !checkoutSubmitting && !sending
 }
 
 private fun roundMoney(value: Double): Double = round(value * 100.0) / 100.0
@@ -92,8 +146,13 @@ class MesaViewModel @Inject constructor(
     private val billingRepository: BillingRepository,
     private val kitchenPrintService: KitchenPrintService,
     private val documentPrintService: DocumentPrintService,
+    private val receiptPdfService: ReceiptPdfService,
+    private val cartFeedback: CartFeedback,
     private val sessionStore: UserSessionStore,
     private val productImageRepository: ProductImageRepository,
+    private val productsRepository: ProductsRepository,
+    private val modifiersRepository: ModifiersRepository,
+    private val combosRepository: CombosRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -106,6 +165,22 @@ class MesaViewModel @Inject constructor(
 
     init {
         refreshAll()
+        warmCheckoutMeta()
+    }
+
+    private fun warmCheckoutMeta() {
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
+            when (val result = billingRepository.loadCheckoutMeta(branchId)) {
+                is AppResult.Success -> {
+                    _uiState.update { state ->
+                        if (state.checkoutMeta != null) state else state.copy(checkoutMeta = result.data)
+                    }
+                    applyCheckoutDefaults(result.data)
+                }
+                else -> Unit
+            }
+        }
     }
 
     fun refreshAll() {
@@ -131,32 +206,304 @@ class MesaViewModel @Inject constructor(
         viewModelScope.launch { loadProducts() }
     }
 
-    fun addToCart(product: PosProduct) {
-        _uiState.update { state ->
-            val index = state.cart.indexOfFirst { it.product.id == product.id }
-            val newCart = if (index >= 0) {
-                state.cart.toMutableList().apply {
-                    val line = this[index]
-                    this[index] = line.copy(quantity = line.quantity + 1)
-                }
-            } else {
-                state.cart + PosCartLine(product = product, quantity = 1)
+    fun setCatalogTab(tab: PosCatalogTab) {
+        _uiState.update { it.copy(catalogTab = tab) }
+        if (tab == PosCatalogTab.COMBOS && _uiState.value.combos.isEmpty()) loadCombos()
+    }
+
+    private fun loadCombos() {
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            when (val result = combosRepository.listPosCombos(branchId)) {
+                is AppResult.Success -> _uiState.update { it.copy(combos = result.data) }
+                is AppResult.Error -> _uiState.update { it.copy(error = result.message) }
+                AppResult.Loading -> Unit
             }
-            state.copy(cart = newCart)
         }
     }
 
-    fun decrementLine(productId: Int) {
+    fun addToCart(product: PosProduct) = onProductClick(product)
+
+    fun onProductClick(product: PosProduct) {
+        if (!product.availableForSale) {
+            _uiState.update { it.copy(error = "${product.name} no está disponible") }
+            return
+        }
+        if (productNeedsConfiguration(product)) openProductConfigure(product) else addSimpleProduct(product)
+    }
+
+    fun onComboClick(combo: PosComboItem) {
+        if (comboNeedsConfiguration(combo)) openComboConfigure(combo)
+        else viewModelScope.launch { resolveAndAddCombo(combo, ComboCartConfig()) }
+    }
+
+    private fun openProductConfigure(product: PosProduct) {
+        _uiState.update { it.copy(productConfigure = ProductConfigureState(product = product), error = null) }
+        viewModelScope.launch {
+            val detail = productsRepository.getProductDetail(product.id)
+            val groups = modifiersRepository.listModifierGroups()
+            when {
+                detail is AppResult.Error -> _uiState.update {
+                    it.copy(productConfigure = it.productConfigure?.copy(loading = false, error = detail.message))
+                }
+                groups is AppResult.Error -> _uiState.update {
+                    it.copy(productConfigure = it.productConfigure?.copy(loading = false, error = groups.message))
+                }
+                detail is AppResult.Success && groups is AppResult.Success -> {
+                    val form = detail.data.toFormInput()
+                    val extraGroups = getProductExtraGroups(form.modifierGroupIds, groups.data, product)
+                    val initialSelected = form.presentations
+                        .firstOrNull { it.active && it.name.isNotBlank() }
+                        ?.let { selectPresentation(emptyList(), it) } ?: emptyList()
+                    _uiState.update {
+                        it.copy(
+                            productConfigure = it.productConfigure?.copy(
+                                loading = false,
+                                presentations = form.presentations,
+                                extraGroups = extraGroups,
+                                selected = initialSelected,
+                            ),
+                        )
+                    }
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    fun dismissProductConfigure() { _uiState.update { it.copy(productConfigure = null) } }
+    fun updateProductConfigureNote(note: String) {
+        _uiState.update { it.copy(productConfigure = it.productConfigure?.copy(kitchenNote = note, error = null)) }
+    }
+    fun selectProductPresentation(presentation: ProductPresentation) {
+        _uiState.update { state ->
+            val cfg = state.productConfigure ?: return@update state
+            state.copy(productConfigure = cfg.copy(selected = selectPresentation(cfg.selected, presentation), error = null))
+        }
+    }
+    fun toggleProductExtra(group: ModifierGroup, optionId: Int) {
+        _uiState.update { state ->
+            val cfg = state.productConfigure ?: return@update state
+            state.copy(productConfigure = cfg.copy(selected = toggleExtraSelection(cfg.selected, group, optionId), error = null))
+        }
+    }
+    fun confirmProductConfigure() {
+        val cfg = _uiState.value.productConfigure ?: return
+        val validation = validateModifierSelection(cfg.presentations, cfg.extraGroups, cfg.selected, cfg.product)
+        if (validation != null) {
+            _uiState.update { it.copy(productConfigure = cfg.copy(error = validation)) }
+            return
+        }
+        val unitPrice = calcUnitPriceWithModifiers(cfg.product.salePrice, cfg.selected)
+        val line = PosCartLine(
+            cartKey = buildConfigureKey(cfg.selected, cfg.kitchenNote),
+            product = cfg.product,
+            quantity = 1,
+            notes = cfg.kitchenNote,
+            unitPrice = unitPrice,
+            modifiersJson = modifiersToJson(cfg.selected).takeIf { it.isNotBlank() },
+            subtitle = modifierSummaryText(cfg.selected).takeIf { it.isNotBlank() },
+        )
+        cartFeedback.playAddToCart()
+        _uiState.update {
+            it.copy(cart = appendCartLine(it.cart, line), productConfigure = null, snackMessage = "${cfg.product.name} agregado")
+        }
+    }
+
+    private fun openComboConfigure(combo: PosComboItem) {
+        _uiState.update { it.copy(comboConfigure = ComboConfigureState(combo = combo), error = null) }
+        viewModelScope.launch {
+            when (val result = combosRepository.getCombo(combo.id)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, error = result.message))
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissComboConfigure() { _uiState.update { it.copy(comboConfigure = null) } }
+    fun updateComboConfigureNote(note: String) {
+        _uiState.update { it.copy(comboConfigure = it.comboConfigure?.copy(kitchenNote = note, error = null)) }
+    }
+    fun toggleComboSlot(slot: com.bendey.restaurant.core.domain.catalog.ComboSlot, optionId: Int) {
+        _uiState.update { state ->
+            val cfg = state.comboConfigure ?: return@update state
+            state.copy(comboConfigure = cfg.copy(selections = toggleSlotOption(cfg.selections, slot, optionId), error = null))
+        }
+        previewComboPrice()
+    }
+    private fun previewComboPrice() {
+        val cfg = _uiState.value.comboConfigure ?: return
+        if (cfg.form == null) return
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
+            val configJson = buildComboConfigJson(ComboCartConfig(cfg.selections))
+            when (val result = combosRepository.resolveCombo(cfg.combo.id, branchId, configJson)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data))
+                }
+                else -> Unit
+            }
+        }
+    }
+    fun confirmComboConfigure() {
+        val cfg = _uiState.value.comboConfigure ?: return
+        val validation = cfg.form?.slots?.let { validateSlotSelections(it, cfg.selections) }
+        if (validation != null) {
+            _uiState.update { it.copy(comboConfigure = cfg.copy(error = validation)) }
+            return
+        }
+        viewModelScope.launch {
+            resolveAndAddCombo(cfg.combo, ComboCartConfig(cfg.selections), cfg.kitchenNote, cfg.resolvedPrice)
+            _uiState.update { it.copy(comboConfigure = null) }
+        }
+    }
+
+    private suspend fun resolveAndAddCombo(
+        combo: PosComboItem,
+        config: ComboCartConfig,
+        notes: String = "",
+        knownPrice: Double? = null,
+    ) {
+        val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: run {
+            _uiState.update { it.copy(error = "Selecciona una sucursal") }
+            return
+        }
+        val configJson = buildComboConfigJson(config)
+        val unitPrice = knownPrice ?: when (val resolved = combosRepository.resolveCombo(combo.id, branchId, configJson)) {
+            is AppResult.Success -> resolved.data
+            is AppResult.Error -> {
+                _uiState.update { it.copy(error = resolved.message) }
+                return
+            }
+            AppResult.Loading -> return
+        }
+        val line = PosCartLine(
+            cartKey = buildComboConfigureKey(combo.id, config, notes, unitPrice),
+            product = PosProduct(
+                id = -combo.id,
+                code = "COMBO-${combo.id}",
+                name = combo.name,
+                salePrice = unitPrice,
+                categoryId = null,
+                imageUrl = combo.imageUrl,
+                igvAffectationType = null,
+                priceIncludesIgv = true,
+            ),
+            quantity = 1,
+            notes = notes,
+            itemKind = "combo",
+            unitPrice = unitPrice,
+            comboId = combo.id,
+            comboConfigJson = configJson,
+        )
+        cartFeedback.playAddToCart()
+        _uiState.update { it.copy(cart = appendCartLine(it.cart, line), snackMessage = "${combo.name} agregado") }
+    }
+
+    private fun addSimpleProduct(product: PosProduct) {
+        cartFeedback.playAddToCart()
         _uiState.update { state ->
             state.copy(
-                cart = state.cart.mapNotNull { line ->
-                    when {
-                        line.product.id != productId -> line
-                        line.quantity <= 1 -> null
-                        else -> line.copy(quantity = line.quantity - 1)
-                    }
-                },
+                cart = appendCartLine(state.cart, PosCartLine(cartKey = "p-${product.id}", product = product, quantity = 1)),
+                snackMessage = "${product.name} agregado",
+                error = null,
             )
+        }
+    }
+
+    fun incrementCartLine(line: PosCartLine) {
+        cartFeedback.playAddToCart()
+        _uiState.update { state ->
+            state.copy(cart = appendCartLine(state.cart, line.copy(quantity = 1)))
+        }
+    }
+
+    fun decrementLine(cartKey: String) {
+        _uiState.update { state ->
+            state.copy(cart = decrementCartLine(state.cart, cartKey))
+        }
+    }
+
+    fun removeLine(cartKey: String) {
+        _uiState.update { it.copy(cart = it.cart.filter { line -> line.key != cartKey }) }
+    }
+
+    fun clearCart() {
+        if (!_uiState.value.canClearCart) return
+        cartFeedback.playAddToCart()
+        _uiState.update { it.copy(cart = emptyList(), snackMessage = "Carrito vaciado") }
+    }
+
+    fun openVoidComanda(comanda: SessionComandaSummary) {
+        _uiState.update {
+            it.copy(voidComanda = comanda, voidReason = "", voidPin = "", error = null)
+        }
+    }
+
+    fun dismissVoidDialog() {
+        if (_uiState.value.voidSubmitting) return
+        _uiState.update { it.copy(voidComanda = null, voidReason = "", voidPin = "") }
+    }
+
+    fun setVoidReason(reason: String) {
+        _uiState.update { it.copy(voidReason = reason) }
+    }
+
+    fun setVoidPin(pin: String) {
+        _uiState.update { it.copy(voidPin = pin.filter { it.isDigit() }.take(6)) }
+    }
+
+    fun confirmVoidComanda() {
+        val state = _uiState.value
+        val comanda = state.voidComanda ?: return
+        val reason = state.voidReason.trim()
+        val pin = state.voidPin.trim()
+        if (reason.isBlank() || pin.isBlank()) {
+            _uiState.update { it.copy(error = "Indique motivo y PIN") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(voidSubmitting = true, error = null) }
+            when (val result = posRepository.cancelComanda(comanda.id, reason, pin)) {
+                is AppResult.Success -> {
+                    loadSession()
+                    _uiState.update {
+                        it.copy(
+                            voidSubmitting = false,
+                            voidComanda = null,
+                            voidReason = "",
+                            voidPin = "",
+                            snackMessage = "Comanda anulada",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(voidSubmitting = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun closeMesa(onSuccess: () -> Unit) {
+        if (!_uiState.value.canCloseMesa) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(closingMesa = true, error = null) }
+            when (val result = mesasRepository.closeSession(sessionId)) {
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(closingMesa = false, snackMessage = "Mesa cerrada") }
+                    onSuccess()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(closingMesa = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
         }
     }
 
@@ -328,12 +675,14 @@ class MesaViewModel @Inject constructor(
             ) {
                 is AppResult.Success -> {
                     val printNote = documentPrintNote(documentPrintService.printSaleDocument(result.data.printData))
+                    val hasPrinter = documentPrintService.hasConfiguredPrinter()
                     _uiState.update {
                         it.copy(
                             checkoutSubmitting = false,
                             checkoutOpen = false,
                             checkoutSuccess = result.data,
                             checkoutPrintNote = printNote,
+                            receiptHasPrinter = hasPrinter,
                             cart = emptyList(),
                         )
                     }
@@ -347,7 +696,137 @@ class MesaViewModel @Inject constructor(
     }
 
     fun dismissCheckoutSuccess() {
-        _uiState.update { it.copy(checkoutSuccess = null, checkoutPrintNote = null) }
+        _uiState.update {
+            it.copy(
+                checkoutSuccess = null,
+                checkoutPrintNote = null,
+                receiptBusy = null,
+            )
+        }
+    }
+
+    fun reprintReceipt() {
+        val data = _uiState.value.checkoutSuccess?.printData ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(receiptBusy = "print") }
+            val ok = documentPrintService.printSaleDocument(data, force = true)
+            _uiState.update {
+                it.copy(
+                    receiptBusy = null,
+                    snackMessage = when (ok) {
+                        true -> "Comprobante enviado a la ticketera"
+                        false -> "No se pudo imprimir · revisa la impresora"
+                        null -> "Configura la impresora en Ajustes"
+                    },
+                )
+            }
+        }
+    }
+
+    fun shareReceiptViaWhatsApp(context: android.content.Context) {
+        val data = _uiState.value.checkoutSuccess?.printData ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(receiptBusy = "share") }
+            try {
+                val file = receiptPdfService.generate(data, ReceiptPdfFormat.TICKET)
+                val uri = receiptPdfService.uriFor(file)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    ReceiptShareHelper.sharePdfWhatsApp(
+                        context,
+                        uri,
+                        "Comprobante ${data.number}",
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo compartir") }
+            } finally {
+                _uiState.update { it.copy(receiptBusy = null) }
+            }
+        }
+    }
+
+    fun loadReceiptPdf(format: ReceiptPdfFormat, onReady: (File?) -> Unit) {
+        val data = _uiState.value.checkoutSuccess?.printData
+        if (data == null) {
+            onReady(null)
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = receiptPdfService.generate(data, format)
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onReady(file) }
+            } catch (_: Exception) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) { onReady(null) }
+            }
+        }
+    }
+
+    fun openReceiptPdf(context: android.content.Context, format: ReceiptPdfFormat) {
+        val data = _uiState.value.checkoutSuccess?.printData ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(receiptBusy = "pdf") }
+            try {
+                val file = receiptPdfService.generate(data, format)
+                val uri = receiptPdfService.uriFor(file)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    ReceiptShareHelper.openPdfExternal(context, uri)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo abrir el PDF") }
+            } finally {
+                _uiState.update { it.copy(receiptBusy = null) }
+            }
+        }
+    }
+
+    fun reprintComanda(order: SessionOrderSummary) {
+        val session = _uiState.value.session ?: return
+        if (order.comandas.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(reprintingOrderId = order.id) }
+            val userName = sessionStore.userSessionFlow.first()?.user?.name
+            val result = kitchenPrintService.reprintComandaRound(
+                tableName = session.tableName,
+                orderNumber = order.orderNumber,
+                waiterName = session.waiterName ?: userName,
+                comandas = order.comandas.map { it.toComandaLine() },
+            )
+            _uiState.update {
+                it.copy(
+                    reprintingOrderId = null,
+                    snackMessage = when (result) {
+                        true -> "Comanda #${order.orderNumber} reimpresa"
+                        false -> "No se pudo reimprimir · revisa impresora de comandas"
+                        null -> "Configura la impresora de comandas en Ajustes"
+                    },
+                )
+            }
+        }
+    }
+
+    fun reprintAllComandas() {
+        val session = _uiState.value.session ?: return
+        val orders = session.orders.filter { it.comandas.isNotEmpty() }
+        if (orders.isEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(reprintingAll = true) }
+            val userName = sessionStore.userSessionFlow.first()?.user?.name
+            val result = kitchenPrintService.reprintAllComandaRounds(
+                tableName = session.tableName,
+                waiterName = session.waiterName ?: userName,
+                orders = orders.map { it.orderNumber to it.comandas.map { c -> c.toComandaLine() } },
+            )
+            _uiState.update {
+                it.copy(
+                    reprintingAll = false,
+                    snackMessage = when (result) {
+                        true -> "${orders.size} comanda(s) reimpresa(s)"
+                        false -> "Algunas comandas no se imprimieron · revisa impresora"
+                        null -> "Configura la impresora de comandas en Ajustes"
+                    },
+                )
+            }
+        }
     }
 
     fun consumeSnackMessage() {
@@ -413,17 +892,7 @@ class MesaViewModel @Inject constructor(
     }
 
     private suspend fun sendCartItems(state: MesaUiState): Boolean {
-        val items = state.cart.map { line ->
-            OrderItemInput(
-                productId = line.product.id,
-                productCode = line.product.code,
-                productName = line.product.name,
-                quantity = line.quantity.toDouble(),
-                unitPrice = line.product.salePrice,
-                igvAffectationType = line.product.igvAffectationType,
-                priceIncludesIgv = line.product.priceIncludesIgv,
-            )
-        }
+        val items = state.cart.map { it.toOrderItemInput() }
         return when (val result = posRepository.addOrder(sessionId, items)) {
             is AppResult.Success -> {
                 val order = result.data

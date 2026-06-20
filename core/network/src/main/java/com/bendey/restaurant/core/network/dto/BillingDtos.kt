@@ -113,6 +113,24 @@ data class DocumentSeriesDto(
 )
 
 @Serializable
+data class SeriesCreateRequestDto(
+    @SerialName("branch_id") val branchId: Int,
+    @SerialName("doc_type") val docType: String,
+    val series: String,
+    val category: String = "venta",
+    @SerialName("sunat_code") val sunatCode: String = "00",
+)
+
+@Serializable
+data class SeriesUpdateRequestDto(
+    val series: String,
+    val active: Boolean = true,
+    @SerialName("doc_type") val docType: String,
+    @SerialName("sunat_code") val sunatCode: String = "00",
+    val category: String = "venta",
+)
+
+@Serializable
 data class ContactDto(
     val id: Int,
     val type: String = "customer",
@@ -161,6 +179,34 @@ data class VoidCreditNoteResponseDto(
 )
 
 @Serializable
+data class IssueElectronicRequestDto(
+    @SerialName("series_id") val seriesId: Int,
+    @SerialName("issue_date") val issueDate: String? = null,
+)
+
+@Serializable
+data class IssueElectronicResponseDto(
+    val sale: SaleDto? = null,
+)
+
+@Serializable
+data class BillingActionResponseDto(
+    val success: Boolean = true,
+    val message: String? = null,
+    val async: Boolean = false,
+    @SerialName("billing_status") val billingStatus: String? = null,
+    @SerialName("sunat_message") val sunatMessage: String? = null,
+)
+
+@Serializable
+data class SaleContactDto(
+    val id: Int? = null,
+    @SerialName("doc_type") val docType: String? = null,
+    @SerialName("doc_number") val docNumber: String? = null,
+    @SerialName("business_name") val businessName: String? = null,
+)
+
+@Serializable
 data class SaleDto(
     val id: Int,
     @SerialName("doc_type") val docType: String = "",
@@ -182,9 +228,25 @@ data class SaleDto(
 )
 
 @Serializable
+data class SalePaymentTotalDto(
+    val method: String = "",
+    val total: Double = 0.0,
+    val count: Int = 0,
+)
+
+@Serializable
+data class SaleListSummaryDto(
+    @SerialName("sum_total") val sumTotal: Double = 0.0,
+    @SerialName("sum_active") val sumActive: Double = 0.0,
+    @SerialName("count_active") val countActive: Int = 0,
+    @SerialName("payment_totals") val paymentTotals: List<SalePaymentTotalDto> = emptyList(),
+)
+
+@Serializable
 data class SalesListResponseDto(
     val data: List<SaleDto> = emptyList(),
     val total: Int = 0,
+    val summary: SaleListSummaryDto? = null,
 )
 
 @Serializable
@@ -211,4 +273,5 @@ data class SaleDetailResponseDto(
     val items: List<SaleItemDto> = emptyList(),
     val payments: List<SalePaymentDto> = emptyList(),
     @SerialName("print_data") val printData: PrintDataDto? = null,
+    val contact: SaleContactDto? = null,
 )

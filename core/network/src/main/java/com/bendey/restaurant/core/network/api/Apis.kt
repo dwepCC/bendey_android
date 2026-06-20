@@ -12,6 +12,8 @@ import com.bendey.restaurant.core.network.dto.CategoryUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CreateProductRequestDto
 import com.bendey.restaurant.core.network.dto.ProductDataResponseDto
 import com.bendey.restaurant.core.network.dto.ProductDetailResponseDto
+import com.bendey.restaurant.core.network.dto.OperationalStatusResponseDto
+import com.bendey.restaurant.core.network.dto.CatalogAnalyticsResponseDto
 import com.bendey.restaurant.core.network.dto.DashboardResponseDto
 import com.bendey.restaurant.core.network.dto.EmailLoginRequestDto
 import com.bendey.restaurant.core.network.dto.FloorDto
@@ -20,14 +22,23 @@ import com.bendey.restaurant.core.network.dto.TableUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.KitchenComandaDto
 import com.bendey.restaurant.core.network.dto.ListResponseDto
 import com.bendey.restaurant.core.network.dto.LoginResponseDto
+import com.bendey.restaurant.core.network.dto.CancelComandaRequestDto
+import com.bendey.restaurant.core.network.dto.CancelSessionRequestDto
+import com.bendey.restaurant.core.network.dto.OpenOrderSummaryDto
 import com.bendey.restaurant.core.network.dto.OpenSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OpenSessionResponseDto
 import com.bendey.restaurant.core.network.dto.PinLoginRequestDto
 import com.bendey.restaurant.core.network.dto.PrecuentaResponseDto
 import com.bendey.restaurant.core.network.dto.SessionDetailResponseDto
 import com.bendey.restaurant.core.network.dto.ProductListResponseDto
+import com.bendey.restaurant.core.network.dto.StockSummaryResponseDto
 import com.bendey.restaurant.core.network.dto.RestaurantTableDto
 import com.bendey.restaurant.core.network.dto.StaffOptionDto
+import com.bendey.restaurant.core.network.dto.StaffManagementDto
+import com.bendey.restaurant.core.network.dto.CreateStaffUserRequestDto
+import com.bendey.restaurant.core.network.dto.CreateStaffUserResponseDto
+import com.bendey.restaurant.core.network.dto.SetUserStaffRequestDto
+import com.bendey.restaurant.core.network.dto.SetUserStaffResponseDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
 import com.bendey.restaurant.core.network.dto.TenantByRucDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
@@ -35,6 +46,8 @@ import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -60,6 +73,15 @@ interface RestaurantApi {
         @Query("to") to: String? = null,
     ): DashboardResponseDto
 
+    @GET("/api/restaurant/catalog-analytics")
+    suspend fun getCatalogAnalytics(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): CatalogAnalyticsResponseDto
+
+    @GET("/api/restaurant/operational-status")
+    suspend fun getOperationalStatus(): OperationalStatusResponseDto
+
     @GET("/api/restaurant/floors")
     suspend fun listFloors(): ListResponseDto<FloorDto>
 
@@ -71,8 +93,43 @@ interface RestaurantApi {
     @GET("/api/restaurant/staff")
     suspend fun listStaff(): ListResponseDto<StaffOptionDto>
 
+    @GET("/api/restaurant/staff/management")
+    suspend fun listStaffManagement(): ListResponseDto<StaffManagementDto>
+
+    @POST("/api/restaurant/staff/users")
+    suspend fun createStaffUser(@Body body: CreateStaffUserRequestDto): CreateStaffUserResponseDto
+
+    @PUT("/api/restaurant/users/{userId}/staff")
+    suspend fun setUserStaff(
+        @Path("userId") userId: Int,
+        @Body body: SetUserStaffRequestDto,
+    ): SetUserStaffResponseDto
+
     @POST("/api/restaurant/sessions")
     suspend fun openSession(@Body body: OpenSessionRequestDto): OpenSessionResponseDto
+
+    @PATCH("/api/restaurant/sessions/{sessionId}")
+    suspend fun updateSession(
+        @Path("sessionId") sessionId: Int,
+        @Body body: OpenSessionRequestDto,
+    ): SuccessResponseDto
+
+    @POST("/api/restaurant/sessions/{sessionId}/cancel")
+    suspend fun cancelSession(
+        @Path("sessionId") sessionId: Int,
+        @Body body: CancelSessionRequestDto,
+    ): SuccessResponseDto
+
+    @GET("/api/restaurant/orders")
+    suspend fun listOpenOrders(
+        @Query("order_type") orderType: String? = null,
+    ): ListResponseDto<OpenOrderSummaryDto>
+
+    @HTTP(method = "DELETE", path = "/api/restaurant/comandas/{comandaId}", hasBody = true)
+    suspend fun cancelComanda(
+        @Path("comandaId") comandaId: Int,
+        @Body body: CancelComandaRequestDto,
+    ): SuccessResponseDto
 
     @POST("/api/restaurant/sessions/{sessionId}/orders")
     suspend fun addOrder(
@@ -98,6 +155,11 @@ interface RestaurantApi {
     suspend fun getPrecuenta(
         @retrofit2.http.Path("sessionId") sessionId: Int,
     ): PrecuentaResponseDto
+
+    @POST("/api/restaurant/sessions/{sessionId}/close")
+    suspend fun closeSession(
+        @Path("sessionId") sessionId: Int,
+    ): SuccessResponseDto
 
     @POST("/api/restaurant/sessions/{sessionId}/bill")
     suspend fun billSession(
@@ -176,4 +238,9 @@ interface ProductsApi {
 
     @POST("/api/products/bulk-import/restaurant")
     suspend fun bulkImportRestaurant(@Body body: BulkImportRequestDto): BulkImportResponseDto
+
+    @GET("/api/inventory/stock-summary")
+    suspend fun getStockSummary(
+        @Query("product_ids") productIds: String,
+    ): StockSummaryResponseDto
 }

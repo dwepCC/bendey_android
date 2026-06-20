@@ -29,15 +29,36 @@ fun docTypeShortLabel(docType: String, sunatCode: String? = null): String {
     }
 }
 
+/** Orden UI: Nota de venta → Boleta → Factura → resto. */
+fun docTypeSortOrder(docType: String, sunatCode: String? = null): Int {
+    when (sunatCode?.trim().orEmpty()) {
+        "00" -> return 0
+        "03" -> return 1
+        "01" -> return 2
+    }
+    val normalized = normalizeDocTypeKey(docType)
+    return when {
+        (normalized.contains("nota") && normalized.contains("venta")) || normalized == "notadeventa" -> 0
+        normalized == "boleta" -> 1
+        normalized == "factura" -> 2
+        else -> 99
+    }
+}
+
 fun groupCheckoutDocTypes(series: List<DocumentSeries>): List<CheckoutDocTypeGroup> {
-    val seen = linkedSetOf<String>()
-    val groups = mutableListOf<CheckoutDocTypeGroup>()
+    val byKey = linkedMapOf<String, DocumentSeries>()
     series.forEach { item ->
         val key = normalizeDocTypeKey(item.docType)
-        if (!seen.add(key)) return@forEach
-        groups.add(CheckoutDocTypeGroup(key = key, label = docTypeShortLabel(item.docType, item.sunatCode)))
+        if (!byKey.containsKey(key)) byKey[key] = item
     }
-    return groups
+    return byKey.values
+        .sortedWith(compareBy({ docTypeSortOrder(it.docType, it.sunatCode) }, { it.docType }))
+        .map { item ->
+            CheckoutDocTypeGroup(
+                key = normalizeDocTypeKey(item.docType),
+                label = docTypeShortLabel(item.docType, item.sunatCode),
+            )
+        }
 }
 
 fun seriesForDocType(series: List<DocumentSeries>, docType: String): List<DocumentSeries> {

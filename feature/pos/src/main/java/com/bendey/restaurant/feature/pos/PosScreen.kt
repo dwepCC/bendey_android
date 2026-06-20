@@ -15,7 +15,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Surface
@@ -35,8 +41,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,11 +64,24 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
+import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
+import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
-import com.bendey.restaurant.core.ui.checkout.CheckoutSuccessDialog
+import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
+import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
+import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.ui.components.BendeyPosCatalogPane
+import com.bendey.restaurant.core.domain.pos.PosCatalogTab
+import com.bendey.restaurant.core.domain.pos.PosComboItem
+import com.bendey.restaurant.core.ui.components.BendeyPosProductCard
+import com.bendey.restaurant.core.ui.pos.ComboConfigureDialog
+import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
+import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
+import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -79,16 +96,31 @@ fun PosScreen(
     val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
     val isExpanded = widthClass != WindowWidthSizeClass.COMPACT
     var showCartSheet by remember { mutableStateOf(false) }
+    var showScanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.snackMessage) {
         if (state.snackMessage != null) viewModel.consumeSnackMessage()
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(BendeyColors.Background),
+    ) {
         OrderTypeRow(
             selected = state.orderType,
-            onSelect = viewModel::setOrderType,
+            onSelect = { type ->
+                viewModel.setOrderType(type)
+                if (type != PosOrderType.QUICK_SALE) viewModel.openOrderDetailsModal()
+            },
             compact = isExpanded,
+        )
+        PosPendingOrdersBar(
+            count = state.pendingOrdersCount,
+            orderCode = state.orderCode,
+            showEditDetails = state.isRestaurantOrder,
+            onOpenPending = viewModel::openPendingOrdersSheet,
+            onEditDetails = viewModel::openOrderDetailsModal,
         )
         if (isExpanded && (state.checkoutRawTotal > 0 || state.activeSessionId != null)) {
             PosSessionBar(
@@ -114,17 +146,25 @@ fun PosScreen(
                     sidebarCategories = true,
                     onSearch = viewModel::setSearchQuery,
                     onCategory = viewModel::selectCategory,
-                    onAdd = viewModel::addToCart,
+                    onAdd = viewModel::onProductClick,
+                    onComboClick = viewModel::onComboClick,
+                    onCatalogTab = viewModel::setCatalogTab,
+                    onScan = { showScanner = true },
+                    posStyle = true,
                     modifier = Modifier.weight(0.62f),
                 )
                 CartPane(
                     state = state,
                     currency = currency,
-                    onIncrement = viewModel::addToCart,
+                    onIncrement = viewModel::incrementCartLine,
                     onDecrement = viewModel::decrementLine,
                     onRemove = viewModel::removeLine,
+                    onClearCart = viewModel::clearCart,
                     onSend = viewModel::sendComanda,
                     onCheckout = viewModel::openCheckout,
+                    onReprint = viewModel::reprintComanda,
+                    onReprintAll = viewModel::reprintAllComandas,
+                    onVoidComanda = viewModel::openVoidComanda,
                     canCheckout = state.canCheckout,
                     modifier = Modifier
                         .weight(0.38f)
@@ -140,7 +180,11 @@ fun PosScreen(
                     assetsBaseUrl = viewModel.assetsBaseUrl,
                     onSearch = viewModel::setSearchQuery,
                     onCategory = viewModel::selectCategory,
-                    onAdd = viewModel::addToCart,
+                    onAdd = viewModel::onProductClick,
+                    onComboClick = viewModel::onComboClick,
+                    onCatalogTab = viewModel::setCatalogTab,
+                    onScan = { showScanner = true },
+                    posStyle = true,
                     modifier = Modifier.fillMaxSize(),
                 )
                 CompactCartBar(
@@ -175,9 +219,10 @@ fun PosScreen(
             CartPane(
                 state = state,
                 currency = currency,
-                onIncrement = { product -> viewModel.addToCart(product) },
+                onIncrement = viewModel::incrementCartLine,
                 onDecrement = viewModel::decrementLine,
                 onRemove = viewModel::removeLine,
+                onClearCart = viewModel::clearCart,
                 onSend = {
                     viewModel.sendComanda()
                     showCartSheet = false
@@ -186,6 +231,9 @@ fun PosScreen(
                     viewModel.openCheckout()
                     showCartSheet = false
                 },
+                onReprint = viewModel::reprintComanda,
+                onReprintAll = viewModel::reprintAllComandas,
+                onVoidComanda = viewModel::openVoidComanda,
                 canCheckout = state.canCheckout,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -193,6 +241,46 @@ fun PosScreen(
             )
         }
     }
+
+    state.productConfigure?.let { cfg ->
+        ProductConfigureDialog(
+            product = cfg.product,
+            loading = cfg.loading,
+            presentations = cfg.presentations,
+            extraGroups = cfg.extraGroups,
+            selected = cfg.selected,
+            kitchenNote = cfg.kitchenNote,
+            validationError = cfg.error,
+            currency = currency,
+            onSelectPresentation = viewModel::selectProductPresentation,
+            onToggleExtra = viewModel::toggleProductExtra,
+            onKitchenNoteChange = viewModel::updateProductConfigureNote,
+            onConfirm = viewModel::confirmProductConfigure,
+            onDismiss = viewModel::dismissProductConfigure,
+        )
+    }
+    state.comboConfigure?.let { cfg ->
+        ComboConfigureDialog(
+            combo = cfg.combo,
+            loading = cfg.loading,
+            form = cfg.form,
+            selections = cfg.selections,
+            kitchenNote = cfg.kitchenNote,
+            validationError = cfg.error,
+            resolvedPrice = cfg.resolvedPrice,
+            currency = currency,
+            onToggleSlot = viewModel::toggleComboSlot,
+            onKitchenNoteChange = viewModel::updateComboConfigureNote,
+            onConfirm = viewModel::confirmComboConfigure,
+            onDismiss = viewModel::dismissComboConfigure,
+        )
+    }
+
+    PosBarcodeScannerSheet(
+        open = showScanner,
+        onDismiss = { showScanner = false },
+        onBarcodeDetected = viewModel::addProductByBarcode,
+    )
 
     CheckoutDialog(
         open = state.checkoutOpen,
@@ -218,15 +306,72 @@ fun PosScreen(
         onConfirm = viewModel::confirmCheckout,
     )
 
+    val context = LocalContext.current
     state.checkoutSuccess?.let { sale ->
-        CheckoutSuccessDialog(
-            number = sale.number,
+        ReceiptPrintModal(
+            open = true,
+            printData = sale.printData,
+            saleNumber = sale.number,
             total = sale.total,
-            subtitle = "Registrado correctamente. SUNAT se actualiza en segundo plano; revisa el estado en Ventas.",
-            printNote = state.checkoutPrintNote,
+            hasPrinter = state.receiptHasPrinter,
+            busyAction = state.receiptBusy,
+            onPrint = viewModel::reprintReceipt,
+            onShareWhatsApp = { viewModel.shareReceiptViaWhatsApp(context) },
+            onOpenPdf = { formatUi ->
+                viewModel.openReceiptPdf(
+                    context,
+                    when (formatUi) {
+                        ReceiptPdfFormatUi.TICKET -> ReceiptPdfFormat.TICKET
+                        ReceiptPdfFormatUi.A4 -> ReceiptPdfFormat.A4
+                    },
+                )
+            },
             onDismiss = viewModel::dismissCheckoutSuccess,
         )
     }
+
+    OrderDetailsDialog(
+        modal = state.orderDetailsModal,
+        details = state.orderDetails,
+        drivers = state.deliveryDrivers,
+        driversLoading = state.deliveryDriversLoading,
+        onDetailsChange = viewModel::setOrderDetails,
+        onDismiss = viewModel::dismissOrderDetailsModal,
+        onConfirm = viewModel::confirmOrderDetails,
+    )
+
+    if (state.pendingOrdersOpen) {
+        PendingOrdersSheet(
+            orders = state.pendingOrders,
+            currency = currency,
+            onDismiss = viewModel::dismissPendingOrdersSheet,
+            onOpen = viewModel::resumePendingOrder,
+            onVoid = viewModel::openVoidPendingOrder,
+        )
+    }
+
+    val voidTarget = state.voidTarget
+    VoidPinDialog(
+        open = voidTarget != null,
+        title = when (voidTarget) {
+            is PosVoidTarget.PendingOrder -> "Anular pedido"
+            is PosVoidTarget.Comanda -> "Anular comanda"
+            null -> "Anular"
+        },
+        itemLabel = when (voidTarget) {
+            is PosVoidTarget.PendingOrder -> voidTarget.order.orderCode ?: "#${voidTarget.order.id}"
+            is PosVoidTarget.Comanda -> "${voidTarget.comanda.productName} ×${voidTarget.comanda.quantity.toInt()}"
+            null -> null
+        },
+        reason = state.voidReason,
+        pin = state.voidPin,
+        loading = state.voidSubmitting,
+        error = if (voidTarget != null) state.error else null,
+        onReasonChange = viewModel::setVoidReason,
+        onPinChange = viewModel::setVoidPin,
+        onDismiss = viewModel::dismissVoidDialog,
+        onConfirm = viewModel::confirmVoid,
+    )
 }
 
 @Composable
@@ -273,19 +418,30 @@ private fun OrderTypeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = if (compact) 4.dp else 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.65f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         PosOrderType.entries.forEach { type ->
-            FilterChip(
-                selected = selected == type,
-                onClick = { onSelect(type) },
-                label = { Text(type.label, style = MaterialTheme.typography.labelMedium) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BendeyColors.Primary,
-                    selectedLabelColor = BendeyColors.OnPrimary,
-                ),
-            )
+            val isSelected = selected == type
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) BendeyColors.Primary else Color.Transparent)
+                    .clickable { onSelect(type) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = type.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) BendeyColors.OnPrimary else BendeyColors.OnSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -298,107 +454,129 @@ private fun CatalogPane(
     onSearch: (String) -> Unit,
     onCategory: (Int?) -> Unit,
     onAdd: (PosProduct) -> Unit,
+    onComboClick: (PosComboItem) -> Unit,
+    onCatalogTab: (PosCatalogTab) -> Unit,
     modifier: Modifier = Modifier,
     sidebarCategories: Boolean = false,
+    posStyle: Boolean = false,
+    onScan: (() -> Unit)? = null,
 ) {
-    BendeyPosCatalogPane(
-        searchQuery = state.searchQuery,
-        onSearchChange = onSearch,
-        categories = state.categories,
-        selectedCategoryId = state.selectedCategoryId,
-        onCategorySelect = onCategory,
-        products = state.products,
-        currency = currency,
-        assetsBaseUrl = assetsBaseUrl,
-        onProductClick = onAdd,
-        modifier = modifier,
-        sidebarCategories = sidebarCategories,
-    )
+    Column(modifier = modifier.fillMaxSize()) {
+        PosCatalogTabRow(selected = state.catalogTab, onSelect = onCatalogTab)
+        when (state.catalogTab) {
+            PosCatalogTab.PRODUCTS -> BendeyPosCatalogPane(
+                searchQuery = state.searchQuery,
+                onSearchChange = onSearch,
+                categories = state.categories,
+                selectedCategoryId = state.selectedCategoryId,
+                onCategorySelect = onCategory,
+                products = state.products,
+                currency = currency,
+                assetsBaseUrl = assetsBaseUrl,
+                onProductClick = onAdd,
+                modifier = Modifier.weight(1f),
+                sidebarCategories = sidebarCategories,
+                compactCards = !posStyle,
+                posCatalogStyle = posStyle,
+                onScanClick = onScan,
+            )
+            PosCatalogTab.COMBOS -> {
+                val term = state.searchQuery.trim().lowercase()
+                val filtered = if (term.isBlank()) state.combos else {
+                    state.combos.filter {
+                        it.name.lowercase().contains(term) ||
+                            it.description.orEmpty().lowercase().contains(term)
+                    }
+                }
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 140.dp),
+                    contentPadding = PaddingValues(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    items(filtered, key = { it.id }) { combo ->
+                        BendeyPosProductCard(
+                            name = combo.name,
+                            price = combo.basePrice,
+                            currency = currency,
+                            imageUrl = combo.imageUrl,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onClick = { onComboClick(combo) },
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
 private fun CartPane(
     state: PosUiState,
     currency: NumberFormat,
-    onIncrement: (PosProduct) -> Unit,
-    onDecrement: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
+    onIncrement: (PosCartLine) -> Unit,
+    onDecrement: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onClearCart: () -> Unit,
     onSend: () -> Unit,
     onCheckout: () -> Unit,
+    onReprint: (SessionOrderSummary) -> Unit,
+    onReprintAll: () -> Unit,
+    onVoidComanda: (SessionComandaSummary) -> Unit,
     canCheckout: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-    ) {
-        Text(
-            text = "Carrito (${state.cartCount})",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
-        if (state.cart.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("Sin productos", color = BendeyColors.OnSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(state.cart, key = { it.product.id }) { line ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(line.product.name, fontWeight = FontWeight.Medium)
-                            Text(
-                                currency.format(line.lineTotal),
-                                color = BendeyColors.OnSurfaceVariant,
-                            )
-                        }
-                        IconButton(onClick = { onDecrement(line.product.id) }) {
-                            Icon(Icons.Default.Remove, contentDescription = "Menos")
-                        }
-                        Text(line.quantity.toString(), fontWeight = FontWeight.Bold)
-                        IconButton(onClick = { onIncrement(line.product) }) {
-                            Icon(Icons.Default.Add, contentDescription = "Más")
-                        }
-                    }
-                }
-            }
-        }
-        Text(
-            text = currency.format(state.cartTotal),
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = BendeyColors.Primary,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
-        BendeyPrimaryButton(
-            text = if (state.sending) "Enviando…" else "Enviar comanda",
-            onClick = onSend,
-            enabled = state.cart.isNotEmpty() && !state.sending,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (canCheckout) {
-            BendeyPrimaryButton(
-                text = "Cobrar venta",
-                onClick = onCheckout,
-                enabled = !state.sending && !state.checkoutSubmitting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        if (state.hasSentComandas) {
+            PosSentOrdersSection(
+                orders = state.sessionOrders.filter { it.comandas.isNotEmpty() },
+                reprintingOrderId = state.reprintingOrderId,
+                reprintingAll = state.reprintingAll,
+                onReprint = onReprint,
+                onReprintAll = onReprintAll,
+                onVoidComanda = onVoidComanda,
             )
         }
+        BendeyPosCartPane(
+            title = buildString {
+                append("Carrito (${state.cartCount})")
+                state.orderCode?.let { append(" · $it") }
+            },
+            lines = state.cart,
+            total = if (state.sessionTotal > 0) state.sessionTotal + state.cartTotal else state.cartTotal,
+            currency = currency,
+            sending = state.sending,
+            onIncrement = onIncrement,
+            onDecrement = onDecrement,
+            onClearCart = onClearCart,
+            canClearCart = state.canClearCart,
+            modifier = Modifier.weight(1f),
+            primaryAction = if (state.isRestaurantOrder) {
+                {
+                    BendeyPrimaryButton(
+                        text = if (state.sending) "Enviando…" else "Enviar comanda",
+                        onClick = onSend,
+                        enabled = state.cart.isNotEmpty() && !state.sending,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                null
+            },
+            secondaryAction = if (canCheckout) {
+                {
+                    BendeyPrimaryButton(
+                        text = if (state.checkoutSubmitting) "Cobrando…" else "Cobrar venta",
+                        onClick = onCheckout,
+                        enabled = !state.sending && !state.checkoutSubmitting,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                null
+            },
+        )
     }
 }
 
@@ -416,27 +594,28 @@ private fun CompactCartBar(
     onCheckout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = BendeyColors.Surface,
-        shadowElevation = 8.dp,
-        tonalElevation = 2.dp,
+    val total = if (payableTotal > 0) payableTotal else cartTotal
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(width = 1.dp, color = BendeyColors.Outline)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .clickable(onClick = onOpenCart)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onOpenCart)
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .size(44.dp)
+                    .background(BendeyColors.PrimaryContainer, CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
                 BadgedBox(
                     badge = {
@@ -449,38 +628,50 @@ private fun CompactCartBar(
                         Icons.Default.ShoppingCart,
                         contentDescription = "Carrito",
                         tint = BendeyColors.Primary,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-                Column {
-                    Text(
-                        text = if (count > 0) "Carrito · $count" else "Ver carrito",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        currency.format(if (payableTotal > 0) payableTotal else cartTotal),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = BendeyColors.Primary,
+                        modifier = Modifier.size(24.dp),
                     )
                 }
             }
-            if (canCheckout && payableTotal > 0) {
-                BendeyPrimaryButton(
-                    text = if (checkoutLoading) "…" else "Cobrar",
-                    onClick = onCheckout,
-                    enabled = !checkoutLoading && !sending,
-                    fillWidth = false,
-                    modifier = Modifier.padding(end = 4.dp),
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Ver carrito",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = if (count == 1) "1 producto" else "$count productos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
                 )
             }
-            BendeyPrimaryButton(
-                text = if (sending) "…" else "Comanda",
-                onClick = onSend,
-                enabled = count > 0 && !sending,
-                fillWidth = false,
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "Total",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                Text(
+                    text = currency.format(total),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = BendeyColors.Primary,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(BendeyColors.Primary)
+                    .clickable(onClick = onOpenCart),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Abrir carrito",
+                    tint = BendeyColors.OnPrimary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }

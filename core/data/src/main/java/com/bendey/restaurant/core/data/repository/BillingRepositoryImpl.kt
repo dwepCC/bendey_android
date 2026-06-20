@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.domain.billing.BillSessionInput
 import com.bendey.restaurant.core.domain.billing.BillSessionResult
 import com.bendey.restaurant.core.domain.billing.BillingRepository
@@ -19,18 +20,31 @@ import com.bendey.restaurant.core.network.dto.ContactDto
 import com.bendey.restaurant.core.network.dto.DocumentSeriesDto
 import com.bendey.restaurant.core.network.dto.PaymentMethodDto
 import com.bendey.restaurant.core.domain.billing.VoidCreditNoteResult
+import com.bendey.restaurant.core.domain.billing.BillingActionResult
 import com.bendey.restaurant.core.network.api.BillingApi
 import com.bendey.restaurant.core.network.dto.VoidCreditNoteRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class BillingRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
+    @ApplicationContext private val context: Context,
 ) : BillingRepository {
 
-    override suspend fun loadCheckoutMeta(branchId: Int): AppResult<CheckoutMeta> = apiCall {
+    override suspend fun loadCheckoutMeta(branchId: Int): AppResult<CheckoutMeta> {
+        operationalDataCache.getCheckoutMeta(branchId)?.let { return AppResult.Success(it) }
+        return fetchCheckoutMeta(branchId)
+    }
+
+    override suspend fun refreshCheckoutMeta(branchId: Int): AppResult<CheckoutMeta> = fetchCheckoutMeta(branchId)
+
+    private suspend fun fetchCheckoutMeta(branchId: Int): AppResult<CheckoutMeta> = apiCall {
         val series = tenantRetrofitProvider.create<CompanyApi>()
             .listSeries(branchId = branchId, category = "venta")
             .data
@@ -50,7 +64,7 @@ class BillingRepositoryImpl @Inject constructor(
             series = series,
             contacts = contacts,
             paymentMethods = paymentMethods,
-        )
+        ).also { operationalDataCache.setCheckoutMeta(branchId, it) }
     }
 
     override suspend fun billSession(
@@ -94,6 +108,34 @@ class BillingRepositoryImpl @Inject constructor(
             message = response.message,
             async = response.async,
         )
+    }
+
+    override suspend fun sendToSunat(saleId: Int): AppResult<BillingActionResult> = apiCall {
+        val response = tenantRetrofitProvider.create<BillingApi>().sendToSunat(saleId)
+        BillingActionResult(
+            message = response.message ?: response.sunatMessage,
+            billingStatus = response.billingStatus,
+            async = response.async,
+        )
+    }
+
+    override suspend fun resendToSunat(saleId: Int): AppResult<BillingActionResult> = apiCall {
+        val response = tenantRetrofitProvider.create<BillingApi>().resendToSunat(saleId)
+        BillingActionResult(
+            message = response.message ?: response.sunatMessage,
+            billingStatus = response.billingStatus,
+            async = response.async,
+        )
+    }
+
+    override suspend fun downloadOfficialPdf(saleId: Int): AppResult<File> = apiCall {
+        val body = tenantRetrofitProvider.create<BillingApi>().downloadOfficialPdf(saleId)
+        val dir = File(context.cacheDir, "sunat-docs").also { it.mkdirs() }
+        val file = File(dir, "sunat-$saleId.pdf")
+        body.byteStream().use { input ->
+            file.outputStream().use { output -> input.copyTo(output) }
+        }
+        file
     }
 }
 

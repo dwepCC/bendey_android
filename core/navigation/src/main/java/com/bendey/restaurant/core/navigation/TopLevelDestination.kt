@@ -35,8 +35,8 @@ enum class TopLevelDestination(
 
     companion object {
     val bottomBarDestinations = entries.filter { it.showInBottomBar }
-    val bottomBarLeft = listOf(DASHBOARD, POS)
-    val bottomBarCenter = MESAS
+    val bottomBarLeft = listOf(DASHBOARD, MESAS)
+    val bottomBarCenter = POS
     val bottomBarRight = listOf(COCINA)
     val managementDestinations = entries.filter { !it.showInBottomBar }
     }

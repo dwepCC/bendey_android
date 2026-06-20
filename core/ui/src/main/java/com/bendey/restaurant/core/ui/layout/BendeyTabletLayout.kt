@@ -5,6 +5,13 @@ import androidx.compose.ui.unit.dp
 
 /** Tokens tablet-first para grids operativos (8" / 10" / 12"). */
 object BendeyTabletTokens {
+    /** Columnas POS móvil: 3 (mockup Bendey Resto). */
+    fun posProductGridColumns(maxWidth: Dp): Int = when {
+        maxWidth >= 1200.dp -> 5
+        maxWidth >= 840.dp -> 4
+        else -> 3
+    }
+
     /** Columnas POS: mínimo 2 en móvil */
     fun productGridColumns(maxWidth: Dp): Int = when {
         maxWidth >= 1200.dp -> 5
@@ -20,13 +27,11 @@ object BendeyTabletTokens {
         else -> 172.dp
     }
 
-    /** Mesas operativas: 3 cols móvil, más en tablet (React SalasPage) */
+    /** Mesas operativas: mínimo 3 columnas (mockup SalasPage). */
     fun tableGridColumns(maxWidth: Dp): Int = when {
         maxWidth >= 1200.dp -> 5
         maxWidth >= 900.dp -> 4
-        maxWidth >= 600.dp -> 3
-        maxWidth >= 380.dp -> 3
-        else -> 2
+        else -> 3
     }
 
     fun dashboardKpiColumns(maxWidth: Dp): Int = if (maxWidth >= 600.dp) 4 else 2

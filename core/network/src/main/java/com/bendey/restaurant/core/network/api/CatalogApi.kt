@@ -2,6 +2,8 @@ package com.bendey.restaurant.core.network.api
 
 import com.bendey.restaurant.core.network.dto.BranchDto
 import com.bendey.restaurant.core.network.dto.ComboDataResponseDto
+import com.bendey.restaurant.core.network.dto.ComboResolveRequestDto
+import com.bendey.restaurant.core.network.dto.ComboResolveResponseDto
 import com.bendey.restaurant.core.network.dto.ComboUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
@@ -64,6 +66,12 @@ interface CombosApi {
 
     @DELETE("/api/combos/{id}")
     suspend fun deleteCombo(@Path("id") id: Int): SuccessResponseDto
+
+    @POST("/api/combos/{id}/resolve")
+    suspend fun resolveCombo(
+        @Path("id") id: Int,
+        @Body body: ComboResolveRequestDto,
+    ): ComboResolveResponseDto
 }
 
 interface DeliveryApi {

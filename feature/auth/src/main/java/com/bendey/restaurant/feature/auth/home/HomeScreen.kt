@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.model.PinStation
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
@@ -80,19 +81,25 @@ fun HomeScreen(
                 .bendeySafeDrawingPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Column {
-                Text(
-                    text = "Bendey Resto",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BendeyColors.PrimaryContainer.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Operación en sala",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                BendeyBrandLogo(height = 40.dp, showBackground = true)
+                Column {
+                    Text(
+                        text = "Bendey Resto",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BendeyColors.PrimaryContainer.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Operación en sala",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
         Column(

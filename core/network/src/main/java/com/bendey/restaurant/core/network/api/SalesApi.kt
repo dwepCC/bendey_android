@@ -4,6 +4,8 @@ import com.bendey.restaurant.core.network.dto.SalesListResponseDto
 import com.bendey.restaurant.core.network.dto.SaleDetailResponseDto
 import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
 import com.bendey.restaurant.core.network.dto.CancelSaleResponseDto
+import com.bendey.restaurant.core.network.dto.IssueElectronicRequestDto
+import com.bendey.restaurant.core.network.dto.IssueElectronicResponseDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -20,6 +22,8 @@ interface SalesApi {
         @Query("per_page") perPage: Int = 25,
         @Query("sunat_code") sunatCode: String? = null,
         @Query("doc_type") docType: String? = null,
+        @Query("billing_status") billingStatus: String? = null,
+        @Query("payment_method") paymentMethod: String? = null,
     ): SalesListResponseDto
 
     @GET("/api/sales/{saleId}")
@@ -32,4 +36,10 @@ interface SalesApi {
         @Path("saleId") saleId: Int,
         @Body body: CancelSaleRequestDto,
     ): CancelSaleResponseDto
+
+    @POST("/api/sales/{saleId}/issue-electronic")
+    suspend fun issueElectronicFromNota(
+        @Path("saleId") saleId: Int,
+        @Body body: IssueElectronicRequestDto,
+    ): IssueElectronicResponseDto
 }
