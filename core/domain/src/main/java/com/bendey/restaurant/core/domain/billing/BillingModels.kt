@@ -1,0 +1,109 @@
+package com.bendey.restaurant.core.domain.billing
+
+import com.bendey.restaurant.core.domain.model.AppResult
+
+data class DocumentSeries(
+    val id: Int,
+    val branchId: Int,
+    val docType: String,
+    val series: String,
+    val category: String,
+    val sunatCode: String?,
+    val active: Boolean,
+) {
+    val displayLabel: String get() = "$docType · $series"
+}
+
+data class ContactBrief(
+    val id: Int,
+    val docType: String,
+    val docNumber: String,
+    val businessName: String,
+    val active: Boolean,
+) {
+    val displayLabel: String get() = businessName.ifBlank { docNumber }.ifBlank { "#$id" }
+}
+
+data class PaymentMethodOption(
+    val id: Int,
+    val name: String,
+    val code: String,
+    val destinationType: String,
+    val active: Boolean,
+) {
+    val isCash: Boolean get() = destinationType == "cash" || code.equals("cash", ignoreCase = true)
+}
+
+data class CheckoutPaymentLine(
+    val method: String,
+    val amount: Double,
+    val reference: String = "",
+)
+
+data class CheckoutMeta(
+    val series: List<DocumentSeries>,
+    val contacts: List<ContactBrief>,
+    val paymentMethods: List<PaymentMethodOption>,
+)
+
+data class BillSessionInput(
+    val seriesId: Int,
+    val docType: String,
+    val contactId: Int?,
+    val cashSessionId: Int?,
+    val closeSession: Boolean = true,
+    val discountAmount: Double? = null,
+    val payments: List<CheckoutPaymentLine>,
+)
+
+data class BillSessionResult(
+    val saleId: Int,
+    val number: String,
+    val total: Double,
+    val printData: SalePrintData? = null,
+)
+
+data class VoidCreditNoteResult(
+    val message: String?,
+    val async: Boolean,
+)
+
+data class SalePrintData(
+    val docType: String,
+    val sunatCode: String = "",
+    val number: String,
+    val issueDate: String,
+    val companyName: String,
+    val companyRuc: String,
+    val companyAddress: String?,
+    val branchName: String?,
+    val clientName: String?,
+    val clientDocNumber: String?,
+    val items: List<SalePrintLine>,
+    val subtotal: Double,
+    val taxAmount: Double,
+    val total: Double,
+    val currency: String,
+    val payments: List<SalePrintPayment>,
+    val legendText: String?,
+    val qrData: String? = null,
+    val sunatHash: String? = null,
+)
+
+data class SalePrintLine(
+    val description: String,
+    val quantity: Double,
+    val unitPrice: Double,
+    val total: Double,
+)
+
+data class SalePrintPayment(
+    val method: String,
+    val amount: Double,
+)
+
+interface BillingRepository {
+    suspend fun loadCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
+    suspend fun billSession(sessionId: Int, input: BillSessionInput): AppResult<BillSessionResult>
+    suspend fun voidWithCreditNote(saleId: Int, reason: String): AppResult<VoidCreditNoteResult>
+}
