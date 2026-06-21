@@ -8,11 +8,13 @@ import com.bendey.restaurant.feature.productos.ProductosScreen
 fun NavGraphBuilder.productosGraph(
     onOpenModificadores: () -> Unit = {},
     onOpenCombos: () -> Unit = {},
+    onShowMessage: (String) -> Unit = {},
 ) {
     composable(BendeyRoutes.PRODUCTOS) {
         ProductosScreen(
             onOpenModificadores = onOpenModificadores,
             onOpenCombos = onOpenCombos,
+            onShowMessage = onShowMessage,
         )
     }
 }

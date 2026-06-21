@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -24,8 +23,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
+import com.bendey.restaurant.core.ui.components.BendeySelectOption
+import com.bendey.restaurant.core.ui.components.BendeyTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,22 +40,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyTableCard
 import com.bendey.restaurant.core.designsystem.components.BendeyTableStatsRow
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
-import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
-import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MesasScreen(
     onOpenSession: (Int) -> Unit,
+    onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MesasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     LaunchedEffect(state.openSessionTarget) {
         state.openSessionTarget?.let { sessionId ->
@@ -71,7 +75,7 @@ fun MesasScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp),
+                    .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -88,7 +92,7 @@ fun MesasScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 FilterChip(
@@ -117,7 +121,7 @@ fun MesasScreen(
                 ocupada = state.stats.ocupada,
                 reservada = state.stats.reservada,
                 enConsumo = state.stats.enConsumo,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
             )
             BendeyTextField(
                 value = state.searchQuery,
@@ -129,9 +133,9 @@ fun MesasScreen(
                 val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     state.floorSections.forEach { section ->
@@ -164,63 +168,52 @@ fun MesasScreen(
     }
 
     state.openTableTarget?.let { table ->
-        AlertDialog(
+        val staffAutoId = -1
+        BendeyFormDialog(
             onDismissRequest = viewModel::dismissOpenDialog,
-            title = { Text("Abrir ${table.name}") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BendeyTextField(
-                        value = state.openForm.guests.toString(),
-                        onValueChange = { value ->
-                            val guests = value.filter { it.isDigit() }.toIntOrNull() ?: 1
-                            viewModel.updateOpenForm { it.copy(guests = guests) }
-                        },
-                        label = "Comensales",
-                    )
-                    BendeyTextField(
-                        value = state.openForm.notes,
-                        onValueChange = { notes ->
-                            viewModel.updateOpenForm { it.copy(notes = notes) }
-                        },
-                        label = "Notas (opcional)",
-                        singleLine = false,
-                    )
-                    if (state.staff.isNotEmpty()) {
-                        Text("Mozo", style = MaterialTheme.typography.labelLarge)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(
-                                selected = state.openForm.staffId == null,
-                                onClick = {
-                                    viewModel.updateOpenForm { it.copy(staffId = null) }
-                                },
-                                label = { Text("Auto") },
-                            )
-                            state.staff.take(4).forEach { staff ->
-                                FilterChip(
-                                    selected = state.openForm.staffId == staff.id,
-                                    onClick = {
-                                        viewModel.updateOpenForm { it.copy(staffId = staff.id) }
-                                    },
-                                    label = { Text(staff.displayName) },
-                                )
-                            }
+            title = "Abrir ${table.name}",
+            confirmText = if (state.opening) "Abriendo…" else "Abrir mesa",
+            confirmEnabled = !state.opening,
+            loading = state.opening,
+            onConfirm = viewModel::confirmOpenTable,
+            onDismiss = viewModel::dismissOpenDialog,
+        ) {
+            if (state.canAssignStaff && state.staff.isNotEmpty()) {
+                BendeySearchableSelect(
+                    options = listOf(BendeySelectOption(staffAutoId, "Yo (automático)")) +
+                        state.staff.map { BendeySelectOption(it.id, it.displayName) },
+                    selectedId = state.openForm.staffId ?: staffAutoId,
+                    onSelect = { id ->
+                        viewModel.updateOpenForm {
+                            it.copy(staffId = if (id == staffAutoId) null else id)
                         }
-                    }
-                }
-            },
-            confirmButton = {
-                BendeyPrimaryButton(
-                    text = if (state.opening) "Abriendo…" else "Abrir mesa",
-                    onClick = viewModel::confirmOpenTable,
-                    enabled = !state.opening,
+                    },
+                    label = "Empleado",
                 )
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissOpenDialog) {
-                    Text("Cancelar")
-                }
-            },
-        )
+            } else if (state.currentUserName.isNotBlank()) {
+                Text("Mozo", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = state.currentUserName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            BendeyTextField(
+                value = state.openForm.guestsText,
+                onValueChange = { value ->
+                    viewModel.updateOpenForm { it.copy(guestsText = value.filter { it.isDigit() }) }
+                },
+                label = "Comensales",
+            )
+            BendeyTextField(
+                value = state.openForm.notes,
+                onValueChange = { notes ->
+                    viewModel.updateOpenForm { it.copy(notes = notes) }
+                },
+                label = "Notas (opcional)",
+                singleLine = false,
+            )
+        }
     }
 }
 
@@ -232,7 +225,7 @@ private fun FloorSectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 10.dp, bottom = 2.dp),
+            .padding(top = 4.dp, bottom = 0.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

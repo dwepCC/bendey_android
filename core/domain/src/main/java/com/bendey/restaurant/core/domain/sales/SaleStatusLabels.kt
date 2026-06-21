@@ -26,3 +26,7 @@ fun saleStatusLabel(raw: String): String = when (raw.trim().lowercase()) {
 fun saleStatusDisplayLabel(status: String, billingStatus: String?): String =
     billingStatus?.let { billingStatusLabel(it) }?.takeIf { it != "—" }
         ?: saleStatusLabel(status)
+
+/** Etiqueta de lista para notas de venta: solo anuladas; las activas no muestran estado. */
+fun notaVentaListStatusLabel(status: String): String? =
+    if (isSaleCancelled(status)) "Anulada" else null

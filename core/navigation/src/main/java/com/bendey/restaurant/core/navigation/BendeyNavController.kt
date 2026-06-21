@@ -14,10 +14,6 @@ fun NavController.navigateToDashboard() {
 
 /** Destinos de la barra inferior (Inicio, POS, Mesas, Comandas). */
 fun NavController.navigateToBottomBarDestination(route: String) {
-    if (route == BendeyRoutes.DASHBOARD) {
-        navigateToDashboard()
-        return
-    }
     navigate(route, bottomBarNavOptions(this))
 }
 

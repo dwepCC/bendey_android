@@ -5,8 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
@@ -28,20 +25,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.ui.R
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -69,7 +65,6 @@ fun ReceiptPrintModal(
     if (!open) return
 
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
-    var pdfFormat by remember(open) { mutableStateOf(ReceiptPdfFormatUi.TICKET) }
 
     val paidTotal = remember(printData, total) {
         val payments = printData?.payments.orEmpty()
@@ -204,11 +199,11 @@ fun ReceiptPrintModal(
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             if (hasPrinter) {
                                 ReceiptActionButton(
-                                    label = "Imprimir",
+                                    label = "Reimprimir",
                                     icon = {
                                         if (busyAction == "print") {
                                             CircularProgressIndicator(
@@ -216,7 +211,11 @@ fun ReceiptPrintModal(
                                                 strokeWidth = 2.dp,
                                             )
                                         } else {
-                                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Icon(
+                                                Icons.Default.Print,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                            )
                                         }
                                     },
                                     containerColor = BendeyColors.SurfaceVariant,
@@ -227,67 +226,30 @@ fun ReceiptPrintModal(
                                 )
                             }
                             ReceiptActionButton(
-                                label = "Comprobante",
+                                label = "WhatsApp",
                                 icon = {
-                                    if (busyAction == "pdf") {
+                                    if (busyAction == "share") {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(18.dp),
                                             strokeWidth = 2.dp,
                                             color = Color.White,
                                         )
                                     } else {
-                                        Icon(Icons.Default.Article, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_whatsapp),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp),
+                                            tint = Color.White,
+                                        )
                                     }
                                 },
-                                containerColor = ReceiptDocActive,
+                                containerColor = WhatsAppGreen,
                                 contentColor = Color.White,
                                 enabled = busyAction == null && printData != null,
-                                onClick = { onOpenPdf(pdfFormat) },
+                                onClick = onShareWhatsApp,
                                 modifier = Modifier.weight(1f),
                             )
                         }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            ReceiptPdfFormatUi.entries.forEach { format ->
-                                FormatToggleChip(
-                                    label = format.label,
-                                    selected = pdfFormat == format,
-                                    selectedColor = if (format == ReceiptPdfFormatUi.TICKET) ReceiptDocActive else Color(0xFF991B1B),
-                                    onClick = { pdfFormat = format },
-                                    enabled = busyAction == null,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                        }
-                        Text(
-                            "Se abre con el visor PDF del dispositivo",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = BendeyColors.OnSurfaceVariant,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                        ReceiptActionButton(
-                            label = "WhatsApp",
-                            icon = {
-                                if (busyAction == "share") {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Color.White,
-                                    )
-                                }
-                            },
-                            containerColor = WhatsAppGreen,
-                            contentColor = Color.White,
-                            enabled = busyAction == null && printData != null,
-                            onClick = onShareWhatsApp,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                        )
                     }
                 }
                 Box(
@@ -327,43 +289,32 @@ private fun ReceiptActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Row(
         modifier = modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(containerColor.copy(alpha = if (enabled) 1f else 0.5f))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(vertical = 12.dp, horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         icon?.invoke()
-        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = contentColor)
-    }
-}
-
-@Composable
-private fun FormatToggleChip(
-    label: String,
-    selected: Boolean,
-    selectedColor: Color,
-    onClick: () -> Unit,
-    enabled: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) selectedColor else selectedColor.copy(alpha = 0.55f))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
+        if (icon != null) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        } else {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor,
+            )
+        }
     }
 }

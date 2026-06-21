@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Restaurant
@@ -42,6 +43,8 @@ fun PosSentOrdersSection(
     onReprint: (SessionOrderSummary) -> Unit,
     onReprintAll: () -> Unit,
     onVoidComanda: (SessionComandaSummary) -> Unit,
+    onEditComandaNotes: (SessionComandaSummary) -> Unit = {},
+    canAnularComanda: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (orders.isEmpty()) return
@@ -131,15 +134,28 @@ fun PosSentOrdersSection(
                                     accentColor = BendeyColors.OnSurfaceVariant,
                                 )
                                 IconButton(
-                                    onClick = { onVoidComanda(comanda) },
+                                    onClick = { onEditComandaNotes(comanda) },
                                     modifier = Modifier.size(32.dp),
                                 ) {
                                     Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Anular línea",
-                                        tint = BendeyColors.Error,
+                                        Icons.Default.Edit,
+                                        contentDescription = "Editar notas",
+                                        tint = BendeyColors.Primary,
                                         modifier = Modifier.size(18.dp),
                                     )
+                                }
+                                if (canAnularComanda) {
+                                    IconButton(
+                                        onClick = { onVoidComanda(comanda) },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Anular línea",
+                                            tint = BendeyColors.Error,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
                                 }
                             }
                         }

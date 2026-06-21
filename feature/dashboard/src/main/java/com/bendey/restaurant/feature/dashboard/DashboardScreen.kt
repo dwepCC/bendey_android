@@ -46,6 +46,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -61,6 +64,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
@@ -104,11 +109,26 @@ fun DashboardScreen(
                     cashLabel = state.cashLabel,
                 )
             }
-            item {
-                DateRangeFilterRow(
-                    selected = state.range,
-                    onSelect = viewModel::selectRange,
-                )
+            if (state.canChangeDateRange) {
+                item {
+                    var showCustomRange by remember { mutableStateOf(false) }
+                    DateRangeFilterRow(
+                        selected = state.range,
+                        onSelect = viewModel::selectRange,
+                        onCustomClick = { showCustomRange = true },
+                    )
+                    if (showCustomRange) {
+                        CustomDateRangeDialog(
+                            from = state.fromApi,
+                            to = state.toApi,
+                            onDismiss = { showCustomRange = false },
+                            onApply = { from, to ->
+                                viewModel.applyCustomRange(from, to)
+                                showCustomRange = false
+                            },
+                        )
+                    }
+                }
             }
             item {
                 Row(
@@ -273,7 +293,7 @@ private fun GreetingCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Hola, ${userName.ifBlank { "Administrador" }} 👋",
+                    text = "Hola, ${userName.ifBlank { "Administrador" }}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.OnSurface,
@@ -380,6 +400,7 @@ private fun ChangeBadge(pct: Double, range: DashboardRange) {
         DashboardRange.YESTERDAY -> " vs ant. ayer"
         DashboardRange.WEEK -> " vs sem. ant."
         DashboardRange.MONTH -> " vs mes ant."
+        DashboardRange.CUSTOM -> ""
     }
     val color = when {
         pct > 0 -> BendeyColors.Success
@@ -752,6 +773,7 @@ private fun revenueLabel(range: DashboardRange): String = when (range) {
     DashboardRange.YESTERDAY -> "Ingresos ayer"
     DashboardRange.WEEK -> "Ingresos (7 días)"
     DashboardRange.MONTH -> "Ingresos (30 días)"
+    DashboardRange.CUSTOM -> "Ingresos del período"
 }
 
 private fun ordersLabel(range: DashboardRange): String = when (range) {
@@ -759,12 +781,14 @@ private fun ordersLabel(range: DashboardRange): String = when (range) {
     DashboardRange.YESTERDAY -> "Pedidos ayer"
     DashboardRange.WEEK -> "Pedidos (7 días)"
     DashboardRange.MONTH -> "Pedidos (30 días)"
+    DashboardRange.CUSTOM -> "Pedidos del período"
 }
 
 @Composable
 private fun DateRangeFilterRow(
     selected: DashboardRange,
     onSelect: (DashboardRange) -> Unit,
+    onCustomClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -772,7 +796,7 @@ private fun DateRangeFilterRow(
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        DashboardRange.entries.forEach { range ->
+        DashboardRange.entries.filter { it != DashboardRange.CUSTOM }.forEach { range ->
             FilterChip(
                 selected = selected == range,
                 onClick = { onSelect(range) },
@@ -784,6 +808,45 @@ private fun DateRangeFilterRow(
                 shape = RoundedCornerShape(10.dp),
             )
         }
+        FilterChip(
+            selected = selected == DashboardRange.CUSTOM,
+            onClick = onCustomClick,
+            label = { Text("Rango") },
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = BendeyColors.Primary,
+                selectedLabelColor = BendeyColors.OnPrimary,
+            ),
+            shape = RoundedCornerShape(10.dp),
+        )
+    }
+}
+
+@Composable
+private fun CustomDateRangeDialog(
+    from: String,
+    to: String,
+    onDismiss: () -> Unit,
+    onApply: (String, String) -> Unit,
+) {
+    var fromValue by remember(from) { mutableStateOf(from) }
+    var toValue by remember(to) { mutableStateOf(to) }
+    BendeyFormDialog(
+        onDismissRequest = onDismiss,
+        title = "Rango de fechas",
+        confirmText = "Aplicar",
+        onConfirm = { onApply(fromValue.trim(), toValue.trim()) },
+        onDismiss = onDismiss,
+    ) {
+        BendeyTextField(
+            value = fromValue,
+            onValueChange = { fromValue = it },
+            label = "Desde (AAAA-MM-DD)",
+        )
+        BendeyTextField(
+            value = toValue,
+            onValueChange = { toValue = it },
+            label = "Hasta (AAAA-MM-DD)",
+        )
     }
 }
 
@@ -1011,6 +1074,7 @@ private fun RecentSessionsSection(
                                 session.tableName.takeIf { it.isNotBlank() },
                                 session.customerName.takeIf { it.isNotBlank() },
                                 session.orderType,
+                                recentSessionStatusLabel(session.orderStatus),
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,
                             color = BendeyColors.OnSurfaceVariant,

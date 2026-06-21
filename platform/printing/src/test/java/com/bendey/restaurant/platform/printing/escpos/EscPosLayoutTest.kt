@@ -39,11 +39,13 @@ class EscPosLayoutTest {
     }
 
     @Test
-    fun normalizeText_stripsAccents() {
-        val normalized = EscPosTextUtils.normalizeForPrint("Niño café año")
-        assertTrue(normalized.contains("Nino"))
-        assertTrue(normalized.contains("cafe"))
-        assertTrue(normalized.contains("anio"))
+    fun normalizeText_stripsAccentsAndSpecialChars() {
+        assertTrue(EscPosTextUtils.normalizeForPrint("año").contains("anio"))
+        assertTrue(EscPosTextUtils.normalizeForPrint("ají").contains("aji"))
+        assertTrue(EscPosTextUtils.normalizeForPrint("café").contains("cafe"))
+        val withDot = EscPosTextUtils.normalizeForPrint("Mesa · Cocina")
+        assertTrue(withDot.contains("Mesa - Cocina"))
+        assertTrue(!withDot.contains("·"))
     }
 
     @Test

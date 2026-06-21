@@ -212,7 +212,6 @@ class SettingsRepositoryImpl @Inject constructor(
             val current = api.getCompanyConfig()
             api.updateCompanyConfig(
                 current.copy(
-                    businessName = input.businessName.trim().ifBlank { current.businessName },
                     tradeName = input.tradeName.trim().ifBlank { current.tradeName },
                     address = input.address.trim().ifBlank { current.address },
                     phone = input.phone.trim().ifBlank { current.phone },
@@ -245,6 +244,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 name = it.name,
                 address = it.address,
                 phone = it.phone,
+                fiscalDomicileCode = it.fiscalDomicileCode.orEmpty(),
                 isMain = it.isMain,
                 active = it.active ?: true,
             )
@@ -278,7 +278,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 docType = input.docType.trim(),
                 series = input.series.trim(),
                 category = input.category,
-                sunatCode = input.sunatCode,
+                sunatCode = input.sunatCode.ifBlank { "00" },
             ),
         )
     }
@@ -290,8 +290,9 @@ class SettingsRepositoryImpl @Inject constructor(
                 series = input.series.trim(),
                 active = input.active,
                 docType = input.docType.trim(),
-                sunatCode = input.sunatCode,
+                sunatCode = input.sunatCode.ifBlank { "00" },
                 category = input.category,
+                correlative = input.currentNumber.takeIf { it >= 0 },
             ),
         )
     }
@@ -368,19 +369,29 @@ private fun BranchFormInput.toDto() = BranchUpsertRequestDto(
     name = name.trim(),
     address = address.trim(),
     phone = phone.trim(),
+    fiscalDomicileCode = fiscalDomicileCode.trim().ifBlank { null },
     isMain = isMain,
     active = active,
 )
 
-private fun DocumentSeriesDto.toDocumentSeries() = DocumentSeries(
-    id = id,
-    branchId = branchId,
-    docType = docType,
-    series = series,
-    category = category,
-    sunatCode = sunatCode,
-    active = active,
-)
+private fun DocumentSeriesDto.toDocumentSeries(): DocumentSeries {
+    val correlativeValue = correlative ?: currentNumber
+    val sales = salesCount ?: 0
+    val computedLocked = locked ?: (correlativeValue > 1 || sales > 0)
+    val computedCanDelete = canDelete ?: !computedLocked
+    return DocumentSeries(
+        id = id,
+        branchId = branchId,
+        docType = docType,
+        series = series,
+        category = category,
+        sunatCode = sunatCode,
+        active = active,
+        currentNumber = correlativeValue,
+        locked = computedLocked,
+        canDelete = computedCanDelete,
+    )
+}
 
 private fun ModifierGroupDto.toDomain() = ModifierGroup(
     id = id,

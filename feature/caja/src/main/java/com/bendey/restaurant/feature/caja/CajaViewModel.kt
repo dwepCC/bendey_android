@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.caja
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
@@ -13,7 +14,14 @@ import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.cash.CashSession
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
+import com.bendey.restaurant.core.domain.cash.CashFilterUser
+import com.bendey.restaurant.core.domain.cash.CashMovementReportRow
+import com.bendey.restaurant.core.domain.cash.CashMovementsReportQuery
+import com.bendey.restaurant.core.domain.cash.CashMovementsReportSummary
+import com.bendey.restaurant.core.domain.cash.CashPaymentsReport
+import com.bendey.restaurant.core.domain.cash.CashSessionProductSold
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -76,6 +84,15 @@ data class BankMovementForm(
     val date: String = java.time.LocalDate.now().toString(),
 )
 
+data class MovementsReportFilter(
+    val dateFrom: String = currentMonthStart(),
+    val dateTo: String = todayDate(),
+    val userId: Int? = null,
+    val sessionId: Int? = null,
+    val type: String = "",
+    val paymentMethod: String = "",
+)
+
 data class CloseCashForm(
     val closingBalance: String = "",
     val notes: String = "",
@@ -108,6 +125,16 @@ data class CajaUiState(
     val bankMovementsLoading: Boolean = false,
     val bankMovementForm: BankMovementForm = BankMovementForm(),
     val branchName: String? = null,
+    val canViewCashSettings: Boolean = true,
+    val canManageCashSettings: Boolean = false,
+    val movementsFilter: MovementsReportFilter = MovementsReportFilter(),
+    val movementsReportLoading: Boolean = false,
+    val movementsReportRows: List<CashMovementReportRow> = emptyList(),
+    val movementsReportSummary: CashMovementsReportSummary = CashMovementsReportSummary(),
+    val paymentsReport: CashPaymentsReport? = null,
+    val filterUsers: List<CashFilterUser> = emptyList(),
+    val reportProducts: List<CashSessionProductSold> = emptyList(),
+    val movementsExportBusy: Boolean = false,
     val showOpenDialog: Boolean = false,
     val showMovementDialog: Boolean = false,
     val showCloseDialog: Boolean = false,
@@ -136,7 +163,15 @@ class CajaViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
-                _uiState.update { it.copy(branchName = user?.activeBranch?.name) }
+                val perms = user?.restaurantPermissions.orEmpty()
+                val employeeType = user?.user?.employeeType
+                _uiState.update {
+                    it.copy(
+                        branchName = user?.activeBranch?.name,
+                        canViewCashSettings = RestaurantPermissions.canViewCashSettings(perms, employeeType),
+                        canManageCashSettings = RestaurantPermissions.canManageCashSettings(perms, employeeType),
+                    )
+                }
             }
         }
         refresh()
@@ -152,7 +187,8 @@ class CajaViewModel @Inject constructor(
                 sessionId?.let { loadReport(it) }
             }
             CajaTab.HISTORY -> loadHistory()
-            CajaTab.CONFIG -> loadConfig()
+            CajaTab.CONFIG -> if (_uiState.value.canViewCashSettings) loadConfig()
+            CajaTab.MOVEMENTS -> loadMovementsReportData()
             else -> Unit
         }
     }
@@ -220,8 +256,8 @@ class CajaViewModel @Inject constructor(
 
     fun confirmOpenSession() {
         val form = _uiState.value.openForm
-        val balance = form.openingBalance.replace(",", ".").toDoubleOrNull()
-        if (balance == null || balance < 0) {
+        val balance = form.openingBalance.replace(",", ".").toDoubleOrNull() ?: 0.0
+        if (balance < 0) {
             _uiState.update { it.copy(error = "Ingresa un monto inicial válido") }
             return
         }
@@ -477,8 +513,19 @@ class CajaViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(reportLoading = true, reportSessionId = sessionId, error = null) }
             when (val result = cashRepository.getSessionReport(sessionId)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(reportLoading = false, report = result.data, tab = CajaTab.REPORT)
+                is AppResult.Success -> {
+                    val products = when (val productsResult = cashRepository.getSessionProductsReport(sessionId)) {
+                        is AppResult.Success -> productsResult.data
+                        else -> emptyList()
+                    }
+                    _uiState.update {
+                        it.copy(
+                            reportLoading = false,
+                            report = result.data,
+                            reportProducts = products,
+                            tab = CajaTab.REPORT,
+                        )
+                    }
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(reportLoading = false, error = result.message)
@@ -488,15 +535,147 @@ class CajaViewModel @Inject constructor(
         }
     }
 
+    fun updateMovementsFilter(transform: (MovementsReportFilter) -> MovementsReportFilter) {
+        _uiState.update { it.copy(movementsFilter = transform(it.movementsFilter)) }
+    }
+
+    fun searchMovementsReport() {
+        loadMovementsReport(page = 1)
+    }
+
+    private fun loadMovementsReportData() {
+        viewModelScope.launch {
+            if (_uiState.value.filterUsers.isEmpty()) {
+                when (val users = cashRepository.listCashFilterUsers()) {
+                    is AppResult.Success -> _uiState.update { it.copy(filterUsers = users.data) }
+                    else -> Unit
+                }
+            }
+            if (_uiState.value.paymentMethods.isEmpty()) {
+                when (val methods = cashRepository.listPaymentMethods()) {
+                    is AppResult.Success -> _uiState.update { it.copy(paymentMethods = methods.data) }
+                    else -> Unit
+                }
+            }
+            loadMovementsReport(page = 1)
+        }
+    }
+
+    private fun loadMovementsReport(page: Int) {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            _uiState.update { it.copy(movementsReportLoading = true, error = null) }
+            val filter = state.movementsFilter
+            val query = CashMovementsReportQuery(
+                branchId = branchId,
+                userId = filter.userId,
+                dateFrom = filter.dateFrom,
+                dateTo = filter.dateTo,
+                sessionId = filter.sessionId,
+                type = filter.type.takeIf { it.isNotBlank() },
+                paymentMethod = filter.paymentMethod.takeIf { it.isNotBlank() },
+                page = page,
+                perPage = 25,
+            )
+            val cashResult = cashRepository.listMovementsReport(query)
+            val paymentsResult = cashRepository.getPaymentsReport(
+                from = filter.dateFrom,
+                to = filter.dateTo,
+                method = filter.paymentMethod.takeIf { it.isNotBlank() },
+                userId = filter.userId,
+                sessionId = filter.sessionId,
+            )
+            _uiState.update { current ->
+                current.copy(
+                    movementsReportLoading = false,
+                    movementsReportRows = (cashResult as? AppResult.Success)?.data?.rows.orEmpty(),
+                    movementsReportSummary = (cashResult as? AppResult.Success)?.data?.summary
+                        ?: CashMovementsReportSummary(),
+                    paymentsReport = (paymentsResult as? AppResult.Success)?.data,
+                    error = (cashResult as? AppResult.Error)?.message
+                        ?: (paymentsResult as? AppResult.Error)?.message,
+                )
+            }
+        }
+    }
+
+    fun exportMovementsReport(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(movementsExportBusy = true) }
+            val state = _uiState.value
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            val filter = state.movementsFilter
+            val query = CashMovementsReportQuery(
+                branchId = branchId,
+                userId = filter.userId,
+                dateFrom = filter.dateFrom,
+                dateTo = filter.dateTo,
+                sessionId = filter.sessionId,
+                type = filter.type.takeIf { it.isNotBlank() },
+                paymentMethod = filter.paymentMethod.takeIf { it.isNotBlank() },
+                page = 1,
+                perPage = 0,
+            )
+            val paymentsResult = cashRepository.getPaymentsReport(
+                from = filter.dateFrom,
+                to = filter.dateTo,
+                method = filter.paymentMethod.takeIf { it.isNotBlank() },
+                userId = filter.userId,
+                sessionId = filter.sessionId,
+            )
+            when (val cashResult = cashRepository.listMovementsReportAll(query)) {
+                is AppResult.Success -> {
+                    val electronic = filterNonCashPayments(
+                        (paymentsResult as? AppResult.Success)?.data,
+                    )
+                    exportCashMovementsCsv(
+                        context = context,
+                        cashRows = cashResult.data.rows,
+                        electronicRows = electronic,
+                        from = filter.dateFrom,
+                        to = filter.dateTo,
+                    )
+                    _uiState.update { it.copy(movementsExportBusy = false, snackMessage = "Movimientos exportados") }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(movementsExportBusy = false, snackMessage = cashResult.message ?: "No se pudo exportar")
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun exportSessionReportPdf(context: Context) {
+        val report = _uiState.value.report ?: return
+        val lines = formatSessionReportLines(report, _uiState.value.reportProducts)
+        shareSessionReportPdf(context, "Reporte caja #${report.session.id}", lines)
+        _uiState.update { it.copy(snackMessage = "Reporte PDF exportado") }
+    }
+
+    private fun filterNonCashPayments(report: CashPaymentsReport?): List<com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow> {
+        if (report == null) return emptyList()
+        val cashCodes = setOf("efectivo", "cash", "contado")
+        return report.detail.filter { row -> row.method.trim().lowercase() !in cashCodes }
+    }
+
+    fun requireManageCashSettings(): Boolean {
+        if (_uiState.value.canManageCashSettings) return true
+        _uiState.update { it.copy(error = "No tiene permiso para modificar la configuración de caja") }
+        return false
+    }
+
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
     }
 
     fun showCreatePaymentMethod() {
+        if (!requireManageCashSettings()) return
         _uiState.update { it.copy(showPaymentMethodDialog = true, paymentMethodForm = PaymentMethodForm()) }
     }
 
     fun showEditPaymentMethod(pm: CashPaymentMethod) {
+        if (!requireManageCashSettings()) return
         _uiState.update {
             it.copy(
                 showPaymentMethodDialog = true,
@@ -563,6 +742,7 @@ class CajaViewModel @Inject constructor(
     }
 
     fun deletePaymentMethod(id: Int) {
+        if (!requireManageCashSettings()) return
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             when (val result = cashRepository.deletePaymentMethod(id)) {
@@ -577,10 +757,12 @@ class CajaViewModel @Inject constructor(
     }
 
     fun showCreateBankAccount() {
+        if (!requireManageCashSettings()) return
         _uiState.update { it.copy(showBankAccountDialog = true, bankAccountForm = BankAccountForm()) }
     }
 
     fun showEditBankAccount(acc: CashBankAccount) {
+        if (!requireManageCashSettings()) return
         _uiState.update {
             it.copy(
                 showBankAccountDialog = true,
@@ -650,6 +832,7 @@ class CajaViewModel @Inject constructor(
     }
 
     fun showBankMovements(acc: CashBankAccount) {
+        if (!requireManageCashSettings()) return
         _uiState.update {
             it.copy(
                 showBankMovementsDialog = true,
@@ -744,3 +927,8 @@ class CajaViewModel @Inject constructor(
         }
     }
 }
+
+private fun todayDate(): String = java.time.LocalDate.now().toString()
+
+private fun currentMonthStart(): String =
+    java.time.LocalDate.now().withDayOfMonth(1).toString()

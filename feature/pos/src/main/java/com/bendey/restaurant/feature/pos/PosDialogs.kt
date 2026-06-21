@@ -69,7 +69,7 @@ fun PosPendingOrdersBar(
         modifier = modifier
             .fillMaxWidth()
             .background(BendeyColors.Surface)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -90,7 +90,7 @@ fun PosPendingOrdersBar(
         }
         OutlinedButton(
             onClick = onOpenPending,
-            modifier = Modifier.heightIn(min = 40.dp),
+            modifier = Modifier.heightIn(min = 36.dp),
         ) {
             BadgedBox(
                 badge = {

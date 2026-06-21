@@ -46,11 +46,16 @@ class EmailLoginViewModel @Inject constructor(
             authRepository.loginWithEmail(state.email, state.password)
                 .onSuccess { session ->
                     _uiState.update { it.copy(loading = false) }
-                    val route = RestaurantPermissions.defaultRoute(
-                        session.restaurantPermissions,
-                        session.user.employeeType,
-                    )
-                    onSuccess(route)
+                    if (!RestaurantPermissions.hasOperationalAccess(session.restaurantPermissions)) {
+                        authRepository.logout()
+                        _uiState.update { it.copy(error = "Tu usuario no tiene permisos operativos") }
+                    } else {
+                        val route = RestaurantPermissions.defaultRoute(
+                            session.restaurantPermissions,
+                            session.user.employeeType,
+                        )
+                        onSuccess(route)
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(loading = false, error = e.message ?: "Error de login") }

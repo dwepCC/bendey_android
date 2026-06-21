@@ -59,6 +59,27 @@ class SalesRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun listAllSalesForExport(
+        from: String?,
+        to: String?,
+        tab: VentasTab,
+        query: String?,
+        paymentMethod: String?,
+        billingStatus: String?,
+    ): AppResult<List<SaleSummary>> = apiCall {
+        val filters = tab.toListFilters()
+        tenantRetrofitProvider.create<SalesApi>().listSales(
+            query = query?.trim()?.takeIf { it.isNotEmpty() },
+            from = from,
+            to = to,
+            exportAll = 1,
+            sunatCode = filters.sunatCode,
+            docType = filters.docType,
+            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab == VentasTab.FACTURACION },
+            paymentMethod = paymentMethod?.trim()?.takeIf { it.isNotEmpty() },
+        ).data.map { it.toDomain() }
+    }
+
     override suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail> = apiCall {
         tenantRetrofitProvider.create<SalesApi>().getSale(saleId).toDomain()
     }

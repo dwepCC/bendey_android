@@ -135,7 +135,7 @@ class DashboardRepositoryImpl @Inject constructor(
                     id = it.id,
                     orderCode = it.orderCode,
                     orderType = it.orderType,
-                    orderStatus = it.orderStatus,
+                    orderStatus = it.orderStatus.ifBlank { it.status },
                     tableName = it.tableName,
                     customerName = it.customerName,
                     totalAmount = it.totalAmount,

@@ -25,11 +25,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun BendeyNavigationSuite(
     currentRoute: String?,
-    restaurantName: String,
+    appVersion: String,
     onNavigate: (TopLevelDestination) -> Unit,
     onDrawerNavigate: (BendeyDrawerDestination) -> Unit,
     onDisabledDestinationClick: (TopLevelDestination) -> Unit,
     modifier: Modifier = Modifier,
+    visibleBottomBarDestinations: List<TopLevelDestination> = TopLevelDestination.bottomBarDestinations,
+    visibleDrawerDestinations: List<BendeyDrawerDestination> = BendeyDrawerDestination.entries,
     topBar: @Composable (toggleDrawer: () -> Unit, drawerOpen: Boolean) -> Unit = { _, _ -> },
     showBottomBar: Boolean = true,
     content: @Composable (Modifier) -> Unit,
@@ -38,16 +40,18 @@ fun BendeyNavigationSuite(
     val scope = rememberCoroutineScope()
     val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
     val isCompact = widthClass == WindowWidthSizeClass.COMPACT
-    val leftItems = TopLevelDestination.bottomBarLeft.map {
+    val leftItems = visibleBottomBarDestinations.filter { it in TopLevelDestination.bottomBarLeft }.map {
         BendeyNavItem(it.route, it.label, it.shortLabel, it.icon)
     }
-    val centerItem = TopLevelDestination.bottomBarCenter.let {
+    val centerDest = visibleBottomBarDestinations.firstOrNull { it == TopLevelDestination.bottomBarCenter }
+    val showPosFab = centerDest != null && TopLevelDestination.POS in visibleBottomBarDestinations
+    val centerItem = centerDest?.let {
         BendeyNavItem(it.route, it.label, it.shortLabel, it.icon)
     }
-    val rightItems = TopLevelDestination.bottomBarRight.map {
+    val rightItems = visibleBottomBarDestinations.filter { it in TopLevelDestination.bottomBarRight }.map {
         BendeyNavItem(it.route, it.label, it.shortLabel, it.icon)
     }
-    val railDestinations = TopLevelDestination.bottomBarDestinations
+    val railDestinations = visibleBottomBarDestinations
 
     fun toggleDrawer() {
         scope.launch {
@@ -61,7 +65,8 @@ fun BendeyNavigationSuite(
         drawerContent = {
             BendeyNavigationDrawerContent(
                 currentRoute = currentRoute,
-                restaurantName = restaurantName,
+                appVersion = appVersion,
+                destinations = visibleDrawerDestinations,
                 onNavigate = { dest ->
                     scope.launch { drawerState.close() }
                     onDrawerNavigate(dest)
@@ -77,14 +82,15 @@ fun BendeyNavigationSuite(
             },
             showBottomBar = showBottomBar && isCompact,
             bottomBar = {
-                if (showBottomBar && isCompact) {
+                if (showBottomBar && isCompact && visibleBottomBarDestinations.isNotEmpty()) {
                     BendeyBottomNavigationBar(
                         currentRoute = currentRoute,
                         leftItems = leftItems,
                         centerItem = centerItem,
+                        showCenterFab = showPosFab,
                         rightItems = rightItems,
                         onNavigate = { item ->
-                            TopLevelDestination.bottomBarDestinations
+                            visibleBottomBarDestinations
                                 .firstOrNull { it.route == item.route }
                                 ?.let(onNavigate)
                         },

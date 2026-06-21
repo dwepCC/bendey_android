@@ -49,6 +49,14 @@ data class PinLoginRequestDto(
 )
 
 @Serializable
+data class SessionPermissionsDto(
+    val permissions: List<String>? = null,
+    @SerialName("employee_type") val employeeType: String? = null,
+    @SerialName("staff_id") val staffId: Int? = null,
+    @SerialName("auth_method") val authMethod: String? = null,
+)
+
+@Serializable
 data class EmailLoginRequestDto(
     val email: String,
     val password: String,

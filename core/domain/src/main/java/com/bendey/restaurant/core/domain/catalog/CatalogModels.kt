@@ -192,6 +192,7 @@ data class BranchItem(
     val name: String,
     val address: String,
     val phone: String,
+    val fiscalDomicileCode: String = "",
     val isMain: Boolean,
     val active: Boolean,
 )
@@ -201,6 +202,7 @@ data class BranchFormInput(
     val name: String = "",
     val address: String = "",
     val phone: String = "",
+    val fiscalDomicileCode: String = "",
     val isMain: Boolean = false,
     val active: Boolean = true,
 )
@@ -213,6 +215,9 @@ data class SeriesFormInput(
     val category: String = "venta",
     val sunatCode: String = "00",
     val active: Boolean = true,
+    val currentNumber: Int = 0,
+    val locked: Boolean = false,
+    val canDelete: Boolean = true,
 )
 
 data class RestaurantSettings(

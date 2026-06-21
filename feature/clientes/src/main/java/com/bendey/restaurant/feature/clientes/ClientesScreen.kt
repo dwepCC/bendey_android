@@ -47,8 +47,11 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 
@@ -56,13 +59,16 @@ import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 @Composable
 fun ClientesScreen(
     modifier: Modifier = Modifier,
+    onShowMessage: (String) -> Unit = {},
     viewModel: ClientesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     PullToRefreshBox(
         isRefreshing = state.loading && state.contacts.isEmpty(),
@@ -222,19 +228,15 @@ private fun ContactFormDialog(
         confirmEnabled = !loading && !consulting,
         loading = loading,
     ) {
-        Text("Tipo de documento", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            ContactDocType.entries.forEach { docType ->
-                FilterChip(
-                    selected = form.docType == docType,
-                    onClick = { onFormChange { it.copy(docType = docType) } },
-                    label = { Text(docType.label) },
-                )
-            }
-        }
+        BendeySimpleSelect(
+            options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },
+            selectedValue = form.docType.name,
+            onSelect = { value ->
+                val docType = ContactDocType.entries.firstOrNull { it.name == value } ?: ContactDocType.RUC
+                onFormChange { it.copy(docType = docType) }
+            },
+            label = "Tipo de documento",
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

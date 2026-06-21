@@ -9,6 +9,10 @@ import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.StaffOption
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import com.bendey.restaurant.core.domain.restaurant.toTableStats
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.restaurant.sortRestaurantTables
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +22,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class OpenTableForm(
-    val guests: Int = 2,
+    val guestsText: String = "2",
     val notes: String = "",
     val staffId: Int? = null,
 )
@@ -42,12 +46,18 @@ data class MesasUiState(
     val error: String? = null,
     val snackMessage: String? = null,
     val openSessionTarget: Int? = null,
+    val canAssignStaff: Boolean = false,
+    val currentUserName: String = "",
+    val currentUserStaffId: Int? = null,
 ) {
+    private val sortedTables: List<RestaurantTable>
+        get() = sortRestaurantTables(tables, floors)
+
     val filteredTables: List<RestaurantTable>
         get() {
             val term = searchQuery.trim().lowercase()
-            val base = if (selectedFloorId == null) tables
-            else tables.filter { it.floorId == selectedFloorId }
+            val base = if (selectedFloorId == null) sortedTables
+            else sortedTables.filter { it.floorId == selectedFloorId }
             return if (term.isBlank()) base
             else base.filter { it.name.lowercase().contains(term) }
         }
@@ -75,6 +85,8 @@ data class MesasUiState(
 @HiltViewModel
 class MesasViewModel @Inject constructor(
     private val mesasRepository: MesasRepository,
+    private val settingsRepository: SettingsRepository,
+    private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MesasUiState())
@@ -82,6 +94,44 @@ class MesasViewModel @Inject constructor(
 
     init {
         refresh()
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.collect { session ->
+                val perms = session?.restaurantPermissions.orEmpty()
+                val canAssign = RestaurantPermissions.canAssignTableStaff(perms)
+                _uiState.update {
+                    it.copy(
+                        canAssignStaff = canAssign,
+                        currentUserName = session?.user?.name.orEmpty(),
+                        currentUserStaffId = session?.user?.staffId,
+                    )
+                }
+                if (canAssign) loadStaffOptions(canAssign = true)
+            }
+        }
+    }
+
+    private fun loadStaffOptions(canAssign: Boolean) {
+        viewModelScope.launch {
+            if (!canAssign) {
+                _uiState.update { it.copy(staff = emptyList()) }
+                return@launch
+            }
+            when (val result = settingsRepository.listStaffManagement()) {
+                is AppResult.Success -> {
+                    val waiters = result.data.mapNotNull { row ->
+                        val staffId = row.staffId ?: return@mapNotNull null
+                        if (!row.staffActive || row.employeeType !in WAITER_TYPES) return@mapNotNull null
+                        StaffOption(
+                            id = staffId,
+                            displayName = row.displayName.ifBlank { row.name }.ifBlank { row.staffCode },
+                            employeeType = row.employeeType,
+                        )
+                    }.distinctBy { it.id }
+                    _uiState.update { it.copy(staff = waiters) }
+                }
+                else -> Unit
+            }
+        }
     }
 
     fun refresh() {
@@ -104,14 +154,8 @@ class MesasViewModel @Inject constructor(
                 }
                 AppResult.Loading -> Unit
             }
-            when (val staffResult = mesasRepository.loadStaff()) {
-                is AppResult.Success -> {
-                    val waiters = staffResult.data.filter { staff ->
-                        staff.employeeType in WAITER_TYPES
-                    }
-                    _uiState.update { it.copy(staff = waiters) }
-                }
-                else -> Unit
+            if (_uiState.value.canAssignStaff) {
+                loadStaffOptions(canAssign = true)
             }
         }
     }
@@ -126,8 +170,21 @@ class MesasViewModel @Inject constructor(
 
     fun onTableClick(table: RestaurantTable) {
         when (table.status) {
-            TableStatus.LIBRE -> _uiState.update {
-                it.copy(openTableTarget = table, openForm = OpenTableForm())
+            TableStatus.LIBRE -> {
+                val state = _uiState.value
+                val defaultStaffId = when {
+                    state.canAssignStaff -> null
+                    else -> state.currentUserStaffId
+                }
+                _uiState.update {
+                    it.copy(
+                        openTableTarget = table,
+                        openForm = OpenTableForm(staffId = defaultStaffId),
+                    )
+                }
+                if (state.canAssignStaff && state.staff.isEmpty()) {
+                    loadStaffOptions(canAssign = true)
+                }
             }
             TableStatus.OCUPADA, TableStatus.EN_CONSUMO -> {
                 table.sessionId?.let { sessionId ->
@@ -149,12 +206,17 @@ class MesasViewModel @Inject constructor(
     fun confirmOpenTable() {
         val state = _uiState.value
         val table = state.openTableTarget ?: return
+        val guests = state.openForm.guestsText.filter { it.isDigit() }.toIntOrNull()?.coerceAtLeast(1)
+        if (guests == null) {
+            _uiState.update { it.copy(error = "Ingrese un número de comensales válido") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(opening = true, error = null) }
             when (
                 val result = mesasRepository.openTableSession(
                     tableId = table.id,
-                    guests = state.openForm.guests.coerceAtLeast(1),
+                    guests = guests,
                     notes = state.openForm.notes,
                     staffId = state.openForm.staffId,
                 )
@@ -186,6 +248,6 @@ class MesasViewModel @Inject constructor(
     }
 
     companion object {
-        private val WAITER_TYPES = setOf("waiter", "cashier", "admin", "supervisor")
+        private val WAITER_TYPES = setOf("waiter", "mozo", "cashier", "admin", "supervisor")
     }
 }

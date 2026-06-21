@@ -1,21 +1,27 @@
 package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
+import com.bendey.restaurant.core.domain.billing.BillQuickSaleInput
 import com.bendey.restaurant.core.domain.billing.BillSessionInput
 import com.bendey.restaurant.core.domain.billing.BillSessionResult
+import com.bendey.restaurant.core.domain.billing.BillingDocumentKind
 import com.bendey.restaurant.core.domain.billing.BillingRepository
+import com.bendey.restaurant.core.domain.billing.BankAccountBrief
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.ContactBrief
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.network.api.CashbankApi
+import com.bendey.restaurant.core.network.api.SettingsApi
 import com.bendey.restaurant.core.network.api.CompanyApi
 import com.bendey.restaurant.core.network.api.ContactsApi
 import com.bendey.restaurant.core.network.api.RestaurantApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
+import com.bendey.restaurant.core.network.dto.BillQuickSaleRequestDto
 import com.bendey.restaurant.core.network.dto.BillSessionRequestDto
 import com.bendey.restaurant.core.network.dto.BillPaymentDto
+import com.bendey.restaurant.core.network.dto.OrderItemInputDto
 import com.bendey.restaurant.core.network.dto.ContactDto
 import com.bendey.restaurant.core.network.dto.DocumentSeriesDto
 import com.bendey.restaurant.core.network.dto.PaymentMethodDto
@@ -60,10 +66,25 @@ class BillingRepositoryImpl @Inject constructor(
             .data
             .filter { it.active }
             .map { it.toDomain() }
+        val bankAccounts = tenantRetrofitProvider.create<CashbankApi>()
+            .listBankAccounts(all = "1")
+            .data
+            .map {
+                BankAccountBrief(
+                    id = it.id,
+                    paymentMethod = it.paymentMethod,
+                    active = it.active,
+                )
+            }
+        val sunatEnabled = tenantRetrofitProvider.create<SettingsApi>()
+            .getSunatConfig()
+            .sunatEnabled
         CheckoutMeta(
             series = series,
             contacts = contacts,
             paymentMethods = paymentMethods,
+            bankAccounts = bankAccounts,
+            sunatEnabled = sunatEnabled,
         ).also { operationalDataCache.setCheckoutMeta(branchId, it) }
     }
 
@@ -80,6 +101,36 @@ class BillingRepositoryImpl @Inject constructor(
                 cashSessionId = input.cashSessionId,
                 closeSession = input.closeSession,
                 discountAmount = input.discountAmount?.takeIf { it > 0 },
+                payments = input.payments.map {
+                    BillPaymentDto(
+                        method = it.method,
+                        amount = it.amount,
+                        reference = it.reference,
+                    )
+                },
+            ),
+        )
+        val data = response.data ?: error("Venta no generada")
+        BillSessionResult(
+            saleId = data.id,
+            number = data.number,
+            total = data.total,
+            printData = response.printData?.toDomain(),
+        )
+    }
+
+    override suspend fun billQuickSale(
+        input: BillQuickSaleInput,
+    ): AppResult<BillSessionResult> = apiCall {
+        val response = tenantRetrofitProvider.create<RestaurantApi>().billQuickSale(
+            body = BillQuickSaleRequestDto(
+                seriesId = input.seriesId,
+                docType = input.docType,
+                contactId = input.contactId,
+                cashSessionId = input.cashSessionId,
+                discountAmount = input.discountAmount?.takeIf { it > 0 },
+                notes = input.notes?.takeIf { it.isNotBlank() },
+                items = input.items.map { it.toBillingDto() },
                 payments = input.payments.map {
                     BillPaymentDto(
                         method = it.method,
@@ -128,15 +179,29 @@ class BillingRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun downloadOfficialPdf(saleId: Int): AppResult<File> = apiCall {
-        val body = tenantRetrofitProvider.create<BillingApi>().downloadOfficialPdf(saleId)
+    override suspend fun downloadOfficialPdf(saleId: Int): AppResult<File> =
+        downloadBillingDocument(saleId, BillingDocumentKind.PDF)
+
+    override suspend fun downloadBillingDocument(saleId: Int, kind: BillingDocumentKind): AppResult<File> = apiCall {
+        val body = tenantRetrofitProvider.create<BillingApi>().downloadDocument(saleId, kind.pathSegment)
         val dir = File(context.cacheDir, "sunat-docs").also { it.mkdirs() }
-        val file = File(dir, "sunat-$saleId.pdf")
+        val file = File(dir, "sunat-$saleId-${kind.pathSegment}.${fileExtension(kind)}")
         body.byteStream().use { input ->
             file.outputStream().use { output -> input.copyTo(output) }
         }
         file
     }
+
+    override suspend fun loadBillingDocumentText(saleId: Int, kind: BillingDocumentKind): AppResult<String> = apiCall {
+        val body = tenantRetrofitProvider.create<BillingApi>().downloadDocument(saleId, kind.pathSegment)
+        body.string()
+    }
+}
+
+private fun fileExtension(kind: BillingDocumentKind): String = when (kind) {
+    BillingDocumentKind.CDR -> "zip"
+    BillingDocumentKind.PDF -> "pdf"
+    BillingDocumentKind.XML, BillingDocumentKind.XML_GENERATED -> "xml"
 }
 
 fun pickDefaultNotaVentaSeries(series: List<DocumentSeries>): DocumentSeries? {
@@ -165,15 +230,24 @@ private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
     AppResult.Error(mapped.message ?: "Error de conexión", mapped)
 }
 
-private fun DocumentSeriesDto.toDomain() = DocumentSeries(
-    id = id,
-    branchId = branchId,
-    docType = docType,
-    series = series,
-    category = category,
-    sunatCode = sunatCode,
-    active = active,
-)
+private fun DocumentSeriesDto.toDomain(): DocumentSeries {
+    val correlativeValue = correlative ?: currentNumber
+    val sales = salesCount ?: 0
+    val computedLocked = locked ?: (correlativeValue > 1 || sales > 0)
+    val computedCanDelete = canDelete ?: !computedLocked
+    return DocumentSeries(
+        id = id,
+        branchId = branchId,
+        docType = docType,
+        series = series,
+        category = category,
+        sunatCode = sunatCode,
+        active = active,
+        currentNumber = correlativeValue,
+        locked = computedLocked,
+        canDelete = computedCanDelete,
+    )
+}
 
 private fun ContactDto.toDomain() = ContactBrief(
     id = id,
@@ -188,5 +262,21 @@ private fun PaymentMethodDto.toDomain() = PaymentMethodOption(
     name = name,
     code = code,
     destinationType = destinationType,
+    bankAccountId = bankAccountId,
     active = active,
+)
+
+private fun com.bendey.restaurant.core.domain.restaurant.OrderItemInput.toBillingDto() = OrderItemInputDto(
+    itemKind = itemKind,
+    productId = productId,
+    productCode = productCode.takeIf { it.isNotBlank() },
+    productName = productName,
+    quantity = quantity,
+    unitPrice = unitPrice,
+    notes = notes?.takeIf { it.isNotBlank() },
+    modifiersJson = modifiersJson?.takeIf { it.isNotBlank() },
+    comboId = comboId,
+    comboConfigJson = comboConfigJson?.takeIf { it.isNotBlank() },
+    igvAffectationType = igvAffectationType,
+    priceIncludesIgv = priceIncludesIgv,
 )

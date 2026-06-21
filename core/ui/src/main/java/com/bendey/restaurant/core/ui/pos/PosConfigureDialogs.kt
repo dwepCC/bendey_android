@@ -13,12 +13,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.ComboSlot
+import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
 import com.bendey.restaurant.core.domain.pos.CartModifierEntry
@@ -40,8 +42,8 @@ fun PosCatalogTabRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(horizontal = 12.dp, vertical = 0.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         PosCatalogTab.entries.forEach { tab ->
             FilterChip(
@@ -65,6 +67,7 @@ fun ProductConfigureDialog(
     currency: NumberFormat,
     onSelectPresentation: (ProductPresentation) -> Unit,
     onToggleExtra: (ModifierGroup, Int) -> Unit,
+    onSetExtraQuantity: (ModifierGroup, Int, Int) -> Unit = { _, _, _ -> },
     onKitchenNoteChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
@@ -94,15 +97,34 @@ fun ProductConfigureDialog(
                     Text(group.name + if (group.required) " *" else "", style = MaterialTheme.typography.labelLarge)
                     group.options.forEach { opt ->
                         val optionId = opt.id ?: return@forEach
-                        val picked = selected.any { it.type == "modifier" && it.optionId == optionId }
-                        FilterChip(
-                            selected = picked,
-                            onClick = { onToggleExtra(group, optionId) },
-                            label = {
-                                val extra = if (opt.extraPrice > 0) " +${currency.format(opt.extraPrice)}" else ""
-                                Text("${opt.name}$extra")
-                            },
-                        )
+                        val picked = selected.firstOrNull { it.type == "modifier" && it.optionId == optionId }
+                        if (group.selectionMode == ModifierSelectionMode.QUANTITY) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("${opt.name} (+${currency.format(opt.extraPrice)})")
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextButton(onClick = {
+                                        onSetExtraQuantity(group, optionId, (picked?.quantity ?: 0) - 1)
+                                    }) { Text("-") }
+                                    Text((picked?.quantity ?: 0).toString())
+                                    TextButton(onClick = {
+                                        onSetExtraQuantity(group, optionId, (picked?.quantity ?: 0) + 1)
+                                    }) { Text("+") }
+                                }
+                            }
+                        } else {
+                            FilterChip(
+                                selected = picked != null,
+                                onClick = { onToggleExtra(group, optionId) },
+                                label = {
+                                    val extra = if (opt.extraPrice > 0) " +${currency.format(opt.extraPrice)}" else ""
+                                    Text("${opt.name}$extra")
+                                },
+                            )
+                        }
                     }
                 }
                 BendeyTextField(kitchenNote, onKitchenNoteChange, "Notas para cocina", singleLine = false)
@@ -125,11 +147,21 @@ fun ComboConfigureDialog(
     validationError: String?,
     resolvedPrice: Double?,
     currency: NumberFormat,
+    componentModifierGroups: Map<Int, List<ModifierGroup>> = emptyMap(),
+    componentModifiers: Map<Int, List<CartModifierEntry>> = emptyMap(),
+    componentProductNames: Map<Int, String> = emptyMap(),
+    componentPresentations: Map<Int, List<ProductPresentation>> = emptyMap(),
+    onToggleComponentModifier: (Int, ModifierGroup, Int) -> Unit = { _, _, _ -> },
+    onSelectComponentPresentation: (Int, ProductPresentation) -> Unit = { _, _ -> },
     onToggleSlot: (ComboSlot, Int) -> Unit,
     onKitchenNoteChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val configuredProductIds = buildSet {
+        componentModifierGroups.keys.forEach { add(it) }
+        componentPresentations.keys.forEach { add(it) }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(combo.name, fontWeight = FontWeight.SemiBold) },
@@ -139,6 +171,13 @@ fun ComboConfigureDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (loading) Text("Cargando combo…", color = BendeyColors.OnSurfaceVariant)
+                form?.fixedItems?.takeIf { it.isNotEmpty() }?.let { fixedItems ->
+                    Text("Incluye", style = MaterialTheme.typography.labelLarge)
+                    fixedItems.forEach { item ->
+                        val name = componentProductNames[item.productId] ?: "Producto #${item.productId}"
+                        Text("· $name", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    }
+                }
                 form?.slots?.forEach { slot ->
                     Text(slot.name, style = MaterialTheme.typography.labelLarge)
                     slot.options.forEach { opt ->
@@ -148,11 +187,48 @@ fun ComboConfigureDialog(
                             selected = picked,
                             onClick = { onToggleSlot(slot, optionId) },
                             label = {
-                                val label = opt.productName ?: "Opción $optionId"
+                                val label = opt.productName ?: componentProductNames[opt.productId] ?: "Opción $optionId"
                                 val upgrade = if (opt.upgradePrice > 0) " +${currency.format(opt.upgradePrice)}" else ""
                                 Text("$label$upgrade")
                             },
                         )
+                    }
+                }
+                configuredProductIds.forEach { productId ->
+                    val productName = componentProductNames[productId] ?: "Producto #$productId"
+                    val groups = componentModifierGroups[productId].orEmpty()
+                    val presentations = componentPresentations[productId].orEmpty()
+                    if (groups.isEmpty() && presentations.isEmpty()) return@forEach
+                    Text("Extras: $productName", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    if (presentations.isNotEmpty()) {
+                        Text("Presentación", style = MaterialTheme.typography.bodySmall)
+                        presentations.forEach { pres ->
+                            val picked = componentModifiers[productId]?.any {
+                                it.type == "variant" && it.optionId == (pres.id ?: 0)
+                            } == true
+                            FilterChip(
+                                selected = picked,
+                                onClick = { onSelectComponentPresentation(productId, pres) },
+                                label = { Text("${pres.name} · ${currency.format(pres.salePrice)}") },
+                            )
+                        }
+                    }
+                    groups.forEach { group ->
+                        Text(group.name + if (group.required) " *" else "", style = MaterialTheme.typography.bodySmall)
+                        group.options.forEach { opt ->
+                            val optionId = opt.id ?: return@forEach
+                            val picked = componentModifiers[productId]?.any {
+                                it.type == "modifier" && it.optionId == optionId
+                            } == true
+                            FilterChip(
+                                selected = picked,
+                                onClick = { onToggleComponentModifier(productId, group, optionId) },
+                                label = {
+                                    val extra = if (opt.extraPrice > 0) " +${currency.format(opt.extraPrice)}" else ""
+                                    Text("${opt.name}$extra")
+                                },
+                            )
+                        }
                     }
                 }
                 BendeyTextField(kitchenNote, onKitchenNoteChange, "Notas para cocina", singleLine = false)

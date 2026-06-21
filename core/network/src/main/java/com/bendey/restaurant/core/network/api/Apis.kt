@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.network.api
 
 import com.bendey.restaurant.core.network.dto.BulkImportRequestDto
 import com.bendey.restaurant.core.network.dto.BulkImportResponseDto
+import com.bendey.restaurant.core.network.dto.BillQuickSaleRequestDto
 import com.bendey.restaurant.core.network.dto.BillSessionRequestDto
 import com.bendey.restaurant.core.network.dto.BillSessionResponseDto
 import com.bendey.restaurant.core.network.dto.AddOrderRequestDto
@@ -28,6 +29,8 @@ import com.bendey.restaurant.core.network.dto.OpenOrderSummaryDto
 import com.bendey.restaurant.core.network.dto.OpenSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OpenSessionResponseDto
 import com.bendey.restaurant.core.network.dto.PinLoginRequestDto
+import com.bendey.restaurant.core.network.dto.SessionPermissionsDto
+import com.bendey.restaurant.core.network.dto.PaymentsReportResponseDto
 import com.bendey.restaurant.core.network.dto.PrecuentaResponseDto
 import com.bendey.restaurant.core.network.dto.SessionDetailResponseDto
 import com.bendey.restaurant.core.network.dto.ProductListResponseDto
@@ -41,6 +44,7 @@ import com.bendey.restaurant.core.network.dto.SetUserStaffRequestDto
 import com.bendey.restaurant.core.network.dto.SetUserStaffResponseDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
 import com.bendey.restaurant.core.network.dto.TenantByRucDto
+import com.bendey.restaurant.core.network.dto.UpdateComandaNotesRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
 import retrofit2.http.Body
@@ -64,6 +68,9 @@ interface AuthApi {
 
     @POST("/api/restaurant/auth/pin")
     suspend fun pinLogin(@Body body: PinLoginRequestDto): LoginResponseDto
+
+    @GET("/api/restaurant/session/permissions")
+    suspend fun getSessionPermissions(): SessionPermissionsDto
 }
 
 interface RestaurantApi {
@@ -81,6 +88,15 @@ interface RestaurantApi {
 
     @GET("/api/restaurant/operational-status")
     suspend fun getOperationalStatus(): OperationalStatusResponseDto
+
+    @GET("/api/restaurant/payments-report")
+    suspend fun getPaymentsReport(
+        @Query("from") from: String,
+        @Query("to") to: String,
+        @Query("method") method: String? = null,
+        @Query("user_id") userId: Int? = null,
+        @Query("session_id") sessionId: Int? = null,
+    ): PaymentsReportResponseDto
 
     @GET("/api/restaurant/floors")
     suspend fun listFloors(): ListResponseDto<FloorDto>
@@ -161,10 +177,26 @@ interface RestaurantApi {
         @Path("sessionId") sessionId: Int,
     ): SuccessResponseDto
 
+    @PATCH("/api/restaurant/comandas/{comandaId}/notes")
+    suspend fun updateComandaNotes(
+        @Path("comandaId") comandaId: Int,
+        @Body body: UpdateComandaNotesRequestDto,
+    ): SuccessResponseDto
+
+    @POST("/api/restaurant/table-orders/{tableOrderId}/printed")
+    suspend fun markTableOrderPrinted(
+        @Path("tableOrderId") tableOrderId: Int,
+    ): SuccessResponseDto
+
     @POST("/api/restaurant/sessions/{sessionId}/bill")
     suspend fun billSession(
         @retrofit2.http.Path("sessionId") sessionId: Int,
         @Body body: BillSessionRequestDto,
+    ): BillSessionResponseDto
+
+    @POST("/api/restaurant/quick-sale/bill")
+    suspend fun billQuickSale(
+        @Body body: BillQuickSaleRequestDto,
     ): BillSessionResponseDto
 
     @POST("/api/restaurant/floors")

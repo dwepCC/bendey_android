@@ -7,6 +7,7 @@ import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
 import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
+import com.bendey.restaurant.core.domain.billing.BillingDocumentKind
 import com.bendey.restaurant.core.domain.billing.BillingRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
@@ -18,6 +19,8 @@ import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
+import com.bendey.restaurant.core.domain.permission.RestaurantFeature
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.realtime.billing.BillingEventsClient
 import com.bendey.restaurant.core.realtime.billing.BillingStatusEvent
@@ -28,7 +31,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,8 +89,14 @@ data class VentasUiState(
     val receiptBusy: String? = null,
     val error: String? = null,
     val snackMessage: String? = null,
+    val exportBusy: String? = null,
+    val xmlViewOpen: Boolean = false,
+    val xmlViewTitle: String = "",
+    val xmlViewContent: String = "",
     val listSummary: com.bendey.restaurant.core.domain.sales.SaleListSummary = com.bendey.restaurant.core.domain.sales.SaleListSummary(),
 ) {
+    val canFetchList: Boolean
+        get() = tab == VentasTab.NOTAS || sunatEnabled
     val hasMore: Boolean get() = sales.size < total
 
     val electronicSeries: List<DocumentSeries>
@@ -117,9 +128,24 @@ class VentasViewModel @Inject constructor(
         viewModelScope.launch {
             billingEventsClient.events.collect(::applyBillingEvent)
         }
-        warmCheckoutMeta()
-        syncBillingStream(_uiState.value.tab)
-        refresh()
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .map { session ->
+                    val perms = session?.restaurantPermissions.orEmpty()
+                    val et = session?.user?.employeeType
+                    RestaurantPermissions.canAccessFeature(perms, RestaurantFeature.VENTAS, et)
+                }
+                .distinctUntilChanged()
+                .collect { canAccess ->
+                    if (canAccess) {
+                        warmCheckoutMeta()
+                        syncBillingStream(_uiState.value.tab)
+                        refresh()
+                    } else {
+                        _uiState.update { it.copy(loading = false, sales = emptyList(), error = null) }
+                    }
+                }
+        }
     }
 
     override fun onCleared() {
@@ -207,15 +233,11 @@ class VentasViewModel @Inject constructor(
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
             when (val result = billingRepository.loadCheckoutMeta(branchId)) {
                 is AppResult.Success -> {
-                    val sunat = result.data.series.any {
-                        val code = it.sunatCode?.trim().orEmpty()
-                        code == "01" || code == "03"
-                    }
                     val hasPrinter = documentPrintService.hasConfiguredPrinter()
                     _uiState.update {
                         it.copy(
                             checkoutMeta = result.data,
-                            sunatEnabled = sunat,
+                            sunatEnabled = result.data.sunatEnabled,
                             receiptHasPrinter = hasPrinter,
                         )
                     }
@@ -241,6 +263,12 @@ class VentasViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             val state = _uiState.value
+            if (!state.canFetchList) {
+                _uiState.update {
+                    it.copy(loading = false, sales = emptyList(), total = 0, listSummary = com.bendey.restaurant.core.domain.sales.SaleListSummary())
+                }
+                return@launch
+            }
             _uiState.update { it.copy(loading = true, error = null) }
             when (
                 val result = salesRepository.listSales(
@@ -273,7 +301,7 @@ class VentasViewModel @Inject constructor(
 
     fun loadMore() {
         val state = _uiState.value
-        if (state.loading || !state.hasMore) return
+        if (state.loading || !state.hasMore || !state.canFetchList) return
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true) }
             val nextPage = state.page + 1
@@ -563,19 +591,130 @@ class VentasViewModel @Inject constructor(
     }
 
     fun openOfficialSunatPdf(context: Context) {
+        downloadBillingDocument(context, BillingDocumentKind.PDF, openPdf = true)
+    }
+
+    fun downloadXmlSent(context: Context) {
+        downloadBillingDocument(context, BillingDocumentKind.XML, openPdf = false)
+    }
+
+    fun downloadXmlGenerated(context: Context) {
+        downloadBillingDocument(context, BillingDocumentKind.XML_GENERATED, openPdf = false)
+    }
+
+    fun downloadCdr(context: Context) {
+        downloadBillingDocument(context, BillingDocumentKind.CDR, openPdf = false)
+    }
+
+    fun viewXmlSent() {
+        viewBillingXml(BillingDocumentKind.XML, "XML enviado")
+    }
+
+    fun viewXmlGenerated() {
+        viewBillingXml(BillingDocumentKind.XML_GENERATED, "XML generado")
+    }
+
+    fun dismissXmlView() {
+        _uiState.update { it.copy(xmlViewOpen = false, xmlViewContent = "", xmlViewTitle = "") }
+    }
+
+    private fun viewBillingXml(kind: BillingDocumentKind, title: String) {
         val saleId = _uiState.value.detail?.id ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(billingBusy = "pdf") }
-            when (val result = billingRepository.downloadOfficialPdf(saleId)) {
-                is AppResult.Success -> {
-                    val uri = receiptPdfService.uriFor(result.data)
-                    withContext(Dispatchers.Main) {
-                        ReceiptShareHelper.openPdfExternal(context, uri)
-                    }
-                    _uiState.update { it.copy(billingBusy = null, snackMessage = "PDF oficial abierto") }
+            _uiState.update { it.copy(billingBusy = kind.pathSegment) }
+            when (val result = billingRepository.loadBillingDocumentText(saleId, kind)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        billingBusy = null,
+                        xmlViewOpen = true,
+                        xmlViewTitle = title,
+                        xmlViewContent = result.data,
+                    )
                 }
                 is AppResult.Error -> _uiState.update {
-                    it.copy(billingBusy = null, snackMessage = result.message ?: "PDF no disponible")
+                    it.copy(billingBusy = null, snackMessage = result.message ?: "XML no disponible")
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    private fun downloadBillingDocument(context: Context, kind: BillingDocumentKind, openPdf: Boolean) {
+        val saleId = _uiState.value.detail?.id ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(billingBusy = kind.pathSegment) }
+            when (val result = billingRepository.downloadBillingDocument(saleId, kind)) {
+                is AppResult.Success -> {
+                    withContext(Dispatchers.Main) {
+                        if (openPdf) {
+                            val uri = receiptPdfService.uriFor(result.data)
+                            ReceiptShareHelper.openPdfExternal(context, uri)
+                        } else {
+                            shareBillingDocumentFile(context, result.data, kind.mimeType, kind.defaultFileName)
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            billingBusy = null,
+                            snackMessage = when (kind) {
+                                BillingDocumentKind.PDF -> "PDF oficial abierto"
+                                BillingDocumentKind.CDR -> "CDR listo para compartir"
+                                else -> "XML listo para compartir"
+                            },
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(billingBusy = null, snackMessage = result.message ?: "Documento no disponible")
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun exportListPdf(context: Context) {
+        exportList(context, format = "pdf")
+    }
+
+    fun exportListExcel(context: Context) {
+        exportList(context, format = "excel")
+    }
+
+    private fun exportList(context: Context, format: String) {
+        val state = _uiState.value
+        if (!state.canFetchList) {
+            _uiState.update { it.copy(snackMessage = "Facturación electrónica no habilitada") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(exportBusy = format, error = null) }
+            when (
+                val result = salesRepository.listAllSalesForExport(
+                    from = state.fromDate,
+                    to = state.toDate,
+                    tab = state.tab,
+                    query = state.searchQuery,
+                    paymentMethod = state.paymentMethodFilter,
+                    billingStatus = state.billingStatusFilter,
+                )
+            ) {
+                is AppResult.Success -> {
+                    withContext(Dispatchers.Main) {
+                        if (format == "pdf") {
+                            exportSalesListPdf(context, state.tab, result.data, state.fromDate, state.toDate)
+                        } else {
+                            exportSalesListCsv(context, state.tab, result.data, state.fromDate, state.toDate)
+                        }
+                    }
+                    _uiState.update {
+                        it.copy(
+                            exportBusy = null,
+                            snackMessage = if (format == "pdf") "Listado PDF exportado" else "Listado Excel exportado",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(exportBusy = null, snackMessage = result.message ?: "No se pudo exportar")
                 }
                 AppResult.Loading -> Unit
             }

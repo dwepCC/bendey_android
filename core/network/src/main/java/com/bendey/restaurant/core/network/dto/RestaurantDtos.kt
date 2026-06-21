@@ -251,6 +251,11 @@ data class UpdateComandaStatusRequestDto(
 )
 
 @Serializable
+data class UpdateComandaNotesRequestDto(
+    val notes: String,
+)
+
+@Serializable
 data class SuccessResponseDto(
     val success: Boolean = true,
 )
@@ -276,6 +281,7 @@ data class SessionDetailDto(
     val status: String? = null,
     @SerialName("order_code") val orderCode: String? = null,
     @SerialName("order_type") val orderType: String? = null,
+    @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("order_status") val orderStatus: String? = null,
     @SerialName("total_amount") val totalAmount: Double = 0.0,
     val notes: String? = null,

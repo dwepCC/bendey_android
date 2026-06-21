@@ -10,6 +10,8 @@ interface PosRepository {
         categoryId: Int?,
         page: Int,
         branchId: Int?,
+        catalogOnly: Boolean? = null,
+        preparationArea: String? = null,
     ): AppResult<Pair<List<PosProduct>, Int>>
 
     suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult>
@@ -18,6 +20,9 @@ interface PosRepository {
     suspend fun listOpenOrders(): AppResult<List<OpenOrderSummary>>
     suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit>
     suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit>
+    suspend fun updateComandaNotes(comandaId: Int, notes: String): AppResult<Unit>
+    suspend fun markTableOrderPrinted(tableOrderId: Int): AppResult<Unit>
+    suspend fun getPrecuenta(sessionId: Int): AppResult<PrecuentaData>
     suspend fun listDeliveryDrivers(): AppResult<List<DeliveryDriverBrief>>
 }
 

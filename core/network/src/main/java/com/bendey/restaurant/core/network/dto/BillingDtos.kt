@@ -16,6 +16,19 @@ data class BillSessionRequestDto(
 )
 
 @Serializable
+data class BillQuickSaleRequestDto(
+    @SerialName("series_id") val seriesId: Int,
+    @SerialName("doc_type") val docType: String,
+    val currency: String = "PEN",
+    @SerialName("contact_id") val contactId: Int? = null,
+    @SerialName("cash_session_id") val cashSessionId: Int? = null,
+    @SerialName("discount_amount") val discountAmount: Double? = null,
+    val notes: String? = null,
+    val items: List<OrderItemInputDto>,
+    val payments: List<BillPaymentDto>,
+)
+
+@Serializable
 data class BillPaymentDto(
     val method: String,
     val amount: Double,
@@ -107,9 +120,13 @@ data class DocumentSeriesDto(
     @SerialName("doc_type") val docType: String,
     val series: String,
     @SerialName("current_number") val currentNumber: Int = 0,
+    val correlative: Int? = null,
+    @SerialName("sales_count") val salesCount: Int? = null,
     val category: String = "",
     val active: Boolean = true,
     @SerialName("sunat_code") val sunatCode: String? = null,
+    val locked: Boolean? = null,
+    @SerialName("can_delete") val canDelete: Boolean? = null,
 )
 
 @Serializable
@@ -128,6 +145,7 @@ data class SeriesUpdateRequestDto(
     @SerialName("doc_type") val docType: String,
     @SerialName("sunat_code") val sunatCode: String = "00",
     val category: String = "venta",
+    val correlative: Int? = null,
 )
 
 @Serializable

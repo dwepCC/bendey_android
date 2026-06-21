@@ -10,7 +10,7 @@ import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
 import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
-import com.bendey.restaurant.core.data.repository.needsOpenCashSessionForPayments
+import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
 import com.bendey.restaurant.core.data.repository.pickDefaultNotaVentaSeries
 import com.bendey.restaurant.core.data.repository.pickVariosContactId
@@ -37,11 +37,15 @@ import com.bendey.restaurant.core.domain.pos.buildConfigureKey
 import com.bendey.restaurant.core.domain.pos.calcUnitPriceWithModifiers
 import com.bendey.restaurant.core.domain.pos.ComboCartConfig
 import com.bendey.restaurant.core.domain.pos.ComboConfigureState
+import com.bendey.restaurant.core.domain.pos.comboComponentModifiersList
 import com.bendey.restaurant.core.domain.pos.comboNeedsConfiguration
+import com.bendey.restaurant.core.domain.pos.selectedComboProductIds
 import com.bendey.restaurant.core.domain.pos.decrementCartLine
 import com.bendey.restaurant.core.domain.pos.getProductExtraGroups
-import com.bendey.restaurant.core.domain.pos.modifierSummaryText
+import com.bendey.restaurant.core.domain.pos.manualCartLine
+import com.bendey.restaurant.core.domain.pos.ManualProductInput
 import com.bendey.restaurant.core.domain.pos.modifiersToJson
+import com.bendey.restaurant.core.domain.pos.modifierSummaryText
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
@@ -115,6 +119,9 @@ data class MesaUiState(
     val voidSubmitting: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
+    val canChargeOrders: Boolean = false,
+    val canAnularComanda: Boolean = false,
+    val canOperateCash: Boolean = false,
 ) {
     val cartTotal: Double get() = cart.sumOf { it.lineTotal }
     val cartCount: Int get() = cart.sumOf { it.quantity }
@@ -133,7 +140,8 @@ data class MesaUiState(
     val sessionOrders: List<SessionOrderSummary> get() = session?.orders.orEmpty()
     val hasSentComandas: Boolean get() = sessionOrders.any { it.comandas.isNotEmpty() }
     val canClearCart: Boolean get() = cart.isNotEmpty() && !hasSentComandas
-    val canCloseMesa: Boolean get() = sessionTotal <= 0 && cart.isEmpty() && !checkoutSubmitting && !sending
+    val canCloseMesa: Boolean get() =
+        canChargeOrders && sessionTotal <= 0 && cart.isEmpty() && !checkoutSubmitting && !sending
 }
 
 private fun roundMoney(value: Double): Double = round(value * 100.0) / 100.0
@@ -166,6 +174,19 @@ class MesaViewModel @Inject constructor(
     init {
         refreshAll()
         warmCheckoutMeta()
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.collect { session ->
+                val perms = session?.restaurantPermissions.orEmpty()
+                val employeeType = session?.user?.employeeType
+                _uiState.update {
+                    it.copy(
+                        canChargeOrders = RestaurantPermissions.canChargeOrders(perms),
+                        canAnularComanda = RestaurantPermissions.canAnularComanda(perms),
+                        canOperateCash = RestaurantPermissions.canChargeCashByRole(employeeType, perms),
+                    )
+                }
+            }
+        }
     }
 
     private fun warmCheckoutMeta() {
@@ -306,7 +327,7 @@ class MesaViewModel @Inject constructor(
         )
         cartFeedback.playAddToCart()
         _uiState.update {
-            it.copy(cart = appendCartLine(it.cart, line), productConfigure = null, snackMessage = "${cfg.product.name} agregado")
+            it.copy(cart = appendCartLine(it.cart, line), productConfigure = null)
         }
     }
 
@@ -314,8 +335,11 @@ class MesaViewModel @Inject constructor(
         _uiState.update { it.copy(comboConfigure = ComboConfigureState(combo = combo), error = null) }
         viewModelScope.launch {
             when (val result = combosRepository.getCombo(combo.id)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
+                    }
+                    loadComboComponentModifierGroups()
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, error = result.message))
@@ -335,13 +359,111 @@ class MesaViewModel @Inject constructor(
             state.copy(comboConfigure = cfg.copy(selections = toggleSlotOption(cfg.selections, slot, optionId), error = null))
         }
         previewComboPrice()
+        loadComboComponentModifierGroups()
+    }
+    fun toggleComboComponentModifier(productId: Int, group: ModifierGroup, optionId: Int) {
+        _uiState.update { state ->
+            val cfg = state.comboConfigure ?: return@update state
+            val current = cfg.componentModifiers[productId].orEmpty()
+            val updated = toggleExtraSelection(current, group, optionId)
+            state.copy(
+                comboConfigure = cfg.copy(
+                    componentModifiers = cfg.componentModifiers + (productId to updated),
+                    error = null,
+                ),
+            )
+        }
+        previewComboPrice()
+    }
+    fun selectComboComponentPresentation(productId: Int, presentation: ProductPresentation) {
+        _uiState.update { state ->
+            val cfg = state.comboConfigure ?: return@update state
+            val current = cfg.componentModifiers[productId].orEmpty()
+            state.copy(
+                comboConfigure = cfg.copy(
+                    componentModifiers = cfg.componentModifiers + (productId to selectPresentation(current, presentation)),
+                    error = null,
+                ),
+            )
+        }
+        previewComboPrice()
+    }
+    private fun loadComboComponentModifierGroups() {
+        viewModelScope.launch {
+            val cfg = _uiState.value.comboConfigure ?: return@launch
+            val form = cfg.form ?: return@launch
+            val productIds = selectedComboProductIds(form, cfg.selections)
+            if (productIds.isEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        comboConfigure = it.comboConfigure?.copy(
+                            componentModifierGroups = emptyMap(),
+                            componentProductNames = emptyMap(),
+                            componentPresentations = emptyMap(),
+                        ),
+                    )
+                }
+                return@launch
+            }
+            val groupsResult = modifiersRepository.listModifierGroups()
+            if (groupsResult !is AppResult.Success) return@launch
+            val groupsMap = mutableMapOf<Int, List<ModifierGroup>>()
+            val namesMap = mutableMapOf<Int, String>()
+            val presentationsMap = mutableMapOf<Int, List<ProductPresentation>>()
+            for (productId in productIds) {
+                when (val detail = productsRepository.getProductDetail(productId)) {
+                    is AppResult.Success -> {
+                        val productForm = detail.data.toFormInput()
+                        namesMap[productId] = productForm.name
+                        val presentations = detail.data.presentations.filter { it.active && it.name.isNotBlank() }
+                        if (presentations.isNotEmpty()) {
+                            presentationsMap[productId] = presentations
+                        }
+                        val stub = PosProduct(
+                            id = productId,
+                            code = "",
+                            name = productForm.name,
+                            salePrice = 0.0,
+                            categoryId = null,
+                            imageUrl = null,
+                            igvAffectationType = null,
+                            priceIncludesIgv = null,
+                            hasModifiers = productForm.hasModifiers,
+                            hasVariants = productForm.hasVariants,
+                        )
+                        if (stub.hasModifiers) {
+                            groupsMap[productId] = getProductExtraGroups(
+                                productForm.modifierGroupIds,
+                                groupsResult.data,
+                                stub,
+                            )
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+            _uiState.update {
+                it.copy(
+                    comboConfigure = it.comboConfigure?.copy(
+                        componentModifierGroups = groupsMap,
+                        componentProductNames = namesMap,
+                        componentPresentations = presentationsMap,
+                    ),
+                )
+            }
+        }
     }
     private fun previewComboPrice() {
         val cfg = _uiState.value.comboConfigure ?: return
         if (cfg.form == null) return
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
-            val configJson = buildComboConfigJson(ComboCartConfig(cfg.selections))
+            val configJson = buildComboConfigJson(
+                ComboCartConfig(
+                    selections = cfg.selections,
+                    componentModifiers = comboComponentModifiersList(cfg.componentModifiers),
+                ),
+            )
             when (val result = combosRepository.resolveCombo(cfg.combo.id, branchId, configJson)) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data))
@@ -358,7 +480,15 @@ class MesaViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            resolveAndAddCombo(cfg.combo, ComboCartConfig(cfg.selections), cfg.kitchenNote, cfg.resolvedPrice)
+            resolveAndAddCombo(
+                cfg.combo,
+                ComboCartConfig(
+                    selections = cfg.selections,
+                    componentModifiers = comboComponentModifiersList(cfg.componentModifiers),
+                ),
+                cfg.kitchenNote,
+                cfg.resolvedPrice,
+            )
             _uiState.update { it.copy(comboConfigure = null) }
         }
     }
@@ -402,7 +532,7 @@ class MesaViewModel @Inject constructor(
             comboConfigJson = configJson,
         )
         cartFeedback.playAddToCart()
-        _uiState.update { it.copy(cart = appendCartLine(it.cart, line), snackMessage = "${combo.name} agregado") }
+        _uiState.update { it.copy(cart = appendCartLine(it.cart, line)) }
     }
 
     private fun addSimpleProduct(product: PosProduct) {
@@ -410,7 +540,6 @@ class MesaViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(
                 cart = appendCartLine(state.cart, PosCartLine(cartKey = "p-${product.id}", product = product, quantity = 1)),
-                snackMessage = "${product.name} agregado",
                 error = null,
             )
         }
@@ -440,6 +569,7 @@ class MesaViewModel @Inject constructor(
     }
 
     fun openVoidComanda(comanda: SessionComandaSummary) {
+        if (!_uiState.value.canAnularComanda) return
         _uiState.update {
             it.copy(voidComanda = comanda, voidReason = "", voidPin = "", error = null)
         }
@@ -507,6 +637,17 @@ class MesaViewModel @Inject constructor(
         }
     }
 
+    fun addManualProduct(input: ManualProductInput) {
+        val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull()
+        if (input.description.trim().isBlank() || price == null || price < 0) {
+            _uiState.update { it.copy(error = "Completa descripción y precio válido") }
+            return
+        }
+        val line = manualCartLine(input)
+        _uiState.update { it.copy(cart = appendCartLine(it.cart, line), error = null) }
+        cartFeedback.playAddToCart()
+    }
+
     fun sendComanda() {
         val state = _uiState.value
         if (state.cart.isEmpty()) {
@@ -515,9 +656,7 @@ class MesaViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(sending = true, error = null) }
-            if (sendCartItems(state)) {
-                _uiState.update { it.copy(snackMessage = "Comanda enviada") }
-            }
+            sendCartItems(state)
         }
     }
 
@@ -555,7 +694,7 @@ class MesaViewModel @Inject constructor(
         viewModelScope.launch {
             val session = sessionStore.userSessionFlow.first()
             val allowDiscount = RestaurantPermissions.canApplyCheckoutDiscount(
-                session?.permissions.orEmpty(),
+                session?.restaurantPermissions.orEmpty(),
                 session?.user?.employeeType,
             )
             val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty())
@@ -639,7 +778,11 @@ class MesaViewModel @Inject constructor(
                 }
             }
             val methods = state.checkoutMeta?.paymentMethods.orEmpty()
-            val needsCashSession = needsOpenCashSessionForPayments(methods, paymentLines)
+            val needsCashSession = requiresOpenCashSessionForCheckout(
+                canOperateCash = state.canOperateCash,
+                methods = methods,
+                payments = paymentLines,
+            )
             val cashSessionId = if (needsCashSession) {
                 sessionStore.cashSessionFlow.first()?.sessionId
             } else {
@@ -649,7 +792,8 @@ class MesaViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         checkoutSubmitting = false,
-                        error = "Abre tu caja para cobrar en efectivo (menú Caja)",
+                        checkoutOpen = false,
+                        error = "Abre tu caja para cobrar",
                     )
                 }
                 return@launch
@@ -939,7 +1083,13 @@ class MesaViewModel @Inject constructor(
         val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
         val query = _uiState.value.searchQuery.trim()
         val categoryId = _uiState.value.selectedCategoryId
-        when (val result = posRepository.loadProducts(query, categoryId, page = 1, branchId)) {
+        when (val result = posRepository.loadProducts(
+            query = query,
+            categoryId = categoryId,
+            page = 1,
+            branchId = branchId,
+            catalogOnly = true,
+        )) {
             is AppResult.Success -> _uiState.update { it.copy(products = result.data.first) }
             is AppResult.Error -> _uiState.update { it.copy(error = result.message) }
             AppResult.Loading -> Unit

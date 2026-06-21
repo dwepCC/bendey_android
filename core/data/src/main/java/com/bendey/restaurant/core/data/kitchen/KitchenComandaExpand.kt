@@ -57,7 +57,7 @@ private fun expandSingleKitchenItem(item: KitchenItem): List<KitchenItem> {
     }
     return componentLines.mapIndexed { index, line ->
         item.withDisplay(
-            displayName = line.productName.removePrefix("  · ").trim(),
+            displayName = line.productName.removePrefix("  - ").removePrefix("  · ").trim(),
             displayQuantity = line.quantity,
             preparationArea = line.preparationArea ?: item.preparationArea,
             modifierLines = line.modifierLines,
@@ -88,13 +88,13 @@ private fun comandaToRoutingLines(item: KitchenItem): List<RoutingLine> {
                             productName = header,
                             quantity = item.quantity,
                             notes = item.notes,
-                            modifierLines = listOf("—"),
+                            modifierLines = emptyList(),
                             preparationArea = area,
                             isComboHeader = true,
                         )
                     }
                     lines += RoutingLine(
-                        productName = "  · ${label.trim()}",
+                        productName = "  - ${label.trim()}",
                         quantity = comp.quantity * item.quantity,
                         notes = null,
                         modifierLines = parseModifierLines(comp.modifiersJson),

@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
@@ -25,13 +24,7 @@ enum class DashboardRange(val label: String) {
     YESTERDAY("Ayer"),
     WEEK("7 días"),
     MONTH("30 días"),
-}
-
-fun DashboardRange.resolveDates(today: LocalDate): Pair<LocalDate, LocalDate> = when (this) {
-    DashboardRange.TODAY -> today to today
-    DashboardRange.YESTERDAY -> today.minusDays(1) to today.minusDays(1)
-    DashboardRange.WEEK -> today.minusDays(6) to today
-    DashboardRange.MONTH -> today.minusDays(29) to today
+    CUSTOM("Rango"),
 }
 
 enum class DashboardTab(val label: String) {
@@ -44,6 +37,9 @@ data class DashboardUiState(
     val catalog: CatalogAnalytics? = null,
     val tab: DashboardTab = DashboardTab.OPERACION,
     val range: DashboardRange = DashboardRange.TODAY,
+    val fromDate: LocalDate = todayInPeru(),
+    val toDate: LocalDate = todayInPeru(),
+    val canChangeDateRange: Boolean = false,
     val loading: Boolean = false,
     val catalogLoading: Boolean = false,
     val error: String? = null,
@@ -52,7 +48,10 @@ data class DashboardUiState(
     val isOnline: Boolean = true,
     val cashLabel: String? = null,
     val cashSession: CashSessionSnapshot? = null,
-)
+) {
+    val fromApi: String get() = fromDate.toApiDate()
+    val toApi: String get() = toDate.toApiDate()
+}
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -62,17 +61,28 @@ class DashboardViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
-    private val dateFmt = DateTimeFormatter.ISO_LOCAL_DATE
 
     init {
         viewModelScope.launch {
             sessionManager.userSessionFlow.collect { session ->
-                _uiState.update {
-                    it.copy(
+                val today = todayInPeru()
+                val canChange = isDashboardDateAdmin(session?.user?.employeeType)
+                _uiState.update { state ->
+                    val (from, to) = if (canChange) {
+                        state.fromDate to state.toDate
+                    } else {
+                        today to today
+                    }
+                    state.copy(
                         branchName = session?.activeBranch?.name,
                         userName = session?.user?.name.orEmpty(),
+                        canChangeDateRange = canChange,
+                        fromDate = from,
+                        toDate = to,
+                        range = if (canChange) state.range else DashboardRange.TODAY,
                     )
                 }
+                if (!canChange) refresh()
             }
         }
         viewModelScope.launch {
@@ -93,7 +103,45 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun selectRange(range: DashboardRange) {
-        _uiState.update { it.copy(range = range) }
+        if (!_uiState.value.canChangeDateRange) return
+        val today = todayInPeru()
+        val (from, to) = range.resolveDatesPeru(today)
+        _uiState.update { it.copy(range = range, fromDate = from, toDate = to) }
+        refresh()
+    }
+
+    fun applyCustomRange(fromValue: String, toValue: String) {
+        if (!_uiState.value.canChangeDateRange) return
+        val from = parseApiDate(fromValue) ?: return
+        val to = parseApiDate(toValue) ?: return
+        val today = todayInPeru()
+        val clampedTo = to.coerceAtMost(today).coerceAtLeast(from)
+        val clampedFrom = from.coerceAtMost(clampedTo)
+        _uiState.update {
+            it.copy(
+                range = DashboardRange.CUSTOM,
+                fromDate = clampedFrom,
+                toDate = clampedTo,
+            )
+        }
+        refresh()
+    }
+
+    fun setCustomFrom(value: String) {
+        if (!_uiState.value.canChangeDateRange) return
+        val parsed = parseApiDate(value) ?: return
+        val to = _uiState.value.toDate.coerceAtLeast(parsed).coerceAtMost(todayInPeru())
+        val from = parsed.coerceAtMost(to)
+        _uiState.update { it.copy(fromDate = from, toDate = to) }
+        refresh()
+    }
+
+    fun setCustomTo(value: String) {
+        if (!_uiState.value.canChangeDateRange) return
+        val parsed = parseApiDate(value) ?: return
+        val today = todayInPeru()
+        val to = parsed.coerceAtMost(today).coerceAtLeast(_uiState.value.fromDate)
+        _uiState.update { it.copy(toDate = to) }
         refresh()
     }
 
@@ -104,13 +152,17 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            val today = LocalDate.now()
-            val range = _uiState.value.range
-            val (fromDate, toDate) = range.resolveDates(today)
-            val from = fromDate.format(dateFmt)
-            val to = toDate.format(dateFmt)
+            val state = _uiState.value
+            val today = todayInPeru()
+            val (fromDate, toDate) = if (state.canChangeDateRange) {
+                state.fromDate to state.toDate.coerceAtMost(today)
+            } else {
+                today to today
+            }
+            val from = fromDate.toApiDate()
+            val to = toDate.toApiDate()
             if (_uiState.value.tab == DashboardTab.CATALOGO) {
-                _uiState.update { it.copy(catalogLoading = true, error = null) }
+                _uiState.update { it.copy(catalogLoading = true, error = null, fromDate = fromDate, toDate = toDate) }
                 when (val result = dashboardRepository.loadCatalogAnalytics(from = from, to = to)) {
                     is AppResult.Success -> _uiState.update {
                         it.copy(catalogLoading = false, catalog = result.data)
@@ -121,7 +173,7 @@ class DashboardViewModel @Inject constructor(
                     AppResult.Loading -> Unit
                 }
             } else {
-                _uiState.update { it.copy(loading = true, error = null) }
+                _uiState.update { it.copy(loading = true, error = null, fromDate = fromDate, toDate = toDate) }
                 when (val result = dashboardRepository.loadDashboard(from = from, to = to)) {
                     is AppResult.Success -> _uiState.update {
                         it.copy(loading = false, dashboard = result.data)

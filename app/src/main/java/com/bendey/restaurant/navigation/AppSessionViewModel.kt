@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.cache.OperationalDataPreloader
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.ui.permission.PermissionContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,8 +29,36 @@ class AppSessionViewModel @Inject constructor(
     val isAuthenticated: StateFlow<Boolean?> = sessionStore.isAuthenticatedFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    val permissionContext: StateFlow<PermissionContext?> = sessionStore.userSessionFlow
+        .map { session ->
+            session?.let {
+                PermissionContext(
+                    permissions = it.restaurantPermissions,
+                    employeeType = it.user.employeeType,
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Cambia en cada login — fuerza ruta inicial correcta al entrar al shell principal. */
+    val sessionKey: StateFlow<String?> = sessionStore.userSessionFlow
+        .map { it?.token }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init {
-        operationalDataPreloader.preloadActiveBranch()
+        viewModelScope.launch {
+            operationalDataPreloader.preloadActiveBranch()
+        }
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .distinctUntilChanged { old, new -> old?.token == new?.token }
+                .collect { session ->
+                    if (session != null) {
+                        runCatching { authRepository.refreshRestaurantPermissions() }
+                    }
+                }
+        }
     }
 
     fun logout(onComplete: () -> Unit) {

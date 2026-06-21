@@ -28,13 +28,16 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,8 +58,13 @@ import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductosTab
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
+import com.bendey.restaurant.core.ui.components.BendeySelectOption
+import com.bendey.restaurant.core.ui.components.BendeyOption
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import java.text.NumberFormat
@@ -67,15 +75,18 @@ import java.util.Locale
 fun ProductosScreen(
     onOpenModificadores: () -> Unit = {},
     onOpenCombos: () -> Unit = {},
+    onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ProductosViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     PullToRefreshBox(
         isRefreshing = state.loading && state.products.isEmpty() && state.tab == ProductosTab.PRODUCTOS,
@@ -124,7 +135,6 @@ fun ProductosScreen(
                     error = state.error?.takeIf { !state.productFormOpen },
                     onSearch = viewModel::setSearchQuery,
                     onCategoryFilter = viewModel::setCategoryFilter,
-                    onAreaFilter = viewModel::setAreaFilter,
                     onBranchFilter = viewModel::setBranchFilter,
                     onEdit = viewModel::openEditProduct,
                     onDelete = viewModel::requestDeleteProduct,
@@ -236,7 +246,6 @@ private fun ProductsTabContent(
     error: String?,
     onSearch: (String) -> Unit,
     onCategoryFilter: (Int?) -> Unit,
-    onAreaFilter: (PreparationArea?) -> Unit,
     onBranchFilter: (Int?) -> Unit,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
@@ -252,46 +261,18 @@ private fun ProductsTabContent(
             label = "Buscar por nombre o código",
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = state.categoryFilterId == null,
-                onClick = { onCategoryFilter(null) },
-                label = { Text("Todas") },
-            )
-            state.categories.forEach { category ->
-                FilterChip(
-                    selected = state.categoryFilterId == category.id,
-                    onClick = { onCategoryFilter(category.id) },
-                    label = { Text(category.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                )
-            }
+        val categoryOptions = remember(state.categories) {
+            listOf(BendeySelectOption(-1, "Todas las categorías")) +
+                state.categories.map { BendeySelectOption(it.id, it.name) }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = state.areaFilter == null,
-                onClick = { onAreaFilter(null) },
-                label = { Text("Todas áreas") },
-            )
-            PreparationArea.entries.filter { it != PreparationArea.NONE }.forEach { area ->
-                FilterChip(
-                    selected = state.areaFilter == area,
-                    onClick = { onAreaFilter(area) },
-                    label = { Text(area.label) },
-                )
-            }
-        }
+        BendeySearchableSelect(
+            options = categoryOptions,
+            selectedId = state.categoryFilterId ?: -1,
+            onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
+            label = "Categoría",
+            placeholder = "Buscar categoría…",
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
         if (state.branches.size > 1) {
             Row(
                 modifier = Modifier
@@ -517,63 +498,35 @@ private fun ProductFormDialog(
             onValueChange = { value -> onFormChange { it.copy(salePrice = value) } },
             label = "Precio venta *",
         )
-        ProductImageSection(form, tenantBaseUrl, onImagePicked)
-        Text("Presentaciones / variantes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onTogglePresentations) {
-            Text(if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)")
+        val categoryFormOptions = remember(categories) {
+            listOf(BendeySelectOption(-1, "Sin categoría")) +
+                categories.map { BendeySelectOption(it.id, it.name) }
         }
-        if (presentationsOpen) {
-            ProductPresentationsSection(form.presentations) { list ->
-                onFormChange { it.copy(presentations = list, hasVariants = list.any { p -> p.name.isNotBlank() }) }
-            }
-            TextButton(onClick = onDismissPresentations) { Text("Cerrar presentaciones") }
-        }
-        Text("Grupos de modificadores", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
-        Text("Categoría", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterChip(
-                selected = form.categoryId == null,
-                onClick = { onFormChange { it.copy(categoryId = null) } },
-                label = { Text("Sin categoría") },
-            )
-            categories.forEach { category ->
-                FilterChip(
-                    selected = form.categoryId == category.id,
-                    onClick = { onFormChange { it.copy(categoryId = category.id) } },
-                    label = { Text(category.name) },
-                )
-            }
-        }
-        Text("Área de preparación", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PreparationArea.entries.forEach { area ->
-                FilterChip(
-                    selected = form.preparationArea == area,
-                    onClick = { onFormChange { it.copy(preparationArea = area) } },
-                    label = { Text(area.label) },
-                )
-            }
-        }
-        Text("Afectación IGV", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            IgvAffectation.entries.forEach { igv ->
-                FilterChip(
-                    selected = form.igvAffectation == igv,
-                    onClick = { onFormChange { it.copy(igvAffectation = igv) } },
-                    label = { Text(igv.code) },
-                )
-            }
-        }
+        BendeySearchableSelect(
+            options = categoryFormOptions,
+            selectedId = form.categoryId ?: -1,
+            onSelect = { id -> onFormChange { it.copy(categoryId = if (id == -1) null else id) } },
+            label = "Categoría",
+            placeholder = "Buscar categoría…",
+        )
+        BendeySimpleSelect(
+            options = PreparationArea.entries.map { BendeyOption(it.name, it.label) },
+            selectedValue = form.preparationArea.name,
+            onSelect = { value ->
+                val area = PreparationArea.entries.firstOrNull { it.name == value } ?: PreparationArea.NONE
+                onFormChange { it.copy(preparationArea = area) }
+            },
+            label = "Área de preparación",
+        )
+        BendeySimpleSelect(
+            options = IgvAffectation.entries.map { BendeyOption(it.code, it.label) },
+            selectedValue = form.igvAffectation.code,
+            onSelect = { code ->
+                val igv = IgvAffectation.fromCode(code)
+                onFormChange { it.copy(igvAffectation = igv) }
+            },
+            label = "Afectación IGV",
+        )
         ToggleRow(
             label = "Visible en carta (POS/mesa)",
             checked = form.availableForSale,
@@ -598,6 +551,19 @@ private fun ProductFormDialog(
                 label = "Stock inicial",
             )
         }
+        ProductImageSection(form, tenantBaseUrl, onImagePicked)
+        Text("Presentaciones / variantes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        TextButton(onClick = onTogglePresentations) {
+            Text(if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)")
+        }
+        if (presentationsOpen) {
+            ProductPresentationsSection(form.presentations) { list ->
+                onFormChange { it.copy(presentations = list, hasVariants = list.any { p -> p.name.isNotBlank() }) }
+            }
+            TextButton(onClick = onDismissPresentations) { Text("Cerrar presentaciones") }
+        }
+        Text("Grupos de modificadores", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
         TextButton(onClick = onToggleMore) {
             Text(if (showMoreOptions) "Menos opciones" else "Más opciones")
         }
@@ -663,12 +629,27 @@ private fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                role = Role.Checkbox,
+            )
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Checkbox(
+            checked = checked,
+            onCheckedChange = null,
+        )
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

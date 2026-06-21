@@ -40,9 +40,9 @@ fun areaTicketLabel(baseTableName: String, areaKey: String): String {
     if (areaKey == PRINT_DEFAULT_AREA_KEY) return baseTableName
     val label = PreparationArea.fromApi(areaKey).label
     return if (label != PreparationArea.NONE.label) {
-        "$baseTableName · ${label.uppercase()}"
+        "$baseTableName - ${label.uppercase()}"
     } else {
-        "$baseTableName · ${areaKey.uppercase()}"
+        "$baseTableName - ${areaKey.uppercase()}"
     }
 }
 
@@ -66,13 +66,13 @@ private fun comandaToRoutingLines(comanda: ComandaLine): List<KitchenRoutingLine
                             productName = header,
                             quantity = comanda.quantity,
                             notes = comanda.notes,
-                            modifierLines = listOf("—"),
+                            modifierLines = emptyList(),
                             preparationArea = area,
                             isComboHeader = true,
                         )
                     }
                     lines += KitchenRoutingLine(
-                        productName = "  · ${label.trim()}",
+                        productName = "  - ${label.trim()}",
                         quantity = comp.quantity * comanda.quantity,
                         notes = null,
                         modifierLines = parseModifierLines(comp.modifiersJson),

@@ -8,7 +8,9 @@ import com.bendey.restaurant.core.network.dto.CashSessionResponseDto
 import com.bendey.restaurant.core.network.dto.PaymentMethodDto
 import com.bendey.restaurant.core.network.dto.CloseCashSessionRequestDto
 import com.bendey.restaurant.core.network.dto.ListResponseDto
+import com.bendey.restaurant.core.network.dto.MovementsReportResponseDto
 import com.bendey.restaurant.core.network.dto.OpenCashSessionRequestDto
+import com.bendey.restaurant.core.network.dto.SessionProductSoldDto
 import com.bendey.restaurant.core.network.dto.CashSessionReportResponseDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoResponseDto
@@ -114,4 +116,22 @@ interface CashbankApi {
         @Path("id") id: Int,
         @Body body: AddBankMovementRequestDto,
     ): SuccessResponseDto
+
+    @GET("/api/cashbank/reports/movements")
+    suspend fun listMovementsReport(
+        @Query("branch_id") branchId: Int? = null,
+        @Query("user_id") userId: Int? = null,
+        @Query("date_from") dateFrom: String? = null,
+        @Query("date_to") dateTo: String? = null,
+        @Query("session_id") sessionId: Int? = null,
+        @Query("type") type: String? = null,
+        @Query("payment_method") paymentMethod: String? = null,
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int? = null,
+    ): MovementsReportResponseDto
+
+    @GET("/api/cashbank/sessions/{sessionId}/report/products")
+    suspend fun getSessionProductsReport(
+        @Path("sessionId") sessionId: Int,
+    ): ListResponseDto<SessionProductSoldDto>
 }

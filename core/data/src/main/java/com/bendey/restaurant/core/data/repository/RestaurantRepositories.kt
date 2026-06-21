@@ -47,6 +47,7 @@ import com.bendey.restaurant.core.network.dto.SessionDetailDto
 import com.bendey.restaurant.core.network.dto.SessionOrderDto
 import com.bendey.restaurant.core.network.dto.FloorUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.TableUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.UpdateComandaNotesRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
@@ -76,12 +77,16 @@ class PosRepositoryImpl @Inject constructor(
         categoryId: Int?,
         page: Int,
         branchId: Int?,
+        catalogOnly: Boolean?,
+        preparationArea: String?,
     ): AppResult<Pair<List<PosProduct>, Int>> = apiCall {
         val response = tenantRetrofitProvider.create<ProductsApi>().listProducts(
             query = query,
             page = page,
             categoryId = categoryId,
             branchId = branchId,
+            catalogOnly = catalogOnly?.let { if (it) "true" else "false" },
+            preparationArea = preparationArea?.takeIf { it.isNotBlank() },
         )
         val products = response.data.map { it.toDomain() }
         products to (response.total ?: products.size)
@@ -95,7 +100,7 @@ class PosRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updatePosSession(sessionId: Int, input: PosSessionInput): AppResult<Unit> = apiCall {
-        tenantRetrofitProvider.create<RestaurantApi>().updateSession(sessionId, input.toDto())
+        tenantRetrofitProvider.create<RestaurantApi>().updateSession(sessionId, input.toUpdateDto())
     }
 
     override suspend fun listOpenOrders(): AppResult<List<OpenOrderSummary>> = apiCall {
@@ -114,6 +119,23 @@ class PosRepositoryImpl @Inject constructor(
     override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>()
             .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
+    }
+
+    override suspend fun updateComandaNotes(comandaId: Int, notes: String): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .updateComandaNotes(comandaId, UpdateComandaNotesRequestDto(notes = notes.trim()))
+    }
+
+    override suspend fun markTableOrderPrinted(tableOrderId: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().markTableOrderPrinted(tableOrderId)
+    }
+
+    override suspend fun getPrecuenta(sessionId: Int): AppResult<PrecuentaData> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .getPrecuenta(sessionId)
+            .data
+            ?.toDomain()
+            ?: error("Precuenta no disponible")
     }
 
     override suspend fun listDeliveryDrivers(): AppResult<List<DeliveryDriverBrief>> = apiCall {
@@ -158,7 +180,6 @@ class MesasRepositoryImpl @Inject constructor(
             .listTables(floorId = floorId)
             .data
             .map { it.toDomain() }
-            .sortedWith(compareBy({ it.floorId }, { it.name }))
     }
 
     override suspend fun loadStaff(): AppResult<List<StaffOption>> = apiCall {
@@ -303,6 +324,7 @@ private fun ProductDto.toDomain() = PosProduct(
     salePrice = salePrice,
     categoryId = categoryId,
     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
+    preparationArea = preparationArea?.takeIf { it.isNotBlank() },
     igvAffectationType = igvAffectationType,
     priceIncludesIgv = priceIncludesIgv,
     hasModifiers = hasModifiers,
@@ -381,6 +403,7 @@ private fun SessionDetailDto.toDomain() = TableSessionDetail(
     orderCode = orderCode,
     totalAmount = totalAmount,
     orderType = orderType,
+    contactId = contactId,
     customerName = customerName,
     customerPhone = customerPhone,
     deliveryAddress = deliveryAddress,
@@ -408,6 +431,7 @@ private fun PosSessionInput.toDto() = OpenSessionRequestDto(
     tableId = null,
     guests = 1,
     orderType = orderType,
+    contactId = contactId,
     customerName = customerName?.trim()?.takeIf { it.isNotEmpty() },
     customerPhone = customerPhone?.trim()?.takeIf { it.isNotEmpty() },
     deliveryDriverId = deliveryDriverId,
@@ -416,6 +440,21 @@ private fun PosSessionInput.toDto() = OpenSessionRequestDto(
     estimatedMinutes = estimatedMinutes,
     notes = notes?.trim()?.takeIf { it.isNotEmpty() },
     saveAsDraft = saveAsDraft.takeIf { it },
+)
+
+private fun PosSessionInput.toUpdateDto() = OpenSessionRequestDto(
+    tableId = null,
+    guests = 1,
+    orderType = orderType,
+    contactId = contactId,
+    customerName = customerName?.trim()?.takeIf { it.isNotEmpty() },
+    customerPhone = customerPhone?.trim()?.takeIf { it.isNotEmpty() },
+    deliveryDriverId = deliveryDriverId,
+    deliveryAddress = deliveryAddress?.trim()?.takeIf { it.isNotEmpty() },
+    deliveryReference = deliveryReference?.trim()?.takeIf { it.isNotEmpty() },
+    estimatedMinutes = estimatedMinutes,
+    notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+    saveAsDraft = null,
 )
 
 private fun SessionOrderDto.toDomain() = SessionOrderSummary(

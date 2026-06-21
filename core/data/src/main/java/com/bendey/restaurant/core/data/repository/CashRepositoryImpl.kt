@@ -15,6 +15,15 @@ import com.bendey.restaurant.core.domain.cash.CashSession
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
+import com.bendey.restaurant.core.domain.cash.CashFilterUser
+import com.bendey.restaurant.core.domain.cash.CashMethodTotalWithCount
+import com.bendey.restaurant.core.domain.cash.CashMovementReportRow
+import com.bendey.restaurant.core.domain.cash.CashMovementsReportPage
+import com.bendey.restaurant.core.domain.cash.CashMovementsReportQuery
+import com.bendey.restaurant.core.domain.cash.CashMovementsReportSummary
+import com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow
+import com.bendey.restaurant.core.domain.cash.CashPaymentsReport
+import com.bendey.restaurant.core.domain.cash.CashSessionProductSold
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.model.CashSessionSnapshot
 import com.bendey.restaurant.core.network.api.CashbankApi
@@ -34,7 +43,11 @@ import com.bendey.restaurant.core.network.dto.CashSessionDto
 import com.bendey.restaurant.core.network.dto.CashSessionReportDto
 import com.bendey.restaurant.core.network.dto.CloseCashSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OpenCashSessionRequestDto
+import com.bendey.restaurant.core.network.api.RestaurantApi
+import com.bendey.restaurant.core.network.dto.MovementReportRowDto
+import com.bendey.restaurant.core.network.dto.MovementsReportSummaryDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
+import com.bendey.restaurant.core.network.dto.SessionProductSoldDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -267,6 +280,87 @@ class CashRepositoryImpl @Inject constructor(
         Unit
     }
 
+    override suspend fun listMovementsReport(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage> =
+        fetchMovementsReport(query)
+
+    override suspend fun listMovementsReportAll(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage> =
+        fetchMovementsReport(query.copy(page = 1, perPage = 0))
+
+    override suspend fun getPaymentsReport(
+        from: String,
+        to: String,
+        method: String?,
+        userId: Int?,
+        sessionId: Int?,
+    ): AppResult<CashPaymentsReport> = apiCall {
+        val response = tenantRetrofitProvider.create<RestaurantApi>().getPaymentsReport(
+            from = from,
+            to = to,
+            method = method?.trim()?.takeIf { it.isNotEmpty() },
+            userId = userId,
+            sessionId = sessionId,
+        )
+        CashPaymentsReport(
+            byMethod = response.byMethod.map {
+                CashMethodTotalWithCount(method = it.method, total = it.total, count = it.count)
+            },
+            totalIncome = response.totalIncome,
+            totalCount = response.totalCount,
+            detail = response.detail.map {
+                CashPaymentDetailRow(
+                    date = it.date,
+                    saleNumber = it.saleNumber,
+                    orderCode = it.orderCode,
+                    orderType = it.orderType,
+                    userName = it.userName,
+                    method = it.method,
+                    amount = it.amount,
+                    reference = it.reference,
+                )
+            },
+        )
+    }
+
+    override suspend fun getSessionProductsReport(sessionId: Int): AppResult<List<CashSessionProductSold>> = apiCall {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .getSessionProductsReport(sessionId)
+            .data
+            .map { it.toProductSoldDomain() }
+    }
+
+    override suspend fun listCashFilterUsers(): AppResult<List<CashFilterUser>> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>()
+            .listStaff()
+            .data
+            .map { staff ->
+                CashFilterUser(
+                    userId = staff.userId,
+                    name = staff.displayName?.takeIf { it.isNotBlank() }
+                        ?: staff.staffCode?.takeIf { it.isNotBlank() }
+                        ?: "#${staff.userId}",
+                )
+            }
+    }
+
+    private suspend fun fetchMovementsReport(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage> = apiCall {
+        val response = tenantRetrofitProvider.create<CashbankApi>().listMovementsReport(
+            branchId = query.branchId?.takeIf { it > 0 },
+            userId = query.userId,
+            dateFrom = query.dateFrom?.takeIf { it.isNotBlank() },
+            dateTo = query.dateTo?.takeIf { it.isNotBlank() },
+            sessionId = query.sessionId,
+            type = query.type?.takeIf { it.isNotBlank() },
+            paymentMethod = query.paymentMethod?.takeIf { it.isNotBlank() },
+            page = query.page.takeIf { query.perPage > 0 },
+            perPage = query.perPage.takeIf { it > 0 },
+        )
+        CashMovementsReportPage(
+            rows = response.data.map { it.toMovementReportDomain() },
+            total = response.total,
+            summary = response.summary?.toSummaryDomain() ?: CashMovementsReportSummary(),
+        )
+    }
+
     private suspend fun persistSnapshot(session: CashSession) {
         if (session.status != CashSessionStatus.OPEN) return
         sessionManager.setCashSession(
@@ -394,4 +488,35 @@ private fun CashMovementDto.toDomain() = CashMovement(
     amount = amount,
     notes = notes,
     createdAt = createdAt,
+)
+
+private fun MovementReportRowDto.toMovementReportDomain() = CashMovementReportRow(
+    date = date,
+    type = type,
+    docNumber = docNumber,
+    contactName = contactName,
+    userName = userName,
+    branchName = branchName,
+    paymentMethod = paymentMethod,
+    amount = amount,
+    movementId = movementId,
+    cashSessionId = cashSessionId,
+    category = category,
+    cashReference = cashReference,
+    notesDetail = notesDetail,
+)
+
+private fun MovementsReportSummaryDto.toSummaryDomain() = CashMovementsReportSummary(
+    totalRows = totalRows,
+    sumIncome = sumIncome,
+    sumExpense = sumExpense,
+    netMovement = netMovement,
+)
+
+private fun SessionProductSoldDto.toProductSoldDomain() = CashSessionProductSold(
+    productId = productId,
+    code = code,
+    description = description,
+    quantity = quantity,
+    total = total,
 )

@@ -3,24 +3,27 @@ package com.bendey.restaurant.core.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,7 +57,6 @@ fun BendeyAppHeader(
     isDrawerOpen: Boolean = false,
     onMenuClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
-    onSwitchUser: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     var showUserMenu by remember { mutableStateOf(false) }
@@ -73,7 +75,7 @@ fun BendeyAppHeader(
             )
         }
         Text(
-            text = "Bendey Resto",
+            text = state.restaurantName.ifBlank { "Bendey Resto" },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -117,30 +119,85 @@ fun BendeyAppHeader(
             DropdownMenu(
                 expanded = showUserMenu,
                 onDismissRequest = { showUserMenu = false },
+                modifier = Modifier.widthIn(min = 260.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
-                if (state.userName.isNotBlank()) {
-                    DropdownMenuItem(
-                        text = { Text(state.userName, fontWeight = FontWeight.SemiBold) },
-                        onClick = { showUserMenu = false },
-                        enabled = false,
-                    )
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(BendeyColors.PrimaryContainer),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = state.userInitials.ifBlank { "?" },
+                                color = BendeyColors.Primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = state.userName.ifBlank { "Usuario" },
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (state.branchName.isNotBlank()) {
+                                Text(
+                                    text = state.branchName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BendeyColors.OnSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (state.restaurantName.isNotBlank()) {
+                                Text(
+                                    text = state.restaurantName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = BendeyColors.OnSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
+                    state.cashLabel?.let { cashLabel ->
+                        Text(
+                            text = cashLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (state.isCashOpen) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
+                        )
+                    }
+                    HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
+                    OutlinedButton(
+                        onClick = {
+                            showUserMenu = false
+                            onLogout()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Logout,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(18.dp),
+                        )
+                        Text("Cerrar sesión")
+                    }
                 }
-                DropdownMenuItem(
-                    text = { Text("Cambiar usuario") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                    onClick = {
-                        showUserMenu = false
-                        onSwitchUser()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Cerrar sesión") },
-                    leadingIcon = { Icon(Icons.Default.Logout, contentDescription = null) },
-                    onClick = {
-                        showUserMenu = false
-                        onLogout()
-                    },
-                )
             }
         }
     }

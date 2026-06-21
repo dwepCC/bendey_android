@@ -7,12 +7,17 @@ import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.collectPreparationAreas
 import com.bendey.restaurant.core.domain.restaurant.collectTableNames
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
-import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
+import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
+import com.bendey.restaurant.core.domain.permission.RestaurantFeature
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -50,6 +55,7 @@ data class CocinaUiState(
     val voidPin: String = "",
     val voidSubmitting: Boolean = false,
     val error: String? = null,
+    val canAnularComanda: Boolean = false,
 ) {
     val availableAreas: List<String> get() = collectPreparationAreas(items)
     val availableTables: List<String> get() = collectTableNames(items)
@@ -83,13 +89,37 @@ data class CocinaUiState(
 @HiltViewModel
 class CocinaViewModel @Inject constructor(
     private val kitchenRepository: KitchenRepository,
+    private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CocinaUiState())
     val uiState: StateFlow<CocinaUiState> = _uiState.asStateFlow()
 
     init {
-        refresh()
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.collect { session ->
+                val perms = session?.restaurantPermissions.orEmpty()
+                _uiState.update {
+                    it.copy(canAnularComanda = RestaurantPermissions.canAnularComanda(perms))
+                }
+            }
+        }
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .map { session ->
+                    val perms = session?.restaurantPermissions.orEmpty()
+                    val et = session?.user?.employeeType
+                    RestaurantPermissions.canAccessFeature(perms, RestaurantFeature.COMANDAS, et)
+                }
+                .distinctUntilChanged()
+                .collect { canAccess ->
+                    if (canAccess) {
+                        refresh()
+                    } else {
+                        _uiState.update { it.copy(loading = false, items = emptyList(), error = null) }
+                    }
+                }
+        }
     }
 
     fun refresh() {
@@ -140,7 +170,32 @@ class CocinaViewModel @Inject constructor(
         }
     }
 
+    fun markRoundReady(items: List<KitchenItem>) {
+        val pending = items.filter {
+            it.status == ComandaStatus.PENDIENTE || it.status == ComandaStatus.PREPARACION
+        }
+        if (pending.isEmpty()) return
+        val unique = pending.distinctBy { it.id }
+        viewModelScope.launch {
+            _uiState.update { it.copy(updatingId = -1, error = null) }
+            var failed = false
+            for (item in unique) {
+                when (kitchenRepository.updateComandaStatus(item.id, ComandaStatus.LISTA)) {
+                    is AppResult.Success -> Unit
+                    is AppResult.Error -> failed = true
+                    AppResult.Loading -> Unit
+                }
+            }
+            _uiState.update { it.copy(updatingId = null) }
+            if (failed) {
+                _uiState.update { it.copy(error = "No se pudo marcar la ronda como lista") }
+            }
+            refresh()
+        }
+    }
+
     fun openVoidItem(item: KitchenItem) {
+        if (!_uiState.value.canAnularComanda) return
         _uiState.update {
             it.copy(voidItem = item, voidReason = "", voidPin = "", error = null)
         }

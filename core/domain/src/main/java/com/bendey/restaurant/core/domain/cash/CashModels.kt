@@ -134,3 +134,81 @@ data class CashCancelledSaleRow(
     val paymentMethod: String,
     val reason: String,
 )
+
+data class CashMovementReportRow(
+    val date: String,
+    val type: String,
+    val docNumber: String,
+    val contactName: String,
+    val userName: String,
+    val branchName: String,
+    val paymentMethod: String,
+    val amount: Double,
+    val movementId: Int,
+    val cashSessionId: Int,
+    val category: String?,
+    val cashReference: String?,
+    val notesDetail: String?,
+)
+
+data class CashMovementsReportSummary(
+    val totalRows: Int = 0,
+    val sumIncome: Double = 0.0,
+    val sumExpense: Double = 0.0,
+    val netMovement: Double = 0.0,
+)
+
+data class CashMovementsReportPage(
+    val rows: List<CashMovementReportRow>,
+    val total: Int,
+    val summary: CashMovementsReportSummary,
+)
+
+data class CashMovementsReportQuery(
+    val branchId: Int?,
+    val userId: Int? = null,
+    val dateFrom: String? = null,
+    val dateTo: String? = null,
+    val sessionId: Int? = null,
+    val type: String? = null,
+    val paymentMethod: String? = null,
+    val page: Int = 1,
+    val perPage: Int = 25,
+)
+
+data class CashPaymentDetailRow(
+    val date: String,
+    val saleNumber: String,
+    val orderCode: String,
+    val orderType: String,
+    val userName: String?,
+    val method: String,
+    val amount: Double,
+    val reference: String?,
+)
+
+data class CashPaymentsReport(
+    val byMethod: List<CashMethodTotalWithCount>,
+    val totalIncome: Double,
+    val totalCount: Int,
+    val detail: List<CashPaymentDetailRow>,
+)
+
+data class CashMethodTotalWithCount(
+    val method: String,
+    val total: Double,
+    val count: Int,
+)
+
+data class CashSessionProductSold(
+    val productId: Int?,
+    val code: String,
+    val description: String,
+    val quantity: Double,
+    val total: Double,
+)
+
+data class CashFilterUser(
+    val userId: Int,
+    val name: String,
+)

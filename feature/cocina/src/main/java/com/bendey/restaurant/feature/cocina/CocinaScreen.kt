@@ -248,6 +248,7 @@ fun CocinaScreen(
                                     accent = activeStatus.accentColor(),
                                     advancing = state.updatingId == item.id,
                                     canAdvance = activeStatus != ComandaStatus.ENTREGADA,
+                                    canVoid = state.canAnularComanda,
                                     onAdvance = { viewModel.advanceItem(item) },
                                     onVoid = { viewModel.openVoidItem(item) },
                                 )
@@ -266,8 +267,10 @@ fun CocinaScreen(
                                     accent = activeStatus.accentColor(),
                                     updatingId = state.updatingId,
                                     canAdvance = activeStatus != ComandaStatus.ENTREGADA,
+                                    canVoid = state.canAnularComanda,
                                     onAdvance = viewModel::advanceItem,
                                     onVoid = viewModel::openVoidItem,
+                                    onMarkRoundReady = { viewModel.markRoundReady(it) },
                                 )
                             }
                         }
@@ -307,9 +310,14 @@ private fun KitchenOrderCard(
     accent: androidx.compose.ui.graphics.Color,
     updatingId: Int?,
     canAdvance: Boolean,
+    canVoid: Boolean,
     onAdvance: (KitchenItem) -> Unit,
     onVoid: (KitchenItem) -> Unit,
+    onMarkRoundReady: (List<KitchenItem>) -> Unit,
 ) {
+    val hasPendingRound = group.items.any {
+        it.status == ComandaStatus.PENDIENTE || it.status == ComandaStatus.PREPARACION
+    }
     val elapsed = rememberKitchenElapsed(group.items.firstOrNull()?.kitchenOpenedAt())
     Card(
         shape = RoundedCornerShape(14.dp),
@@ -340,6 +348,17 @@ private fun KitchenOrderCard(
                     accentColor = BendeyColors.Primary,
                 )
             }
+            if (canAdvance && hasPendingRound) {
+                OutlinedButton(
+                    onClick = { onMarkRoundReady(group.items) },
+                    enabled = updatingId != -1,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                ) {
+                    Text(if (updatingId == -1) "Marcando…" else "Marcar ronda lista")
+                }
+            }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             group.items.forEach { item ->
                 Row(
@@ -363,8 +382,10 @@ private fun KitchenOrderCard(
                             Text(if (updatingId == item.id) "…" else "Avanzar", style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    IconButton(onClick = { onVoid(item) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                    if (canVoid) {
+                        IconButton(onClick = { onVoid(item) }, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                        }
                     }
                 }
                 item.notes?.takeIf { it.isNotBlank() }?.let {
@@ -399,6 +420,7 @@ private fun KitchenCard(
     accent: androidx.compose.ui.graphics.Color,
     advancing: Boolean,
     canAdvance: Boolean,
+    canVoid: Boolean,
     onAdvance: () -> Unit,
     onVoid: () -> Unit,
 ) {
@@ -435,8 +457,10 @@ private fun KitchenCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onVoid, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                    if (canVoid) {
+                        IconButton(onClick = onVoid, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
+                        }
                     }
                 }
                 Text(

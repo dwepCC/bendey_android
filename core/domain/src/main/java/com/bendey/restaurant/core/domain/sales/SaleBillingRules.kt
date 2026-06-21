@@ -33,6 +33,24 @@ fun canShowOfficialSunatPdf(billingStatus: String?): Boolean {
     return s == "sent" || s == "accepted" || s == "observed"
 }
 
+fun canShowCdr(billingStatus: String?): Boolean {
+    val s = normalizeBillingStatus(billingStatus)
+    if (s == "voided") return false
+    return s == "accepted" || s == "observed" || s == "rejected"
+}
+
+fun canShowXmlSent(billingStatus: String?): Boolean {
+    val s = normalizeBillingStatus(billingStatus)
+    if (s == "voided") return false
+    return s == "sent" || s == "accepted" || s == "observed" || s == "rejected"
+}
+
+fun canShowXmlGenerated(billingStatus: String?): Boolean {
+    val s = normalizeBillingStatus(billingStatus)
+    if (s == "voided") return false
+    return s == "pending" || s == "error"
+}
+
 fun SaleDetail.canIssueElectronicFromNota(sunatEnabled: Boolean): Boolean =
     sunatEnabled &&
         !isSaleCancelled(status) &&

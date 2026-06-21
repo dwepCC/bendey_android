@@ -5,7 +5,7 @@ import androidx.navigation.compose.composable
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.cocina.CocinaScreen
 
-fun NavGraphBuilder.cocinaGraph() {
+fun NavGraphBuilder.cocinaGraph(onShowMessage: (String) -> Unit = {}) {
     composable(BendeyRoutes.COCINA) {
         CocinaScreen()
     }

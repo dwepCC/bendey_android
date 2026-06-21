@@ -7,6 +7,7 @@ import com.bendey.restaurant.core.domain.restaurant.Floor
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
+import com.bendey.restaurant.core.domain.restaurant.sortRestaurantTables
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,7 +61,7 @@ data class MesasAdminUiState(
                         floors.firstOrNull { f -> f.id == it.floorId }?.name.orEmpty().lowercase().contains(term)
                 }
             }
-            return searched.sortedWith(compareBy({ it.floorId }, { it.name.lowercase() }))
+            return sortRestaurantTables(searched, floors)
         }
 
     val pageCount: Int get() = ((filteredTables.size + PAGE_SIZE - 1) / PAGE_SIZE).coerceAtLeast(1)

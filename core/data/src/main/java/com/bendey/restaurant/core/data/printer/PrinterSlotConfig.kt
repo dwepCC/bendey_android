@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
 import com.bendey.restaurant.platform.printing.transport.PrinterTarget
@@ -47,6 +48,7 @@ data class PrinterSettings(
     val documentos: PrinterSlotConfig = PrinterSlotConfig(),
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
+    val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
 ) {
     fun targetFor(slot: PrinterSlot): PrinterTarget? = when (slot) {
         PrinterSlot.COMANDAS -> comandas.toTarget()

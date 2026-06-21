@@ -5,8 +5,8 @@ import androidx.navigation.compose.composable
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.clientes.ClientesScreen
 
-fun NavGraphBuilder.clientesGraph() {
+fun NavGraphBuilder.clientesGraph(onShowMessage: (String) -> Unit = {}) {
     composable(BendeyRoutes.CLIENTES) {
-        ClientesScreen()
+        ClientesScreen(onShowMessage = onShowMessage)
     }
 }

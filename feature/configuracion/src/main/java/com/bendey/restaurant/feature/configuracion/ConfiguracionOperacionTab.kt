@@ -33,7 +33,10 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 
 @Composable
@@ -45,7 +48,9 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("Usuarios del restaurante", fontWeight = FontWeight.SemiBold)
-            BendeyPrimaryButton("+ Usuario", viewModel::openCreateStaff, fillWidth = false)
+            if (state.canManageRestaurantSettings) {
+                BendeyPrimaryButton("+ Usuario", viewModel::openCreateStaff, fillWidth = false)
+            }
         }
         Card(
             shape = RoundedCornerShape(12.dp),
@@ -59,7 +64,9 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
-                BendeyPrimaryButton("Configurar PIN", viewModel::openPinDialog, modifier = Modifier.fillMaxWidth())
+                if (state.canManageRestaurantSettings) {
+                    BendeyPrimaryButton("Configurar PIN", viewModel::openPinDialog, modifier = Modifier.fillMaxWidth())
+                }
             }
         }
         if (state.staffLoading && state.staffRows.isEmpty()) {
@@ -73,7 +80,7 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
                 modifier = Modifier.weight(1f),
             ) {
                 items(state.staffRows, key = { it.userId }) { row ->
-                    StaffManagementCard(row, onEdit = { viewModel.openEditStaff(row) })
+                    StaffManagementCard(row, onEdit = { viewModel.openEditStaff(row) }, canEdit = state.canManageRestaurantSettings)
                 }
             }
         }
@@ -81,7 +88,7 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
 }
 
 @Composable
-private fun StaffManagementCard(row: RestaurantStaffManagementRow, onEdit: () -> Unit) {
+private fun StaffManagementCard(row: RestaurantStaffManagementRow, onEdit: () -> Unit, canEdit: Boolean) {
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -103,8 +110,10 @@ private fun StaffManagementCard(row: RestaurantStaffManagementRow, onEdit: () ->
                     )
                 }
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar")
+            if (canEdit) {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Editar")
+                }
             }
         }
     }
@@ -114,100 +123,80 @@ private fun StaffManagementCard(row: RestaurantStaffManagementRow, onEdit: () ->
 fun StaffCreateDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     if (!state.staffCreateOpen) return
     val form = state.staffCreateForm
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissCreateStaff,
-        title = { Text("Nuevo usuario") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                BendeyTextField(form.name, { v -> viewModel.updateStaffCreateForm { it.copy(name = v) } }, "Nombre")
-                BendeyTextField(form.email, { v -> viewModel.updateStaffCreateForm { it.copy(email = v) } }, "Email")
-                BendeyTextField(form.phone, { v -> viewModel.updateStaffCreateForm { it.copy(phone = v) } }, "Teléfono (opcional)")
-                EmployeeTypePicker(form.employeeType) { type ->
-                    viewModel.updateStaffCreateForm { it.copy(employeeType = type) }
-                }
-                BendeyTextField(form.pin, { v ->
-                    viewModel.updateStaffCreateForm { it.copy(pin = v.filter { c -> c.isDigit() }.take(6)) }
-                }, "PIN acceso (4-6 dígitos)")
-                BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffCreateBranch)
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                if (state.actionLoading) "Guardando…" else "Crear",
-                viewModel::confirmCreateStaff,
-                enabled = !state.actionLoading,
-            )
-        },
-        dismissButton = { TextButton(onClick = viewModel::dismissCreateStaff) { Text("Cancelar") } },
-    )
+        title = "Nuevo usuario",
+        confirmText = if (state.actionLoading) "Guardando…" else "Crear",
+        onConfirm = viewModel::confirmCreateStaff,
+        onDismiss = viewModel::dismissCreateStaff,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        BendeyTextField(form.name, { v -> viewModel.updateStaffCreateForm { it.copy(name = v) } }, "Nombre")
+        BendeyTextField(form.email, { v -> viewModel.updateStaffCreateForm { it.copy(email = v) } }, "Email")
+        BendeyTextField(form.phone, { v -> viewModel.updateStaffCreateForm { it.copy(phone = v) } }, "Teléfono (opcional)")
+        EmployeeTypePicker(form.employeeType) { type ->
+            viewModel.updateStaffCreateForm { it.copy(employeeType = type) }
+        }
+        BendeyTextField(form.pin, { v ->
+            viewModel.updateStaffCreateForm { it.copy(pin = v.filter { c -> c.isDigit() }.take(6)) }
+        }, "PIN acceso (4-6 dígitos)")
+        BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffCreateBranch)
+    }
 }
 
 @Composable
 fun StaffEditDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     if (!state.staffEditOpen) return
     val form = state.staffEditForm
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissEditStaff,
-        title = { Text("Editar usuario") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(form.name, fontWeight = FontWeight.SemiBold)
-                Text(form.email, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-                EmployeeTypePicker(form.employeeType) { type ->
-                    viewModel.updateStaffEditForm { it.copy(employeeType = type) }
-                }
-                BendeyTextField(form.pin, { v ->
-                    viewModel.updateStaffEditForm { it.copy(pin = v.filter { c -> c.isDigit() }.take(6), clearPin = false) }
-                }, "Nuevo PIN (opcional)")
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Quitar PIN")
-                    Switch(
-                        checked = form.clearPin,
-                        onCheckedChange = { checked ->
-                            viewModel.updateStaffEditForm { it.copy(clearPin = checked, pin = if (checked) "" else it.pin) }
-                        },
-                    )
-                }
-                if (form.employeeType.isNotBlank()) {
-                    BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffEditBranch)
-                }
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                if (state.actionLoading) "Guardando…" else "Guardar",
-                viewModel::confirmEditStaff,
-                enabled = !state.actionLoading,
+        title = "Editar usuario",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::confirmEditStaff,
+        onDismiss = viewModel::dismissEditStaff,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        Text(form.name, fontWeight = FontWeight.SemiBold)
+        Text(form.email, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        EmployeeTypePicker(form.employeeType) { type ->
+            viewModel.updateStaffEditForm { it.copy(employeeType = type) }
+        }
+        BendeyTextField(form.pin, { v ->
+            viewModel.updateStaffEditForm { it.copy(pin = v.filter { c -> c.isDigit() }.take(6), clearPin = false) }
+        }, "Nuevo PIN (opcional)")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Quitar PIN")
+            Switch(
+                checked = form.clearPin,
+                onCheckedChange = { checked ->
+                    viewModel.updateStaffEditForm { it.copy(clearPin = checked, pin = if (checked) "" else it.pin) }
+                },
             )
-        },
-        dismissButton = { TextButton(onClick = viewModel::dismissEditStaff) { Text("Cancelar") } },
-    )
+        }
+        if (form.employeeType.isNotBlank()) {
+            BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffEditBranch)
+        }
+    }
 }
 
 @Composable
 private fun EmployeeTypePicker(selected: String, onSelect: (String) -> Unit) {
-    Text("Rol", style = MaterialTheme.typography.labelMedium)
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        RestaurantEmployeeType.entries.filter { it != RestaurantEmployeeType.NONE }.forEach { type ->
-            FilterChip(
-                selected = selected == type.apiValue,
-                onClick = { onSelect(type.apiValue) },
-                label = { Text(type.label) },
-            )
-        }
-        FilterChip(
-            selected = selected.isBlank(),
-            onClick = { onSelect("") },
-            label = { Text("Sin acceso") },
-        )
-    }
+    val options = RestaurantEmployeeType.entries
+        .filter { it != RestaurantEmployeeType.NONE }
+        .map { BendeyOption(it.apiValue, it.label) } +
+        listOf(BendeyOption("", "Sin acceso"))
+    BendeySimpleSelect(
+        options = options,
+        selectedValue = selected,
+        onSelect = onSelect,
+        label = "Rol",
+    )
 }
 
 @Composable

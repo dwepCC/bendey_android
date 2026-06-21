@@ -3,6 +3,7 @@ package com.bendey.restaurant.feature.mesas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +54,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -78,6 +81,10 @@ import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
+import com.bendey.restaurant.core.ui.pos.ManualProductDialog
+import com.bendey.restaurant.core.navigation.CashCheckoutGate
+import com.bendey.restaurant.core.navigation.CashCheckoutGateNoOp
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
 import java.text.NumberFormat
 import java.util.Locale
@@ -89,6 +96,8 @@ fun MesaScreen(
     onCheckoutSuccess: () -> Unit = onBack,
     modifier: Modifier = Modifier,
     viewModel: MesaViewModel = hiltViewModel(),
+    cashCheckoutGate: CashCheckoutGate = CashCheckoutGateNoOp,
+    onShowMessage: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
@@ -96,11 +105,19 @@ fun MesaScreen(
     val isExpanded = widthClass != WindowWidthSizeClass.COMPACT
     var showCartSheet by remember { mutableStateOf(false) }
     var showOrdersSheet by remember { mutableStateOf(false) }
+    var showManualProduct by remember { mutableStateOf(false) }
+    val onCheckout: () -> Unit = {
+        if (cashCheckoutGate.ensureForCheckout()) {
+            viewModel.openCheckout()
+        }
+    }
     val orders = state.session?.orders.orEmpty()
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     Column(modifier = modifier.fillMaxSize().bendeySafeDrawingPadding()) {
         BendeyScreenToolbar(
@@ -126,9 +143,10 @@ fun MesaScreen(
             total = state.sessionTotal,
             currency = currency,
             canCloseMesa = state.canCloseMesa,
+            canChargeOrders = state.canChargeOrders,
             closingMesa = state.closingMesa,
             onPrintPrecuenta = viewModel::printPrecuenta,
-            onCheckout = viewModel::openCheckout,
+            onCheckout = onCheckout,
             onCloseMesa = { viewModel.closeMesa(onBack) },
             printing = state.printingPrecuenta,
             checkoutLoading = state.checkoutSubmitting,
@@ -136,7 +154,13 @@ fun MesaScreen(
         if (isExpanded) {
             Row(modifier = Modifier.weight(1f)) {
                 Column(modifier = Modifier.weight(0.58f)) {
-                    CatalogSection(state, currency, viewModel, sidebarCategories = true)
+                    CatalogSection(
+                        state = state,
+                        currency = currency,
+                        viewModel = viewModel,
+                        sidebarCategories = true,
+                        gridBottomPadding = 12.dp,
+                    )
                 }
                 Column(
                     modifier = Modifier
@@ -148,6 +172,7 @@ fun MesaScreen(
                         state = state,
                         currency = currency,
                         viewModel = viewModel,
+                        onManualProduct = { showManualProduct = true },
                         modifier = Modifier.weight(1f),
                     )
                     OrdersSection(
@@ -157,23 +182,19 @@ fun MesaScreen(
                         onReprint = viewModel::reprintComanda,
                         onReprintAll = viewModel::reprintAllComandas,
                         onVoidComanda = viewModel::openVoidComanda,
+                        canAnularComanda = state.canAnularComanda,
                         modifier = Modifier.weight(1f),
                         expanded = true,
                     )
                 }
             }
         } else {
-            if (orders.isNotEmpty()) {
-                SentKitchenCompactBar(
-                    orders = orders,
-                    onOpen = { showOrdersSheet = true },
-                )
-            }
             CatalogSection(
                 state = state,
                 currency = currency,
                 viewModel = viewModel,
                 modifier = Modifier.weight(1f),
+                gridBottomPadding = 72.dp,
             )
             CompactMesaBar(
                 cartTotal = state.cartTotal,
@@ -217,6 +238,12 @@ fun MesaScreen(
             validationError = cfg.error,
             resolvedPrice = cfg.resolvedPrice,
             currency = currency,
+            componentModifierGroups = cfg.componentModifierGroups,
+            componentModifiers = cfg.componentModifiers,
+            componentProductNames = cfg.componentProductNames,
+            componentPresentations = cfg.componentPresentations,
+            onToggleComponentModifier = viewModel::toggleComboComponentModifier,
+            onSelectComponentPresentation = viewModel::selectComboComponentPresentation,
             onToggleSlot = viewModel::toggleComboSlot,
             onKitchenNoteChange = viewModel::updateComboConfigureNote,
             onConfirm = viewModel::confirmComboConfigure,
@@ -285,6 +312,7 @@ fun MesaScreen(
                     state = state,
                     currency = currency,
                     viewModel = viewModel,
+                    onManualProduct = { showManualProduct = true },
                     onSend = {
                         viewModel.sendComanda()
                         showCartSheet = false
@@ -297,6 +325,7 @@ fun MesaScreen(
                     onReprint = viewModel::reprintComanda,
                     onReprintAll = viewModel::reprintAllComandas,
                     onVoidComanda = viewModel::openVoidComanda,
+                    canAnularComanda = state.canAnularComanda,
                     modifier = Modifier.heightIn(max = 280.dp),
                 )
             }
@@ -315,6 +344,7 @@ fun MesaScreen(
                 onReprint = viewModel::reprintComanda,
                 onReprintAll = viewModel::reprintAllComandas,
                 onVoidComanda = viewModel::openVoidComanda,
+                canAnularComanda = state.canAnularComanda,
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 320.dp, max = 520.dp)
@@ -339,6 +369,12 @@ fun MesaScreen(
         onDismiss = viewModel::dismissVoidDialog,
         onConfirm = viewModel::confirmVoidComanda,
     )
+
+    ManualProductDialog(
+        open = showManualProduct,
+        onDismiss = { showManualProduct = false },
+        onAdd = viewModel::addManualProduct,
+    )
 }
 
 private fun buildSessionSubtitle(floor: String?, orderCode: String?, guests: Int?): String {
@@ -354,6 +390,7 @@ private fun SessionSummaryBar(
     total: Double,
     currency: NumberFormat,
     canCloseMesa: Boolean,
+    canChargeOrders: Boolean,
     closingMesa: Boolean,
     onPrintPrecuenta: () -> Unit,
     onCheckout: () -> Unit,
@@ -365,7 +402,7 @@ private fun SessionSummaryBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(BendeyColors.PrimaryContainer)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -379,18 +416,13 @@ private fun SessionSummaryBar(
             )
         }
         if (canCloseMesa) {
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "Mesa pagada. Cierra para liberar.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-                BendeyPrimaryButton(
-                    text = if (closingMesa) "Cerrando…" else "Cerrar mesa",
-                    onClick = onCloseMesa,
-                    enabled = !closingMesa,
-                )
-            }
+            BendeyPrimaryButton(
+                text = if (closingMesa) "Cerrando…" else "Cerrar mesa",
+                onClick = onCloseMesa,
+                enabled = !closingMesa,
+                fillWidth = false,
+                modifier = Modifier.heightIn(min = 32.dp),
+            )
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
@@ -400,11 +432,13 @@ private fun SessionSummaryBar(
                     Icon(Icons.Default.Print, contentDescription = null)
                     Text(if (printing) "Imprimiendo…" else "Precuenta")
                 }
-                BendeyPrimaryButton(
-                    text = if (checkoutLoading) "Cobrando…" else "Cobrar",
-                    onClick = onCheckout,
-                    enabled = total > 0 && !checkoutLoading && !printing,
-                )
+                if (canChargeOrders) {
+                    BendeyPrimaryButton(
+                        text = if (checkoutLoading) "Cobrando…" else "Cobrar",
+                        onClick = onCheckout,
+                        enabled = total > 0 && !checkoutLoading && !printing,
+                    )
+                }
             }
         }
     }
@@ -417,6 +451,7 @@ private fun CatalogSection(
     viewModel: MesaViewModel,
     modifier: Modifier = Modifier,
     sidebarCategories: Boolean = false,
+    gridBottomPadding: Dp = 12.dp,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         PosCatalogTabRow(selected = state.catalogTab, onSelect = viewModel::setCatalogTab)
@@ -434,6 +469,8 @@ private fun CatalogSection(
                 modifier = Modifier.weight(1f),
                 sidebarCategories = sidebarCategories,
                 posCatalogStyle = true,
+                gridBottomPadding = gridBottomPadding,
+                searchPlaceholder = "Buscar producto…",
             )
             PosCatalogTab.COMBOS -> {
                 val term = state.searchQuery.trim().lowercase()
@@ -443,22 +480,25 @@ private fun CatalogSection(
                             it.description.orEmpty().lowercase().contains(term)
                     }
                 }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 140.dp),
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    items(filtered, key = { it.id }) { combo ->
-                        BendeyPosProductCard(
-                            name = combo.name,
-                            price = combo.basePrice,
-                            currency = currency,
-                            imageUrl = combo.imageUrl,
-                            assetsBaseUrl = viewModel.assetsBaseUrl,
-                            onClick = { viewModel.onComboClick(combo) },
-                        )
+                BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                    val columns = BendeyTabletTokens.posProductGridColumns(maxWidth)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(filtered, key = { it.id }) { combo ->
+                            BendeyPosProductCard(
+                                name = combo.name,
+                                price = combo.basePrice,
+                                currency = currency,
+                                imageUrl = combo.imageUrl,
+                                assetsBaseUrl = viewModel.assetsBaseUrl,
+                                onClick = { viewModel.onComboClick(combo) },
+                            )
+                        }
                     }
                 }
             }
@@ -473,6 +513,7 @@ private fun CartSection(
     viewModel: MesaViewModel,
     modifier: Modifier = Modifier,
     onSend: (() -> Unit)? = null,
+    onManualProduct: (() -> Unit)? = null,
 ) {
     BendeyPosCartPane(
         title = "Nuevo pedido (${state.cartCount})",
@@ -486,42 +527,22 @@ private fun CartSection(
         canClearCart = state.canClearCart,
         modifier = modifier,
         primaryAction = {
-            BendeyPrimaryButton(
-                text = if (state.sending) "Enviando…" else "Enviar comanda",
-                onClick = { onSend?.invoke() ?: viewModel.sendComanda() },
-                enabled = state.cart.isNotEmpty() && !state.sending,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyPrimaryButton(
+                    text = "Producto manual",
+                    onClick = { onManualProduct?.invoke() },
+                    enabled = onManualProduct != null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                BendeyPrimaryButton(
+                    text = if (state.sending) "Enviando…" else "Enviar comanda",
+                    onClick = { onSend?.invoke() ?: viewModel.sendComanda() },
+                    enabled = state.cart.isNotEmpty() && !state.sending,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     )
-}
-
-@Composable
-private fun SentKitchenCompactBar(
-    orders: List<SessionOrderSummary>,
-    onOpen: () -> Unit,
-) {
-    val itemCount = orders.sumOf { order -> order.comandas.sumOf { it.quantity.toInt() } }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(BendeyColors.WarningContainer.copy(alpha = 0.45f))
-            .clickable(onClick = onOpen)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(Icons.Default.Restaurant, contentDescription = null, tint = BendeyColors.OnWarning)
-        Column(modifier = Modifier.weight(1f)) {
-            Text("Pedidos en cocina", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-            Text(
-                "${orders.size} comanda(s) · $itemCount plato(s) · Toca para ver y reimprimir",
-                style = MaterialTheme.typography.bodySmall,
-                color = BendeyColors.OnSurfaceVariant,
-            )
-        }
-        Icon(Icons.Default.Print, contentDescription = "Ver pedidos", tint = BendeyColors.Primary)
-    }
 }
 
 @Composable
@@ -532,6 +553,7 @@ private fun OrdersSection(
     onReprint: (SessionOrderSummary) -> Unit,
     onReprintAll: () -> Unit,
     onVoidComanda: (SessionComandaSummary) -> Unit,
+    canAnularComanda: Boolean = false,
     modifier: Modifier = Modifier,
     expanded: Boolean = false,
 ) {
@@ -647,16 +669,18 @@ private fun OrdersSection(
                                     label = comanda.status.label,
                                     accentColor = comanda.status.accentColor(),
                                 )
-                                IconButton(
-                                    onClick = { onVoidComanda(comanda) },
-                                    modifier = Modifier.size(32.dp),
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Anular línea",
-                                        tint = BendeyColors.Error,
-                                        modifier = Modifier.size(18.dp),
-                                    )
+                                if (canAnularComanda) {
+                                    IconButton(
+                                        onClick = { onVoidComanda(comanda) },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Anular línea",
+                                            tint = BendeyColors.Error,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
                                 }
                             }
                         }

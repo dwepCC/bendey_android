@@ -44,7 +44,10 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 
@@ -150,32 +153,39 @@ private fun DriverFormDialog(
     onFormChange: ((DeliveryDriverFormInput) -> DeliveryDriverFormInput) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    val companyOptions = listOf(BendeyOption("", "Ninguna")) +
+        companies.map { BendeyOption(it.id.toString(), it.name) }
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Editar repartidor" else "Nuevo repartidor") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
-                BendeyTextField(form.phone, { v -> onFormChange { it.copy(phone = v) } }, "Teléfono")
-                BendeyTextField(form.vehicleType, { v -> onFormChange { it.copy(vehicleType = v) } }, "Vehículo")
-                BendeyTextField(form.plate, { v -> onFormChange { it.copy(plate = v) } }, "Placa")
-                BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas", singleLine = false)
-                Text("Empresa")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = form.deliveryCompanyId == null, onClick = { onFormChange { it.copy(deliveryCompanyId = null) } }, label = { Text("Ninguna") })
-                    companies.forEach { company ->
-                        FilterChip(selected = form.deliveryCompanyId == company.id, onClick = { onFormChange { it.copy(deliveryCompanyId = company.id) } }, label = { Text(company.name) })
-                    }
-                }
-                if (isEditing) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Activo"); Switch(form.active, { checked -> onFormChange { it.copy(active = checked) } })
-                }
-                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
+        title = if (isEditing) "Editar repartidor" else "Nuevo repartidor",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
+        BendeyTextField(form.phone, { v -> onFormChange { it.copy(phone = v) } }, "Teléfono")
+        BendeyTextField(form.vehicleType, { v -> onFormChange { it.copy(vehicleType = v) } }, "Vehículo")
+        BendeyTextField(form.plate, { v -> onFormChange { it.copy(plate = v) } }, "Placa")
+        BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas", singleLine = false)
+        BendeySimpleSelect(
+            options = companyOptions,
+            selectedValue = form.deliveryCompanyId?.toString().orEmpty(),
+            onSelect = { value ->
+                val id = value.toIntOrNull()
+                onFormChange { it.copy(deliveryCompanyId = id) }
+            },
+            label = "Empresa",
+        )
+        if (isEditing) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Activo")
+                Switch(form.active, { checked -> onFormChange { it.copy(active = checked) } })
             }
-        },
-        confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onSave, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-    )
+        }
+        error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
+    }
 }
 
 @Composable
@@ -188,16 +198,16 @@ private fun CompanyFormDialog(
     onFormChange: ((DeliveryCompanyFormInput) -> DeliveryCompanyFormInput) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Editar empresa" else "Nueva empresa") },
-        text = {
-            Column {
-                BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
-                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
-            }
-        },
-        confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onSave, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-    )
+        title = if (isEditing) "Editar empresa" else "Nueva empresa",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
+        error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
+    }
 }

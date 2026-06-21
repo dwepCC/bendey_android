@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.ventas
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -62,13 +63,18 @@ import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canResendToSunat
 import com.bendey.restaurant.core.domain.sales.canSendToSunat
+import com.bendey.restaurant.core.domain.sales.canShowCdr
 import com.bendey.restaurant.core.domain.sales.canShowOfficialSunatPdf
+import com.bendey.restaurant.core.domain.sales.canShowXmlGenerated
+import com.bendey.restaurant.core.domain.sales.canShowXmlSent
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
 import com.bendey.restaurant.core.domain.sales.convertedToLabel
 import com.bendey.restaurant.core.domain.sales.isConverted
+import com.bendey.restaurant.core.domain.sales.notaVentaListStatusLabel
 import com.bendey.restaurant.core.domain.sales.saleStatusDisplayLabel
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -80,6 +86,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 @Composable
 fun VentasScreen(
     modifier: Modifier = Modifier,
+    onShowMessage: (String) -> Unit = {},
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,9 +94,11 @@ fun VentasScreen(
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     LaunchedEffect(listState, state.hasMore, state.loading) {
         snapshotFlow {
@@ -104,7 +113,7 @@ fun VentasScreen(
     }
 
     val billingHint = when (state.tab) {
-        VentasTab.FACTURACION, VentasTab.CREDITOS -> " · SUNAT en vivo"
+        VentasTab.FACTURACION -> " · SUNAT en vivo"
         else -> ""
     }
 
@@ -137,8 +146,16 @@ fun VentasScreen(
                 onToDateChange = viewModel::setToDate,
                 onPaymentMethodChange = viewModel::setPaymentMethodFilter,
                 onBillingStatusChange = viewModel::setBillingStatusFilter,
+                onExportPdf = { viewModel.exportListPdf(context) },
+                onExportExcel = { viewModel.exportListExcel(context) },
             )
-            if (state.listSummary.paymentTotals.isNotEmpty()) {
+            if (state.tab == VentasTab.FACTURACION && !state.sunatEnabled) {
+                Text(
+                    "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
+                    color = BendeyColors.OnSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            } else if (state.tab != VentasTab.CREDITOS && state.listSummary.paymentTotals.isNotEmpty()) {
                 SalesPaymentSummaryRow(
                     summary = state.listSummary,
                     paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
@@ -149,6 +166,12 @@ fun VentasScreen(
                 Text(
                     state.error.orEmpty(),
                     color = BendeyColors.Error,
+                    modifier = Modifier.padding(16.dp),
+                )
+            } else if (!state.canFetchList) {
+                Text(
+                    "No hay comprobantes en esta sección",
+                    color = BendeyColors.OnSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
                 )
             } else if (state.sales.isEmpty() && !state.loading) {
@@ -209,6 +232,11 @@ fun VentasScreen(
                 onSendSunat = viewModel::sendToSunat,
                 onResendSunat = viewModel::resendToSunat,
                 onOpenOfficialPdf = { viewModel.openOfficialSunatPdf(context) },
+                onViewXmlSent = viewModel::viewXmlSent,
+                onViewXmlGenerated = viewModel::viewXmlGenerated,
+                onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
+                onDownloadXmlGenerated = { viewModel.downloadXmlGenerated(context) },
+                onDownloadCdr = { viewModel.downloadCdr(context) },
             )
         }
     }
@@ -259,6 +287,26 @@ fun VentasScreen(
         },
         onDismiss = viewModel::dismissReceiptModal,
     )
+
+    if (state.xmlViewOpen) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissXmlView,
+            title = { Text(state.xmlViewTitle) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Text(state.xmlViewContent, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissXmlView) { Text("Cerrar") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -297,6 +345,8 @@ private fun VentasFiltersSection(
     onToDateChange: (String) -> Unit,
     onPaymentMethodChange: (String) -> Unit,
     onBillingStatusChange: (String) -> Unit,
+    onExportPdf: () -> Unit,
+    onExportExcel: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -304,12 +354,14 @@ private fun VentasFiltersSection(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        BendeyTextField(
-            value = state.searchQuery,
-            onValueChange = onSearchChange,
-            label = "Buscar por número",
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (state.tab != VentasTab.FACTURACION && state.tab != VentasTab.NOTAS) {
+            BendeyTextField(
+                value = state.searchQuery,
+                onValueChange = onSearchChange,
+                label = "Buscar por número",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -355,6 +407,24 @@ private fun VentasFiltersSection(
                 },
                 onSelect = onBillingStatusChange,
             )
+        }
+        if (state.canFetchList) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onExportPdf,
+                    enabled = state.exportBusy == null,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (state.exportBusy == "pdf") "Exportando PDF…" else "Exportar PDF")
+                }
+                OutlinedButton(
+                    onClick = onExportExcel,
+                    enabled = state.exportBusy == null,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (state.exportBusy == "excel") "Exportando Excel…" else "Exportar Excel")
+                }
+            }
         }
     }
 }
@@ -457,10 +527,22 @@ private fun SaleRow(
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.Primary,
                 )
-                BendeyStatusChip(
-                    label = saleStatusDisplayLabel(sale.status, sale.billingStatus),
-                    accentColor = saleStatusAccentColor(sale.status, sale.billingStatus),
-                )
+                when (tab) {
+                    VentasTab.NOTAS -> notaVentaListStatusLabel(sale.status)?.let { label ->
+                        BendeyStatusChip(
+                            label = label,
+                            accentColor = BendeyColors.Error,
+                        )
+                    }
+                    VentasTab.CREDITOS -> BendeyStatusChip(
+                        label = saleStatusDisplayLabel(sale.status, null),
+                        accentColor = saleStatusAccentColor(sale.status, null),
+                    )
+                    else -> BendeyStatusChip(
+                        label = saleStatusDisplayLabel(sale.status, sale.billingStatus),
+                        accentColor = saleStatusAccentColor(sale.status, sale.billingStatus),
+                    )
+                }
             }
         }
     }
@@ -484,6 +566,11 @@ private fun SaleDetailSheet(
     onSendSunat: () -> Unit,
     onResendSunat: () -> Unit,
     onOpenOfficialPdf: () -> Unit,
+    onViewXmlSent: () -> Unit,
+    onViewXmlGenerated: () -> Unit,
+    onDownloadXmlSent: () -> Unit,
+    onDownloadXmlGenerated: () -> Unit,
+    onDownloadCdr: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -498,7 +585,9 @@ private fun SaleDetailSheet(
                 Text(detail.displayNumber, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("${detail.docType} · ${detail.issueDate}", color = BendeyColors.OnSurfaceVariant)
                 detail.billingStatus?.let {
-                    Text("Estado SUNAT: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
+                    if (tab == VentasTab.FACTURACION) {
+                        Text("Estado SUNAT: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
+                    }
                 }
                 detail.contactName?.let { Text("Cliente: $it") }
                 if (detail.isConverted()) {
@@ -603,6 +692,16 @@ private fun SaleDetailSheet(
                                 )
                             }
                         }
+                        SunatDocumentActions(
+                            billingStatus = detail.billingStatus,
+                            billingBusy = billingBusy,
+                            showXmlViewers = true,
+                            onViewXmlSent = onViewXmlSent,
+                            onViewXmlGenerated = onViewXmlGenerated,
+                            onDownloadXmlSent = onDownloadXmlSent,
+                            onDownloadXmlGenerated = onDownloadXmlGenerated,
+                            onDownloadCdr = onDownloadCdr,
+                        )
                         if (detail.canVoidWithCreditNote()) {
                             OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
                                 Text("Anular con nota de crédito", color = BendeyColors.Error)
@@ -640,10 +739,58 @@ private fun SaleDetailSheet(
                                 )
                             }
                         }
+                        SunatDocumentActions(
+                            billingStatus = detail.billingStatus,
+                            billingBusy = billingBusy,
+                            showXmlViewers = false,
+                            onViewXmlSent = onViewXmlSent,
+                            onViewXmlGenerated = onViewXmlGenerated,
+                            onDownloadXmlSent = onDownloadXmlSent,
+                            onDownloadXmlGenerated = onDownloadXmlGenerated,
+                            onDownloadCdr = onDownloadCdr,
+                        )
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun SunatDocumentActions(
+    billingStatus: String?,
+    billingBusy: String?,
+    showXmlViewers: Boolean,
+    onViewXmlSent: () -> Unit,
+    onViewXmlGenerated: () -> Unit,
+    onDownloadXmlSent: () -> Unit,
+    onDownloadXmlGenerated: () -> Unit,
+    onDownloadCdr: () -> Unit,
+) {
+    if (showXmlViewers && canShowXmlSent(billingStatus)) {
+        OutlinedButton(onClick = onViewXmlSent, enabled = billingBusy == null, modifier = Modifier.fillMaxWidth()) {
+            Text(if (billingBusy == "xml") "Cargando XML…" else "Ver XML enviado")
+        }
+    }
+    if (showXmlViewers && canShowXmlGenerated(billingStatus)) {
+        OutlinedButton(onClick = onViewXmlGenerated, enabled = billingBusy == null, modifier = Modifier.fillMaxWidth()) {
+            Text(if (billingBusy == "xml-generated") "Cargando XML…" else "Ver XML generado")
+        }
+    }
+    if (canShowXmlSent(billingStatus)) {
+        OutlinedButton(onClick = onDownloadXmlSent, enabled = billingBusy == null, modifier = Modifier.fillMaxWidth()) {
+            Text(if (billingBusy == "xml") "Descargando…" else "Descargar XML enviado")
+        }
+    }
+    if (canShowXmlGenerated(billingStatus)) {
+        OutlinedButton(onClick = onDownloadXmlGenerated, enabled = billingBusy == null, modifier = Modifier.fillMaxWidth()) {
+            Text(if (billingBusy == "xml-generated") "Descargando…" else "Descargar XML generado")
+        }
+    }
+    if (canShowCdr(billingStatus)) {
+        OutlinedButton(onClick = onDownloadCdr, enabled = billingBusy == null, modifier = Modifier.fillMaxWidth()) {
+            Text(if (billingBusy == "cdr") "Descargando…" else "Descargar CDR")
         }
     }
 }
@@ -766,15 +913,37 @@ private fun SalesPaymentSummaryRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        androidx.compose.material3.Card(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
+        ) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Text("Total", style = MaterialTheme.typography.labelMedium, color = BendeyColors.Primary)
+                Text(
+                    currency.format(summary.sumActive.takeIf { it > 0 } ?: summary.sumTotal),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = BendeyColors.Primary,
+                )
+                if (summary.countActive > 0) {
+                    Text(
+                        "${summary.countActive} comprobantes",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+            }
+        }
         summary.paymentTotals.forEach { pt ->
             androidx.compose.material3.Card(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                 colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp),
             ) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                     Text(
                         methodLabel(pt.method),
                         style = MaterialTheme.typography.labelMedium,
@@ -784,10 +953,15 @@ private fun SalesPaymentSummaryRow(
                     Text(
                         currency.format(pt.total),
                         fontWeight = FontWeight.Bold,
-                        color = BendeyColors.Primary,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = BendeyColors.OnSurface,
                     )
                     if (pt.count > 0) {
-                        Text("${pt.count} ventas", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                        Text(
+                            "${pt.count} ventas",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
                     }
                 }
             }

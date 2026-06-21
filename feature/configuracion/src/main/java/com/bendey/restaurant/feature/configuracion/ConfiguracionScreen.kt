@@ -42,6 +42,7 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.domain.catalog.BranchItem
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -127,7 +128,7 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
                         Text(config.businessName, style = MaterialTheme.typography.bodyMedium)
                         if (config.address.isNotBlank()) Text(config.address, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     }
-                    BendeyPrimaryButton("Editar datos de contacto", viewModel::openEditConfig, modifier = Modifier.fillMaxWidth())
+                    BendeyPrimaryButton("Editar datos de contacto", viewModel::openEditConfig, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings)
                 }
             }
         }
@@ -139,9 +140,7 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
                         Text("IGV: ${sunat.taxRate}%", style = MaterialTheme.typography.bodySmall)
                         Text(if (sunat.sunatEnabled) "Facturación electrónica activa" else "Facturación electrónica desactivada", style = MaterialTheme.typography.bodySmall)
                     }
-                    if (state.sunat?.sunatEnabled == true) {
-                        BendeyPrimaryButton("Editar configuración IGV", viewModel::openEditSunat, modifier = Modifier.fillMaxWidth())
-                    }
+                    BendeyPrimaryButton("Editar configuración IGV", viewModel::openEditSunat, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings)
                 }
             }
         }
@@ -160,31 +159,40 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
 private fun BranchesTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
-            BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
+            if (state.canManageRestaurantSettings) {
+                BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
+            }
         }
         LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.branches, key = { it.id }) { branch ->
-                BranchCard(branch, viewModel)
+                BranchCard(branch, viewModel, state.canManageRestaurantSettings)
             }
         }
     }
 }
 
 @Composable
-private fun BranchCard(branch: BranchItem, viewModel: ConfiguracionViewModel) {
+private fun BranchCard(branch: BranchItem, viewModel: ConfiguracionViewModel, canManage: Boolean) {
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(branch.name, fontWeight = FontWeight.SemiBold)
                 if (branch.address.isNotBlank()) Text(branch.address, style = MaterialTheme.typography.bodySmall)
+                if (branch.fiscalDomicileCode.isNotBlank()) {
+                    Text("Domicilio fiscal: ${branch.fiscalDomicileCode}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (branch.isMain) BendeyStatusChip("Principal", BendeyColors.Primary)
                     BendeyStatusChip(if (branch.active) "Activa" else "Inactiva", if (branch.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
                 }
             }
-            IconButton(onClick = { viewModel.openEditBranch(branch) }) { Icon(Icons.Default.Edit, contentDescription = null) }
-            IconButton(onClick = { viewModel.requestDeleteBranch(branch.id) }) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
+            if (canManage) {
+                IconButton(onClick = { viewModel.openEditBranch(branch) }) { Icon(Icons.Default.Edit, contentDescription = null) }
+                if (!branch.isMain) {
+                    IconButton(onClick = { viewModel.requestDeleteBranch(branch.id) }) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
+                    }
+                }
             }
         }
     }
@@ -206,124 +214,154 @@ private fun SeriesTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewM
             }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
-            BendeyPrimaryButton("Nueva serie", viewModel::openCreateSeries, fillWidth = false, enabled = state.selectedBranchId != null)
+            if (state.canManageRestaurantSettings) {
+                BendeyPrimaryButton("Nueva serie", viewModel::openCreateSeries, fillWidth = false, enabled = state.selectedBranchId != null)
+            }
         }
         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.series, key = { it.id }) { series ->
-                SeriesCard(series, viewModel)
+                SeriesCard(series, viewModel, state.canManageRestaurantSettings, state.sunat?.sunatEnabled == true)
             }
         }
     }
 }
 
 @Composable
-private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel) {
+private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel, canManage: Boolean, sunatEnabled: Boolean) {
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("${series.docType} · ${series.series}", fontWeight = FontWeight.SemiBold)
-                Text("SUNAT ${series.sunatCode ?: "—"}", style = MaterialTheme.typography.bodySmall)
-                BendeyStatusChip(if (series.active) "Activa" else "Inactiva", if (series.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
+                Text("SUNAT ${series.sunatCode ?: "—"} · Corr. ${series.currentNumber}", style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    BendeyStatusChip(if (series.active) "Activa" else "Inactiva", if (series.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
+                    if (series.locked) BendeyStatusChip("En uso", BendeyColors.Warning)
+                }
             }
-            IconButton(onClick = { viewModel.openEditSeries(series) }) { Icon(Icons.Default.Edit, contentDescription = null) }
-            IconButton(onClick = { viewModel.requestDeleteSeries(series.id) }) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
+            if (canManage) {
+                IconButton(onClick = { viewModel.openEditSeries(series) }) { Icon(Icons.Default.Edit, contentDescription = null) }
+                if (series.canDelete) {
+                    IconButton(onClick = { viewModel.requestDeleteSeries(series.id) }) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable private fun ConfigFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissEditConfig,
-        title = { Text("Datos de contacto") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(state.configForm.tradeName, { v -> viewModel.updateConfigForm { it.copy(tradeName = v) } }, "Nombre comercial")
-                BendeyTextField(state.configForm.businessName, { v -> viewModel.updateConfigForm { it.copy(businessName = v) } }, "Razón social")
-                BendeyTextField(state.configForm.address, { v -> viewModel.updateConfigForm { it.copy(address = v) } }, "Dirección", singleLine = false)
-                BendeyTextField(state.configForm.phone, { v -> viewModel.updateConfigForm { it.copy(phone = v) } }, "Teléfono")
-                BendeyTextField(state.configForm.email, { v -> viewModel.updateConfigForm { it.copy(email = v) } }, "Email")
-            }
-        },
-        confirmButton = { BendeyPrimaryButton(if (state.actionLoading) "Guardando…" else "Guardar", viewModel::saveConfig, enabled = !state.actionLoading) },
-        dismissButton = { TextButton(onClick = viewModel::dismissEditConfig) { Text("Cancelar") } },
-    )
+        title = "Datos de contacto",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveConfig,
+        onDismiss = viewModel::dismissEditConfig,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        BendeyTextField(state.configForm.tradeName, { v -> viewModel.updateConfigForm { it.copy(tradeName = v) } }, "Nombre comercial")
+        BendeyTextField(state.configForm.address, { v -> viewModel.updateConfigForm { it.copy(address = v) } }, "Dirección", singleLine = false)
+        BendeyTextField(state.configForm.phone, { v -> viewModel.updateConfigForm { it.copy(phone = v) } }, "Teléfono")
+        BendeyTextField(state.configForm.email, { v -> viewModel.updateConfigForm { it.copy(email = v) } }, "Email")
+    }
 }
 
 @Composable private fun SunatFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissEditSunat,
-        title = { Text("Configuración IGV") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(state.sunatForm.taxRate, { v -> viewModel.updateSunatForm { it.copy(taxRate = v) } }, "Tasa IGV (%)")
-                BendeyTextField(state.sunatForm.igvRegime, { v -> viewModel.updateSunatForm { it.copy(igvRegime = v) } }, "Régimen IGV")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Zona de beneficio tributario")
-                    Switch(state.sunatForm.taxBenefitZone, { c -> viewModel.updateSunatForm { it.copy(taxBenefitZone = c) } })
-                }
-            }
-        },
-        confirmButton = { BendeyPrimaryButton(if (state.actionLoading) "Guardando…" else "Guardar", viewModel::saveSunat, enabled = !state.actionLoading) },
-        dismissButton = { TextButton(onClick = viewModel::dismissEditSunat) { Text("Cancelar") } },
-    )
+        title = "Configuración IGV",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveSunat,
+        onDismiss = viewModel::dismissEditSunat,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        BendeyTextField(state.sunatForm.taxRate, { v -> viewModel.updateSunatForm { it.copy(taxRate = v) } }, "Tasa IGV (%)")
+        BendeyTextField(state.sunatForm.igvRegime, { v -> viewModel.updateSunatForm { it.copy(igvRegime = v) } }, "Régimen IGV")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Zona de beneficio tributario")
+            Switch(state.sunatForm.taxBenefitZone, { c -> viewModel.updateSunatForm { it.copy(taxBenefitZone = c) } })
+        }
+    }
 }
 
 @Composable private fun PinDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissPinDialog,
-        title = { Text("PIN de anulación") },
-        text = { BendeyTextField(state.pinValue, viewModel::setPinValue, "Nuevo PIN (4+ dígitos)") },
-        confirmButton = { BendeyPrimaryButton(if (state.actionLoading) "Guardando…" else "Guardar", viewModel::savePin, enabled = !state.actionLoading) },
-        dismissButton = { TextButton(onClick = viewModel::dismissPinDialog) { Text("Cancelar") } },
-    )
+        title = "PIN de anulación",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::savePin,
+        onDismiss = viewModel::dismissPinDialog,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        BendeyTextField(state.pinValue, { v -> viewModel.setPinValue(v.filter { it.isDigit() }.take(6)) }, "Nuevo PIN (4-6 dígitos)")
+    }
 }
 
 @Composable private fun BranchFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissBranchForm,
-        title = { Text(if (state.branchForm.id == null) "Nueva sucursal" else "Editar sucursal") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(state.branchForm.name, { v -> viewModel.updateBranchForm { it.copy(name = v) } }, "Nombre *")
-                BendeyTextField(state.branchForm.address, { v -> viewModel.updateBranchForm { it.copy(address = v) } }, "Dirección")
-                BendeyTextField(state.branchForm.phone, { v -> viewModel.updateBranchForm { it.copy(phone = v) } }, "Teléfono")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Sucursal principal")
-                    Switch(state.branchForm.isMain, { c -> viewModel.updateBranchForm { it.copy(isMain = c) } })
-                }
-                if (state.branchForm.id != null) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Activa")
-                        Switch(state.branchForm.active, { c -> viewModel.updateBranchForm { it.copy(active = c) } })
-                    }
-                }
+        title = if (state.branchForm.id == null) "Nueva sucursal" else "Editar sucursal",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveBranch,
+        onDismiss = viewModel::dismissBranchForm,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        BendeyTextField(state.branchForm.name, { v -> viewModel.updateBranchForm { it.copy(name = v) } }, "Nombre *")
+        BendeyTextField(state.branchForm.address, { v -> viewModel.updateBranchForm { it.copy(address = v) } }, "Dirección")
+        BendeyTextField(state.branchForm.phone, { v -> viewModel.updateBranchForm { it.copy(phone = v) } }, "Teléfono")
+        BendeyTextField(state.branchForm.fiscalDomicileCode, { v -> viewModel.updateBranchForm { it.copy(fiscalDomicileCode = v) } }, "Código domicilio fiscal")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Sucursal principal")
+            Switch(state.branchForm.isMain, { c -> viewModel.updateBranchForm { it.copy(isMain = c) } })
+        }
+        if (state.branchForm.id != null) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Activa")
+                Switch(state.branchForm.active, { c -> viewModel.updateBranchForm { it.copy(active = c) } })
             }
-        },
-        confirmButton = { BendeyPrimaryButton(if (state.actionLoading) "Guardando…" else "Guardar", viewModel::saveBranch, enabled = !state.actionLoading) },
-        dismissButton = { TextButton(onClick = viewModel::dismissBranchForm) { Text("Cancelar") } },
-    )
+        }
+    }
 }
 
 @Composable private fun SeriesFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    AlertDialog(
+    val form = state.seriesForm
+    val sunatEnabled = state.sunat?.sunatEnabled == true
+    val fieldsLocked = form.locked && form.id != null
+    BendeyFormDialog(
         onDismissRequest = viewModel::dismissSeriesForm,
-        title = { Text(if (state.seriesForm.id == null) "Nueva serie" else "Editar serie") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(state.seriesForm.docType, { v -> viewModel.updateSeriesForm { it.copy(docType = v) } }, "Tipo documento")
-                BendeyTextField(state.seriesForm.series, { v -> viewModel.updateSeriesForm { it.copy(series = v) } }, "Serie *")
-                BendeyTextField(state.seriesForm.sunatCode, { v -> viewModel.updateSeriesForm { it.copy(sunatCode = v) } }, "Código SUNAT")
-                if (state.seriesForm.id != null) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Activa")
-                        Switch(state.seriesForm.active, { c -> viewModel.updateSeriesForm { it.copy(active = c) } })
-                    }
-                }
+        title = if (form.id == null) "Nueva serie" else "Editar serie",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveSeries,
+        onDismiss = viewModel::dismissSeriesForm,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+    ) {
+        if (!sunatEnabled) {
+            Text("Sin FE: solo series SUNAT 00", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        }
+        BendeyTextField(form.docType, { v -> viewModel.updateSeriesForm { it.copy(docType = v) } }, "Tipo documento", enabled = !fieldsLocked)
+        BendeyTextField(form.series, { v -> viewModel.updateSeriesForm { it.copy(series = v) } }, "Serie *", enabled = !fieldsLocked)
+        BendeyTextField(
+            form.sunatCode,
+            { v -> viewModel.updateSeriesForm { it.copy(sunatCode = v) } },
+            "Código SUNAT",
+            enabled = !fieldsLocked && sunatEnabled,
+        )
+        if (form.id != null) {
+            BendeyTextField(
+                form.currentNumber.toString(),
+                { v -> viewModel.updateSeriesForm { it.copy(currentNumber = v.toIntOrNull() ?: 0) } },
+                "Correlativo",
+                enabled = !fieldsLocked,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Activa")
+                Switch(form.active, { c -> viewModel.updateSeriesForm { it.copy(active = c) } })
             }
-        },
-        confirmButton = { BendeyPrimaryButton(if (state.actionLoading) "Guardando…" else "Guardar", viewModel::saveSeries, enabled = !state.actionLoading) },
-        dismissButton = { TextButton(onClick = viewModel::dismissSeriesForm) { Text("Cancelar") } },
-    )
+        }
+    }
 }

@@ -56,6 +56,7 @@ import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -66,15 +67,18 @@ import java.util.Locale
 @Composable
 fun CajaScreen(
     modifier: Modifier = Modifier,
+    onShowMessage: (String) -> Unit = {},
     viewModel: CajaViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val context = LocalContext.current
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
-    }
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     PullToRefreshBox(
         isRefreshing = state.loading,
@@ -98,7 +102,9 @@ fun CajaScreen(
                     .padding(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                CajaTab.entries.forEach { tab ->
+                CajaTab.entries.filter { tab ->
+                    tab != CajaTab.CONFIG || state.canViewCashSettings
+                }.forEach { tab ->
                     FilterChip(
                         selected = state.tab == tab,
                         onClick = { viewModel.setTab(tab) },
@@ -114,7 +120,7 @@ fun CajaScreen(
                     SessionTab(state, currency, viewModel)
                 }
                 state.tab == CajaTab.MOVEMENTS -> {
-                    MovementsTab(state, currency, viewModel)
+                    MovementsTab(state, currency, viewModel, context)
                 }
                 state.tab == CajaTab.REPORT -> {
                     ReportTab(state, currency, viewModel, context)
@@ -297,22 +303,123 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
 }
 
 @Composable
-private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
-    if (state.session == null) {
-        Text("Abre caja para ver movimientos", modifier = Modifier.padding(24.dp), color = BendeyColors.OnSurfaceVariant)
-        return
-    }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
-            BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
+private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel, context: android.content.Context) {
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        if (state.session != null) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
+                    BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
+                }
+            }
         }
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(state.movements, key = { it.id }) { MovementCard(it, currency) }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyTextField(
+                    value = state.movementsFilter.dateFrom,
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(dateFrom = v) } },
+                    label = "Desde",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = state.movementsFilter.dateTo,
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(dateTo = v) } },
+                    label = "Hasta",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyTextField(
+                    value = state.movementsFilter.sessionId?.toString().orEmpty(),
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(sessionId = v.trim().toIntOrNull()) } },
+                    label = "Sesión #",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = state.movementsFilter.paymentMethod,
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(paymentMethod = v) } },
+                    label = "Método pago",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyTextField(
+                    value = state.movementsFilter.userId?.toString().orEmpty(),
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(userId = v.trim().toIntOrNull()) } },
+                    label = "Usuario #",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = state.movementsFilter.type,
+                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(type = v) } },
+                    label = "Tipo (income/expense)",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyPrimaryButton("Buscar", viewModel::searchMovementsReport, Modifier.weight(1f))
+                OutlinedButton(
+                    onClick = { viewModel.exportMovementsReport(context) },
+                    enabled = !state.movementsExportBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (state.movementsExportBusy) "Exportando…" else "Exportar Excel")
+                }
+            }
+        }
+        item {
+            Text(
+                "Ingresos: ${currency.format(state.movementsReportSummary.sumIncome)} · " +
+                    "Egresos: ${currency.format(state.movementsReportSummary.sumExpense)} · " +
+                    "Neto: ${currency.format(state.movementsReportSummary.netMovement)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+        }
+        if (state.movementsReportLoading) {
+            item { CircularProgressIndicator(modifier = Modifier.padding(12.dp)) }
+        }
+        item {
+            Text("Movimientos efectivo", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        }
+        if (state.movementsReportRows.isEmpty() && !state.movementsReportLoading) {
+            item { Text("Sin movimientos en el periodo", color = BendeyColors.OnSurfaceVariant) }
+        }
+        items(state.movementsReportRows, key = { it.movementId }) { row ->
+            Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
+                Column(Modifier.padding(10.dp)) {
+                    Text(row.docNumber.ifBlank { row.category.orEmpty() }, fontWeight = FontWeight.Medium)
+                    Text("${row.date} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    Text(currency.format(row.amount), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
+                }
+            }
+        }
+        val electronic = state.paymentsReport?.detail?.filter { row ->
+            row.method.trim().lowercase() !in setOf("efectivo", "cash", "contado")
+        }.orEmpty()
+        if (electronic.isNotEmpty()) {
+            item {
+                Text("Cobros electrónicos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
+            }
+            items(electronic, key = { "${it.saleNumber}-${it.date}-${it.amount}" }) { row ->
+                Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Text(row.saleNumber.ifBlank { row.orderCode }, fontWeight = FontWeight.Medium)
+                        Text("${row.date} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        Text(currency.format(row.amount), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }
@@ -347,25 +454,29 @@ private fun ReportTab(
             CircularProgressIndicator(modifier = Modifier.padding(24.dp))
         } else {
             state.report?.let { report ->
-                ReportContent(report, currency)
-                OutlinedButton(
-                    onClick = {
-                        val text = formatSessionReportText(report, currency)
-                        context.startActivity(
-                            Intent.createChooser(
-                                Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_SUBJECT, "Reporte caja #${report.session.id}")
-                                    putExtra(Intent.EXTRA_TEXT, text)
-                                },
-                                "Compartir reporte",
-                            ),
-                        )
-                    },
-                    modifier = Modifier.padding(top = 12.dp),
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = null)
-                    Text("Compartir reporte", modifier = Modifier.padding(start = 6.dp))
+                ReportContent(report, state.reportProducts, currency)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val text = formatSessionReportText(report, currency)
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "Reporte caja #${report.session.id}")
+                                        putExtra(Intent.EXTRA_TEXT, text)
+                                    },
+                                    "Compartir reporte",
+                                ),
+                            )
+                        },
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Text("Compartir", modifier = Modifier.padding(start = 6.dp))
+                    }
+                    OutlinedButton(onClick = { viewModel.exportSessionReportPdf(context) }) {
+                        Text("Exportar PDF")
+                    }
                 }
             } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
         }
@@ -373,7 +484,11 @@ private fun ReportTab(
 }
 
 @Composable
-private fun ReportContent(report: CashSessionReport, currency: NumberFormat) {
+private fun ReportContent(
+    report: CashSessionReport,
+    products: List<com.bendey.restaurant.core.domain.cash.CashSessionProductSold>,
+    currency: NumberFormat,
+) {
     val session = report.session
     Column(
         modifier = Modifier
@@ -423,6 +538,15 @@ private fun ReportContent(report: CashSessionReport, currency: NumberFormat) {
             Text("Ventas anuladas", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
             report.cancelledSalesDetail.take(15).forEach { row ->
                 Text("${row.docNumber} · ${row.paymentMethod} · ${currency.format(row.amount)}", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        if (products.isNotEmpty()) {
+            Text("Productos vendidos", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            products.forEach { product ->
+                Text(
+                    "${product.quantity}× ${product.description} · ${currency.format(product.total)}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
@@ -597,32 +721,54 @@ private fun ConfigTab(state: CajaUiState, currency: NumberFormat, viewModel: Caj
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Cuentas bancarias", fontWeight = FontWeight.Bold)
-                BendeyPrimaryButton("+ Cuenta", viewModel::showCreateBankAccount)
+                if (state.canManageCashSettings) {
+                    BendeyPrimaryButton("+ Cuenta", viewModel::showCreateBankAccount)
+                }
             }
         }
         if (state.bankAccounts.isEmpty()) {
             item { Text("Sin cuentas registradas", color = BendeyColors.OnSurfaceVariant) }
         }
         items(state.bankAccounts, key = { it.id }) { acc ->
-            BankAccountCard(acc, currency, onEdit = { viewModel.showEditBankAccount(acc) }, onMovements = { viewModel.showBankMovements(acc) })
+            BankAccountCard(
+                acc,
+                currency,
+                canManage = state.canManageCashSettings,
+                onEdit = { viewModel.showEditBankAccount(acc) },
+                onMovements = { viewModel.showBankMovements(acc) },
+            )
         }
         item {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Métodos de pago", fontWeight = FontWeight.Bold)
-                BendeyPrimaryButton("+ Método", viewModel::showCreatePaymentMethod)
+                if (state.canManageCashSettings) {
+                    BendeyPrimaryButton("+ Método", viewModel::showCreatePaymentMethod)
+                }
             }
         }
         if (state.paymentMethods.isEmpty()) {
             item { Text("Sin métodos de pago", color = BendeyColors.OnSurfaceVariant) }
         }
         items(state.paymentMethods, key = { it.id }) { pm ->
-            PaymentMethodCard(pm, state.bankAccounts, onEdit = { viewModel.showEditPaymentMethod(pm) }, onDelete = { viewModel.deletePaymentMethod(pm.id) })
+            PaymentMethodCard(
+                pm,
+                state.bankAccounts,
+                canManage = state.canManageCashSettings,
+                onEdit = { viewModel.showEditPaymentMethod(pm) },
+                onDelete = { viewModel.deletePaymentMethod(pm.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun BankAccountCard(acc: CashBankAccount, currency: NumberFormat, onEdit: () -> Unit, onMovements: () -> Unit) {
+private fun BankAccountCard(
+    acc: CashBankAccount,
+    currency: NumberFormat,
+    canManage: Boolean,
+    onEdit: () -> Unit,
+    onMovements: () -> Unit,
+) {
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
         Column(Modifier.padding(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -636,9 +782,11 @@ private fun BankAccountCard(acc: CashBankAccount, currency: NumberFormat, onEdit
                 Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
             }
             Text("Saldo: ${currency.format(acc.balance)}", style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                OutlinedButton(onClick = onEdit) { Text("Editar") }
-                OutlinedButton(onClick = onMovements) { Text("Movimientos") }
+            if (canManage) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    OutlinedButton(onClick = onEdit) { Text("Editar") }
+                    OutlinedButton(onClick = onMovements) { Text("Movimientos") }
+                }
             }
         }
     }
@@ -648,6 +796,7 @@ private fun BankAccountCard(acc: CashBankAccount, currency: NumberFormat, onEdit
 private fun PaymentMethodCard(
     pm: CashPaymentMethod,
     bankAccounts: List<CashBankAccount>,
+    canManage: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -667,9 +816,11 @@ private fun PaymentMethodCard(
             }
             Text("Código: ${pm.code}", style = MaterialTheme.typography.bodySmall)
             Text("Destino: $destLabel", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-                OutlinedButton(onClick = onEdit) { Text("Editar") }
-                OutlinedButton(onClick = onDelete) { Text("Eliminar") }
+            if (canManage) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                    OutlinedButton(onClick = onEdit) { Text("Editar") }
+                    OutlinedButton(onClick = onDelete) { Text("Eliminar") }
+                }
             }
         }
     }

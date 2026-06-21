@@ -17,6 +17,8 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
 import com.bendey.restaurant.core.domain.catalog.SunatConfigFormInput
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,18 +62,36 @@ data class ConfiguracionUiState(
     val staffEditOpen: Boolean = false,
     val staffCreateForm: StaffCreateFormInput = StaffCreateFormInput(),
     val staffEditForm: StaffEditFormInput = StaffEditFormInput(),
+    val canManageRestaurantSettings: Boolean = false,
     val error: String? = null,
 )
 
 @HiltViewModel
 class ConfiguracionViewModel @Inject constructor(
     private val repository: SettingsRepository,
+    private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
     val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
 
-    init { refresh() }
+    init {
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.collect { user ->
+                val perms = user?.restaurantPermissions.orEmpty()
+                _uiState.update {
+                    it.copy(canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms))
+                }
+            }
+        }
+        refresh()
+    }
+
+    private fun requireManageSettings(): Boolean {
+        if (_uiState.value.canManageRestaurantSettings) return true
+        _uiState.update { it.copy(error = "No tiene permiso para modificar la configuración del restaurante") }
+        return false
+    }
 
     fun setTab(tab: ConfigTab) {
         _uiState.update { it.copy(tab = tab, error = null) }
@@ -126,12 +146,12 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openEditConfig() {
+        if (!requireManageSettings()) return
         val config = _uiState.value.config ?: return
         _uiState.update {
             it.copy(
                 configFormOpen = true,
                 configForm = CompanyConfigFormInput(
-                    businessName = config.businessName,
                     tradeName = config.tradeName,
                     address = config.address,
                     phone = config.phone,
@@ -148,6 +168,7 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun saveConfig() {
+        if (!requireManageSettings()) return
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             when (val result = repository.updateCompanyConfig(_uiState.value.configForm)) {
@@ -159,6 +180,7 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openEditSunat() {
+        if (!requireManageSettings()) return
         val sunat = _uiState.value.sunat ?: return
         _uiState.update {
             it.copy(
@@ -179,9 +201,10 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun saveSunat() {
+        if (!requireManageSettings()) return
         val rate = _uiState.value.sunatForm.taxRate.replace(",", ".").toDoubleOrNull()
-        if (rate == null || rate < 0) {
-            _uiState.update { it.copy(error = "Tasa de IGV inválida") }
+        if (rate == null || rate < 0 || rate > 30) {
+            _uiState.update { it.copy(error = "Tasa de IGV inválida (0–30)") }
             return
         }
         viewModelScope.launch {
@@ -194,14 +217,18 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun openPinDialog() { _uiState.update { it.copy(pinDialogOpen = true, pinValue = "", error = null) } }
+    fun openPinDialog() {
+        if (!requireManageSettings()) return
+        _uiState.update { it.copy(pinDialogOpen = true, pinValue = "", error = null) }
+    }
     fun dismissPinDialog() { _uiState.update { it.copy(pinDialogOpen = false, pinValue = "") } }
     fun setPinValue(value: String) { _uiState.update { it.copy(pinValue = value) } }
 
     fun savePin() {
-        val pin = _uiState.value.pinValue.trim()
-        if (pin.length < 4) {
-            _uiState.update { it.copy(error = "El PIN debe tener al menos 4 caracteres") }
+        if (!requireManageSettings()) return
+        val pin = _uiState.value.pinValue.filter { it.isDigit() }
+        if (pin.length !in 4..6) {
+            _uiState.update { it.copy(error = "PIN de operaciones: 4 a 6 dígitos") }
             return
         }
         viewModelScope.launch {
@@ -218,10 +245,12 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openCreateBranch() {
+        if (!requireManageSettings()) return
         _uiState.update { it.copy(branchFormOpen = true, branchForm = BranchFormInput(), error = null) }
     }
 
     fun openEditBranch(branch: BranchItem) {
+        if (!requireManageSettings()) return
         _uiState.update {
             it.copy(
                 branchFormOpen = true,
@@ -230,6 +259,7 @@ class ConfiguracionViewModel @Inject constructor(
                     name = branch.name,
                     address = branch.address,
                     phone = branch.phone,
+                    fiscalDomicileCode = branch.fiscalDomicileCode,
                     isMain = branch.isMain,
                     active = branch.active,
                 ),
@@ -244,6 +274,7 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun saveBranch() {
+        if (!requireManageSettings()) return
         val form = _uiState.value.branchForm
         if (form.name.isBlank()) {
             _uiState.update { it.copy(error = "Ingresa el nombre de la sucursal") }
@@ -264,7 +295,15 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun requestDeleteBranch(id: Int) { _uiState.update { it.copy(deleteBranchId = id) } }
+    fun requestDeleteBranch(id: Int) {
+        if (!requireManageSettings()) return
+        val branch = _uiState.value.branches.find { it.id == id } ?: return
+        if (branch.isMain) {
+            _uiState.update { it.copy(error = "No se puede eliminar la sucursal principal") }
+            return
+        }
+        _uiState.update { it.copy(deleteBranchId = id) }
+    }
     fun dismissDeleteBranch() { _uiState.update { it.copy(deleteBranchId = null) } }
 
     fun confirmDeleteBranch() {
@@ -283,16 +322,28 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openCreateSeries() {
+        if (!requireManageSettings()) return
+        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
         _uiState.update {
             it.copy(
                 seriesFormOpen = true,
-                seriesForm = SeriesFormInput(branchId = it.selectedBranchId),
+                seriesForm = SeriesFormInput(
+                    branchId = it.selectedBranchId,
+                    sunatCode = if (sunatEnabled) "00" else "00",
+                ),
                 error = null,
             )
         }
     }
 
     fun openEditSeries(series: DocumentSeries) {
+        if (!requireManageSettings()) return
+        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
+        val code = series.sunatCode.orEmpty()
+        if (!sunatEnabled && code.isNotBlank() && code != "00") {
+            _uiState.update { it.copy(error = "Solo puede editar series de nota de venta (00) sin facturación electrónica") }
+            return
+        }
         _uiState.update {
             it.copy(
                 seriesFormOpen = true,
@@ -302,8 +353,11 @@ class ConfiguracionViewModel @Inject constructor(
                     docType = series.docType,
                     series = series.series,
                     category = series.category,
-                    sunatCode = series.sunatCode ?: "00",
+                    sunatCode = if (sunatEnabled) code.ifBlank { "00" } else "00",
                     active = series.active,
+                    currentNumber = series.currentNumber,
+                    locked = series.locked,
+                    canDelete = series.canDelete,
                 ),
                 error = null,
             )
@@ -316,7 +370,14 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun saveSeries() {
+        if (!requireManageSettings()) return
         val form = _uiState.value.seriesForm
+        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
+        val sunatCode = if (sunatEnabled) form.sunatCode.trim().ifBlank { "00" } else "00"
+        if (!sunatEnabled && sunatCode != "00") {
+            _uiState.update { it.copy(error = "Sin FE solo se permiten series SUNAT 00") }
+            return
+        }
         if (form.series.isBlank() || form.branchId == null) {
             _uiState.update { it.copy(error = "Completa sucursal y serie") }
             return
@@ -324,7 +385,8 @@ class ConfiguracionViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             val seriesId = form.id
-            val result = if (seriesId == null) repository.createSeries(form) else repository.updateSeries(seriesId, form)
+            val payload = form.copy(sunatCode = sunatCode)
+            val result = if (seriesId == null) repository.createSeries(payload) else repository.updateSeries(seriesId, payload)
             when (result) {
                 is AppResult.Success -> {
                     _uiState.update { it.copy(actionLoading = false, seriesFormOpen = false) }
@@ -336,7 +398,15 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun requestDeleteSeries(id: Int) { _uiState.update { it.copy(deleteSeriesId = id) } }
+    fun requestDeleteSeries(id: Int) {
+        if (!requireManageSettings()) return
+        val series = _uiState.value.series.find { it.id == id } ?: return
+        if (!series.canDelete) {
+            _uiState.update { it.copy(error = "No se puede eliminar: la serie ya tiene documentos emitidos") }
+            return
+        }
+        _uiState.update { it.copy(deleteSeriesId = id) }
+    }
     fun dismissDeleteSeries() { _uiState.update { it.copy(deleteSeriesId = null) } }
 
     fun confirmDeleteSeries() {
@@ -366,6 +436,7 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openCreateStaff() {
+        if (!requireManageSettings()) return
         val branches = _uiState.value.branches.filter { it.active }
         val defaultBranch = branches.firstOrNull { it.isMain } ?: branches.firstOrNull()
         _uiState.update {
@@ -388,12 +459,18 @@ class ConfiguracionViewModel @Inject constructor(
     fun toggleStaffCreateBranch(branchId: Int) {
         _uiState.update { state ->
             val ids = state.staffCreateForm.branchIds.toMutableList()
-            if (ids.contains(branchId)) ids.remove(branchId) else ids.add(branchId)
+            if (ids.contains(branchId)) {
+                if (ids.size <= 1) return@update state
+                ids.remove(branchId)
+            } else {
+                ids.add(branchId)
+            }
             state.copy(staffCreateForm = state.staffCreateForm.copy(branchIds = ids))
         }
     }
 
     fun confirmCreateStaff() {
+        if (!requireManageSettings()) return
         val form = _uiState.value.staffCreateForm
         val pin = form.pin.filter { it.isDigit() }
         when {
@@ -416,6 +493,7 @@ class ConfiguracionViewModel @Inject constructor(
     }
 
     fun openEditStaff(row: RestaurantStaffManagementRow) {
+        if (!requireManageSettings()) return
         _uiState.update {
             it.copy(
                 staffEditOpen = true,
@@ -441,12 +519,18 @@ class ConfiguracionViewModel @Inject constructor(
     fun toggleStaffEditBranch(branchId: Int) {
         _uiState.update { state ->
             val ids = state.staffEditForm.branchIds.toMutableList()
-            if (ids.contains(branchId)) ids.remove(branchId) else ids.add(branchId)
+            if (ids.contains(branchId)) {
+                if (ids.size <= 1) return@update state
+                ids.remove(branchId)
+            } else {
+                ids.add(branchId)
+            }
             state.copy(staffEditForm = state.staffEditForm.copy(branchIds = ids))
         }
     }
 
     fun confirmEditStaff() {
+        if (!requireManageSettings()) return
         val form = _uiState.value.staffEditForm
         val pin = form.pin.filter { it.isDigit() }
         if (pin.isNotEmpty() && pin.length !in 4..6) {

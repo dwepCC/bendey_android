@@ -10,6 +10,9 @@ data class DocumentSeries(
     val category: String,
     val sunatCode: String?,
     val active: Boolean,
+    val currentNumber: Int = 0,
+    val locked: Boolean = false,
+    val canDelete: Boolean = true,
 ) {
     val displayLabel: String get() = "$docType · $series"
 }
@@ -24,11 +27,18 @@ data class ContactBrief(
     val displayLabel: String get() = businessName.ifBlank { docNumber }.ifBlank { "#$id" }
 }
 
+data class BankAccountBrief(
+    val id: Int,
+    val paymentMethod: String,
+    val active: Boolean,
+)
+
 data class PaymentMethodOption(
     val id: Int,
     val name: String,
     val code: String,
     val destinationType: String,
+    val bankAccountId: Int? = null,
     val active: Boolean,
 ) {
     val isCash: Boolean get() = destinationType == "cash" || code.equals("cash", ignoreCase = true)
@@ -44,6 +54,8 @@ data class CheckoutMeta(
     val series: List<DocumentSeries>,
     val contacts: List<ContactBrief>,
     val paymentMethods: List<PaymentMethodOption>,
+    val bankAccounts: List<BankAccountBrief> = emptyList(),
+    val sunatEnabled: Boolean = false,
 )
 
 data class BillSessionInput(
@@ -108,12 +120,37 @@ data class SalePrintPayment(
     val amount: Double,
 )
 
+enum class BillingDocumentKind(
+    val pathSegment: String,
+    val defaultFileName: String,
+    val mimeType: String,
+) {
+    XML("xml", "comprobante-enviado.xml", "application/xml"),
+    XML_GENERATED("xml-generated", "comprobante-generado.xml", "application/xml"),
+    CDR("cdr", "comprobante.cdr.zip", "application/zip"),
+    PDF("pdf", "comprobante.pdf", "application/pdf"),
+}
+
+data class BillQuickSaleInput(
+    val seriesId: Int,
+    val docType: String,
+    val contactId: Int?,
+    val cashSessionId: Int?,
+    val discountAmount: Double? = null,
+    val notes: String? = null,
+    val items: List<com.bendey.restaurant.core.domain.restaurant.OrderItemInput>,
+    val payments: List<CheckoutPaymentLine>,
+)
+
 interface BillingRepository {
     suspend fun loadCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
     suspend fun refreshCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
     suspend fun billSession(sessionId: Int, input: BillSessionInput): AppResult<BillSessionResult>
+    suspend fun billQuickSale(input: BillQuickSaleInput): AppResult<BillSessionResult>
     suspend fun voidWithCreditNote(saleId: Int, reason: String): AppResult<VoidCreditNoteResult>
     suspend fun sendToSunat(saleId: Int): AppResult<BillingActionResult>
     suspend fun resendToSunat(saleId: Int): AppResult<BillingActionResult>
     suspend fun downloadOfficialPdf(saleId: Int): AppResult<java.io.File>
+    suspend fun downloadBillingDocument(saleId: Int, kind: BillingDocumentKind): AppResult<java.io.File>
+    suspend fun loadBillingDocumentText(saleId: Int, kind: BillingDocumentKind): AppResult<String>
 }

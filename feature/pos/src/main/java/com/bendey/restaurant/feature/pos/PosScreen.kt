@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,7 +41,9 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,7 +62,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
@@ -79,8 +84,14 @@ import com.bendey.restaurant.core.ui.components.BendeyPosProductCard
 import com.bendey.restaurant.core.ui.pos.ComboConfigureDialog
 import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
 import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.pos.ManualProductDialog
+import com.bendey.restaurant.core.navigation.CashCheckoutGate
+import com.bendey.restaurant.core.navigation.CashCheckoutGateNoOp
+import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import java.text.NumberFormat
 import java.util.Locale
@@ -90,6 +101,8 @@ import java.util.Locale
 fun PosScreen(
     modifier: Modifier = Modifier,
     viewModel: PosViewModel = hiltViewModel(),
+    cashCheckoutGate: CashCheckoutGate = CashCheckoutGateNoOp,
+    onShowMessage: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
@@ -97,10 +110,24 @@ fun PosScreen(
     val isExpanded = widthClass != WindowWidthSizeClass.COMPACT
     var showCartSheet by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
+    var barcodeScanOn by remember { mutableStateOf(false) }
+    var showManualProduct by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) viewModel.consumeSnackMessage()
+    LaunchedEffect(showScanner) {
+        if (!showScanner) barcodeScanOn = false
     }
+
+    val onCheckout: () -> Unit = {
+        if (cashCheckoutGate.ensureForCheckout()) {
+            viewModel.openCheckout()
+        }
+    }
+
+    BindSnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     Column(
         modifier = modifier
@@ -129,7 +156,7 @@ fun PosScreen(
                 cartTotal = state.cartTotal,
                 currency = currency,
                 checkoutLoading = state.checkoutSubmitting,
-                onCheckout = viewModel::openCheckout,
+                onCheckout = onCheckout,
                 canCheckout = state.canCheckout,
             )
         }
@@ -146,11 +173,17 @@ fun PosScreen(
                     sidebarCategories = true,
                     onSearch = viewModel::setSearchQuery,
                     onCategory = viewModel::selectCategory,
+                    onPreparationArea = viewModel::setPreparationAreaFilter,
                     onAdd = viewModel::onProductClick,
                     onComboClick = viewModel::onComboClick,
                     onCatalogTab = viewModel::setCatalogTab,
-                    onScan = { showScanner = true },
+                    barcodeScanEnabled = barcodeScanOn,
+                    onBarcodeScanChange = { active ->
+                        barcodeScanOn = active
+                        showScanner = active
+                    },
                     posStyle = true,
+                    catalogBottomPadding = 12.dp,
                     modifier = Modifier.weight(0.62f),
                 )
                 CartPane(
@@ -161,11 +194,18 @@ fun PosScreen(
                     onRemove = viewModel::removeLine,
                     onClearCart = viewModel::clearCart,
                     onSend = viewModel::sendComanda,
-                    onCheckout = viewModel::openCheckout,
+                    onCheckout = onCheckout,
+                    onManualProduct = { showManualProduct = true },
+                    onSaveDraft = viewModel::saveDraftOrder,
                     onReprint = viewModel::reprintComanda,
                     onReprintAll = viewModel::reprintAllComandas,
                     onVoidComanda = viewModel::openVoidComanda,
+                    onEditComandaNotes = viewModel::openComandaNoteEditor,
+                    onPrintPrecuenta = viewModel::printPrecuenta,
+                    onCartLineNotesChange = { line, notes -> viewModel.updateCartLineNotes(line.key, notes) },
+                    onCartLineUnitPriceChange = { line, price -> viewModel.updateCartLineUnitPrice(line.key, price) },
                     canCheckout = state.canCheckout,
+                    canAnularComanda = state.canAnularComanda,
                     modifier = Modifier
                         .weight(0.38f)
                         .fillMaxHeight()
@@ -180,11 +220,17 @@ fun PosScreen(
                     assetsBaseUrl = viewModel.assetsBaseUrl,
                     onSearch = viewModel::setSearchQuery,
                     onCategory = viewModel::selectCategory,
+                    onPreparationArea = viewModel::setPreparationAreaFilter,
                     onAdd = viewModel::onProductClick,
                     onComboClick = viewModel::onComboClick,
                     onCatalogTab = viewModel::setCatalogTab,
-                    onScan = { showScanner = true },
+                    barcodeScanEnabled = barcodeScanOn,
+                    onBarcodeScanChange = { active ->
+                        barcodeScanOn = active
+                        showScanner = active
+                    },
                     posStyle = true,
+                    catalogBottomPadding = 72.dp,
                     modifier = Modifier.fillMaxSize(),
                 )
                 CompactCartBar(
@@ -197,7 +243,7 @@ fun PosScreen(
                     canCheckout = state.canCheckout,
                     onOpenCart = { showCartSheet = true },
                     onSend = viewModel::sendComanda,
-                    onCheckout = viewModel::openCheckout,
+                    onCheckout = onCheckout,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
@@ -228,13 +274,20 @@ fun PosScreen(
                     showCartSheet = false
                 },
                 onCheckout = {
-                    viewModel.openCheckout()
+                    onCheckout()
                     showCartSheet = false
                 },
+                onManualProduct = { showManualProduct = true },
+                onSaveDraft = viewModel::saveDraftOrder,
                 onReprint = viewModel::reprintComanda,
                 onReprintAll = viewModel::reprintAllComandas,
                 onVoidComanda = viewModel::openVoidComanda,
+                onEditComandaNotes = viewModel::openComandaNoteEditor,
+                onPrintPrecuenta = viewModel::printPrecuenta,
+                onCartLineNotesChange = { line, notes -> viewModel.updateCartLineNotes(line.key, notes) },
+                onCartLineUnitPriceChange = { line, price -> viewModel.updateCartLineUnitPrice(line.key, price) },
                 canCheckout = state.canCheckout,
+                canAnularComanda = state.canAnularComanda,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
@@ -254,6 +307,7 @@ fun PosScreen(
             currency = currency,
             onSelectPresentation = viewModel::selectProductPresentation,
             onToggleExtra = viewModel::toggleProductExtra,
+            onSetExtraQuantity = viewModel::setProductExtraQuantity,
             onKitchenNoteChange = viewModel::updateProductConfigureNote,
             onConfirm = viewModel::confirmProductConfigure,
             onDismiss = viewModel::dismissProductConfigure,
@@ -269,6 +323,12 @@ fun PosScreen(
             validationError = cfg.error,
             resolvedPrice = cfg.resolvedPrice,
             currency = currency,
+            componentModifierGroups = cfg.componentModifierGroups,
+            componentModifiers = cfg.componentModifiers,
+            componentProductNames = cfg.componentProductNames,
+            componentPresentations = cfg.componentPresentations,
+            onToggleComponentModifier = viewModel::toggleComboComponentModifier,
+            onSelectComponentPresentation = viewModel::selectComboComponentPresentation,
             onToggleSlot = viewModel::toggleComboSlot,
             onKitchenNoteChange = viewModel::updateComboConfigureNote,
             onConfirm = viewModel::confirmComboConfigure,
@@ -278,7 +338,10 @@ fun PosScreen(
 
     PosBarcodeScannerSheet(
         open = showScanner,
-        onDismiss = { showScanner = false },
+        onDismiss = {
+            showScanner = false
+            barcodeScanOn = false
+        },
         onBarcodeDetected = viewModel::addProductByBarcode,
     )
 
@@ -372,6 +435,40 @@ fun PosScreen(
         onDismiss = viewModel::dismissVoidDialog,
         onConfirm = viewModel::confirmVoid,
     )
+
+    ManualProductDialog(
+        open = showManualProduct,
+        onDismiss = { showManualProduct = false },
+        onAdd = viewModel::addManualProduct,
+    )
+
+    state.comandaNoteTarget?.let {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissComandaNoteEditor,
+            title = { Text("Notas de comanda") },
+            text = {
+                BendeyTextField(
+                    value = state.comandaNoteText,
+                    onValueChange = viewModel::setComandaNoteText,
+                    label = "Notas para cocina",
+                    singleLine = false,
+                )
+            },
+            confirmButton = {
+                BendeyPrimaryButton(
+                    text = if (state.comandaNoteSubmitting) "Guardando…" else "Guardar",
+                    onClick = viewModel::confirmComandaNote,
+                    enabled = !state.comandaNoteSubmitting,
+                    fillWidth = false,
+                )
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = viewModel::dismissComandaNoteEditor) {
+                    Text("Cancelar")
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -418,11 +515,11 @@ private fun OrderTypeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = if (compact) 6.dp else 8.dp)
+            .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 2.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(BendeyColors.SurfaceVariant.copy(alpha = 0.65f))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         PosOrderType.entries.forEach { type ->
             val isSelected = selected == type
@@ -432,7 +529,7 @@ private fun OrderTypeRow(
                     .clip(RoundedCornerShape(10.dp))
                     .background(if (isSelected) BendeyColors.Primary else Color.Transparent)
                     .clickable { onSelect(type) }
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = if (compact) 8.dp else 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -453,16 +550,41 @@ private fun CatalogPane(
     assetsBaseUrl: String?,
     onSearch: (String) -> Unit,
     onCategory: (Int?) -> Unit,
+    onPreparationArea: (String?) -> Unit,
     onAdd: (PosProduct) -> Unit,
     onComboClick: (PosComboItem) -> Unit,
     onCatalogTab: (PosCatalogTab) -> Unit,
     modifier: Modifier = Modifier,
     sidebarCategories: Boolean = false,
     posStyle: Boolean = false,
-    onScan: (() -> Unit)? = null,
+    barcodeScanEnabled: Boolean = false,
+    onBarcodeScanChange: ((Boolean) -> Unit)? = null,
+    catalogBottomPadding: Dp = 12.dp,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         PosCatalogTabRow(selected = state.catalogTab, onSelect = onCatalogTab)
+        if (state.catalogTab == PosCatalogTab.PRODUCTS && state.preparationAreas.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                FilterChip(
+                    selected = state.preparationAreaFilter == null,
+                    onClick = { onPreparationArea(null) },
+                    label = { Text("Todas") },
+                )
+                state.preparationAreas.forEach { area ->
+                    FilterChip(
+                        selected = state.preparationAreaFilter == area,
+                        onClick = { onPreparationArea(area) },
+                        label = { Text(area) },
+                    )
+                }
+            }
+        }
         when (state.catalogTab) {
             PosCatalogTab.PRODUCTS -> BendeyPosCatalogPane(
                 searchQuery = state.searchQuery,
@@ -478,7 +600,9 @@ private fun CatalogPane(
                 sidebarCategories = sidebarCategories,
                 compactCards = !posStyle,
                 posCatalogStyle = posStyle,
-                onScanClick = onScan,
+                barcodeScanEnabled = barcodeScanEnabled,
+                onBarcodeScanChange = onBarcodeScanChange,
+                gridBottomPadding = catalogBottomPadding,
             )
             PosCatalogTab.COMBOS -> {
                 val term = state.searchQuery.trim().lowercase()
@@ -488,22 +612,25 @@ private fun CatalogPane(
                             it.description.orEmpty().lowercase().contains(term)
                     }
                 }
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 140.dp),
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    items(filtered, key = { it.id }) { combo ->
-                        BendeyPosProductCard(
-                            name = combo.name,
-                            price = combo.basePrice,
-                            currency = currency,
-                            imageUrl = combo.imageUrl,
-                            assetsBaseUrl = assetsBaseUrl,
-                            onClick = { onComboClick(combo) },
-                        )
+                BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                    val columns = BendeyTabletTokens.posProductGridColumns(maxWidth)
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = catalogBottomPadding),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(filtered, key = { it.id }) { combo ->
+                            BendeyPosProductCard(
+                                name = combo.name,
+                                price = combo.basePrice,
+                                currency = currency,
+                                imageUrl = combo.imageUrl,
+                                assetsBaseUrl = assetsBaseUrl,
+                                onClick = { onComboClick(combo) },
+                            )
+                        }
                     }
                 }
             }
@@ -521,12 +648,47 @@ private fun CartPane(
     onClearCart: () -> Unit,
     onSend: () -> Unit,
     onCheckout: () -> Unit,
+    onManualProduct: () -> Unit,
+    onSaveDraft: () -> Unit,
     onReprint: (SessionOrderSummary) -> Unit,
     onReprintAll: () -> Unit,
     onVoidComanda: (SessionComandaSummary) -> Unit,
+    onEditComandaNotes: (SessionComandaSummary) -> Unit = {},
+    onPrintPrecuenta: () -> Unit = {},
+    onCartLineNotesChange: (PosCartLine, String) -> Unit = { _, _ -> },
+    onCartLineUnitPriceChange: (PosCartLine, String) -> Unit = { _, _ -> },
     canCheckout: Boolean,
+    canAnularComanda: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    var notesLine by remember { mutableStateOf<PosCartLine?>(null) }
+    var notesDraft by remember { mutableStateOf("") }
+
+    notesLine?.let { line ->
+        BendeyFormDialog(
+            onDismissRequest = { notesLine = null },
+            title = "Notas para comanda",
+            confirmText = "Guardar",
+            onConfirm = {
+                onCartLineNotesChange(line, notesDraft.trim())
+                notesLine = null
+            },
+            onDismiss = { notesLine = null },
+        ) {
+            Text(
+                text = line.product.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            BendeyTextField(
+                value = notesDraft,
+                onValueChange = { notesDraft = it },
+                label = "Notas de cocina",
+                singleLine = false,
+            )
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         if (state.hasSentComandas) {
             PosSentOrdersSection(
@@ -536,6 +698,8 @@ private fun CartPane(
                 onReprint = onReprint,
                 onReprintAll = onReprintAll,
                 onVoidComanda = onVoidComanda,
+                onEditComandaNotes = onEditComandaNotes,
+                canAnularComanda = canAnularComanda,
             )
         }
         BendeyPosCartPane(
@@ -551,25 +715,49 @@ private fun CartPane(
             onDecrement = onDecrement,
             onClearCart = onClearCart,
             canClearCart = state.canClearCart,
+            editablePrice = state.cart.isNotEmpty(),
+            showLineNotes = state.isRestaurantOrder && state.cart.isNotEmpty(),
+            onLineNotesClick = { line ->
+                notesLine = line
+                notesDraft = line.notes
+            },
+            onLineUnitPriceChange = onCartLineUnitPriceChange,
             modifier = Modifier.weight(1f),
-            primaryAction = if (state.isRestaurantOrder) {
-                {
+            primaryAction = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     BendeyPrimaryButton(
-                        text = if (state.sending) "Enviando…" else "Enviar comanda",
-                        onClick = onSend,
-                        enabled = state.cart.isNotEmpty() && !state.sending,
+                        text = "Producto manual",
+                        onClick = onManualProduct,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (state.isRestaurantOrder) {
+                        BendeyPrimaryButton(
+                            text = if (state.sending) "Enviando…" else "Enviar comanda",
+                            onClick = onSend,
+                            enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        BendeyPrimaryButton(
+                            text = if (state.savingDraft) "Guardando…" else "Guardar borrador",
+                            onClick = onSaveDraft,
+                            enabled = !state.sending && !state.savingDraft,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        BendeyPrimaryButton(
+                            text = if (state.printingPrecuenta) "Precuenta…" else "Precuenta",
+                            onClick = onPrintPrecuenta,
+                            enabled = !state.sending && !state.savingDraft && !state.printingPrecuenta,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
-            } else {
-                null
             },
             secondaryAction = if (canCheckout) {
                 {
                     BendeyPrimaryButton(
-                        text = if (state.checkoutSubmitting) "Cobrando…" else "Cobrar venta",
+                        text = if (state.checkoutSubmitting) "Cobrando…" else if (state.isDirectSale) "Cobrar venta" else "Cobrar",
                         onClick = onCheckout,
-                        enabled = !state.sending && !state.checkoutSubmitting,
+                        enabled = !state.sending && !state.checkoutSubmitting && !state.savingDraft,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

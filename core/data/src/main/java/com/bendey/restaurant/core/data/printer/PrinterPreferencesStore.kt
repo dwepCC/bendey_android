@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,6 +39,10 @@ class PrinterPreferencesStore @Inject constructor(
         dataStore.edit { prefs ->
             prefs[Keys.AUTO_PRINT] = settings.autoPrintComandas
             prefs[Keys.AUTO_PRINT_DOCS] = settings.autoPrintDocuments
+            prefs[Keys.COMANDA_TEXT_SIZE] = when (settings.comandaTextSize) {
+                ComandaTextSize.MEDIANO -> "mediano"
+                ComandaTextSize.DEFAULT -> "default"
+            }
             writeSlot(prefs, PrinterSlot.COMANDAS, settings.comandas)
             writeSlot(prefs, PrinterSlot.PRECUENTA, settings.precuenta)
             writeSlot(prefs, PrinterSlot.DOCUMENTOS, settings.documentos)
@@ -90,6 +95,10 @@ class PrinterPreferencesStore @Inject constructor(
             documentos = if (hasMultiSlot) readSlot(PrinterSlot.DOCUMENTOS) else fallback,
             autoPrintComandas = this[Keys.AUTO_PRINT] ?: true,
             autoPrintDocuments = this[Keys.AUTO_PRINT_DOCS] ?: true,
+            comandaTextSize = when (this[Keys.COMANDA_TEXT_SIZE]) {
+                "mediano" -> ComandaTextSize.MEDIANO
+                else -> ComandaTextSize.DEFAULT
+            },
         )
     }
 
@@ -150,6 +159,7 @@ class PrinterPreferencesStore @Inject constructor(
         val AUTO_PRINT = booleanPreferencesKey("auto_print_comandas")
         val AUTO_PRINT_DOCS = booleanPreferencesKey("auto_print_documents")
         val COMANDAS_BY_AREA = stringPreferencesKey("comandas_by_area_json")
+        val COMANDA_TEXT_SIZE = stringPreferencesKey("comanda_text_size")
     }
 }
 

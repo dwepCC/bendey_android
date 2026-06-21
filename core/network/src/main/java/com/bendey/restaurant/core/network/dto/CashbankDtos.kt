@@ -205,3 +205,71 @@ data class PaymentMethodUpsertRequestDto(
     @SerialName("bank_account_id") val bankAccountId: Int? = null,
     val active: Boolean? = null,
 )
+
+@Serializable
+data class MovementReportRowDto(
+    val date: String = "",
+    val type: String = "",
+    @SerialName("doc_number") val docNumber: String = "",
+    @SerialName("contact_name") val contactName: String = "",
+    @SerialName("user_name") val userName: String = "",
+    @SerialName("branch_name") val branchName: String = "",
+    @SerialName("payment_method") val paymentMethod: String = "",
+    val amount: Double = 0.0,
+    @SerialName("movement_id") val movementId: Int = 0,
+    @SerialName("cash_session_id") val cashSessionId: Int = 0,
+    val category: String? = null,
+    @SerialName("cash_reference") val cashReference: String? = null,
+    @SerialName("notes_detail") val notesDetail: String? = null,
+)
+
+@Serializable
+data class MovementsReportSummaryDto(
+    @SerialName("total_rows") val totalRows: Int = 0,
+    @SerialName("sum_income") val sumIncome: Double = 0.0,
+    @SerialName("sum_expense") val sumExpense: Double = 0.0,
+    @SerialName("net_movement") val netMovement: Double = 0.0,
+)
+
+@Serializable
+data class MovementsReportResponseDto(
+    val data: List<MovementReportRowDto> = emptyList(),
+    val total: Int = 0,
+    val summary: MovementsReportSummaryDto? = null,
+)
+
+@Serializable
+data class SessionProductSoldDto(
+    @SerialName("product_id") val productId: Int? = null,
+    val code: String = "",
+    val description: String = "",
+    val quantity: Double = 0.0,
+    val total: Double = 0.0,
+)
+
+@Serializable
+data class PaymentMethodSummaryDto(
+    val method: String = "",
+    val count: Int = 0,
+    val total: Double = 0.0,
+)
+
+@Serializable
+data class PaymentDetailRowDto(
+    val date: String = "",
+    @SerialName("sale_number") val saleNumber: String = "",
+    @SerialName("order_code") val orderCode: String = "",
+    @SerialName("order_type") val orderType: String = "",
+    @SerialName("user_name") val userName: String? = null,
+    val method: String = "",
+    val amount: Double = 0.0,
+    val reference: String? = null,
+)
+
+@Serializable
+data class PaymentsReportResponseDto(
+    @SerialName("by_method") val byMethod: List<PaymentMethodSummaryDto> = emptyList(),
+    @SerialName("total_income") val totalIncome: Double = 0.0,
+    @SerialName("total_count") val totalCount: Int = 0,
+    val detail: List<PaymentDetailRowDto> = emptyList(),
+)

@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.data.kitchen.toPrintItem
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
 import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
+import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaItem
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaPrintInput
 import com.bendey.restaurant.platform.printing.transport.PrintResult
@@ -97,6 +98,8 @@ class KitchenPrintService @Inject constructor(
                         orderNumber = orderNumber,
                         waiterName = waiterName,
                         items = printableLines.map { it.toPrintItem() },
+                        paperWidth = target.paperWidth,
+                        textSize = settings.comandaTextSize,
                     ),
                 )
             ) {
@@ -146,6 +149,7 @@ class KitchenPrintService @Inject constructor(
         waiterName: String?,
         comandas: List<ComandaLine>,
     ): PrintResult {
+        val settings = printerPreferencesStore.settings.first()
         val printableLines = comandasToRoutingLines(comandas).filter { !it.isComboHeader }
         return printerRepository.printComanda(
             target,
@@ -154,6 +158,8 @@ class KitchenPrintService @Inject constructor(
                 orderNumber = orderNumber,
                 waiterName = waiterName,
                 items = printableLines.map { it.toPrintItem() },
+                paperWidth = target.paperWidth,
+                textSize = settings.comandaTextSize,
             ),
         )
     }

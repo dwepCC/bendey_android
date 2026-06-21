@@ -2,19 +2,22 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,19 +32,22 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
@@ -94,17 +100,20 @@ fun BendeyPosCatalogPane(
     sidebarCategories: Boolean = false,
     compactCards: Boolean = true,
     posCatalogStyle: Boolean = false,
-    onScanClick: (() -> Unit)? = null,
+    barcodeScanEnabled: Boolean = false,
+    onBarcodeScanChange: ((Boolean) -> Unit)? = null,
+    gridBottomPadding: Dp = 12.dp,
+    searchPlaceholder: String = "Buscar producto…",
 ) {
     if (sidebarCategories) {
         Row(modifier = modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
-                    .widthIn(min = 108.dp, max = 140.dp)
+                    .widthIn(min = 96.dp, max = 120.dp)
                     .fillMaxHeight()
                     .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f))
-                    .padding(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 item {
                     CategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
@@ -125,7 +134,10 @@ fun BendeyPosCatalogPane(
                 modifier = Modifier.weight(1f),
                 compactCards = compactCards,
                 posCatalogStyle = posCatalogStyle,
-                onScanClick = onScanClick,
+                barcodeScanEnabled = barcodeScanEnabled,
+                onBarcodeScanChange = onBarcodeScanChange,
+                gridBottomPadding = gridBottomPadding,
+                searchPlaceholder = searchPlaceholder,
             )
         }
     } else {
@@ -142,7 +154,10 @@ fun BendeyPosCatalogPane(
             modifier = modifier,
             compactCards = compactCards,
             posCatalogStyle = posCatalogStyle,
-            onScanClick = onScanClick,
+            barcodeScanEnabled = barcodeScanEnabled,
+            onBarcodeScanChange = onBarcodeScanChange,
+            gridBottomPadding = gridBottomPadding,
+            searchPlaceholder = searchPlaceholder,
         )
     }
 }
@@ -161,7 +176,10 @@ private fun CatalogGridBody(
     onCategorySelect: ((Int?) -> Unit)? = null,
     compactCards: Boolean = true,
     posCatalogStyle: Boolean = false,
-    onScanClick: (() -> Unit)? = null,
+    barcodeScanEnabled: Boolean = false,
+    onBarcodeScanChange: ((Boolean) -> Unit)? = null,
+    gridBottomPadding: Dp = 12.dp,
+    searchPlaceholder: String = "Buscar producto…",
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val columns = if (posCatalogStyle) {
@@ -173,17 +191,19 @@ private fun CatalogGridBody(
             PosCompactSearchField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
-                onScanClick = onScanClick,
+                placeholder = searchPlaceholder,
+                barcodeScanEnabled = barcodeScanEnabled,
+                onBarcodeScanChange = onBarcodeScanChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 2.dp),
             )
             if (categories.isNotEmpty() && onCategorySelect != null) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                        .padding(horizontal = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     CategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
@@ -196,10 +216,10 @@ private fun CatalogGridBody(
             }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 88.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.weight(1f),
             ) {
                 items(products, key = { it.id }) { product ->
                     if (posCatalogStyle) {
@@ -236,38 +256,93 @@ private fun PosCompactSearchField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    onScanClick: (() -> Unit)? = null,
+    placeholder: String = "Buscar producto…",
+    barcodeScanEnabled: Boolean = false,
+    onBarcodeScanChange: ((Boolean) -> Unit)? = null,
 ) {
-    OutlinedTextField(
+    Row(
+        modifier = modifier.height(38.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        BendeyCompactSearchInput(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = placeholder,
+            modifier = Modifier.weight(1f),
+        )
+        if (onBarcodeScanChange != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    Icons.Default.QrCodeScanner,
+                    contentDescription = null,
+                    tint = if (barcodeScanEnabled) BendeyColors.Primary else BendeyColors.OnSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Switch(
+                    checked = barcodeScanEnabled,
+                    onCheckedChange = onBarcodeScanChange,
+                    modifier = Modifier.height(28.dp),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = BendeyColors.OnPrimary,
+                        checkedTrackColor = BendeyColors.Primary,
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BendeyCompactSearchInput(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+) {
+    BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.defaultMinSize(minHeight = 48.dp),
-        placeholder = { Text("Buscar producto…", style = MaterialTheme.typography.bodyMedium) },
-        leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null, tint = BendeyColors.OnSurfaceVariant)
-        },
-        trailingIcon = onScanClick?.let { scan ->
-            {
-                IconButton(onClick = scan) {
-                    Icon(
-                        Icons.Default.QrCodeScanner,
-                        contentDescription = "Escanear código",
-                        tint = BendeyColors.Primary,
-                    )
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = BendeyColors.OnSurface),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = {}),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(38.dp),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                    .background(Color.White)
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = BendeyColors.OnSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = BendeyColors.OnSurfaceVariant.copy(alpha = 0.75f),
+                            maxLines = 1,
+                        )
+                    }
+                    innerTextField()
                 }
             }
         },
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = {}),
-        shape = RoundedCornerShape(14.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = BendeyColors.Primary,
-            unfocusedBorderColor = BendeyColors.Outline,
-            focusedContainerColor = BendeyColors.Surface,
-            unfocusedContainerColor = BendeyColors.Surface,
-        ),
     )
 }
 

@@ -52,11 +52,12 @@ data class BendeyNavItem(
 fun BendeyBottomNavigationBar(
     currentRoute: String?,
     leftItems: List<BendeyNavItem>,
-    centerItem: BendeyNavItem,
+    centerItem: BendeyNavItem?,
     rightItems: List<BendeyNavItem>,
     onNavigate: (BendeyNavItem) -> Unit,
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
+    showCenterFab: Boolean = centerItem != null,
 ) {
     Box(
         modifier = modifier
@@ -89,8 +90,9 @@ fun BendeyBottomNavigationBar(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                // Espacio central para el FAB flotante
-                Box(modifier = Modifier.weight(1f))
+                if (showCenterFab && centerItem != null) {
+                    Box(modifier = Modifier.weight(1f))
+                }
                 rightItems.forEach { item ->
                     BottomNavTab(
                         selected = currentRoute == item.route,
@@ -109,12 +111,14 @@ fun BendeyBottomNavigationBar(
                 )
             }
         }
-        CenterPosFab(
-            selected = currentRoute == centerItem.route,
-            label = centerItem.shortLabel,
-            onClick = { onNavigate(centerItem) },
-            modifier = Modifier.align(Alignment.TopCenter),
-        )
+        if (showCenterFab && centerItem != null) {
+            CenterPosFab(
+                selected = currentRoute == centerItem.route,
+                label = centerItem.shortLabel,
+                onClick = { onNavigate(centerItem) },
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
     }
 }
 

@@ -28,6 +28,10 @@ data class ComboConfigureState(
     val loading: Boolean = true,
     val form: ComboFormInput? = null,
     val selections: List<ComboSlotSelection> = emptyList(),
+    val componentModifiers: Map<Int, List<CartModifierEntry>> = emptyMap(),
+    val componentModifierGroups: Map<Int, List<ModifierGroup>> = emptyMap(),
+    val componentProductNames: Map<Int, String> = emptyMap(),
+    val componentPresentations: Map<Int, List<ProductPresentation>> = emptyMap(),
     val kitchenNote: String = "",
     val resolvedPrice: Double? = null,
     val error: String? = null,
@@ -145,6 +149,35 @@ fun selectionFromPresentation(presentation: ProductPresentation): CartModifierEn
         extraPrice = presentation.salePrice,
     )
 
+fun modifierUnits(selected: List<CartModifierEntry>, groupId: Int): Int =
+    selected.filter { it.type == "modifier" && it.groupId == groupId }
+        .sumOf { modifierEntryQuantity(it) }
+
+fun setOptionQuantity(
+    selected: List<CartModifierEntry>,
+    group: ModifierGroup,
+    optionId: Int,
+    quantity: Int,
+): List<CartModifierEntry> {
+    val opt = group.options.firstOrNull { it.id == optionId } ?: return selected
+    val id = opt.id ?: optionId
+    val without = selected.filterNot { it.type == "modifier" && it.optionId == id }
+    if (quantity <= 0) return without
+    val entry = CartModifierEntry(
+        groupId = group.id,
+        groupName = group.name,
+        type = "modifier",
+        optionId = id,
+        optionName = opt.name,
+        extraPrice = opt.extraPrice,
+        quantity = quantity.coerceAtLeast(1),
+    )
+    if (group.selectionMode != ModifierSelectionMode.MULTIPLE && group.selectionMode != ModifierSelectionMode.QUANTITY) {
+        return without.filterNot { it.type == "modifier" && it.groupId == group.id } + entry
+    }
+    return without + entry
+}
+
 fun toggleExtraSelection(
     selected: List<CartModifierEntry>,
     group: ModifierGroup,
@@ -190,11 +223,14 @@ fun validateModifierSelection(
     }
     for (group in extraGroups) {
         val picked = selected.filter { it.type == "modifier" && it.groupId == group.id }
+        val units = modifierUnits(selected, group.id)
         val min = if (group.minSelect > 0) group.minSelect else if (group.required) 1 else 0
         val max = group.maxSelect.takeIf { it > 0 }
             ?: if (group.selectionMode == ModifierSelectionMode.SINGLE) 1 else 0
-        if (min > 0 && picked.size < min) return "Elige al menos $min en «${group.name}»"
-        if (max > 0 && picked.size > max) return "Máximo $max en «${group.name}»"
+        val countForMin = if (group.selectionMode == ModifierSelectionMode.QUANTITY) units else picked.size
+        val countForMax = if (group.selectionMode == ModifierSelectionMode.QUANTITY) units else picked.size
+        if (min > 0 && countForMin < min) return "Elige al menos $min en «${group.name}»"
+        if (max > 0 && countForMax > max) return "Máximo $max en «${group.name}»"
         if (group.required && picked.isEmpty() && min == 0) return "Elige al menos un extra en «${group.name}»"
     }
     return null
@@ -242,6 +278,21 @@ fun posComboFromListItem(item: com.bendey.restaurant.core.domain.catalog.ComboIt
     imageUrl = null,
 )
 
+fun selectedComboProductIds(form: ComboFormInput, selections: List<ComboSlotSelection>): List<Int> {
+    val ids = linkedSetOf<Int>()
+    form.fixedItems.forEach { item ->
+        if (item.productId > 0) ids.add(item.productId)
+    }
+    selections.forEach { sel ->
+        val slot = form.slots.firstOrNull { (it.id ?: 0) == sel.slotId } ?: return@forEach
+        slot.options.firstOrNull { (it.id ?: 0) == sel.optionId }?.productId?.let { ids.add(it) }
+    }
+    return ids.toList()
+}
+
+fun comboComponentModifiersList(map: Map<Int, List<CartModifierEntry>>): List<ComboComponentModifier> =
+    map.map { (productId, modifiers) -> ComboComponentModifier(productId, modifiers) }
+
 fun buildComboConfigureKey(comboId: Int, config: ComboCartConfig, notes: String, unitPrice: Double): String {
     val sel = config.selections.map { "${it.slotId}:${it.optionId}" }.sorted().joinToString("|")
     val mods = config.componentModifiers
@@ -271,9 +322,27 @@ fun decrementCartLine(cart: List<com.bendey.restaurant.core.domain.restaurant.Po
         }
     }
 
+fun updateCartLineNotes(
+    cart: List<com.bendey.restaurant.core.domain.restaurant.PosCartLine>,
+    cartKey: String,
+    notes: String,
+): List<com.bendey.restaurant.core.domain.restaurant.PosCartLine> =
+    cart.map { line -> if (line.key == cartKey) line.copy(notes = notes.trim()) else line }
+
+fun updateCartLineUnitPrice(
+    cart: List<com.bendey.restaurant.core.domain.restaurant.PosCartLine>,
+    cartKey: String,
+    rawPrice: String,
+): List<com.bendey.restaurant.core.domain.restaurant.PosCartLine> {
+    val price = rawPrice.replace(',', '.').trim().toDoubleOrNull() ?: return cart
+    return cart.map { line ->
+        if (line.key == cartKey) line.copy(unitPrice = roundMoney(price.coerceAtLeast(0.0))) else line
+    }
+}
+
 fun com.bendey.restaurant.core.domain.restaurant.PosCartLine.toOrderItemInput(): com.bendey.restaurant.core.domain.restaurant.OrderItemInput =
-    if (itemKind == "combo") {
-        com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
+    when (itemKind) {
+        "combo" -> com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
             itemKind = "combo",
             productName = product.name,
             quantity = quantity.toDouble(),
@@ -282,8 +351,19 @@ fun com.bendey.restaurant.core.domain.restaurant.PosCartLine.toOrderItemInput():
             comboId = comboId,
             comboConfigJson = comboConfigJson,
         )
-    } else {
-        com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
+        "manual" -> com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
+            itemKind = "product",
+            productId = null,
+            productCode = product.code.ifBlank { "MANUAL" },
+            productName = product.name,
+            quantity = quantity.toDouble(),
+            unitPrice = effectiveUnitPrice,
+            notes = notes.takeIf { it.isNotBlank() },
+            modifiersJson = "",
+            igvAffectationType = product.igvAffectationType ?: "10",
+            priceIncludesIgv = product.priceIncludesIgv ?: true,
+        )
+        else -> com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
             itemKind = "product",
             productId = product.id,
             productCode = product.code,
@@ -296,3 +376,35 @@ fun com.bendey.restaurant.core.domain.restaurant.PosCartLine.toOrderItemInput():
             priceIncludesIgv = product.priceIncludesIgv,
         )
     }
+
+/** Crea línea de carrito para producto manual (paridad ManualProductModal). */
+fun manualCartLine(input: ManualProductInput): com.bendey.restaurant.core.domain.restaurant.PosCartLine {
+    val desc = input.description.trim()
+    val qty = input.quantity.toIntOrNull()?.coerceAtLeast(1) ?: 1
+    val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull() ?: 0.0
+    val lineId = "manual-${System.currentTimeMillis()}"
+    val igvLabel = when (input.igvAffectationType.trim()) {
+        "10" -> "Gravado IGV"
+        "20" -> "Exonerado"
+        "30" -> "Inafecto"
+        else -> "IGV ${input.igvAffectationType}"
+    }
+    return com.bendey.restaurant.core.domain.restaurant.PosCartLine(
+        cartKey = lineId,
+        product = com.bendey.restaurant.core.domain.restaurant.PosProduct(
+            id = 0,
+            code = input.code.trim().ifBlank { "MANUAL" },
+            name = desc,
+            salePrice = price,
+            categoryId = null,
+            imageUrl = null,
+            igvAffectationType = input.igvAffectationType,
+            priceIncludesIgv = input.priceIncludesIgv,
+        ),
+        quantity = qty,
+        notes = input.notes.trim(),
+        itemKind = "manual",
+        unitPrice = price,
+        subtitle = "Manual · $igvLabel",
+    )
+}

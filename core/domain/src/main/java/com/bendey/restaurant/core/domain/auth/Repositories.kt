@@ -13,5 +13,6 @@ interface TenantRepository {
 interface AuthRepository {
     suspend fun loginWithEmail(email: String, password: String): Result<UserSession>
     suspend fun loginWithPin(pin: String, station: PinStation): Result<UserSession>
+    suspend fun refreshRestaurantPermissions(): Result<UserSession>
     suspend fun logout()
 }

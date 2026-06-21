@@ -145,12 +145,18 @@ fun CheckoutDialog(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (metaLoading) {
                         Text("Cargando series y métodos…", color = BendeyColors.OnSurfaceVariant)
                     } else {
+                        CheckoutHeroTotal(
+                            currency = currency,
+                            payableTotal = payableTotal,
+                            rawTotal = rawTotal,
+                            discountAmount = discountAmount,
+                        )
                         ContactSelector(
                             contacts = meta?.contacts.orEmpty(),
                             selectedId = contactId,
@@ -197,10 +203,8 @@ fun CheckoutDialog(
                             remaining = remaining,
                             onPaymentsChange = onPaymentsChange,
                         )
-                        CheckoutTotalsSection(
+                        CheckoutPaymentSummary(
                             currency = currency,
-                            rawTotal = rawTotal,
-                            discountAmount = discountAmount,
                             payableTotal = payableTotal,
                             paidTotal = paidTotal,
                             remaining = remaining,
@@ -216,14 +220,20 @@ fun CheckoutDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                 ) {
-                    BendeySecondaryButton(text = "Cancelar", onClick = onDismiss, enabled = !loading)
+                    BendeySecondaryButton(
+                        text = "Cancelar",
+                        onClick = onDismiss,
+                        enabled = !loading,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
                     BendeyPrimaryButton(
                         text = if (loading) "Procesando…" else confirmLabel,
                         onClick = onConfirm,
                         enabled = canConfirm,
                         fillWidth = false,
+                        modifier = Modifier.heightIn(min = 48.dp),
                     )
                 }
             }
@@ -408,7 +418,7 @@ private fun PaymentLinesSection(
 ) {
     val defaultMethod = methods.firstOrNull()?.code ?: "cash"
     val methodOptions = if (methods.isEmpty()) {
-        listOf(PaymentMethodOption(0, "Efectivo", "cash", "cash", true))
+        listOf(PaymentMethodOption(id = 0, name = "Efectivo", code = "cash", destinationType = "cash", active = true))
     } else {
         methods
     }
@@ -604,10 +614,58 @@ private fun CheckoutCompactField(
 }
 
 @Composable
-private fun CheckoutTotalsSection(
+private fun CheckoutHeroTotal(
     currency: NumberFormat,
+    payableTotal: Double,
     rawTotal: Double,
     discountAmount: Double,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BendeyColors.PrimaryContainer.copy(alpha = 0.45f))
+            .border(1.dp, BendeyColors.Primary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = "Total",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = BendeyColors.OnSurfaceVariant,
+        )
+        Text(
+            text = currency.format(payableTotal),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = BendeyColors.Primary,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        if (discountAmount > 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "Subtotal ${currency.format(rawTotal)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                Text(
+                    "− ${currency.format(discountAmount)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CheckoutPaymentSummary(
+    currency: NumberFormat,
     payableTotal: Double,
     paidTotal: Double,
     remaining: Double,
@@ -617,44 +675,52 @@ private fun CheckoutTotalsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clipSection()
+            .clip(RoundedCornerShape(12.dp))
+            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.35f))
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Monto recibido",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            Text(
+                currency.format(paidTotal),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
         if (change > 0.009 && hasCashPayment) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(BendeyColors.WarningContainer)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("VUELTO", fontWeight = FontWeight.Bold, color = BendeyColors.OnWarning, fontSize = 12.sp)
-                Text(currency.format(change), fontWeight = FontWeight.Bold)
+                Text(
+                    "Vuelto",
+                    fontWeight = FontWeight.Bold,
+                    color = BendeyColors.OnWarning,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Text(
+                    currency.format(change),
+                    fontWeight = FontWeight.Bold,
+                    color = BendeyColors.OnWarning,
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
-        }
-        if (discountAmount > 0) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Subtotal", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-                Text(currency.format(rawTotal), style = MaterialTheme.typography.bodySmall)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Descuento", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-                Text("− ${currency.format(discountAmount)}", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Total a pagar", fontWeight = FontWeight.Medium, color = BendeyColors.OnSurfaceVariant)
-            Text(
-                currency.format(payableTotal),
-                fontWeight = FontWeight.Bold,
-                color = BendeyColors.Primary,
-            )
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Suma de pagos", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-            Text(formatMoney(paidTotal), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
         }
         if (!paidCoversTotal(paidTotal, payableTotal)) {
             Text(

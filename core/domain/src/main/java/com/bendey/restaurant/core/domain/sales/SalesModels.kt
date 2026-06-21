@@ -112,6 +112,15 @@ interface SalesRepository {
         billingStatus: String? = null,
     ): AppResult<SalesListPage>
 
+    suspend fun listAllSalesForExport(
+        from: String?,
+        to: String?,
+        tab: VentasTab,
+        query: String? = null,
+        paymentMethod: String? = null,
+        billingStatus: String? = null,
+    ): AppResult<List<SaleSummary>>
+
     suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail>
 
     suspend fun cancelNotaVenta(saleId: Int, reason: String): AppResult<CancelNotaResult>

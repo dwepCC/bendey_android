@@ -32,4 +32,9 @@ interface CashRepository {
     suspend fun updateBankAccount(id: Int, name: String, bankName: String, accountNumber: String, type: String, paymentMethod: String, active: Boolean): AppResult<Unit>
     suspend fun listBankMovements(accountId: Int): AppResult<List<CashBankMovement>>
     suspend fun addBankMovement(accountId: Int, type: String, description: String, reference: String, amount: Double, date: String): AppResult<Unit>
+    suspend fun listMovementsReport(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage>
+    suspend fun listMovementsReportAll(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage>
+    suspend fun getPaymentsReport(from: String, to: String, method: String?, userId: Int?, sessionId: Int?): AppResult<CashPaymentsReport>
+    suspend fun getSessionProductsReport(sessionId: Int): AppResult<List<CashSessionProductSold>>
+    suspend fun listCashFilterUsers(): AppResult<List<CashFilterUser>>
 }

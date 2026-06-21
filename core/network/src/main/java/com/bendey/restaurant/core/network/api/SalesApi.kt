@@ -24,6 +24,7 @@ interface SalesApi {
         @Query("doc_type") docType: String? = null,
         @Query("billing_status") billingStatus: String? = null,
         @Query("payment_method") paymentMethod: String? = null,
+        @Query("export_all") exportAll: Int? = null,
     ): SalesListResponseDto
 
     @GET("/api/sales/{saleId}")

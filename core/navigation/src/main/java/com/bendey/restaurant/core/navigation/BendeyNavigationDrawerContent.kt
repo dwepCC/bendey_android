@@ -14,6 +14,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,12 +26,17 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 @Composable
 fun BendeyNavigationDrawerContent(
     currentRoute: String?,
-    restaurantName: String,
+    appVersion: String,
+    destinations: List<BendeyDrawerDestination> = BendeyDrawerDestination.entries,
     onNavigate: (BendeyDrawerDestination) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ModalDrawerSheet(modifier = modifier) {
+    ModalDrawerSheet(
+        modifier = modifier,
+        drawerContainerColor = BendeyColors.Surface,
+        drawerContentColor = BendeyColors.OnSurface,
+    ) {
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -39,31 +45,41 @@ fun BendeyNavigationDrawerContent(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = restaurantName.ifBlank { "Bendey Resto" },
+                        text = "Bendey Resto",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = BendeyColors.Primary,
                     )
-                    Text(
-                        text = "Gestión",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = BendeyColors.OnSurfaceVariant,
-                    )
+                    if (appVersion.isNotBlank()) {
+                        Text(
+                            text = "v$appVersion",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                    }
                 }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, contentDescription = "Cerrar menú", tint = BendeyColors.OnSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            BendeyDrawerDestination.entries.forEach { item ->
+            destinations.forEach { item ->
+                val selected = currentRoute == item.route
                 NavigationDrawerItem(
                     label = { Text(item.label) },
-                    selected = currentRoute == item.route,
+                    selected = selected,
                     icon = { Icon(item.icon, contentDescription = item.label) },
                     onClick = { onNavigate(item) },
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    colors = NavigationDrawerItemDefaults.colors(
+                        selectedContainerColor = BendeyColors.PrimaryContainer.copy(alpha = 0.55f),
+                        unselectedContainerColor = BendeyColors.Surface,
+                        selectedIconColor = BendeyColors.Primary,
+                        selectedTextColor = BendeyColors.Primary,
+                    ),
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             Text(
                 text = "Usa la barra inferior para volver a Inicio, POS, Mesas o Comandas.",
                 style = MaterialTheme.typography.labelSmall,

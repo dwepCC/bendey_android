@@ -63,6 +63,9 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override suspend fun loginWithEmail(email: String, password: String): Result<UserSession> = runCatching {
+        operationalDataCache.clearAll()
+        tenantRetrofitProvider.invalidate()
+        sessionManager.clearUserSession()
         val tenant = sessionManager.getTenant()
             ?: error("Vincule el RUC antes de iniciar sesión")
         val api = tenantRetrofitProvider.create<AuthApi>()
@@ -75,10 +78,17 @@ class AuthRepositoryImpl @Inject constructor(
         )
         val session = response.toDomain()
         sessionManager.applyUserSession(session)
-        session
+        val enriched = enrichSession(session)
+        if (enriched != session) {
+            sessionManager.applyUserSession(enriched)
+        }
+        enriched
     }.recoverCatching { throw NetworkErrorMapper.map(it) }
 
     override suspend fun loginWithPin(pin: String, station: PinStation): Result<UserSession> = runCatching {
+        operationalDataCache.clearAll()
+        tenantRetrofitProvider.invalidate()
+        sessionManager.clearUserSession()
         require(pin.length >= 4) { "Ingrese al menos 4 dígitos" }
         val api = tenantRetrofitProvider.create<AuthApi>()
         val response = api.pinLogin(
@@ -86,11 +96,41 @@ class AuthRepositoryImpl @Inject constructor(
         )
         val session = response.toDomain()
         sessionManager.applyUserSession(session)
-        session
+        val enriched = enrichSession(session)
+        if (enriched != session) {
+            sessionManager.applyUserSession(enriched)
+        }
+        enriched
     }.recoverCatching { throw NetworkErrorMapper.map(it) }
+
+    override suspend fun refreshRestaurantPermissions(): Result<UserSession> = runCatching {
+        val session = sessionManager.getUserSession() ?: error("Sin sesión activa")
+        val enriched = enrichSession(session)
+        sessionManager.applyUserSession(enriched)
+        enriched
+    }.recoverCatching { throw NetworkErrorMapper.map(it) }
+
+    /** Refresca permisos restaurante (paridad Capacitor `getSessionPermissions`). */
+    private suspend fun enrichSession(session: UserSession): UserSession {
+        return try {
+            val api = tenantRetrofitProvider.create<AuthApi>()
+            val dto = api.getSessionPermissions()
+            val perms = dto.permissions.orEmpty()
+            session.copy(
+                restaurantPermissions = perms.ifEmpty { session.restaurantPermissions },
+                user = session.user.copy(
+                    employeeType = dto.employeeType?.takeIf { it.isNotBlank() } ?: session.user.employeeType,
+                    staffId = dto.staffId ?: session.user.staffId,
+                ),
+            )
+        } catch (_: Exception) {
+            session
+        }
+    }
 
     override suspend fun logout() {
         operationalDataCache.clearAll()
         sessionManager.clearUserSession()
+        tenantRetrofitProvider.invalidate()
     }
 }

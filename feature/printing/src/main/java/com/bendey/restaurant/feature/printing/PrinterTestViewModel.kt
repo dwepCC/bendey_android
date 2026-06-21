@@ -13,6 +13,7 @@ import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
+import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaItem
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaPrintInput
@@ -37,6 +38,7 @@ data class PrinterTestUiState(
     val tcpHost: String = "192.168.1.100",
     val tcpPort: String = "9100",
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
+    val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
     val comandasByArea: Map<String, PrinterSlotConfig> = emptyMap(),
@@ -109,6 +111,27 @@ class PrinterTestViewModel @Inject constructor(
 
     fun setTcpPort(port: String) {
         _uiState.update { it.copy(tcpPort = port.filter { c -> c.isDigit() }) }
+    }
+
+    fun setPaperWidth(width: PaperWidthMm) {
+        _uiState.update { it.copy(paperWidth = width) }
+        persistCurrentSlotToCache()
+        viewModelScope.launch {
+            val state = _uiState.value
+            printerPreferencesStore.save(
+                cachedSettings.copy(
+                    autoPrintComandas = state.autoPrintComandas,
+                    autoPrintDocuments = state.autoPrintDocuments,
+                    comandaTextSize = state.comandaTextSize,
+                ),
+            )
+        }
+    }
+
+    fun setComandaTextSize(size: ComandaTextSize) {
+        _uiState.update { it.copy(comandaTextSize = size) }
+        cachedSettings = cachedSettings.copy(comandaTextSize = size)
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
     }
 
     fun setAutoPrintComandas(enabled: Boolean) {
@@ -313,6 +336,7 @@ class PrinterTestViewModel @Inject constructor(
                 cachedSettings.copy(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
+                    comandaTextSize = state.comandaTextSize,
                 ),
             )
         }
@@ -333,6 +357,7 @@ class PrinterTestViewModel @Inject constructor(
                 tcpHost = config.tcpHost.ifBlank { "192.168.1.100" },
                 tcpPort = config.tcpPort.toString(),
                 paperWidth = config.paperWidth,
+                comandaTextSize = settings.comandaTextSize,
                 autoPrintComandas = settings.autoPrintComandas,
                 autoPrintDocuments = settings.autoPrintDocuments,
                 comandasByArea = settings.comandasByArea,

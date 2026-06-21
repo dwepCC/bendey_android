@@ -27,3 +27,10 @@ fun needsOpenCashSessionForPayments(
     val method = methods.firstOrNull { it.code == line.method }
     method?.isCash == true || (methods.isEmpty() && line.method.equals("cash", ignoreCase = true))
 }
+
+/** Cajeros deben tener caja abierta para cualquier cobro; otros roles solo si hay efectivo. */
+fun requiresOpenCashSessionForCheckout(
+    canOperateCash: Boolean,
+    methods: List<PaymentMethodOption>,
+    payments: List<CheckoutPaymentLine>,
+): Boolean = canOperateCash || needsOpenCashSessionForPayments(methods, payments)

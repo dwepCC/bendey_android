@@ -24,8 +24,9 @@ interface BillingApi {
         @Path("saleId") saleId: Int,
     ): BillingActionResponseDto
 
-    @retrofit2.http.GET("/api/billing/invoice/{saleId}/document/pdf")
-    suspend fun downloadOfficialPdf(
+    @retrofit2.http.GET("/api/billing/invoice/{saleId}/document/{kind}")
+    suspend fun downloadDocument(
         @Path("saleId") saleId: Int,
+        @Path("kind") kind: String,
     ): okhttp3.ResponseBody
 }
