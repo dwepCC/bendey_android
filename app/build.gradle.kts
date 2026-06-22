@@ -14,8 +14,8 @@ android {
         applicationId = "bendey.resto.cloud"
         minSdk = 29
         targetSdk = 35
-        versionCode = 10013
-        versionName = "1.0.2"
+        versionCode = 10015
+        versionName = "1.0.5"
     }
 
     buildTypes {

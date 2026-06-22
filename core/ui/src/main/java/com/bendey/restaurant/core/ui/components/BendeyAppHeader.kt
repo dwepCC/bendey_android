@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Badge
@@ -219,7 +219,7 @@ fun BendeyAppHeader(
                             horizontalArrangement = Arrangement.Center,
                         ) {
                             Icon(
-                                Icons.Default.Logout,
+                                Icons.AutoMirrored.Filled.Logout,
                                 contentDescription = null,
                                 modifier = Modifier
                                     .padding(end = BendeySpacing.xs)
