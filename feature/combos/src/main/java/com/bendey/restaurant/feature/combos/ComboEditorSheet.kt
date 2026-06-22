@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -11,21 +12,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,7 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.domain.catalog.ComboBranchSetting
 import com.bendey.restaurant.core.domain.catalog.ComboEditorTab
@@ -48,6 +49,7 @@ import com.bendey.restaurant.core.domain.catalog.usesFixed
 import com.bendey.restaurant.core.domain.catalog.usesSlots
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 
 @Composable
@@ -80,18 +82,25 @@ fun ComboEditorSheet(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = BendeyColors.Background,
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.92f),
+            shape = BendeyShapeTokens.xl,
+            color = BendeyColors.Surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 6.dp,
         ) {
             Column(Modifier.fillMaxSize()) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f).padding(end = BendeySpacing.xs)) {
                         Text(
                             if (isEditing) "Editar combo" else "Nuevo combo",
                             style = MaterialTheme.typography.titleLarge,
@@ -107,6 +116,8 @@ fun ComboEditorSheet(
                         text = if (loading) "Guardando…" else "Guardar",
                         onClick = onSave,
                         enabled = !loading,
+                        fillWidth = false,
+                        modifier = Modifier.heightIn(min = 40.dp),
                     )
                 }
 
@@ -114,14 +125,17 @@ fun ComboEditorSheet(
                     Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     ComboEditorTab.entries.forEach { tab ->
                         FilterChip(
                             selected = editorTab == tab,
                             onClick = { onTabChange(tab) },
                             label = { Text(tab.label) },
+                            colors = BendeyChipDefaults.filterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -130,8 +144,8 @@ fun ComboEditorSheet(
                     Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
                     when (editorTab) {
                         ComboEditorTab.GENERAL -> GeneralTab(form, onFormChange)
@@ -198,15 +212,18 @@ private fun GeneralTab(
         singleLine = false,
     )
     Text("Tipo de combo", fontWeight = FontWeight.SemiBold)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         ComboType.entries.chunked(2).forEach { rowTypes ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 rowTypes.forEach { type ->
                     FilterChip(
                         selected = form.comboType == type,
                         onClick = { onFormChange { it.copy(comboType = type) } },
                         label = { Text(type.label) },
                         modifier = Modifier.weight(1f),
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
                 if (rowTypes.size == 1) {
@@ -215,10 +232,11 @@ private fun GeneralTab(
             }
         }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("Activo")
-        Switch(form.active, { checked -> onFormChange { it.copy(active = checked) } })
-    }
+    BendeySwitchRow(
+        label = "Activo",
+        checked = form.active,
+        onCheckedChange = { checked -> onFormChange { it.copy(active = checked) } },
+    )
     if (form.comboType.showPromoDates()) {
         BendeyTextField(form.validFrom, { v -> onFormChange { it.copy(validFrom = v) } }, "Vigencia desde (YYYY-MM-DD)")
         BendeyTextField(form.validTo, { v -> onFormChange { it.copy(validTo = v) } }, "Vigencia hasta (YYYY-MM-DD)")
@@ -299,8 +317,8 @@ private fun FixedItemCard(
     onQuantityChange: (Double) -> Unit,
     onRemove: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    BendeyManagementCard {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     item.productName?.takeIf { it.isNotBlank() } ?: if (item.productId > 0) "Producto #${item.productId}" else "Seleccionar producto",
@@ -401,8 +419,8 @@ private fun SlotCard(
     onSelectProduct: (ComboProductPickerTarget, ProductItem) -> Unit,
     onRemoveSlot: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    BendeyManagementCard {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Slot ${slotIndex + 1}", fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onRemoveSlot) {
@@ -422,7 +440,7 @@ private fun SlotCard(
                 },
                 "Nombre del slot *",
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     slot.minPick.toString(),
                     { value ->
@@ -546,7 +564,7 @@ private fun SlotOptionRow(
     onUpgradeChange: (Double) -> Unit,
     onRemove: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(
                 option.productName?.takeIf { it.isNotBlank() }
@@ -622,18 +640,19 @@ private fun BranchSettingCard(
     onChange: (ComboBranchSetting) -> Unit,
     onRemove: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    BendeyManagementCard {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(setting.branchName ?: branches.firstOrNull { it.id == setting.branchId }?.name ?: "Sucursal #${setting.branchId}", fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Activo en sucursal")
-                Switch(setting.active, { active -> onChange(setting.copy(active = active)) })
-            }
+            BendeySwitchRow(
+                label = "Activo en sucursal",
+                checked = setting.active,
+                onCheckedChange = { active -> onChange(setting.copy(active = active)) },
+            )
             BendeyTextField(
                 setting.priceOverride,
                 { value -> onChange(setting.copy(priceOverride = value)) },
@@ -658,14 +677,14 @@ private fun ProductPickerSection(
         TextButton(onClick = onOpen) { Text("Buscar producto") }
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("Buscar producto", fontWeight = FontWeight.SemiBold)
             TextButton(onClick = onClose) { Text("Cerrar") }
         }
         BendeyTextField(query, onQueryChange, "Nombre o código")
         if (loading) {
-            CircularProgressIndicator(modifier = Modifier.padding(8.dp))
+            CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.xs))
         } else if (results.isEmpty() && query.isNotBlank()) {
             Text("Sin resultados", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         } else {
@@ -673,7 +692,7 @@ private fun ProductPickerSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 180.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 items(results, key = { it.id }) { product ->
                     TextButton(

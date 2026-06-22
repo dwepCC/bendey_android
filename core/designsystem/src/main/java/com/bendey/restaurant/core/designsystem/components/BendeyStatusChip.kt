@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 @Composable
 fun BendeyStatusChip(
@@ -23,8 +25,8 @@ fun BendeyStatusChip(
 ) {
     Row(
         modifier = modifier
-            .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(28.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .background(accentColor.copy(alpha = 0.12f), BendeyShapeTokens.pill)
+            .padding(horizontal = BendeySpacing.sm, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
     ) {

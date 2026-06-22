@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -17,8 +16,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,8 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.ComboItem
 import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -74,9 +73,9 @@ fun CombosScreen(
                 onOpenCombos = {},
             )
             state.error?.takeIf { !state.formOpen }?.let {
-                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp))
+                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(contentPadding = PaddingValues(BendeySpacing.md), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 items(state.combos, key = { it.id }) { combo ->
                     ComboRow(combo, currency, { viewModel.openEdit(combo.id) }, { viewModel.requestDelete(combo.id) })
                 }
@@ -120,9 +119,9 @@ fun CombosScreen(
 
 @Composable
 private fun ComboRow(combo: ComboItem, currency: NumberFormat, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(combo.name, fontWeight = FontWeight.SemiBold)
                 Text(combo.comboType.label, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                 Text(currency.format(combo.basePrice), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)

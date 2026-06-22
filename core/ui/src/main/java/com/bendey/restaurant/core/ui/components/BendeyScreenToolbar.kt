@@ -3,6 +3,7 @@ package com.bendey.restaurant.core.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,8 +37,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +48,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
@@ -67,7 +69,7 @@ fun BendeyScreenToolbar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 2.dp),
+            .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
@@ -272,24 +274,19 @@ private fun PosCompactSearchField(
             modifier = Modifier.weight(1f),
         )
         if (onBarcodeScanChange != null) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(BendeyShapeTokens.sm)
+                    .background(BendeyColors.Primary)
+                    .clickable { onBarcodeScanChange(true) },
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Default.QrCodeScanner,
-                    contentDescription = null,
-                    tint = if (barcodeScanEnabled) BendeyColors.Primary else BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
-                Switch(
-                    checked = barcodeScanEnabled,
-                    onCheckedChange = onBarcodeScanChange,
-                    modifier = Modifier.height(28.dp),
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = BendeyColors.OnPrimary,
-                        checkedTrackColor = BendeyColors.Primary,
-                    ),
+                    contentDescription = "Escanear código",
+                    tint = BendeyColors.OnPrimary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -317,10 +314,10 @@ private fun BendeyCompactSearchInput(
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                    .background(Color.White)
-                    .padding(horizontal = 10.dp),
+                    .clip(BendeyShapeTokens.sm)
+                    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.45f), BendeyShapeTokens.sm)
+                    .background(BendeyColors.Surface)
+                    .padding(horizontal = BendeySpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -365,9 +362,10 @@ private fun CategoryChip(selected: Boolean, label: String, onClick: () -> Unit) 
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = containerColor,
             selectedLabelColor = labelColor,
-            containerColor = containerColor,
-            labelColor = labelColor,
+            containerColor = BendeyColors.SurfaceVariant,
+            labelColor = BendeyColors.OnSurfaceVariant,
         ),
-        shape = RoundedCornerShape(8.dp),
+        shape = BendeyShapeTokens.chip,
+        border = null,
     )
 }

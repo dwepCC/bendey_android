@@ -4,7 +4,12 @@ import com.bendey.restaurant.core.data.mapper.toDomain
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.auth.AuthRepository
+import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationInput
+import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationResult
+import com.bendey.restaurant.core.domain.auth.SunatRucValidation
 import com.bendey.restaurant.core.domain.auth.TenantRepository
+import com.bendey.restaurant.core.network.dto.PublicRegisterRequestDto
+import com.bendey.restaurant.core.network.dto.ValidateRucRequestDto
 import com.bendey.restaurant.core.domain.model.PinStation
 import com.bendey.restaurant.core.domain.model.TenantBinding
 import com.bendey.restaurant.core.domain.model.UserSession
@@ -42,6 +47,50 @@ class TenantRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.invalidate()
     }
 
+    override suspend fun validateRucWithSunat(ruc: String): Result<SunatRucValidation> = runCatching {
+        val normalized = ruc.replace(Regex("\\D"), "").trim()
+        require(normalized.length == 11) { "El RUC debe tener 11 dígitos" }
+        val dto = publicApi.validateRuc(ValidateRucRequestDto(ruc = normalized))
+        require(dto.success) { "RUC no encontrado en SUNAT" }
+        require(dto.razonSocial.isNotBlank()) { "No se obtuvo la razón social del RUC" }
+        SunatRucValidation(
+            ruc = dto.ruc.ifBlank { normalized },
+            razonSocial = dto.razonSocial,
+            direccion = dto.direccion,
+            ubigeo = dto.ubigeo,
+        )
+    }.recoverCatching { error ->
+        throw NetworkErrorMapper.map(error)
+    }
+
+    override suspend fun registerRestaurant(
+        input: RestaurantRegistrationInput,
+    ): Result<RestaurantRegistrationResult> = runCatching {
+        val normalizedRuc = input.ruc.replace(Regex("\\D"), "").trim()
+        require(normalizedRuc.length == 11) { "El RUC debe tener 11 dígitos" }
+        val response = publicApi.registerTenant(
+            PublicRegisterRequestDto(
+                name = input.name.trim(),
+                razonSocial = input.razonSocial.trim(),
+                ruc = normalizedRuc,
+                email = input.email.trim(),
+                phone = input.phone.trim(),
+                address = input.address.trim(),
+                ubigeo = input.ubigeo.trim(),
+                password = input.password,
+                rubro = RESTAURANT_RUBRO,
+            ),
+        )
+        val binding = resolveTenantByRuc(normalizedRuc).getOrThrow()
+        operationalDataCache.clearAll()
+        sessionManager.clearUserSession()
+        tenantRetrofitProvider.invalidate()
+        bindTenant(binding)
+        RestaurantRegistrationResult(name = response.name.ifBlank { binding.name })
+    }.recoverCatching { error ->
+        throw NetworkErrorMapper.map(error)
+    }
+
     override suspend fun clearTenant() {
         operationalDataCache.clearAll()
         sessionManager.clearTenant()
@@ -52,6 +101,10 @@ class TenantRepositoryImpl @Inject constructor(
         var base = url.trim().trimEnd('/')
         if (base.endsWith("/api")) base = base.removeSuffix("/api")
         return base
+    }
+
+    private companion object {
+        const val RESTAURANT_RUBRO = "gastronomico"
     }
 }
 

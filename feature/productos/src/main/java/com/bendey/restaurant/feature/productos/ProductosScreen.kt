@@ -12,8 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -21,16 +20,12 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Checkbox
-import androidx.compose.ui.semantics.Role
+import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -51,7 +46,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
 import com.bendey.restaurant.core.domain.products.PreparationArea
@@ -225,14 +223,17 @@ private fun ProductosTabRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         ProductosTab.entries.forEach { tab ->
             FilterChip(
                 selected = selected == tab,
                 onClick = { onSelect(tab) },
                 label = { Text(tab.label) },
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
         }
     }
@@ -253,13 +254,13 @@ private fun ProductsTabContent(
 ) {
     Column {
         error?.let {
-            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
         BendeyTextField(
             value = state.searchQuery,
             onValueChange = onSearch,
             label = "Buscar por nombre o código",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         )
         val categoryOptions = remember(state.categories) {
             listOf(BendeySelectOption(-1, "Todas las categorías")) +
@@ -271,26 +272,32 @@ private fun ProductsTabContent(
             onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
             label = "Categoría",
             placeholder = "Buscar categoría…",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         )
         if (state.branches.size > 1) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 FilterChip(
                     selected = state.branchFilterId == null,
                     onClick = { onBranchFilter(null) },
                     label = { Text("Todas sucursales") },
+                    colors = BendeyChipDefaults.filterChipColors(),
+                    shape = BendeyShapeTokens.chip,
+                    border = null,
                 )
                 state.branches.forEach { branch ->
                     FilterChip(
                         selected = state.branchFilterId == branch.id,
                         onClick = { onBranchFilter(branch.id) },
                         label = { Text(branch.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
@@ -299,12 +306,12 @@ private fun ProductsTabContent(
             Text(
                 "Sin productos",
                 color = BendeyColors.OnSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(BendeySpacing.md),
             )
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.products, key = { it.id }) { product ->
@@ -346,7 +353,7 @@ private fun ProductRow(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
             if (imageUrl != null) {
                 AsyncImage(
@@ -354,7 +361,7 @@ private fun ProductRow(
                     contentDescription = product.name,
                     modifier = Modifier
                         .size(56.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                        .clip(BendeyShapeTokens.xs),
                     contentScale = ContentScale.Crop,
                 )
             }
@@ -365,7 +372,7 @@ private fun ProductRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     product.categoryName?.let {
                         Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                     }
@@ -382,7 +389,7 @@ private fun ProductRow(
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.Primary,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     if (!product.availableForSale) {
                         BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
                     }
@@ -414,19 +421,19 @@ private fun CategoriesTabContent(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         error?.let {
-            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp))
+            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
         }
     if (categories.isEmpty() && !loading) {
         Text(
             "Sin categorías",
             color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(BendeySpacing.md),
         )
         return@Column
     }
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = Modifier.fillMaxSize(),
     ) {
         items(categories, key = { it.id }) { category ->
@@ -527,19 +534,19 @@ private fun ProductFormDialog(
             },
             label = "Afectación IGV",
         )
-        ToggleRow(
+        BendeyCheckboxRow(
             label = "Visible en carta (POS/mesa)",
             checked = form.availableForSale,
             onCheckedChange = { checked -> onFormChange { it.copy(availableForSale = checked) } },
         )
         if (IgvAffectation.isGravado(form.igvAffectation.code)) {
-            ToggleRow(
+            BendeyCheckboxRow(
                 label = "Precio incluye IGV",
                 checked = form.priceIncludesIgv,
                 onCheckedChange = { checked -> onFormChange { it.copy(priceIncludesIgv = checked) } },
             )
         }
-        ToggleRow(
+        BendeyCheckboxRow(
             label = "Controlar stock",
             checked = form.manageStock,
             onCheckedChange = { checked -> onFormChange { it.copy(manageStock = checked) } },
@@ -619,37 +626,6 @@ private fun CategoryFormDialog(
         error?.let {
             Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
         }
-    }
-}
-
-@Composable
-private fun ToggleRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .toggleable(
-                value = checked,
-                onValueChange = onCheckedChange,
-                role = Role.Checkbox,
-            )
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
-        )
-        Text(
-            label,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
 }
 

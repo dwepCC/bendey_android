@@ -13,8 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 
-/** Espacio reservado para la barra inferior + FAB flotante. */
+/** Altura visible de la barra inferior (sin clearance del FAB). */
+val BendeyBottomBarHeight = 56.dp
+
+/** Espacio total reservado en el contenedor (barra + FAB flotante). */
 val BendeyBottomBarInset = 76.dp
 
 /**
@@ -41,10 +45,10 @@ fun BendeyRestaurantShell(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxSize()
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                .clip(BendeyShapeTokens.sheet)
                 .background(BendeyColors.Surface),
         ) {
-            val contentBottomPad = if (showBottomBar) BendeyBottomBarInset else 0.dp
+            val contentBottomPad = if (showBottomBar) BendeyBottomBarHeight else 0.dp
             content(
                 Modifier
                     .fillMaxSize()

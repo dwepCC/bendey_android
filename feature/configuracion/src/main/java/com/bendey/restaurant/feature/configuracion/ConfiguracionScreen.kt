@@ -11,22 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -38,13 +33,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,18 +68,24 @@ fun ConfiguracionScreen(
                 },
             )
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 ConfigTab.entries.forEach { tab ->
                     FilterChip(
                         selected = state.tab == tab,
                         onClick = { viewModel.setTab(tab) },
                         label = { Text(tab.label) },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
-            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp)) }
+            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
                 ConfigTab.GENERAL -> GeneralTab(state, onOpenPrinting, viewModel)
                 ConfigTab.OPERACION -> OperacionTab(state, viewModel)
@@ -118,10 +124,13 @@ fun ConfiguracionScreen(
 
 @Composable
 private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, viewModel: ConfiguracionViewModel) {
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(
+        contentPadding = PaddingValues(BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+    ) {
         item {
-            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     Text("Empresa", fontWeight = FontWeight.SemiBold)
                     state.config?.let { config ->
                         Text("RUC: ${config.ruc}", style = MaterialTheme.typography.bodySmall)
@@ -133,8 +142,8 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
             }
         }
         item {
-            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     Text("SUNAT / IGV", fontWeight = FontWeight.SemiBold)
                     state.sunat?.let { sunat ->
                         Text("IGV: ${sunat.taxRate}%", style = MaterialTheme.typography.bodySmall)
@@ -145,8 +154,8 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
             }
         }
         item {
-            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     Text("Impresoras", fontWeight = FontWeight.SemiBold)
                     BendeyPrimaryButton("Abrir impresoras", onOpenPrinting, modifier = Modifier.fillMaxWidth())
                 }
@@ -158,12 +167,15 @@ private fun GeneralTab(state: ConfiguracionUiState, onOpenPrinting: () -> Unit, 
 @Composable
 private fun BranchesTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
+        Row(Modifier.fillMaxWidth().padding(BendeySpacing.md), horizontalArrangement = Arrangement.End) {
             if (state.canManageRestaurantSettings) {
                 BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
             }
         }
-        LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            contentPadding = PaddingValues(horizontal = BendeySpacing.md),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
             items(state.branches, key = { it.id }) { branch ->
                 BranchCard(branch, viewModel, state.canManageRestaurantSettings)
             }
@@ -173,15 +185,15 @@ private fun BranchesTab(state: ConfiguracionUiState, viewModel: ConfiguracionVie
 
 @Composable
 private fun BranchCard(branch: BranchItem, viewModel: ConfiguracionViewModel, canManage: Boolean) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(branch.name, fontWeight = FontWeight.SemiBold)
                 if (branch.address.isNotBlank()) Text(branch.address, style = MaterialTheme.typography.bodySmall)
                 if (branch.fiscalDomicileCode.isNotBlank()) {
                     Text("Domicilio fiscal: ${branch.fiscalDomicileCode}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     if (branch.isMain) BendeyStatusChip("Principal", BendeyColors.Primary)
                     BendeyStatusChip(if (branch.active) "Activa" else "Inactiva", if (branch.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
                 }
@@ -202,23 +214,32 @@ private fun BranchCard(branch: BranchItem, viewModel: ConfiguracionViewModel, ca
 private fun SeriesTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             state.branches.forEach { branch ->
                 FilterChip(
                     selected = state.selectedBranchId == branch.id,
                     onClick = { viewModel.selectBranch(branch.id) },
                     label = { Text(branch.name) },
+                    colors = BendeyChipDefaults.filterChipColors(),
+                    shape = BendeyShapeTokens.chip,
+                    border = null,
                 )
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.End) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md), horizontalArrangement = Arrangement.End) {
             if (state.canManageRestaurantSettings) {
                 BendeyPrimaryButton("Nueva serie", viewModel::openCreateSeries, fillWidth = false, enabled = state.selectedBranchId != null)
             }
         }
-        LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(
+            contentPadding = PaddingValues(BendeySpacing.md),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
             items(state.series, key = { it.id }) { series ->
                 SeriesCard(series, viewModel, state.canManageRestaurantSettings, state.sunat?.sunatEnabled == true)
             }
@@ -228,12 +249,12 @@ private fun SeriesTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewM
 
 @Composable
 private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel, canManage: Boolean, sunatEnabled: Boolean) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("${series.docType} · ${series.series}", fontWeight = FontWeight.SemiBold)
                 Text("SUNAT ${series.sunatCode ?: "—"} · Corr. ${series.currentNumber}", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyStatusChip(if (series.active) "Activa" else "Inactiva", if (series.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
                     if (series.locked) BendeyStatusChip("En uso", BendeyColors.Warning)
                 }
@@ -279,10 +300,11 @@ private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel
     ) {
         BendeyTextField(state.sunatForm.taxRate, { v -> viewModel.updateSunatForm { it.copy(taxRate = v) } }, "Tasa IGV (%)")
         BendeyTextField(state.sunatForm.igvRegime, { v -> viewModel.updateSunatForm { it.copy(igvRegime = v) } }, "Régimen IGV")
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Zona de beneficio tributario")
-            Switch(state.sunatForm.taxBenefitZone, { c -> viewModel.updateSunatForm { it.copy(taxBenefitZone = c) } })
-        }
+        BendeySwitchRow(
+            label = "Zona de beneficio tributario",
+            checked = state.sunatForm.taxBenefitZone,
+            onCheckedChange = { checked -> viewModel.updateSunatForm { it.copy(taxBenefitZone = checked) } },
+        )
     }
 }
 
@@ -314,15 +336,17 @@ private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel
         BendeyTextField(state.branchForm.address, { v -> viewModel.updateBranchForm { it.copy(address = v) } }, "Dirección")
         BendeyTextField(state.branchForm.phone, { v -> viewModel.updateBranchForm { it.copy(phone = v) } }, "Teléfono")
         BendeyTextField(state.branchForm.fiscalDomicileCode, { v -> viewModel.updateBranchForm { it.copy(fiscalDomicileCode = v) } }, "Código domicilio fiscal")
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Sucursal principal")
-            Switch(state.branchForm.isMain, { c -> viewModel.updateBranchForm { it.copy(isMain = c) } })
-        }
+        BendeySwitchRow(
+            label = "Sucursal principal",
+            checked = state.branchForm.isMain,
+            onCheckedChange = { checked -> viewModel.updateBranchForm { it.copy(isMain = checked) } },
+        )
         if (state.branchForm.id != null) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Activa")
-                Switch(state.branchForm.active, { c -> viewModel.updateBranchForm { it.copy(active = c) } })
-            }
+            BendeySwitchRow(
+                label = "Activa",
+                checked = state.branchForm.active,
+                onCheckedChange = { checked -> viewModel.updateBranchForm { it.copy(active = checked) } },
+            )
         }
     }
 }
@@ -358,10 +382,11 @@ private fun SeriesCard(series: DocumentSeries, viewModel: ConfiguracionViewModel
                 "Correlativo",
                 enabled = !fieldsLocked,
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Activa")
-                Switch(form.active, { c -> viewModel.updateSeriesForm { it.copy(active = c) } })
-            }
+            BendeySwitchRow(
+                label = "Activa",
+                checked = form.active,
+                onCheckedChange = { checked -> viewModel.updateSeriesForm { it.copy(active = checked) } },
+            )
         }
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPinKeypad
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -50,24 +51,24 @@ fun PinLoginScreen(
                 modifier = Modifier
                     .widthIn(max = 360.dp)
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = BendeySpacing.lg, vertical = BendeySpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 BendeyBrandLogo(height = 48.dp, showBackground = true)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(BendeySpacing.sm))
                 Text(
                     text = "Ingresa tu PIN de operación",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier = Modifier.padding(bottom = BendeySpacing.md),
                 )
                 BendeyPinKeypad(
                     onDigit = viewModel::appendDigit,
                     onBackspace = viewModel::backspace,
                     currentLength = state.pin.length,
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(BendeySpacing.md))
                 BendeyPrimaryButton(
                     text = "INGRESAR",
                     onClick = { viewModel.submit(onAuthenticated) },
@@ -75,7 +76,7 @@ fun PinLoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 state.error?.let {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(BendeySpacing.xs))
                     Text(text = it, color = MaterialTheme.colorScheme.error)
                 }
             }

@@ -9,6 +9,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -49,7 +49,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -107,10 +110,10 @@ fun PrinterTestScreen(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 PrinterSlot.entries.forEach { slot ->
                     FilterChip(
                         selected = state.selectedSlot == slot,
@@ -135,12 +138,16 @@ fun PrinterTestScreen(
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey != null) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
-                    modifier = Modifier.fillMaxWidth(),
+                    shape = BendeyShapeTokens.lg,
+                    elevation = BendeyCardDefaults.elevation(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -196,10 +203,20 @@ fun PrinterTestScreen(
             )
 
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                    shape = BendeyShapeTokens.lg,
+                    colors = BendeyCardDefaults.colors(),
+                    elevation = BendeyCardDefaults.elevation(),
+                ) {
+                    Column(
+                        Modifier.padding(BendeySpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    ) {
                         Text("Tamaño texto comanda", style = MaterialTheme.typography.titleSmall)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                             FilterChip(
                                 selected = state.comandaTextSize == ComandaTextSize.DEFAULT,
                                 onClick = { viewModel.setComandaTextSize(ComandaTextSize.DEFAULT) },
@@ -215,10 +232,20 @@ fun PrinterTestScreen(
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                shape = BendeyShapeTokens.lg,
+                colors = BendeyCardDefaults.colors(),
+                elevation = BendeyCardDefaults.elevation(),
+            ) {
+                Column(
+                    Modifier.padding(BendeySpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
                     Text("Auto-impresión", style = MaterialTheme.typography.titleSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                         FilterChip(
                             selected = state.autoPrintComandas,
                             onClick = { viewModel.setAutoPrintComandas(!state.autoPrintComandas) },
@@ -253,12 +280,22 @@ fun PrinterTestScreen(
                 )
             }
 
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                shape = BendeyShapeTokens.lg,
+                colors = BendeyCardDefaults.colors(),
+                elevation = BendeyCardDefaults.elevation(),
+            ) {
+                Column(
+                    Modifier.padding(BendeySpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
                     Text("Impresión de prueba", style = MaterialTheme.typography.titleSmall)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                     ) {
                         when (state.selectedSlot) {
                             PrinterSlot.COMANDAS -> {
@@ -311,15 +348,25 @@ private fun PrinterConfigCard(
     paperWidth: PaperWidthMm,
     onPaperWidth: (PaperWidthMm) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+        shape = BendeyShapeTokens.lg,
+        colors = BendeyCardDefaults.colors(),
+        elevation = BendeyCardDefaults.elevation(),
+    ) {
+        Column(
+            Modifier.padding(BendeySpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             Text("Conexión", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 FilterChip(
                     selected = connectionType == PrinterConnectionType.BLUETOOTH,
                     onClick = { onConnectionType(PrinterConnectionType.BLUETOOTH) },
@@ -375,7 +422,7 @@ private fun PrinterConfigCard(
             HorizontalDivider()
 
             Text("Papel", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 FilterChip(
                     selected = paperWidth == PaperWidthMm.W58,
                     onClick = { onPaperWidth(PaperWidthMm.W58) },
@@ -408,17 +455,21 @@ private fun ComandaAreasCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(),
+            .animateContentSize()
+            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+        shape = BendeyShapeTokens.lg,
+        colors = BendeyCardDefaults.colors(),
+        elevation = BendeyCardDefaults.elevation(),
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggleExpanded)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                     Text(
                         "Impresión por área",
                         style = MaterialTheme.typography.titleSmall,
@@ -446,7 +497,7 @@ private fun ComandaAreasCard(
                     HorizontalDivider()
                     Text(
                         "Toca un área para asignar impresora. Sin configurar → impresora por defecto.",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -460,7 +511,7 @@ private fun ComandaAreasCard(
                             onTest = { onTestArea(area.apiValue) },
                         )
                         if (index < preparationAreasForPrint.lastIndex) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp))
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = BendeySpacing.sm))
                         }
                     }
                 }
@@ -493,15 +544,15 @@ private fun ComandaAreaRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Column(
             Modifier
                 .weight(1f)
                 .clickable(onClick = onConfigure),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
         ) {
             Text(area.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             BendeyStatusChip(label = statusLabel, accentColor = statusColor)
@@ -558,13 +609,13 @@ private fun DeviceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(BendeyShapeTokens.xs)
             .clickable(onClick = onSelect)
             .background(
                 if (selected) BendeyColors.PrimaryContainer.copy(alpha = 0.5f)
-                else MaterialTheme.colorScheme.surface,
+                else BendeyColors.Surface,
             )
-            .padding(vertical = 2.dp),
+            .padding(vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = onSelect)

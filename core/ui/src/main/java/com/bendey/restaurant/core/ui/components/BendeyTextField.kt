@@ -3,13 +3,14 @@ package com.bendey.restaurant.core.ui.components
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.VisualTransformation
+import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 
 @Composable
 fun BendeyTextField(
@@ -33,6 +34,15 @@ fun BendeyTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.medium,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = BendeyColors.Primary,
+            unfocusedBorderColor = BendeyColors.Outline,
+            focusedLabelColor = BendeyColors.Primary,
+            unfocusedLabelColor = BendeyColors.OnSurfaceVariant,
+            cursorColor = BendeyColors.Primary,
+            focusedContainerColor = BendeyColors.Surface,
+            unfocusedContainerColor = BendeyColors.Surface,
+        ),
     )
 }

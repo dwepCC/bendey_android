@@ -5,6 +5,8 @@ import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
@@ -57,6 +59,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -95,7 +99,7 @@ fun PosBarcodeScannerSheet(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.92f),
-            shape = RoundedCornerShape(20.dp),
+            shape = BendeyShapeTokens.pill,
             color = BendeyColors.Surface,
             shadowElevation = 12.dp,
         ) {
@@ -119,7 +123,7 @@ fun PosBarcodeScannerSheet(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(BendeyColors.PrimaryContainer, RoundedCornerShape(12.dp)),
+                                .background(BendeyColors.PrimaryContainer, BendeyShapeTokens.md),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -157,9 +161,9 @@ fun PosBarcodeScannerSheet(
                             .fillMaxWidth()
                             .padding(top = 16.dp)
                             .height(300.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(BendeyShapeTokens.xl)
                             .background(Color.Black)
-                            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), RoundedCornerShape(16.dp)),
+                            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), BendeyShapeTokens.xl),
                         contentAlignment = Alignment.Center,
                     ) {
                         BarcodeCameraPreview(
@@ -189,7 +193,7 @@ private fun BarcodeScanOverlay(modifier: Modifier = Modifier) {
         ),
         label = "scanLineProgress",
     )
-    val frameColor = Color.White
+    val frameColor = BendeyColors.OnPrimary
     val accentColor = BendeyColors.Primary
 
     Canvas(modifier = modifier) {
@@ -293,7 +297,16 @@ private fun BarcodeCameraPreview(
                     it.surfaceProvider = previewView.surfaceProvider
                 }
                 val analysis = ImageAnalysis.Builder()
-                    .setTargetResolution(Size(1280, 720))
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setResolutionStrategy(
+                                ResolutionStrategy(
+                                    Size(1280, 720),
+                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
+                                ),
+                            )
+                            .build(),
+                    )
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                 analysis.setAnalyzer(executor) { imageProxy ->

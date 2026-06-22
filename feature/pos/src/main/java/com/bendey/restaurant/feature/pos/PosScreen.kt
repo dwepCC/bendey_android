@@ -69,6 +69,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
@@ -515,21 +517,21 @@ private fun OrderTypeRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = if (compact) 4.dp else 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs)
+            .clip(BendeyShapeTokens.lg)
             .background(BendeyColors.SurfaceVariant.copy(alpha = 0.65f))
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+            .padding(BendeySpacing.xxs),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
         PosOrderType.entries.forEach { type ->
             val isSelected = selected == type
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(BendeyShapeTokens.sm)
                     .background(if (isSelected) BendeyColors.Primary else Color.Transparent)
                     .clickable { onSelect(type) }
-                    .padding(vertical = if (compact) 8.dp else 6.dp),
+                    .padding(vertical = if (compact) BendeySpacing.xs else 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -787,15 +789,16 @@ private fun CompactCartBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.55f)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onOpenCart)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {

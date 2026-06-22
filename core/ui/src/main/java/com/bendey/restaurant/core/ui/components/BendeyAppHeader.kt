@@ -1,16 +1,17 @@
 package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Logout
@@ -23,7 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 data class BendeyAppHeaderState(
     val restaurantName: String = "",
@@ -64,14 +67,16 @@ fun BendeyAppHeader(
         modifier = modifier
             .fillMaxWidth()
             .background(BendeyColors.Rest900)
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .heightIn(min = 52.dp)
+            .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onMenuClick) {
+        IconButton(onClick = onMenuClick, modifier = Modifier.size(BendeySpacing.touchTarget)) {
             Icon(
                 if (isDrawerOpen) Icons.Default.Close else Icons.Default.Menu,
                 contentDescription = if (isDrawerOpen) "Cerrar menú" else "Menú",
                 tint = BendeyColors.OnPrimary,
+                modifier = Modifier.size(22.dp),
             )
         }
         Text(
@@ -91,11 +96,15 @@ fun BendeyAppHeader(
                 }
             },
         ) {
-            IconButton(onClick = onNotificationsClick) {
+            IconButton(
+                onClick = onNotificationsClick,
+                modifier = Modifier.size(BendeySpacing.touchTarget),
+            ) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = "Notificaciones",
                     tint = BendeyColors.OnPrimary,
+                    modifier = Modifier.size(22.dp),
                 )
             }
         }
@@ -104,7 +113,7 @@ fun BendeyAppHeader(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(BendeyColors.OnPrimary.copy(alpha = 0.18f)),
+                    .background(BendeyColors.OnPrimary.copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center,
             ) {
                 IconButton(onClick = { showUserMenu = true }, modifier = Modifier.size(36.dp)) {
@@ -119,29 +128,30 @@ fun BendeyAppHeader(
             DropdownMenu(
                 expanded = showUserMenu,
                 onDismissRequest = { showUserMenu = false },
-                modifier = Modifier.widthIn(min = 260.dp),
-                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.widthIn(min = 272.dp),
+                shape = BendeyShapeTokens.lg,
+                containerColor = BendeyColors.Surface,
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
                                 .background(BendeyColors.PrimaryContainer),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = state.userInitials.ifBlank { "?" },
-                                color = BendeyColors.Primary,
+                                color = BendeyColors.OnPrimaryContainer,
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
@@ -173,29 +183,56 @@ fun BendeyAppHeader(
                         }
                     }
                     state.cashLabel?.let { cashLabel ->
-                        Text(
-                            text = cashLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (state.isCashOpen) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
-                        )
+                        Surface(
+                            shape = BendeyShapeTokens.sm,
+                            color = if (state.isCashOpen) {
+                                BendeyColors.SuccessContainer.copy(alpha = 0.65f)
+                            } else {
+                                BendeyColors.SurfaceVariant
+                            },
+                        ) {
+                            Text(
+                                text = cashLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (state.isCashOpen) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                            )
+                        }
                     }
                     HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
-                    OutlinedButton(
-                        onClick = {
-                            showUserMenu = false
-                            onLogout()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(BendeyShapeTokens.md)
+                            .clickable {
+                                showUserMenu = false
+                                onLogout()
+                            },
+                        shape = BendeyShapeTokens.md,
+                        color = BendeyColors.ErrorContainer.copy(alpha = 0.55f),
                     ) {
-                        Icon(
-                            Icons.Default.Logout,
-                            contentDescription = null,
+                        Row(
                             modifier = Modifier
-                                .padding(end = 8.dp)
-                                .size(18.dp),
-                        )
-                        Text("Cerrar sesión")
+                                .fillMaxWidth()
+                                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                Icons.Default.Logout,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = BendeySpacing.xs)
+                                    .size(18.dp),
+                                tint = BendeyColors.Error,
+                            )
+                            Text(
+                                text = "Cerrar sesión",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = BendeyColors.OnErrorContainer,
+                            )
+                        }
                     }
                 }
             }

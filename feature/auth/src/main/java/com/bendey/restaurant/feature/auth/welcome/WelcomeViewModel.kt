@@ -1,4 +1,4 @@
-package com.bendey.restaurant.feature.auth.ruc
+package com.bendey.restaurant.feature.auth.welcome
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,30 +11,29 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val RUC_MIN_LENGTH = 8
 private const val RUC_PERU_LENGTH = 11
 
-data class RucUiState(
+data class WelcomeUiState(
     val ruc: String = "",
-    val loading: Boolean = false,
+    val linking: Boolean = false,
     val error: String? = null,
-    val bound: Boolean = false,
 ) {
-    val canSubmit: Boolean get() = ruc.length >= RUC_MIN_LENGTH && !loading && !bound
+    val canSubmit: Boolean
+        get() = ruc.length == RUC_PERU_LENGTH && !linking
 }
 
 @HiltViewModel
-class RucViewModel @Inject constructor(
+class WelcomeViewModel @Inject constructor(
     private val tenantRepository: TenantRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(RucUiState())
-    val uiState: StateFlow<RucUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(WelcomeUiState())
+    val uiState: StateFlow<WelcomeUiState> = _uiState.asStateFlow()
 
     fun onRucChange(value: String) {
         _uiState.update {
             it.copy(
-                ruc = value.filter { c -> c.isDigit() }.take(RUC_PERU_LENGTH),
+                ruc = value.filter { char -> char.isDigit() }.take(RUC_PERU_LENGTH),
                 error = null,
             )
         }
@@ -44,23 +43,29 @@ class RucViewModel @Inject constructor(
         val ruc = _uiState.value.ruc
         if (!_uiState.value.canSubmit) return
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
+            _uiState.update { it.copy(linking = true, error = null) }
             tenantRepository.resolveTenantByRuc(ruc)
                 .onSuccess { binding ->
                     runCatching { tenantRepository.bindTenant(binding) }
                         .onSuccess {
-                            _uiState.update { it.copy(loading = false, bound = true) }
+                            _uiState.update { it.copy(linking = false) }
                             onSuccess()
                         }
-                        .onFailure { e ->
+                        .onFailure { error ->
                             _uiState.update {
-                                it.copy(loading = false, error = e.message ?: "No se pudo vincular el negocio")
+                                it.copy(
+                                    linking = false,
+                                    error = error.message ?: "No se pudo vincular el negocio",
+                                )
                             }
                         }
                 }
-                .onFailure { e ->
+                .onFailure { error ->
                     _uiState.update {
-                        it.copy(loading = false, error = e.message ?: "RUC no encontrado")
+                        it.copy(
+                            linking = false,
+                            error = error.message ?: "No encontramos un restaurante con ese RUC",
+                        )
                     }
                 }
         }

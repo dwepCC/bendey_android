@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -21,10 +20,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
@@ -92,25 +89,25 @@ fun ClientesScreen(
                 value = state.searchQuery,
                 onValueChange = viewModel::setSearchQuery,
                 label = "Buscar por nombre o documento",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
             )
             state.error?.takeIf { !state.formOpen }?.let { error ->
                 Text(
                     error,
                     color = BendeyColors.Error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
                 )
             }
             if (state.contacts.isEmpty() && !state.loading) {
                 Text(
                     "Sin clientes",
                     color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(BendeySpacing.md),
                 )
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(state.contacts, key = { it.id }) { contact ->
@@ -166,7 +163,7 @@ private fun ContactRow(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(contact.displayName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -178,7 +175,7 @@ private fun ContactRow(
                 contact.tradeName?.let {
                     Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     contact.phone?.let {
                         Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                     }
@@ -239,7 +236,7 @@ private fun ContactFormDialog(
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BendeyTextField(

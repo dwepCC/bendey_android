@@ -14,6 +14,72 @@ data class TenantByRucDto(
 )
 
 @Serializable
+data class ValidateRucRequestDto(
+    val ruc: String,
+)
+
+@Serializable
+data class ValidateRucResponseDto(
+    val success: Boolean = false,
+    val ruc: String = "",
+    @SerialName("razon_social") val razonSocial: String = "",
+    val direccion: String = "",
+    val ubigeo: String = "",
+    val estado: String = "",
+    val condicion: String = "",
+)
+
+@Serializable
+data class PublicRegisterRequestDto(
+    val name: String,
+    @SerialName("razon_social") val razonSocial: String = "",
+    @SerialName("business_name") val businessName: String = "",
+    val ruc: String,
+    val email: String,
+    val phone: String = "",
+    val address: String = "",
+    val ubigeo: String = "",
+    val rubro: String = "gastronomico",
+    val password: String,
+    @SerialName("plan_id") val planId: Int = 0,
+    @SerialName("referral_code") val referralCode: String = "",
+)
+
+@Serializable
+data class PublicRegisterResponseDto(
+    val slug: String = "",
+    val name: String = "",
+    val subdomain: String? = null,
+    @SerialName("tenant_url") val tenantUrl: String? = null,
+    val email: String? = null,
+    val message: String? = null,
+)
+
+@Serializable
+data class PublicApplicationDto(
+    val name: String = "",
+    val code: String? = null,
+    val description: String? = null,
+    @SerialName("windows_store_url") val windowsStoreUrl: String = "",
+    @SerialName("android_store_url") val androidStoreUrl: String = "",
+    val downloads: Map<String, PublicApplicationDownloadDto>? = null,
+)
+
+@Serializable
+data class PublicApplicationDownloadDto(
+    val platform: String = "",
+    val version: String = "",
+    @SerialName("download_url") val downloadUrl: String = "",
+    @SerialName("file_name") val fileName: String = "",
+    @SerialName("file_size") val fileSize: Long = 0,
+)
+
+@Serializable
+data class PublicApplicationsResponseDto(
+    val data: List<PublicApplicationDto> = emptyList(),
+)
+
+@Serializable
 data class AuthUserDto(
     val id: Int,
     val name: String,

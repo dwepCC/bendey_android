@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
@@ -33,7 +32,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.BulkImportProgress
 import com.bendey.restaurant.core.domain.catalog.BulkImportValidationResult
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
@@ -92,7 +94,7 @@ fun ProductImportDialog(
         tonalElevation = 0.dp,
         title = { Text("Importar productos (Excel)") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 Text("Columnas: nombre, precio_venta, codigo, categoria, area_preparacion, etc.", style = MaterialTheme.typography.bodySmall)
                 BendeyPrimaryButton(
                     "Descargar plantilla",
@@ -146,14 +148,17 @@ fun ProductImageSection(
         else -> null
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+    ) {
         if (form.pendingImageBytes != null) {
             Text("Imagen lista para subir", style = MaterialTheme.typography.bodySmall, color = BendeyColors.Primary)
         } else if (displayUrl != null) {
             AsyncImage(
                 model = displayUrl,
                 contentDescription = null,
-                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)),
+                modifier = Modifier.size(72.dp).clip(BendeyShapeTokens.xs),
                 contentScale = ContentScale.Crop,
             )
         } else {
@@ -168,9 +173,9 @@ fun ProductPresentationsSection(
     presentations: List<ProductPresentation>,
     onChange: (List<ProductPresentation>) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         presentations.forEachIndexed { index, presentation ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     presentation.name,
                     { value -> onChange(presentations.mapIndexed { i, p -> if (i == index) p.copy(name = value) else p }) },
@@ -201,12 +206,15 @@ fun ProductModifiersSection(
         Text("No hay grupos de modificadores", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         groups.forEach { group ->
             FilterChip(
                 selected = selectedIds.contains(group.id),
                 onClick = { onToggle(group.id) },
                 label = { Text(group.name) },
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
         }
     }

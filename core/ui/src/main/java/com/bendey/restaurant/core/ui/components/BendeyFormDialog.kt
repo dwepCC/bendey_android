@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 data class BendeySelectOption(
     val id: Int,
@@ -64,12 +66,12 @@ fun BendeyFormDialog(
             modifier = modifier
                 .fillMaxWidth(0.94f)
                 .heightIn(max = 720.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White,
+            shape = BendeyShapeTokens.xl,
+            color = BendeyColors.Surface,
             tonalElevation = 0.dp,
-            shadowElevation = 8.dp,
+            shadowElevation = 6.dp,
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(BendeySpacing.lg)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
@@ -80,16 +82,16 @@ fun BendeyFormDialog(
                     modifier = Modifier
                         .heightIn(max = 480.dp)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                        .padding(top = BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
                     content()
                 }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(top = BendeySpacing.lg),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     BendeySecondaryButton(
                         text = dismissText,
@@ -139,11 +141,11 @@ fun BendeySearchableSelect(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
+                        .clip(BendeyShapeTokens.md)
+                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
                         .background(BendeyColors.Surface)
                         .clickable { expanded = !expanded }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
@@ -164,9 +166,9 @@ fun BendeySearchableSelect(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
-                            .background(BendeyColors.Surface),
+                        .clip(BendeyShapeTokens.md)
+                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
+                        .background(BendeyColors.Surface),
                     ) {
                     BendeyTextField(
                         value = query,
@@ -240,11 +242,11 @@ fun BendeySimpleSelect(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
-                        .background(Color.White)
+                        .clip(BendeyShapeTokens.md)
+                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
+                        .background(BendeyColors.Surface)
                         .clickable { expanded = !expanded }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
@@ -265,9 +267,9 @@ fun BendeySimpleSelect(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 4.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
-                            .background(Color.White),
+                        .clip(BendeyShapeTokens.md)
+                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
+                        .background(BendeyColors.Surface),
                     ) {
                     options.forEach { option ->
                         Text(
@@ -300,14 +302,18 @@ fun BendeySecondaryButton(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
+            .heightIn(min = BendeySpacing.buttonHeight)
+            .clip(BendeyShapeTokens.md)
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.75f), BendeyShapeTokens.md)
+            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
         Text(
             text = text,
+            style = MaterialTheme.typography.labelLarge,
             color = if (enabled) BendeyColors.OnSurface else BendeyColors.OnSurfaceVariant,
             fontWeight = FontWeight.Medium,
         )

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 
@@ -37,7 +38,7 @@ fun VoidPinDialog(
         onDismissRequest = { if (!loading) onDismiss() },
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 itemLabel?.let {
                     Text(it, color = BendeyColors.Primary, style = MaterialTheme.typography.bodyMedium)
                 }

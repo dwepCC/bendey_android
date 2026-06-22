@@ -9,6 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 
@@ -31,7 +32,7 @@ fun OpenCashSessionDialog(
         onDismissRequest = { if (!mandatory) onDismiss() },
         title = { Text("Abrir caja") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 Text("Monto inicial en efectivo para iniciar el turno.")
                 BendeyTextField(
                     value = form.openingBalance,

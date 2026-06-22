@@ -39,6 +39,7 @@ fun BendeyTheme(
     MaterialTheme(
         colorScheme = BendeyLightColorScheme,
         typography = BendeyTypography,
+        shapes = BendeyShapes,
         content = content,
     )
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,6 +21,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 @Composable
 fun BendeyKpiCard(
@@ -34,12 +35,12 @@ fun BendeyKpiCard(
     containerColor: Color? = null,
     compact: Boolean = false,
 ) {
-    val padding = if (compact) 10.dp else 12.dp
+    val padding = if (compact) BendeySpacing.sm else BendeySpacing.md
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.lg,
         color = containerColor ?: BendeyColors.Surface,
-        border = BorderStroke(1.dp, BendeyColors.Outline),
+        border = BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -47,23 +48,23 @@ fun BendeyKpiCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(padding),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) BendeySpacing.xxs else BendeySpacing.xs),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 Box(
                     modifier = Modifier
-                        .size(if (compact) 32.dp else 36.dp)
-                        .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
+                        .size(if (compact) 32.dp else 34.dp)
+                        .background(accentColor.copy(alpha = 0.12f), BendeyShapeTokens.sm),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
                         tint = accentColor,
-                        modifier = Modifier.size(if (compact) 16.dp else 18.dp),
+                        modifier = Modifier.size(if (compact) 16.dp else 17.dp),
                     )
                 }
                 Text(

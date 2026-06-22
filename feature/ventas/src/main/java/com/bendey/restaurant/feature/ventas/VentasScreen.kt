@@ -17,6 +17,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -50,7 +52,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.saleStatusAccentColor
 import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
 import com.bendey.restaurant.core.domain.sales.BILLING_FILTER_STATUSES
@@ -153,7 +158,7 @@ fun VentasScreen(
                 Text(
                     "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
                     color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
                 )
             } else if (state.tab != VentasTab.CREDITOS && state.listSummary.paymentTotals.isNotEmpty()) {
                 SalesPaymentSummaryRow(
@@ -166,25 +171,25 @@ fun VentasScreen(
                 Text(
                     state.error.orEmpty(),
                     color = BendeyColors.Error,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(BendeySpacing.md),
                 )
             } else if (!state.canFetchList) {
                 Text(
                     "No hay comprobantes en esta sección",
                     color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(BendeySpacing.md),
                 )
             } else if (state.sales.isEmpty() && !state.loading) {
                 Text(
                     "No hay comprobantes en esta sección",
                     color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(BendeySpacing.md),
                 )
             } else {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(state.sales, key = { it.id }) { sale ->
@@ -200,7 +205,7 @@ fun VentasScreen(
                         item {
                             Text(
                                 "Cargando más…",
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(BendeySpacing.sm),
                                 color = BendeyColors.OnSurfaceVariant,
                             )
                         }
@@ -319,8 +324,8 @@ private fun VentasTabRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         VentasTab.entries.filter { tab ->
             tab != VentasTab.CREDITOS || sunatEnabled
@@ -329,6 +334,7 @@ private fun VentasTabRow(
                 selected = tab == selected,
                 onClick = { onSelect(tab) },
                 label = { Text(tab.label) },
+                colors = BendeyChipDefaults.filterChipColors(),
             )
         }
     }
@@ -351,8 +357,8 @@ private fun VentasFiltersSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         if (state.tab != VentasTab.FACTURACION && state.tab != VentasTab.NOTAS) {
             BendeyTextField(
@@ -366,18 +372,19 @@ private fun VentasFiltersSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             VentasDatePreset.entries.forEach { preset ->
                 FilterChip(
                     selected = state.datePreset == preset,
                     onClick = { onDatePreset(preset) },
                     label = { Text(preset.label) },
+                    colors = BendeyChipDefaults.filterChipColors(),
                 )
             }
         }
         if (state.datePreset == VentasDatePreset.CUSTOM) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     value = state.fromDate,
                     onValueChange = onFromDateChange,
@@ -409,7 +416,7 @@ private fun VentasFiltersSection(
             )
         }
         if (state.canFetchList) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 OutlinedButton(
                     onClick = onExportPdf,
                     enabled = state.exportBusy == null,
@@ -516,7 +523,7 @@ private fun SaleRow(
                         BendeyStatusChip(
                             label = "Convertida a $ref",
                             accentColor = BendeyColors.Info,
-                            modifier = Modifier.padding(top = 4.dp),
+                            modifier = Modifier.padding(top = BendeySpacing.xxs),
                         )
                     }
                 }
@@ -575,8 +582,8 @@ private fun SaleDetailSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
         when {
             loading -> Text("Cargando detalle…", color = BendeyColors.OnSurfaceVariant)
@@ -751,7 +758,7 @@ private fun SaleDetailSheet(
                         )
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(bottom = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(bottom = BendeySpacing.md))
             }
         }
     }
@@ -913,14 +920,16 @@ private fun SalesPaymentSummaryRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
-        androidx.compose.material3.Card(
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-            colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
+        Card(
+            shape = BendeyCardDefaults.shape,
+            colors = CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
+            elevation = BendeyCardDefaults.elevation(),
+            border = BendeyCardDefaults.border,
         ) {
-            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Column(Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm)) {
                 Text("Total", style = MaterialTheme.typography.labelMedium, color = BendeyColors.Primary)
                 Text(
                     currency.format(summary.sumActive.takeIf { it > 0 } ?: summary.sumTotal),
@@ -938,12 +947,8 @@ private fun SalesPaymentSummaryRow(
             }
         }
         summary.paymentTotals.forEach { pt ->
-            androidx.compose.material3.Card(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-                elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 2.dp),
-            ) {
-                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            BendeyManagementCard {
+                Column {
                     Text(
                         methodLabel(pt.method),
                         style = MaterialTheme.typography.labelMedium,

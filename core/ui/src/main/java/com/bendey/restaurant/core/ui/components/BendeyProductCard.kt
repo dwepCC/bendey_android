@@ -2,21 +2,19 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,7 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import java.text.NumberFormat
@@ -69,10 +70,11 @@ fun BendeyProductCard(
             .fillMaxWidth()
             .height(cardHeight)
             .alpha(cardAlpha)
+            .border(BendeyCardDefaults.border, if (compact) BendeyShapeTokens.sm else BendeyShapeTokens.md)
             .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(if (compact) 10.dp else 12.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = if (compact) BendeyShapeTokens.sm else BendeyShapeTokens.md,
+        colors = BendeyCardDefaults.colors(),
+        elevation = BendeyCardDefaults.elevation(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -94,15 +96,15 @@ fun BendeyProductCard(
                         Icons.Default.Restaurant,
                         contentDescription = null,
                         tint = BendeyColors.AccentTeal.copy(alpha = 0.45f),
-                        modifier = Modifier.padding(if (compact) 16.dp else 20.dp),
+                        modifier = Modifier.padding(if (compact) BendeySpacing.md else BendeySpacing.lg),
                     )
                 }
                 if (badges.isNotEmpty() || stockHint != null) {
                     Row(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            .padding(BendeySpacing.xxs),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                     ) {
                         badges.take(2).forEach { badge ->
                             ProductBadge(text = badge, warning = badge == "No disp.")
@@ -120,8 +122,8 @@ fun BendeyProductCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(BendeyColors.PrimaryContainer.copy(alpha = 0.35f))
-                    .padding(horizontal = 8.dp, vertical = if (compact) 5.dp else 7.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
+                    .padding(horizontal = BendeySpacing.xs, vertical = if (compact) BendeySpacing.xxs else BendeySpacing.xxs),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 Text(
                     text = name,
@@ -154,9 +156,9 @@ private fun ProductBadge(text: String, warning: Boolean) {
     Text(
         text = text,
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(BendeyShapeTokens.xs)
             .background(bg)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
+            .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
         color = if (warning) BendeyColors.OnWarning else BendeyColors.OnSurface,

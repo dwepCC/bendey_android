@@ -33,6 +33,7 @@ object BendeyColors {
 
     val Error = Color(0xFFD32F2F)
     val ErrorContainer = Color(0xFFFFEBEE)
+    val OnErrorContainer = Color(0xFF5F2120)
 
     // Acentos decorativos
     val AccentPurple = Color(0xFF7B1FA2)

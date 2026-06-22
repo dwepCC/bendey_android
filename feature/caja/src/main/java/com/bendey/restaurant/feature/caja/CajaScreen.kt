@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
@@ -22,8 +21,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -46,8 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyKpiCard
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
 import com.bendey.restaurant.core.domain.cash.CashMovement
@@ -99,8 +100,8 @@ fun CajaScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 CajaTab.entries.filter { tab ->
                     tab != CajaTab.CONFIG || state.canViewCashSettings
@@ -109,6 +110,7 @@ fun CajaScreen(
                         selected = state.tab == tab,
                         onClick = { viewModel.setTab(tab) },
                         label = { Text(tab.label) },
+                        colors = BendeyChipDefaults.filterChipColors(),
                     )
                 }
             }
@@ -133,7 +135,7 @@ fun CajaScreen(
                 }
             }
             state.error?.let {
-                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp))
+                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
         }
     }
@@ -242,8 +244,8 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
     val session = state.session ?: return
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
             BendeyKpiCard(
                 title = "Saldo estimado",
@@ -263,15 +265,15 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
             BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             OutlinedButton(onClick = viewModel::showArqueoDialog, modifier = Modifier.weight(1f)) { Text("Arqueo") }
             BendeyPrimaryButton(
@@ -282,17 +284,17 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
             )
         }
         session.openedByName?.let {
-            Text("Operador: $it", modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall)
+            Text("Operador: $it", modifier = Modifier.padding(horizontal = BendeySpacing.md), style = MaterialTheme.typography.bodySmall)
         }
         Text(
             "Últimos movimientos",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
         LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.weight(1f),
         ) {
             items(state.movements.take(8), key = { it.id }) { movement ->
@@ -305,20 +307,20 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
 @Composable
 private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel, context: android.content.Context) {
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = Modifier.fillMaxSize(),
     ) {
         if (state.session != null) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
                     BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
                 }
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     value = state.movementsFilter.dateFrom,
                     onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(dateFrom = v) } },
@@ -334,7 +336,7 @@ private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: 
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     value = state.movementsFilter.sessionId?.toString().orEmpty(),
                     onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(sessionId = v.trim().toIntOrNull()) } },
@@ -350,7 +352,7 @@ private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: 
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     value = state.movementsFilter.userId?.toString().orEmpty(),
                     onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(userId = v.trim().toIntOrNull()) } },
@@ -366,7 +368,7 @@ private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: 
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyPrimaryButton("Buscar", viewModel::searchMovementsReport, Modifier.weight(1f))
                 OutlinedButton(
                     onClick = { viewModel.exportMovementsReport(context) },
@@ -387,17 +389,17 @@ private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: 
             )
         }
         if (state.movementsReportLoading) {
-            item { CircularProgressIndicator(modifier = Modifier.padding(12.dp)) }
+            item { CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.sm)) }
         }
         item {
-            Text("Movimientos efectivo", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+            Text("Movimientos efectivo", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = BendeySpacing.xs))
         }
         if (state.movementsReportRows.isEmpty() && !state.movementsReportLoading) {
             item { Text("Sin movimientos en el periodo", color = BendeyColors.OnSurfaceVariant) }
         }
         items(state.movementsReportRows, key = { it.movementId }) { row ->
-            Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-                Column(Modifier.padding(10.dp)) {
+            BendeyManagementCard {
+                Column {
                     Text(row.docNumber.ifBlank { row.category.orEmpty() }, fontWeight = FontWeight.Medium)
                     Text("${row.date} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     Text(currency.format(row.amount), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
@@ -409,11 +411,11 @@ private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: 
         }.orEmpty()
         if (electronic.isNotEmpty()) {
             item {
-                Text("Cobros electrónicos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
+                Text("Cobros electrónicos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = BendeySpacing.sm))
             }
             items(electronic, key = { "${it.saleNumber}-${it.date}-${it.amount}" }) { row ->
-                Card(shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-                    Column(Modifier.padding(10.dp)) {
+                BendeyManagementCard {
+                    Column {
                         Text(row.saleNumber.ifBlank { row.orderCode }, fontWeight = FontWeight.Medium)
                         Text("${row.date} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                         Text(currency.format(row.amount), fontWeight = FontWeight.Bold)
@@ -431,7 +433,7 @@ private fun ReportTab(
     viewModel: CajaViewModel,
     context: android.content.Context,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(BendeySpacing.md)) {
         val sessions = buildList {
             state.session?.let { add(it.id) }
             addAll(state.historySessions.map { it.id })
@@ -439,23 +441,24 @@ private fun ReportTab(
         if (sessions.isNotEmpty()) {
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 sessions.take(10).forEach { id ->
                     FilterChip(
                         selected = state.reportSessionId == id,
                         onClick = { viewModel.loadReport(id) },
                         label = { Text("Sesión #$id") },
+                        colors = BendeyChipDefaults.filterChipColors(),
                     )
                 }
             }
         }
         if (state.reportLoading) {
-            CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+            CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
         } else {
             state.report?.let { report ->
                 ReportContent(report, state.reportProducts, currency)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.sm)) {
                     OutlinedButton(
                         onClick = {
                             val text = formatSessionReportText(report, currency)
@@ -472,7 +475,7 @@ private fun ReportTab(
                         },
                     ) {
                         Icon(Icons.Default.Share, contentDescription = null)
-                        Text("Compartir", modifier = Modifier.padding(start = 6.dp))
+                        Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
                     }
                     OutlinedButton(onClick = { viewModel.exportSessionReportPdf(context) }) {
                         Text("Exportar PDF")
@@ -494,9 +497,9 @@ private fun ReportContent(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .background(BendeyColors.Surface, RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .background(BendeyColors.Surface, BendeyShapeTokens.md)
+            .padding(BendeySpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
         Text("Reporte sesión #${session.id}", fontWeight = FontWeight.Bold)
         session.branchName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -511,37 +514,37 @@ private fun ReportContent(
         }
         ReportRow("Saldo final", currency.format(report.finalBalance), bold = true)
         if (report.salesByMethod.isNotEmpty()) {
-            Text("Ventas por método", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Ventas por método", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.salesByMethod.forEach { row ->
                 ReportRow(row.method, currency.format(row.total))
             }
         }
         if (report.nonCashSalesByMethod.isNotEmpty()) {
-            Text("Ventas no efectivo", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Ventas no efectivo", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.nonCashSalesByMethod.forEach { row ->
                 ReportRow(row.method, currency.format(row.total))
             }
         }
         if (report.incomeDetail.isNotEmpty()) {
-            Text("Ingresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Ingresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.incomeDetail.take(15).forEach { row ->
                 Text("${row.docNumber.ifBlank { row.type }} · ${currency.format(row.amount)}", style = MaterialTheme.typography.bodySmall)
             }
         }
         if (report.expenseDetail.isNotEmpty()) {
-            Text("Egresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Egresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.expenseDetail.take(15).forEach { row ->
                 Text("${row.reference.ifBlank { row.type }} · ${currency.format(row.amount)}", style = MaterialTheme.typography.bodySmall)
             }
         }
         if (report.cancelledSalesDetail.isNotEmpty()) {
-            Text("Ventas anuladas", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Ventas anuladas", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.cancelledSalesDetail.take(15).forEach { row ->
                 Text("${row.docNumber} · ${row.paymentMethod} · ${currency.format(row.amount)}", style = MaterialTheme.typography.bodySmall)
             }
         }
         if (products.isNotEmpty()) {
-            Text("Productos vendidos", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
+            Text("Productos vendidos", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             products.forEach { product ->
                 Text(
                     "${product.quantity}× ${product.description} · ${currency.format(product.total)}",
@@ -563,8 +566,8 @@ private fun ReportRow(label: String, value: String, bold: Boolean = false) {
 @Composable
 private fun HistoryTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = Modifier.fillMaxSize(),
     ) {
         if (state.historySessions.isEmpty()) {
@@ -582,8 +585,8 @@ private fun HistorySessionCard(
     currency: NumberFormat,
     onOpenReport: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp)) {
+    BendeyManagementCard {
+        Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Sesión #${session.id}", fontWeight = FontWeight.Bold)
                 BendeyStatusChip(
@@ -595,7 +598,7 @@ private fun HistorySessionCard(
             session.openedByName?.let { Text("Operador: $it", style = MaterialTheme.typography.bodySmall) }
             Text("Apertura: ${currency.format(session.openingBalance)}", style = MaterialTheme.typography.bodySmall)
             session.closingBalance?.let { Text("Cierre: ${currency.format(it)}", style = MaterialTheme.typography.bodySmall) }
-            OutlinedButton(onClick = onOpenReport, modifier = Modifier.padding(top = 8.dp)) { Text("Ver reporte") }
+            OutlinedButton(onClick = onOpenReport, modifier = Modifier.padding(top = BendeySpacing.xs)) { Text("Ver reporte") }
         }
     }
 }
@@ -603,12 +606,12 @@ private fun HistorySessionCard(
 @Composable
 private fun ClosedCashCard(onOpen: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(BendeySpacing.lg),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text("Caja cerrada", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text("Debes abrir caja para registrar movimientos", color = BendeyColors.OnSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 24.dp))
+        Text("Debes abrir caja para registrar movimientos", color = BendeyColors.OnSurfaceVariant, modifier = Modifier.padding(top = BendeySpacing.xs, bottom = BendeySpacing.lg))
         BendeyPrimaryButton("Abrir caja", onOpen)
     }
 }
@@ -617,9 +620,9 @@ private fun ClosedCashCard(onOpen: () -> Unit) {
 private fun MovementCard(movement: CashMovement, currency: NumberFormat) {
     val isIncome = movement.type == CashMovementType.INCOME
     val accent = if (isIncome) BendeyColors.Success else BendeyColors.Error
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
+    BendeyManagementCard {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -682,6 +685,7 @@ private fun MovementDialog(
                             selected = form.category == cat.value,
                             onClick = { onFormChange { it.copy(category = cat.value) } },
                             label = { Text(cat.label) },
+                            colors = BendeyChipDefaults.filterChipColors(),
                         )
                     }
                 }
@@ -694,6 +698,7 @@ private fun MovementDialog(
                                 selected = form.paymentMethod == pm.code,
                                 onClick = { onFormChange { it.copy(paymentMethod = pm.code) } },
                                 label = { Text(pm.name) },
+                                colors = BendeyChipDefaults.filterChipColors(),
                             )
                         }
                     }
@@ -710,12 +715,12 @@ private fun MovementDialog(
 @Composable
 private fun ConfigTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
     if (state.configLoading) {
-        CircularProgressIndicator(modifier = Modifier.padding(24.dp))
+        CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
         return
     }
     LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(BendeySpacing.md),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         modifier = Modifier.fillMaxSize(),
     ) {
         item {
@@ -739,7 +744,7 @@ private fun ConfigTab(state: CajaUiState, currency: NumberFormat, viewModel: Caj
             )
         }
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = BendeySpacing.xs), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Métodos de pago", fontWeight = FontWeight.Bold)
                 if (state.canManageCashSettings) {
                     BendeyPrimaryButton("+ Método", viewModel::showCreatePaymentMethod)
@@ -769,8 +774,8 @@ private fun BankAccountCard(
     onEdit: () -> Unit,
     onMovements: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp)) {
+    BendeyManagementCard {
+        Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(acc.name, fontWeight = FontWeight.Bold)
                 BendeyStatusChip(
@@ -783,7 +788,7 @@ private fun BankAccountCard(
             }
             Text("Saldo: ${currency.format(acc.balance)}", style = MaterialTheme.typography.bodySmall)
             if (canManage) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.xs)) {
                     OutlinedButton(onClick = onEdit) { Text("Editar") }
                     OutlinedButton(onClick = onMovements) { Text("Movimientos") }
                 }
@@ -805,8 +810,8 @@ private fun PaymentMethodCard(
     } else {
         "Caja"
     }
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Column(Modifier.padding(12.dp)) {
+    BendeyManagementCard {
+        Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(pm.name, fontWeight = FontWeight.Bold)
                 BendeyStatusChip(
@@ -817,7 +822,7 @@ private fun PaymentMethodCard(
             Text("Código: ${pm.code}", style = MaterialTheme.typography.bodySmall)
             Text("Destino: $destLabel", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
             if (canManage) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.xs)) {
                     OutlinedButton(onClick = onEdit) { Text("Editar") }
                     OutlinedButton(onClick = onDelete) { Text("Eliminar") }
                 }
@@ -844,8 +849,18 @@ private fun PaymentMethodDialog(
                 BendeyTextField(form.code, { v -> onFormChange { it.copy(code = v) } }, "Código")
                 Text("Destino", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = form.destinationType == "cash", onClick = { onFormChange { it.copy(destinationType = "cash", bankAccountId = null) } }, label = { Text("Caja") })
-                    FilterChip(selected = form.destinationType == "bank_account", onClick = { onFormChange { it.copy(destinationType = "bank_account") } }, label = { Text("Cuenta") })
+                    FilterChip(
+                        selected = form.destinationType == "cash",
+                        onClick = { onFormChange { it.copy(destinationType = "cash", bankAccountId = null) } },
+                        label = { Text("Caja") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                    )
+                    FilterChip(
+                        selected = form.destinationType == "bank_account",
+                        onClick = { onFormChange { it.copy(destinationType = "bank_account") } },
+                        label = { Text("Cuenta") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                    )
                 }
                 if (form.destinationType == "bank_account") {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -854,6 +869,7 @@ private fun PaymentMethodDialog(
                                 selected = form.bankAccountId == acc.id,
                                 onClick = { onFormChange { it.copy(bankAccountId = acc.id) } },
                                 label = { Text(acc.name) },
+                                colors = BendeyChipDefaults.filterChipColors(),
                             )
                         }
                     }
@@ -863,6 +879,7 @@ private fun PaymentMethodDialog(
                         selected = form.active,
                         onClick = { onFormChange { it.copy(active = !it.active) } },
                         label = { Text(if (form.active) "Activo" else "Inactivo") },
+                        colors = BendeyChipDefaults.filterChipColors(),
                     )
                 }
             }
@@ -900,6 +917,7 @@ private fun BankAccountDialog(
                                 selected = form.paymentMethod == pm.code,
                                 onClick = { onFormChange { it.copy(paymentMethod = pm.code) } },
                                 label = { Text(pm.name) },
+                                colors = BendeyChipDefaults.filterChipColors(),
                             )
                         }
                     }
@@ -909,6 +927,7 @@ private fun BankAccountDialog(
                         selected = form.active,
                         onClick = { onFormChange { it.copy(active = !it.active) } },
                         label = { Text(if (form.active) "Activa" else "Inactiva") },
+                        colors = BendeyChipDefaults.filterChipColors(),
                     )
                 }
             }
@@ -938,8 +957,18 @@ private fun BankMovementsDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = form.type == "credit", onClick = { onFormChange { it.copy(type = "credit") } }, label = { Text("Ingreso") })
-                    FilterChip(selected = form.type == "debit", onClick = { onFormChange { it.copy(type = "debit") } }, label = { Text("Egreso") })
+                    FilterChip(
+                        selected = form.type == "credit",
+                        onClick = { onFormChange { it.copy(type = "credit") } },
+                        label = { Text("Ingreso") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                    )
+                    FilterChip(
+                        selected = form.type == "debit",
+                        onClick = { onFormChange { it.copy(type = "debit") } },
+                        label = { Text("Egreso") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                    )
                 }
                 BendeyTextField(form.description, { v -> onFormChange { it.copy(description = v) } }, "Descripción")
                 BendeyTextField(form.amount, { v -> onFormChange { it.copy(amount = v) } }, "Monto")

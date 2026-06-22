@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,14 +18,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -38,8 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
@@ -74,18 +74,28 @@ fun RepartidoresScreen(
                     IconButton(onClick = viewModel::openCreate) { Icon(Icons.Default.Add, contentDescription = null) }
                 },
             )
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = state.tab == RepartidoresTabKind.DRIVERS, onClick = { viewModel.selectTab(RepartidoresTabKind.DRIVERS.name) }, label = { Text("Repartidores") })
-                FilterChip(selected = state.tab == RepartidoresTabKind.COMPANIES, onClick = { viewModel.selectTab(RepartidoresTabKind.COMPANIES.name) }, label = { Text("Empresas") })
+            Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                FilterChip(
+                    selected = state.tab == RepartidoresTabKind.DRIVERS,
+                    onClick = { viewModel.selectTab(RepartidoresTabKind.DRIVERS.name) },
+                    label = { Text("Repartidores") },
+                    colors = BendeyChipDefaults.filterChipColors(),
+                )
+                FilterChip(
+                    selected = state.tab == RepartidoresTabKind.COMPANIES,
+                    onClick = { viewModel.selectTab(RepartidoresTabKind.COMPANIES.name) },
+                    label = { Text("Empresas") },
+                    colors = BendeyChipDefaults.filterChipColors(),
+                )
             }
-            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp)) }
+            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
-                RepartidoresTabKind.DRIVERS -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RepartidoresTabKind.DRIVERS -> LazyColumn(contentPadding = PaddingValues(BendeySpacing.md), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     items(state.drivers, key = { it.id }) { driver ->
                         DriverRow(driver, { viewModel.openEditDriver(driver.id) }, { viewModel.requestDeleteDriver(driver.id) })
                     }
                 }
-                RepartidoresTabKind.COMPANIES -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RepartidoresTabKind.COMPANIES -> LazyColumn(contentPadding = PaddingValues(BendeySpacing.md), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     items(state.companies, key = { it.id }) { company ->
                         CompanyRow(company, { viewModel.openEditCompany(company.id) }, { viewModel.requestDeleteCompany(company.id) })
                     }
@@ -114,8 +124,8 @@ fun RepartidoresScreen(
 
 @Composable
 private fun DriverRow(driver: DeliveryDriver, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(driver.name, fontWeight = FontWeight.SemiBold)
                 if (driver.phone.isNotBlank()) Text(driver.phone, style = MaterialTheme.typography.bodySmall)
@@ -130,8 +140,8 @@ private fun DriverRow(driver: DeliveryDriver, onEdit: () -> Unit, onDelete: () -
 
 @Composable
 private fun CompanyRow(company: DeliveryCompany, onEdit: () -> Unit, onDelete: () -> Unit) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(company.name, fontWeight = FontWeight.SemiBold)
                 if (!company.active) BendeyStatusChip("Inactiva", BendeyColors.Warning)
@@ -179,10 +189,11 @@ private fun DriverFormDialog(
             label = "Empresa",
         )
         if (isEditing) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Activo")
-                Switch(form.active, { checked -> onFormChange { it.copy(active = checked) } })
-            }
+            BendeySwitchRow(
+                label = "Activo",
+                checked = form.active,
+                onCheckedChange = { checked -> onFormChange { it.copy(active = checked) } },
+            )
         }
         error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
     }

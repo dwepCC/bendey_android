@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -24,8 +23,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,10 +49,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.domain.restaurant.TableStatus
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.Floor
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
+import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -88,55 +88,67 @@ fun MesasAdminScreen(
             },
         )
         state.error?.let {
-            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
         BendeyTextField(
             value = state.searchQuery,
             onValueChange = viewModel::setSearchQuery,
             label = "Buscar mesa",
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             FilterChip(
                 selected = state.floorFilterId == null,
                 onClick = { viewModel.setFloorFilter(null) },
                 label = { Text("Todos") },
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
             state.floors.forEach { floor ->
                 FilterChip(
                     selected = state.floorFilterId == floor.id,
                     onClick = { viewModel.setFloorFilter(floor.id) },
                     label = { Text(floor.name) },
+                    colors = BendeyChipDefaults.filterChipColors(),
+                    shape = BendeyShapeTokens.chip,
+                    border = null,
                 )
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
             horizontalArrangement = Arrangement.End,
         ) {
             FilterChip(
                 selected = state.viewMode == MesasAdminViewMode.GRID,
                 onClick = { viewModel.setViewMode(MesasAdminViewMode.GRID) },
                 label = { Icon(Icons.Default.GridView, contentDescription = null) },
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
             FilterChip(
                 selected = state.viewMode == MesasAdminViewMode.LIST,
                 onClick = { viewModel.setViewMode(MesasAdminViewMode.LIST) },
                 label = { Icon(Icons.Default.List, contentDescription = null) },
-                modifier = Modifier.padding(start = 6.dp),
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
+                modifier = Modifier.padding(start = BendeySpacing.xs),
             )
         }
         if (state.filteredTables.isEmpty() && !state.loading) {
             Text(
                 "Sin mesas",
                 color = BendeyColors.OnSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(BendeySpacing.md),
             )
         } else {
             val tables = state.paginatedTables
@@ -145,9 +157,9 @@ fun MesasAdminScreen(
                     val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(BendeySpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         items(tables, key = { it.id }) { table ->
@@ -165,8 +177,8 @@ fun MesasAdminScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     items(tables, key = { it.id }) { table ->
                         AdminTableListRow(
@@ -182,7 +194,7 @@ fun MesasAdminScreen(
             }
             if (state.pageCount > 1) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -204,7 +216,7 @@ fun MesasAdminScreen(
             onDismissRequest = viewModel::dismissFloorsSheet,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs)) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,12 +226,11 @@ fun MesasAdminScreen(
                     BendeyPrimaryButton("Nuevo", viewModel::openCreateFloor, fillWidth = false)
                 }
                 state.floors.forEach { floor ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+                    BendeyManagementCard(
+                        modifier = Modifier.padding(vertical = BendeySpacing.xxs),
                     ) {
                         Row(
-                            Modifier.fillMaxWidth().padding(12.dp),
+                            Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -280,13 +291,16 @@ fun MesasAdminScreen(
             Text("Ambiente", style = MaterialTheme.typography.labelLarge)
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 state.floors.forEach { floor ->
                     FilterChip(
                         selected = state.tableForm.floorId == floor.id,
                         onClick = { viewModel.updateTableForm { it.copy(floorId = floor.id) } },
                         label = { Text(floor.name) },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
@@ -360,7 +374,7 @@ private fun AdminTableCard(
     onOpenSession: (() -> Unit)?,
 ) {
     BendeyManagementCard {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(table.name, fontWeight = FontWeight.SemiBold)
@@ -388,8 +402,8 @@ private fun AdminTableListRow(
     onDelete: () -> Unit,
     onOpenSession: (() -> Unit)?,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(table.name, fontWeight = FontWeight.SemiBold)
                 Text(

@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +38,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyTableCard
 import com.bendey.restaurant.core.designsystem.components.BendeyTableStatsRow
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BindSnackMessage
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 
@@ -75,7 +77,12 @@ fun MesasScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
+                    .padding(
+                        start = BendeySpacing.md,
+                        end = BendeySpacing.xs,
+                        top = BendeySpacing.sm,
+                        bottom = BendeySpacing.xxs,
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -92,27 +99,25 @@ fun MesasScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 FilterChip(
                     selected = state.selectedFloorId == null,
                     onClick = { viewModel.selectFloor(null) },
                     label = { Text("Todas") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = BendeyColors.Primary,
-                        selectedLabelColor = BendeyColors.OnPrimary,
-                    ),
+                    colors = BendeyChipDefaults.posFilterChipColors(),
+                    shape = BendeyShapeTokens.chip,
+                    border = null,
                 )
                 state.floors.forEach { floor ->
                     FilterChip(
                         selected = state.selectedFloorId == floor.id,
                         onClick = { viewModel.selectFloor(floor.id) },
                         label = { Text(floor.name) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = BendeyColors.Primary,
-                            selectedLabelColor = BendeyColors.OnPrimary,
-                        ),
+                        colors = BendeyChipDefaults.posFilterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
@@ -121,21 +126,26 @@ fun MesasScreen(
                 ocupada = state.stats.ocupada,
                 reservada = state.stats.reservada,
                 enConsumo = state.stats.enConsumo,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
+                modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
             )
             BendeyTextField(
                 value = state.searchQuery,
                 onValueChange = viewModel::setSearchQuery,
                 label = "Buscar mesa...",
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
             )
             BoxWithConstraints(modifier = Modifier.weight(1f)) {
                 val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(
+                        start = BendeySpacing.sm,
+                        end = BendeySpacing.sm,
+                        top = BendeySpacing.xxs,
+                        bottom = BendeySpacing.sm,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     state.floorSections.forEach { section ->
@@ -161,7 +171,7 @@ fun MesasScreen(
                 Text(
                     text = it,
                     color = BendeyColors.Error,
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(BendeySpacing.md),
                 )
             }
         }
@@ -225,7 +235,7 @@ private fun FloorSectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 0.dp),
+            .padding(top = BendeySpacing.xxs),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

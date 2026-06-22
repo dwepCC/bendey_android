@@ -43,7 +43,12 @@ import com.bendey.restaurant.core.network.dto.CreateStaffUserResponseDto
 import com.bendey.restaurant.core.network.dto.SetUserStaffRequestDto
 import com.bendey.restaurant.core.network.dto.SetUserStaffResponseDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
+import com.bendey.restaurant.core.network.dto.PublicApplicationsResponseDto
+import com.bendey.restaurant.core.network.dto.PublicRegisterRequestDto
+import com.bendey.restaurant.core.network.dto.PublicRegisterResponseDto
 import com.bendey.restaurant.core.network.dto.TenantByRucDto
+import com.bendey.restaurant.core.network.dto.ValidateRucRequestDto
+import com.bendey.restaurant.core.network.dto.ValidateRucResponseDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaNotesRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
@@ -60,6 +65,15 @@ import retrofit2.http.Query
 interface PublicApi {
     @GET("/api/public/tenant-by-ruc")
     suspend fun getTenantByRuc(@Query("ruc") ruc: String): TenantByRucDto
+
+    @POST("/api/public/validate-ruc")
+    suspend fun validateRuc(@Body body: ValidateRucRequestDto): ValidateRucResponseDto
+
+    @POST("/api/public/register")
+    suspend fun registerTenant(@Body body: PublicRegisterRequestDto): PublicRegisterResponseDto
+
+    @GET("/api/public/applications")
+    suspend fun listApplications(): PublicApplicationsResponseDto
 }
 
 interface AuthApi {

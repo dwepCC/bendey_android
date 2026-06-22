@@ -1,7 +1,6 @@
 package com.bendey.restaurant.feature.auth.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -35,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -79,11 +79,11 @@ fun HomeScreen(
                 .fillMaxWidth()
                 .background(BendeyColors.Rest900)
                 .bendeySafeDrawingPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
             ) {
                 BendeyBrandLogo(height = 40.dp, showBackground = true)
                 Column {
@@ -96,7 +96,7 @@ fun HomeScreen(
                     Text(
                         text = "Operación en sala",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
+                        color = BendeyColors.OnPrimary,
                         fontWeight = FontWeight.Bold,
                     )
                 }
@@ -105,19 +105,19 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.md),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.md),
         ) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = BendeyShapeTokens.xl,
                 color = BendeyColors.Surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline),
-                shadowElevation = 1.dp,
+                border = BendeyCardDefaults.border,
+                shadowElevation = 0.dp,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(BendeySpacing.cardPadding)) {
                     Text(
-                        text = "EMPRESA VINCULADA",
+                        text = "Tu restaurante en Bendey",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = BendeyColors.Primary,
@@ -132,9 +132,15 @@ fun HomeScreen(
                             text = "RUC $ruc",
                             style = MaterialTheme.typography.bodySmall,
                             color = BendeyColors.OnSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
+                            modifier = Modifier.padding(top = BendeySpacing.xxs),
                         )
                     }
+                    Spacer(modifier = Modifier.height(BendeySpacing.xxs))
+                    Text(
+                        text = "Inicia sesión para operar mesas, pedidos y caja.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
                 }
             }
             AdminSessionCard(onClick = onAdminLogin)
@@ -151,9 +157,9 @@ fun HomeScreen(
                 Text(
                     text = "PIN",
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(BendeyShapeTokens.md)
                         .background(BendeyColors.PrimaryContainer)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.OnPrimaryContainer,
@@ -161,9 +167,9 @@ fun HomeScreen(
             }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = BendeySpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 modifier = Modifier.weight(1f),
             ) {
                 items(stations) { card ->
@@ -179,14 +185,14 @@ private fun AdminSessionCard(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(BendeyShapeTokens.xl)
             .background(
                 Brush.linearGradient(
                     colors = listOf(BendeyColors.Primary, BendeyColors.Rest800),
                 ),
             )
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(BendeySpacing.cardPadding),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -195,29 +201,29 @@ private fun AdminSessionCard(onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.15f)),
+                    .clip(BendeyShapeTokens.md)
+                    .background(BendeyColors.OnPrimary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = BendeyColors.OnPrimary)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Sesión administrativa",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = BendeyColors.OnPrimary,
                 )
                 Text(
                     text = "Email y contraseña · configuración",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = BendeyColors.OnPrimary.copy(alpha = 0.85f),
                 )
             }
             Icon(
                 Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.8f),
+                tint = BendeyColors.OnPrimary.copy(alpha = 0.8f),
             )
         }
     }
@@ -229,20 +235,20 @@ private fun StationAccessCard(card: StationCard, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.xl,
         color = BendeyColors.Surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline),
-        shadowElevation = 1.dp,
+        border = BendeyCardDefaults.border,
+        shadowElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(BendeySpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(BendeyShapeTokens.md)
                     .background(BendeyColors.PrimaryContainer),
                 contentAlignment = Alignment.Center,
             ) {

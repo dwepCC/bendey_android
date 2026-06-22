@@ -63,7 +63,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
@@ -99,8 +103,13 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BendeyColors.Background),
-            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(
+                start = BendeySpacing.screenHorizontal,
+                end = BendeySpacing.screenHorizontal,
+                top = BendeySpacing.sm,
+                bottom = 88.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
         ) {
             item {
                 GreetingCard(
@@ -142,10 +151,9 @@ fun DashboardScreen(
                             selected = state.tab == tab,
                             onClick = { viewModel.selectTab(tab) },
                             label = { Text(tab.label) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BendeyColors.PrimaryContainer,
-                                selectedLabelColor = BendeyColors.Primary,
-                            ),
+                            colors = BendeyChipDefaults.filterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -280,14 +288,15 @@ private fun GreetingCard(
     cashLabel: String?,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -348,15 +357,16 @@ private fun DashboardMetricCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(BendeySpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -436,9 +446,10 @@ private fun TableStatusSection(
     onVerMapa: () -> Unit,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -485,13 +496,13 @@ private fun TableStatusChip(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.md,
         color = bgColor,
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
+            modifier = Modifier.padding(vertical = BendeySpacing.sm, horizontal = BendeySpacing.xxs),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
         ) {
             Icon(Icons.Default.EventSeat, contentDescription = null, tint = textColor, modifier = Modifier.size(16.dp))
             Text(
@@ -518,9 +529,10 @@ private fun RevenueTrendCard(
     onVerReporte: () -> Unit,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -659,9 +671,10 @@ private fun TopProductsSection(
     onVerTodos: () -> Unit,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -735,7 +748,7 @@ private fun TopProductRow(
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .background(accent.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                .background(accent.copy(alpha = 0.15f), BendeyShapeTokens.xs),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -794,29 +807,25 @@ private fun DateRangeFilterRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         DashboardRange.entries.filter { it != DashboardRange.CUSTOM }.forEach { range ->
             FilterChip(
                 selected = selected == range,
                 onClick = { onSelect(range) },
                 label = { Text(range.label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BendeyColors.Primary,
-                    selectedLabelColor = BendeyColors.OnPrimary,
-                ),
-                shape = RoundedCornerShape(10.dp),
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
         }
         FilterChip(
             selected = selected == DashboardRange.CUSTOM,
             onClick = onCustomClick,
             label = { Text("Rango") },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = BendeyColors.Primary,
-                selectedLabelColor = BendeyColors.OnPrimary,
-            ),
-            shape = RoundedCornerShape(10.dp),
+            colors = BendeyChipDefaults.filterChipColors(),
+            shape = BendeyShapeTokens.chip,
+            border = null,
         )
     }
 }
@@ -896,14 +905,15 @@ private fun MiniStatChip(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.md,
         color = BendeyColors.Surface,
-        shadowElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.5f)),
+        shadowElevation = 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.padding(BendeySpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             Box(
                 modifier = Modifier
@@ -949,13 +959,13 @@ private fun PaymentMethodsSection(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(8.dp)
-                                .background(BendeyColors.SurfaceVariant, RoundedCornerShape(4.dp)),
+                                .background(BendeyColors.SurfaceVariant, BendeyShapeTokens.bar),
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth((slice.amount / max).toFloat())
                                     .height(8.dp)
-                                    .background(BendeyColors.AccentTeal, RoundedCornerShape(4.dp)),
+                                    .background(BendeyColors.AccentTeal, BendeyShapeTokens.bar),
                             )
                         }
                     }
@@ -1008,13 +1018,13 @@ private fun OrderTypesSection(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(8.dp)
-                                .background(BendeyColors.SurfaceVariant, RoundedCornerShape(4.dp)),
+                                .background(BendeyColors.SurfaceVariant, BendeyShapeTokens.bar),
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth((slice.count.toDouble() / max).toFloat())
                                     .height(8.dp)
-                                    .background(BendeyColors.Primary, RoundedCornerShape(4.dp)),
+                                    .background(BendeyColors.Primary, BendeyShapeTokens.bar),
                             )
                         }
                         Text(
@@ -1035,9 +1045,10 @@ private fun DashboardChartCard(
     content: @Composable () -> Unit,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1119,15 +1130,9 @@ private fun CatalogKpiRow(catalog: CatalogAnalytics, currency: NumberFormat) {
 
 @Composable
 private fun CatalogKpiCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium, color = BendeyColors.OnSurfaceVariant)
-            Text(value, fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
-        }
+    BendeyManagementCard(modifier = modifier, contentPadding = PaddingValues(BendeySpacing.sm)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = BendeyColors.OnSurfaceVariant)
+        Text(value, fontWeight = FontWeight.Bold, color = BendeyColors.OnPrimaryContainer)
     }
 }
 

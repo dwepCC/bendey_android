@@ -87,7 +87,7 @@ fun BendeyAppNavHost(
 
     val startDestination = when {
         tenantBound == null -> null
-        tenantBound == false -> BendeyRoutes.RUC
+        tenantBound == false -> BendeyRoutes.WELCOME
         authenticated == null -> null
         authenticated == false -> BendeyRoutes.HOME
         else -> BendeyRoutes.MAIN

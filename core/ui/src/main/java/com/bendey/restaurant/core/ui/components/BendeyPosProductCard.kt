@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Card
@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import java.text.NumberFormat
 
@@ -51,12 +52,13 @@ fun BendeyPosProductCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(172.dp)
+            .height(168.dp)
             .alpha(alpha)
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.55f), BendeyShapeTokens.lg)
             .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -78,18 +80,21 @@ fun BendeyPosProductCard(
                             Icons.Default.Restaurant,
                             contentDescription = null,
                             tint = BendeyColors.OnSurfaceVariant.copy(alpha = 0.35f),
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(28.dp),
                         )
                     }
                 }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp)
+                        .height(36.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.22f)),
+                                colors = listOf(
+                                    androidx.compose.ui.graphics.Color.Transparent,
+                                    BendeyColors.OnSurface.copy(alpha = 0.18f),
+                                ),
                             ),
                         ),
                 )
@@ -97,11 +102,11 @@ fun BendeyPosProductCard(
                     text = currency.format(price),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 6.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .padding(bottom = BendeySpacing.xxs)
+                        .clip(BendeyShapeTokens.sm)
                         .background(BendeyColors.Primary)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelLarge,
+                        .padding(horizontal = BendeySpacing.sm, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.OnPrimary,
                 )
@@ -109,8 +114,8 @@ fun BendeyPosProductCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
-                    .padding(horizontal = 8.dp),
+                    .height(42.dp)
+                    .padding(horizontal = BendeySpacing.xs),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -121,6 +126,7 @@ fun BendeyPosProductCard(
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                     lineHeight = MaterialTheme.typography.labelSmall.lineHeight,
+                    color = BendeyColors.OnSurface,
                 )
             }
         }

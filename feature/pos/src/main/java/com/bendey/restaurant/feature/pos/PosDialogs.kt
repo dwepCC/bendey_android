@@ -16,9 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -26,6 +26,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +51,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
 import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -101,7 +104,7 @@ fun PosPendingOrdersBar(
                     }
                 },
             ) {
-                Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
             }
             Text("Pedidos")
         }
@@ -225,7 +228,7 @@ private fun DriverDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = !loading),
             shape = MaterialTheme.shapes.large,
         )
         ExposedDropdownMenu(
@@ -327,10 +330,10 @@ private fun PendingOrderCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
+            .clip(BendeyShapeTokens.md)
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.65f), BendeyShapeTokens.md)
             .background(BendeyColors.Surface)
-            .padding(10.dp),
+            .padding(BendeySpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(

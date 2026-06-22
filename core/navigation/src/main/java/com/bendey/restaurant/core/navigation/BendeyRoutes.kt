@@ -1,7 +1,9 @@
 package com.bendey.restaurant.core.navigation
 
 object BendeyRoutes {
-    const val RUC = "ruc"
+    const val WELCOME = "welcome"
+    const val REGISTER = "register"
+    const val REGISTER_SUCCESS = "register_success/{restaurantName}"
     const val HOME = "home"
     const val PIN = "pin/{station}"
     const val LOGIN = "login"
@@ -24,6 +26,11 @@ object BendeyRoutes {
     const val PRINTING_TEST = "printing_test"
 
     fun pin(station: String): String = "pin/$station"
+
+    fun registerSuccess(restaurantName: String): String {
+        val encoded = java.net.URLEncoder.encode(restaurantName, Charsets.UTF_8.name())
+        return "register_success/$encoded"
+    }
 
     fun mesa(sessionId: Int): String = "mesa/$sessionId"
 

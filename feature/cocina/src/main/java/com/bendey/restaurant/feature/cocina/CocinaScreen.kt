@@ -23,12 +23,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -51,8 +48,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
 import com.bendey.restaurant.core.domain.products.PreparationArea
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
@@ -89,7 +90,7 @@ fun CocinaScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -109,14 +110,17 @@ fun CocinaScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 CocinaViewMode.entries.forEach { mode ->
                     FilterChip(
                         selected = state.viewMode == mode,
                         onClick = { viewModel.setViewMode(mode) },
                         label = { Text(mode.label) },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
@@ -125,14 +129,17 @@ fun CocinaScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     CocinaOrderTab.entries.forEach { tab ->
                         FilterChip(
                             selected = state.orderTab == tab,
                             onClick = { viewModel.setOrderTab(tab) },
                             label = { Text(tab.label) },
+                            colors = BendeyChipDefaults.filterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -142,19 +149,25 @@ fun CocinaScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     FilterChip(
                         selected = state.areaFilter == "all",
                         onClick = { viewModel.setAreaFilter("all") },
                         label = { Text("Todas áreas") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                     state.availableAreas.forEach { area ->
                         FilterChip(
                             selected = state.areaFilter == area,
                             onClick = { viewModel.setAreaFilter(area) },
                             label = { Text(PreparationArea.fromApi(area).label) },
+                            colors = BendeyChipDefaults.filterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -164,19 +177,25 @@ fun CocinaScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     FilterChip(
                         selected = state.tableFilter == "all",
                         onClick = { viewModel.setTableFilter("all") },
                         label = { Text("Todas mesas") },
+                        colors = BendeyChipDefaults.filterChipColors(),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                     state.availableTables.forEach { table ->
                         FilterChip(
                             selected = state.tableFilter == table,
                             onClick = { viewModel.setTableFilter(table) },
                             label = { Text(table) },
+                            colors = BendeyChipDefaults.filterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -185,8 +204,8 @@ fun CocinaScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 STATUS_FILTERS.forEach { status ->
                     val accent = status.accentColor()
@@ -207,7 +226,8 @@ fun CocinaScreen(
                             containerColor = accent.copy(alpha = 0.12f),
                             labelColor = accent,
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = BendeyShapeTokens.chip,
+                        border = null,
                     )
                 }
             }
@@ -215,7 +235,7 @@ fun CocinaScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = BendeySpacing.xs),
             ) {
                 val columns = when {
                     maxWidth >= 1200.dp -> 4
@@ -229,7 +249,7 @@ fun CocinaScreen(
                         text = "No hay ítems en «${activeStatus.label}».",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 48.dp),
+                            .padding(top = BendeySpacing.xl),
                         color = BendeyColors.OnSurfaceVariant,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -237,9 +257,9 @@ fun CocinaScreen(
                     CocinaViewMode.ITEMS -> {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(columns),
-                            contentPadding = PaddingValues(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(bottom = BendeySpacing.sm),
+                            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(filtered, key = { it.kdsKey }) { item ->
@@ -257,8 +277,8 @@ fun CocinaScreen(
                     }
                     CocinaViewMode.ORDERS -> {
                         LazyColumn(
-                            contentPadding = PaddingValues(bottom = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(bottom = BendeySpacing.sm),
+                            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                             modifier = Modifier.fillMaxSize(),
                         ) {
                             items(groups, key = { it.key }) { group ->
@@ -281,7 +301,7 @@ fun CocinaScreen(
                 Text(
                     text = it,
                     color = BendeyColors.Error,
-                    modifier = Modifier.padding(8.dp),
+                    modifier = Modifier.padding(BendeySpacing.xs),
                 )
             }
         }
@@ -319,12 +339,8 @@ private fun KitchenOrderCard(
         it.status == ComandaStatus.PENDIENTE || it.status == ComandaStatus.PREPARACION
     }
     val elapsed = rememberKitchenElapsed(group.items.firstOrNull()?.kitchenOpenedAt())
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    BendeyManagementCard {
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -354,17 +370,17 @@ private fun KitchenOrderCard(
                     enabled = updatingId != -1,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 4.dp),
+                        .padding(top = BendeySpacing.xxs),
                 ) {
                     Text(if (updatingId == -1) "Marcando…" else "Marcar ronda lista")
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.xs))
             group.items.forEach { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = BendeySpacing.xxs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -377,7 +393,7 @@ private fun KitchenOrderCard(
                         OutlinedButton(
                             onClick = { onAdvance(item) },
                             enabled = updatingId != item.id,
-                            modifier = Modifier.heightIn(min = 32.dp).padding(end = 4.dp),
+                            modifier = Modifier.heightIn(min = 32.dp).padding(end = BendeySpacing.xxs),
                         ) {
                             Text(if (updatingId == item.id) "…" else "Avanzar", style = MaterialTheme.typography.labelSmall)
                         }
@@ -401,7 +417,7 @@ private fun KitchenOrderCard(
 
 @Composable
 private fun KitchenItemMetaRow(item: KitchenItem) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         item.preparationArea?.takeIf { it.isNotBlank() }?.let { area ->
             BendeyStatusChip(
                 label = PreparationArea.fromApi(area).label,
@@ -425,24 +441,19 @@ private fun KitchenCard(
     onVoid: () -> Unit,
 ) {
     val elapsed = rememberKitchenElapsed(item.kitchenOpenedAt())
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    BendeyManagementCard(contentPadding = PaddingValues(0.dp)) {
         Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
             Box(
                 modifier = Modifier
-                    .width(5.dp)
+                    .width(BendeySpacing.xxs)
                     .fillMaxHeight()
                     .background(accent),
             )
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -488,7 +499,7 @@ private fun KitchenCard(
                 KitchenItemMetaRow(item)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     Text(
                         text = formatQty(item.kdsQuantity),

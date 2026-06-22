@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,14 +18,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -38,14 +34,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifierGroupFormInput
 import com.bendey.restaurant.core.domain.catalog.ModifierOption
 import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import java.text.NumberFormat
@@ -89,11 +92,11 @@ fun ModificadoresScreen(
                 onOpenCombos = onOpenCombos,
             )
             state.error?.let {
-                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(16.dp))
+                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.groups, key = { it.id }) { group ->
@@ -138,9 +141,9 @@ private fun ModifierGroupRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(group.name, fontWeight = FontWeight.SemiBold)
                 Text(
                     "${group.selectionMode.label}${if (group.required) " · Obligatorio" else ""}",
@@ -175,52 +178,53 @@ private fun ModifierGroupFormDialog(
     onFormChange: ((ModifierGroupFormInput) -> ModifierGroupFormInput) -> Unit,
     onSave: () -> Unit,
 ) {
-    AlertDialog(
+    val selectionModeOptions = ModifierSelectionMode.entries.map { BendeyOption(it.apiValue, it.label) }
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Editar grupo" else "Nuevo grupo") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
-                Text("Modo de selección")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ModifierSelectionMode.entries.forEach { mode ->
-                        FilterChip(
-                            selected = form.selectionMode == mode,
-                            onClick = { onFormChange { it.copy(selectionMode = mode) } },
-                            label = { Text(mode.label) },
-                        )
-                    }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Obligatorio")
-                    Switch(form.required, { checked -> onFormChange { it.copy(required = checked) } })
-                }
-                BendeyTextField(form.minSelect, { v -> onFormChange { it.copy(minSelect = v) } }, "Mínimo")
-                BendeyTextField(form.maxSelect, { v -> onFormChange { it.copy(maxSelect = v) } }, "Máximo")
-                Text("Opciones", fontWeight = FontWeight.SemiBold)
-                form.options.forEachIndexed { index, option ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        BendeyTextField(
-                            option.name,
-                            { v -> onFormChange { f -> f.copy(options = f.options.mapIndexed { i, o -> if (i == index) o.copy(name = v) else o }) } },
-                            "Opción",
-                            modifier = Modifier.weight(1f),
-                        )
-                        BendeyTextField(
-                            option.extraPrice.toString(),
-                            { v -> onFormChange { f -> f.copy(options = f.options.mapIndexed { i, o -> if (i == index) o.copy(extraPrice = v.replace(",", ".").toDoubleOrNull() ?: 0.0) else o }) } },
-                            "Extra",
-                            modifier = Modifier.weight(0.6f),
-                        )
-                    }
-                }
-                TextButton(onClick = { onFormChange { it.copy(options = it.options + ModifierOption(name = "")) } }) {
-                    Text("Agregar opción")
-                }
-                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
+        title = if (isEditing) "Editar grupo" else "Nuevo grupo",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
+        BendeySimpleSelect(
+            options = selectionModeOptions,
+            selectedValue = form.selectionMode.apiValue,
+            onSelect = { value ->
+                val mode = ModifierSelectionMode.entries.firstOrNull { it.apiValue == value } ?: return@BendeySimpleSelect
+                onFormChange { it.copy(selectionMode = mode) }
+            },
+            label = "Modo de selección",
+        )
+        BendeySwitchRow(
+            label = "Obligatorio",
+            checked = form.required,
+            onCheckedChange = { checked -> onFormChange { it.copy(required = checked) } },
+        )
+        BendeyTextField(form.minSelect, { v -> onFormChange { it.copy(minSelect = v) } }, "Mínimo")
+        BendeyTextField(form.maxSelect, { v -> onFormChange { it.copy(maxSelect = v) } }, "Máximo")
+        Text("Opciones", fontWeight = FontWeight.SemiBold)
+        form.options.forEachIndexed { index, option ->
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeyTextField(
+                    option.name,
+                    { v -> onFormChange { f -> f.copy(options = f.options.mapIndexed { i, o -> if (i == index) o.copy(name = v) else o }) } },
+                    "Opción",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    option.extraPrice.toString(),
+                    { v -> onFormChange { f -> f.copy(options = f.options.mapIndexed { i, o -> if (i == index) o.copy(extraPrice = v.replace(",", ".").toDoubleOrNull() ?: 0.0) else o }) } },
+                    "Extra",
+                    modifier = Modifier.weight(0.6f),
+                )
             }
-        },
-        confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onSave, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
-    )
+        }
+        TextButton(onClick = { onFormChange { it.copy(options = it.options + ModifierOption(name = "")) } }) {
+            Text("Agregar opción")
+        }
+        error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
+    }
 }

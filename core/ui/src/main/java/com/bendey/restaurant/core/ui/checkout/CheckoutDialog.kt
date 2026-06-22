@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -128,13 +130,14 @@ fun CheckoutDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
-                .heightIn(max = 720.dp),
-            shape = RoundedCornerShape(16.dp),
+                .heightIn(max = 720.dp)
+                .border(BendeyCardDefaults.border, BendeyShapeTokens.xl),
+            shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             tonalElevation = 0.dp,
-            shadowElevation = 10.dp,
+            shadowElevation = 6.dp,
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(BendeySpacing.lg)) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
@@ -145,8 +148,8 @@ fun CheckoutDialog(
                     modifier = Modifier
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState())
-                        .padding(top = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .padding(top = BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.md),
                 ) {
                     if (metaLoading) {
                         Text("Cargando series y métodos…", color = BendeyColors.OnSurfaceVariant)
@@ -219,8 +222,8 @@ fun CheckoutDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                        .padding(top = BendeySpacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm, Alignment.End),
                 ) {
                     BendeySecondaryButton(
                         text = "Cancelar",
@@ -255,33 +258,33 @@ private fun DocTypeSelector(
     }
     val selectedKey = normalizeDocTypeKey(selectedDocType)
     CheckoutFieldLabel("Comprobante")
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
         groups.chunked(3).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 row.forEach { group ->
                     val selected = selectedKey == group.key
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(BendeyShapeTokens.sm)
                             .border(
                                 width = 1.dp,
                                 color = if (selected) CheckoutDocActive else BendeyColors.Outline,
-                                shape = RoundedCornerShape(10.dp),
+                                shape = BendeyShapeTokens.sm,
                             )
                             .background(if (selected) CheckoutDocActive else BendeyColors.Surface)
                             .clickable { onSelectDocType(group.key) }
-                            .padding(horizontal = 8.dp, vertical = 10.dp),
+                            .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.sm),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = group.label,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
-                            color = if (selected) Color.White else BendeyColors.OnSurface,
+                            color = if (selected) BendeyColors.OnPrimary else BendeyColors.OnSurface,
                             maxLines = 2,
                         )
                     }
@@ -305,7 +308,7 @@ private fun SerieDiscountRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             CheckoutFieldLabel("Serie")
@@ -313,10 +316,10 @@ private fun SerieDiscountRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
+                    .clip(BendeyShapeTokens.md)
+                    .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
                     .background(BendeyColors.SurfaceVariant.copy(alpha = 0.55f))
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Text(
@@ -354,8 +357,8 @@ private fun DiscountInputWithToggle(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, BendeyColors.Outline, RoundedCornerShape(12.dp))
+            .clip(BendeyShapeTokens.md)
+            .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
             .background(BendeyColors.Surface),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -379,7 +382,7 @@ private fun DiscountInputWithToggle(
         ) {
             Text(
                 text = if (mode == CheckoutDiscountMode.PERCENT) "%" else "S/",
-                color = Color.White,
+                color = BendeyColors.OnPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
             )
@@ -389,7 +392,7 @@ private fun DiscountInputWithToggle(
             onValueChange = onValueChange,
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = BendeyColors.OnSurface),
             decorationBox = { inner ->
@@ -428,10 +431,10 @@ private fun PaymentLinesSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(BendeyShapeTokens.md)
                 .background(BendeyColors.PrimaryContainer.copy(alpha = 0.35f))
-                .border(1.dp, BendeyColors.Primary.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .border(1.dp, BendeyColors.Primary.copy(alpha = 0.25f), BendeyShapeTokens.md)
+                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -483,7 +486,7 @@ private fun PaymentLinesSection(
         },
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
+        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(end = BendeySpacing.xxs))
         Text("Agregar método de pago")
     }
 }
@@ -501,12 +504,12 @@ private fun PaymentLineEditor(
         modifier = Modifier
             .fillMaxWidth()
             .clipSection(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             PaymentMethodDropdown(
                 methods = methods,
@@ -522,7 +525,7 @@ private fun PaymentLineEditor(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             CheckoutCompactField(
                 label = "Monto",
@@ -567,7 +570,7 @@ private fun PaymentMethodDropdown(
             modifier = Modifier
                 .menuAnchor()
                 .fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
+            shape = BendeyShapeTokens.sm,
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -599,7 +602,7 @@ private fun CheckoutCompactField(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(bottom = 2.dp),
+            modifier = Modifier.padding(bottom = BendeySpacing.xxs),
         )
         OutlinedTextField(
             value = value,
@@ -607,7 +610,7 @@ private fun CheckoutCompactField(
             singleLine = true,
             placeholder = { Text(placeholder, style = MaterialTheme.typography.bodySmall) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
+            shape = BendeyShapeTokens.sm,
             textStyle = MaterialTheme.typography.bodyMedium,
         )
     }
@@ -623,10 +626,10 @@ private fun CheckoutHeroTotal(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(BendeyShapeTokens.xl)
             .background(BendeyColors.PrimaryContainer.copy(alpha = 0.45f))
-            .border(1.dp, BendeyColors.Primary.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .border(1.dp, BendeyColors.Primary.copy(alpha = 0.15f), BendeyShapeTokens.xl)
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
     ) {
         Text(
             text = "Total",
@@ -639,13 +642,13 @@ private fun CheckoutHeroTotal(
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = BendeyColors.Primary,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = BendeySpacing.xs),
         )
         if (discountAmount > 0) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = BendeySpacing.xs),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
@@ -675,11 +678,11 @@ private fun CheckoutPaymentSummary(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(BendeyShapeTokens.md)
             .background(BendeyColors.SurfaceVariant.copy(alpha = 0.35f))
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), BendeyShapeTokens.md)
+            .padding(BendeySpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -702,9 +705,9 @@ private fun CheckoutPaymentSummary(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(BendeyShapeTokens.sm)
                     .background(BendeyColors.WarningContainer)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -760,16 +763,16 @@ private fun CheckoutFieldLabel(title: String) {
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Medium,
         color = BendeyColors.OnSurfaceVariant,
-        modifier = Modifier.padding(bottom = 4.dp),
+        modifier = Modifier.padding(bottom = BendeySpacing.xxs),
     )
 }
 
 @Composable
 private fun Modifier.clipSection(): Modifier = this
-    .clip(RoundedCornerShape(12.dp))
+    .clip(BendeyShapeTokens.md)
     .background(BendeyColors.SurfaceVariant.copy(alpha = 0.35f))
-    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
-    .padding(10.dp)
+    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.45f), BendeyShapeTokens.md)
+    .padding(BendeySpacing.sm)
 
 @Composable
 fun CheckoutSuccessDialog(

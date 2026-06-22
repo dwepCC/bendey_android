@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -56,6 +55,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import java.text.NumberFormat
 import java.util.Locale
@@ -84,17 +86,17 @@ fun BendeyPosCartPane(
         modifier = modifier
             .fillMaxSize()
             .background(BendeyColors.Surface)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(BendeyColors.PrimaryContainer, RoundedCornerShape(12.dp)),
+                    .background(BendeyColors.PrimaryContainer, BendeyShapeTokens.md),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -125,7 +127,7 @@ fun BendeyPosCartPane(
             }
         }
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 12.dp),
+            modifier = Modifier.padding(vertical = BendeySpacing.sm),
             color = BendeyColors.Outline.copy(alpha = 0.35f),
         )
         if (lines.isEmpty()) {
@@ -145,14 +147,14 @@ fun BendeyPosCartPane(
                         "Toca un producto para agregarlo",
                         style = MaterialTheme.typography.bodySmall,
                         color = BendeyColors.OnSurfaceVariant.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = BendeySpacing.xxs),
                     )
                 }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 items(lines, key = { it.key }) { line ->
                     BendeyCartLineCard(
@@ -171,11 +173,11 @@ fun BendeyPosCartPane(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .padding(top = BendeySpacing.sm)
+                .clip(BendeyShapeTokens.xl)
                 .background(BendeyColors.PrimaryContainer.copy(alpha = 0.4f))
-                .border(1.dp, BendeyColors.Primary.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .border(1.dp, BendeyColors.Primary.copy(alpha = 0.12f), BendeyShapeTokens.xl)
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         ) {
             Text(
                 text = "Total",
@@ -188,19 +190,19 @@ fun BendeyPosCartPane(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = BendeyColors.Primary,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = BendeySpacing.xxs),
             )
         }
         primaryAction?.let { action ->
             Column(
-                modifier = Modifier.padding(top = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(top = BendeySpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
             ) {
                 action()
             }
         }
         secondaryAction?.let { action ->
-            Box(modifier = Modifier.padding(top = 12.dp)) { action() }
+            Box(modifier = Modifier.padding(top = BendeySpacing.sm)) { action() }
         }
     }
 }
@@ -217,27 +219,27 @@ private fun BendeyCartLineCard(
     onDecrement: () -> Unit,
 ) {
     Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Background),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = BendeyShapeTokens.lg,
+        colors = BendeyCardDefaults.variantColors(),
+        elevation = BendeyCardDefaults.elevation(),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.28f), RoundedCornerShape(14.dp)),
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.4f), BendeyShapeTokens.lg),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                 ) {
                     Text(
                         line.product.name,
@@ -274,14 +276,14 @@ private fun BendeyCartLineCard(
             if (showNotesButton && onNotesClick != null) {
                 OutlinedButton(
                     onClick = onNotesClick,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                    shape = BendeyShapeTokens.xs,
                 ) {
                     Icon(
                         Icons.Default.EditNote,
                         contentDescription = null,
                         modifier = Modifier
-                            .padding(end = 4.dp)
+                            .padding(end = BendeySpacing.xxs)
                             .size(14.dp),
                     )
                     Text(
@@ -293,12 +295,12 @@ private fun BendeyCartLineCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 if (editablePrice && onUnitPriceChange != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                     ) {
                         Text(
                             text = "P. unit.",
@@ -385,10 +387,10 @@ private fun CartUnitPriceField(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-                    .background(Color.White)
-                    .padding(horizontal = 10.dp),
+                    .clip(BendeyShapeTokens.xs)
+                    .border(1.dp, borderColor, BendeyShapeTokens.xs)
+                    .background(BendeyColors.Surface)
+                    .padding(horizontal = BendeySpacing.sm),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 innerTextField()
@@ -406,7 +408,7 @@ private fun CartQuantityStepper(
     val buttonSize = 34.dp
     Row(
         modifier = Modifier.height(buttonSize),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CartStepperButton(
@@ -417,7 +419,7 @@ private fun CartQuantityStepper(
             Icon(
                 Icons.Default.Remove,
                 contentDescription = "Menos",
-                tint = Color.White,
+                tint = BendeyColors.OnPrimary,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -442,7 +444,7 @@ private fun CartQuantityStepper(
             Icon(
                 Icons.Default.Add,
                 contentDescription = "Más",
-                tint = Color.White,
+                tint = BendeyColors.OnPrimary,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -466,7 +468,7 @@ private fun CartStepperButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(9.dp))
+            .clip(BendeyShapeTokens.sm)
             .background(backgroundColor)
             .clickable(
                 interactionSource = interactionSource,

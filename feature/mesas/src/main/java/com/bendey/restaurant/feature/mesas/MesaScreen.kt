@@ -60,8 +60,10 @@ import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
@@ -80,6 +82,7 @@ import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
 import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeySessionOrderCard
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import com.bendey.restaurant.core.ui.pos.ManualProductDialog
 import com.bendey.restaurant.core.navigation.CashCheckoutGate
@@ -622,70 +625,27 @@ private fun OrdersSection(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(orders, key = { it.id }) { order ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, BendeyColors.Outline, RoundedCornerShape(10.dp)),
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Comanda #${order.orderNumber}", fontWeight = FontWeight.SemiBold)
-                            OutlinedButton(
-                                onClick = { onReprint(order) },
-                                enabled = reprintingOrderId != order.id && !reprintingAll,
-                                modifier = Modifier.heightIn(min = 32.dp),
+                BendeySessionOrderCard(
+                    order = order,
+                    reprinting = reprintingOrderId == order.id,
+                    reprintEnabled = reprintingOrderId != order.id && !reprintingAll,
+                    onReprint = { onReprint(order) },
+                    comandaActions = { comanda ->
+                        if (canAnularComanda) {
+                            IconButton(
+                                onClick = { onVoidComanda(comanda) },
+                                modifier = Modifier.size(32.dp),
                             ) {
-                                if (reprintingOrderId == order.id) {
-                                    CircularProgressIndicator(
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier
-                                            .padding(end = 4.dp)
-                                            .size(16.dp),
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
-                                }
-                                Text("Reimprimir", style = MaterialTheme.typography.labelMedium)
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Anular línea",
+                                    tint = BendeyColors.Error,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
                         }
-                        order.comandas.forEach { comanda ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "${comanda.quantity.toInt()}× ${comanda.productName}",
-                                    modifier = Modifier.weight(1f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                BendeyStatusChip(
-                                    label = comanda.status.label,
-                                    accentColor = comanda.status.accentColor(),
-                                )
-                                if (canAnularComanda) {
-                                    IconButton(
-                                        onClick = { onVoidComanda(comanda) },
-                                        modifier = Modifier.size(32.dp),
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Anular línea",
-                                            tint = BendeyColors.Error,
-                                            modifier = Modifier.size(18.dp),
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                    },
+                )
             }
         }
     }

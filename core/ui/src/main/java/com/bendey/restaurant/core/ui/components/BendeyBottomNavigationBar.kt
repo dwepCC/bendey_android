@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.layout.BendeyBottomBarInset
 
 data class BendeyNavItem(
@@ -68,16 +70,21 @@ fun BendeyBottomNavigationBar(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = BendeyColors.Outline.copy(alpha = 0.65f),
+                    shape = BendeyShapeTokens.sheet,
+                ),
             color = BendeyColors.Surface,
-            shadowElevation = 12.dp,
+            shadowElevation = 0.dp,
             tonalElevation = 0.dp,
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .padding(horizontal = 4.dp),
+                    .padding(horizontal = BendeySpacing.xxs),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -140,15 +147,15 @@ private fun BottomNavTab(
     )
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(BendeyShapeTokens.xs)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick,
             )
-            .padding(vertical = 4.dp),
+            .padding(vertical = BendeySpacing.xxs),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
         Icon(
             imageVector = icon,
@@ -179,7 +186,7 @@ private fun CenterPosFab(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .shadow(8.dp, CircleShape)
+                .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
                 .background(if (selected) BendeyColors.Rest800 else BendeyColors.Primary)
                 .clickable(
@@ -201,7 +208,7 @@ private fun CenterPosFab(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = if (selected) BendeyColors.Primary else BendeyColors.NavInactive,
-            modifier = Modifier.offset(y = 2.dp),
+            modifier = Modifier.offset(y = BendeySpacing.xxs),
         )
     }
 }

@@ -25,13 +25,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import java.text.NumberFormat
 import java.util.Locale
 
-/** Tarjeta operativa — fondo blanco, barra lateral de estado (React `TableOperationalCard`). */
+/** Tarjeta operativa — barra lateral de estado + meta con contraste suave. */
 @Composable
 fun BendeyTableCard(
     table: RestaurantTable,
@@ -46,10 +48,10 @@ fun BendeyTableCard(
             .fillMaxWidth()
             .height(168.dp)
             .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.lg,
         color = BendeyColors.Surface,
-        border = BorderStroke(1.dp, BendeyColors.Outline),
-        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
+        shadowElevation = 0.dp,
         tonalElevation = 0.dp,
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -62,7 +64,7 @@ fun BendeyTableCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 8.dp),
+                    .padding(start = BendeySpacing.sm, end = BendeySpacing.sm, top = BendeySpacing.sm, bottom = BendeySpacing.xs),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Row(
@@ -71,12 +73,7 @@ fun BendeyTableCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StatusDot(color = accent)
-                    Text(
-                        text = table.status.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = accent,
-                    )
+                    BendeyStatusChip(label = table.status.label, accentColor = accent)
                 }
                 Text(
                     text = table.name,
@@ -107,40 +104,40 @@ private fun TableMetaFooter(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(accent)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .clip(BendeyShapeTokens.sm)
+            .background(accent.copy(alpha = if (occupied) 0.14f else 0.08f))
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        MetaLine("Cap.", "${table.capacity} pers.")
+        MetaLine("Cap.", "${table.capacity} pers.", accent)
         when {
             occupied -> {
-                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it") }
-                table.waiterName?.takeIf { it.isNotBlank() }?.let { MetaLine("Mozo", it) }
+                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it", accent) }
+                table.waiterName?.takeIf { it.isNotBlank() }?.let { MetaLine("Mozo", it, accent) }
                 table.totalAmount?.takeIf { it > 0 }?.let { amount ->
-                    MetaLine("Total", currency.format(amount), emphasize = true)
+                    MetaLine("Total", currency.format(amount), accent, emphasize = true)
                 }
             }
             table.status == TableStatus.RESERVADA -> {
-                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it") }
+                table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it", accent) }
             }
         }
     }
 }
 
 @Composable
-private fun MetaLine(label: String, value: String, emphasize: Boolean = false) {
+private fun MetaLine(label: String, value: String, accent: Color, emphasize: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = accent.copy(alpha = 0.75f))
         Text(
             value,
             style = if (emphasize) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
             fontWeight = if (emphasize) FontWeight.Bold else FontWeight.SemiBold,
-            color = Color.White,
+            color = accent,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -153,7 +150,7 @@ private fun StatusDot(color: Color) {
         modifier = Modifier
             .width(10.dp)
             .height(10.dp)
-            .clip(RoundedCornerShape(2.dp))
+            .clip(BendeyShapeTokens.dot)
             .background(color),
     )
 }
@@ -168,7 +165,7 @@ fun BendeyTableStatsRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
         StatDot("Libres", libre, BendeyColors.TableLibre)
         StatDot("Ocupadas", ocupada, BendeyColors.TableOcupada)
@@ -181,7 +178,7 @@ fun BendeyTableStatsRow(
 private fun StatDot(label: String, count: Int, color: Color) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(BendeyShapeTokens.pill)
             .background(color.copy(alpha = 0.12f))
             .padding(horizontal = 7.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -191,7 +188,7 @@ private fun StatDot(label: String, count: Int, color: Color) {
             modifier = Modifier
                 .width(8.dp)
                 .height(8.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .clip(BendeyShapeTokens.dot)
                 .background(color),
         )
         Text(

@@ -11,17 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,8 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
@@ -43,7 +44,7 @@ import com.bendey.restaurant.core.ui.components.BendeyTextField
 fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(BendeySpacing.md),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -52,12 +53,12 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
                 BendeyPrimaryButton("+ Usuario", viewModel::openCreateStaff, fillWidth = false)
             }
         }
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        BendeyManagementCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 Text("PIN de anulación", fontWeight = FontWeight.SemiBold)
                 Text(
                     if (state.settings?.hasDeletionPin == true) "Configurado" else "Sin configurar",
@@ -70,13 +71,13 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
             }
         }
         if (state.staffLoading && state.staffRows.isEmpty()) {
-            Text("Cargando usuarios…", modifier = Modifier.padding(16.dp), color = BendeyColors.OnSurfaceVariant)
+            Text("Cargando usuarios…", modifier = Modifier.padding(BendeySpacing.md), color = BendeyColors.OnSurfaceVariant)
         } else if (state.staffRows.isEmpty()) {
-            Text("Sin usuarios registrados", modifier = Modifier.padding(16.dp), color = BendeyColors.OnSurfaceVariant)
+            Text("Sin usuarios registrados", modifier = Modifier.padding(BendeySpacing.md), color = BendeyColors.OnSurfaceVariant)
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 modifier = Modifier.weight(1f),
             ) {
                 items(state.staffRows, key = { it.userId }) { row ->
@@ -89,12 +90,12 @@ fun OperacionTab(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel)
 
 @Composable
 private fun StaffManagementCard(row: RestaurantStaffManagementRow, onEdit: () -> Unit, canEdit: Boolean) {
-    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    BendeyManagementCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(row.name.ifBlank { row.email }, fontWeight = FontWeight.SemiBold)
                 Text(row.email, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyStatusChip(
                         label = RestaurantEmployeeType.fromApi(row.employeeType).label,
                         accentColor = if (row.profileComplete) BendeyColors.Primary else BendeyColors.Warning,
@@ -166,19 +167,13 @@ fun StaffEditDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewMod
         BendeyTextField(form.pin, { v ->
             viewModel.updateStaffEditForm { it.copy(pin = v.filter { c -> c.isDigit() }.take(6), clearPin = false) }
         }, "Nuevo PIN (opcional)")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Quitar PIN")
-            Switch(
-                checked = form.clearPin,
-                onCheckedChange = { checked ->
-                    viewModel.updateStaffEditForm { it.copy(clearPin = checked, pin = if (checked) "" else it.pin) }
-                },
-            )
-        }
+        BendeySwitchRow(
+            label = "Quitar PIN",
+            checked = form.clearPin,
+            onCheckedChange = { checked ->
+                viewModel.updateStaffEditForm { it.copy(clearPin = checked, pin = if (checked) "" else it.pin) }
+            },
+        )
         if (form.employeeType.isNotBlank()) {
             BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffEditBranch)
         }
@@ -208,13 +203,16 @@ private fun BranchMultiSelect(
     Text("Sucursales", style = MaterialTheme.typography.labelMedium)
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         branches.filter { it.active }.forEach { branch ->
             FilterChip(
                 selected = selectedIds.contains(branch.id),
                 onClick = { onToggle(branch.id) },
                 label = { Text(branch.name) },
+                colors = BendeyChipDefaults.filterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
         }
     }
