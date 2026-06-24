@@ -12,6 +12,7 @@ import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.OpenSessionResult
 import com.bendey.restaurant.core.domain.restaurant.OrderItemInput
+import com.bendey.restaurant.core.domain.catalog.normalizePreparationAreaName
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
@@ -78,7 +79,7 @@ class PosRepositoryImpl @Inject constructor(
         page: Int,
         branchId: Int?,
         catalogOnly: Boolean?,
-        preparationArea: String?,
+        preparationAreaId: Int?,
     ): AppResult<Pair<List<PosProduct>, Int>> = apiCall {
         val response = tenantRetrofitProvider.create<ProductsApi>().listProducts(
             query = query,
@@ -86,7 +87,7 @@ class PosRepositoryImpl @Inject constructor(
             categoryId = categoryId,
             branchId = branchId,
             catalogOnly = catalogOnly?.let { if (it) "true" else "false" },
-            preparationArea = preparationArea?.takeIf { it.isNotBlank() },
+            preparationAreaId = preparationAreaId,
         )
         val products = response.data.map { it.toDomain() }
         products to (response.total ?: products.size)
@@ -324,7 +325,7 @@ private fun ProductDto.toDomain() = PosProduct(
     salePrice = salePrice,
     categoryId = categoryId,
     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
-    preparationArea = preparationArea?.takeIf { it.isNotBlank() },
+    preparationArea = preparationArea?.let { normalizePreparationAreaName(it.name) },
     igvAffectationType = igvAffectationType,
     priceIncludesIgv = priceIncludesIgv,
     hasModifiers = hasModifiers,

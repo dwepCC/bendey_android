@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.domain.catalog.BulkImportRowError
 import com.bendey.restaurant.core.domain.catalog.BulkImportValidationResult
 import com.bendey.restaurant.core.domain.catalog.ProductImportRepository
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
@@ -24,6 +25,7 @@ import com.bendey.restaurant.core.network.dto.BulkImportRequestDto
 import com.bendey.restaurant.core.network.dto.CategoryDto
 import com.bendey.restaurant.core.network.dto.CategoryUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CreateProductRequestDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaDto
 import com.bendey.restaurant.core.network.dto.ProductDto
 import com.bendey.restaurant.core.network.dto.ProductPresentationDto
 import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
@@ -48,7 +50,7 @@ class ProductsRepositoryImpl @Inject constructor(
             page = query.page,
             perPage = query.perPage,
             categoryId = query.categoryId,
-            preparationArea = query.preparationArea?.takeIf { it.isNotBlank() },
+            preparationAreaId = query.preparationAreaId,
             branchId = query.branchId,
         )
         response.data.map { it.toDomain() } to (response.total ?: response.data.size)
@@ -194,7 +196,8 @@ private fun ProductDto.toDomain() = ProductItem(
     unit = unit,
     categoryId = categoryId,
     categoryName = categoryName?.takeIf { it.isNotBlank() },
-    preparationArea = preparationArea?.takeIf { it.isNotBlank() },
+    preparationAreaId = preparationAreaId,
+    preparationArea = preparationArea?.toDomain(),
     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
     manageStock = manageStock,
     hasModifiers = hasModifiers,
@@ -202,6 +205,16 @@ private fun ProductDto.toDomain() = ProductItem(
     availableForSale = availableForSale,
     igvAffectationType = igvAffectationType ?: "10",
     priceIncludesIgv = priceIncludesIgv ?: true,
+    active = active,
+)
+
+private fun PreparationAreaDto.toDomain() = PreparationAreaItem(
+    id = id,
+    name = name,
+    description = description,
+    color = color,
+    estimatedMinutes = estimatedMinutes,
+    sortOrder = sortOrder,
     active = active,
 )
 
@@ -242,7 +255,7 @@ private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
         salePrice = salePrice,
         purchasePrice = purchase,
         categoryId = categoryId,
-        preparationArea = preparationArea.apiValue,
+        preparationAreaId = preparationAreaId,
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = manageStock,
@@ -264,7 +277,7 @@ private fun ProductFormInput.toUpdateDto(): UpdateProductRequestDto {
         salePrice = salePrice.replace(",", ".").toDoubleOrNull(),
         purchasePrice = purchasePrice.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 },
         categoryId = categoryId,
-        preparationArea = preparationArea.apiValue,
+        preparationAreaId = preparationAreaId,
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = manageStock,

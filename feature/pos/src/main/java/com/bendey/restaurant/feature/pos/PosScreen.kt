@@ -332,6 +332,7 @@ fun PosScreen(
             onToggleComponentModifier = viewModel::toggleComboComponentModifier,
             onSelectComponentPresentation = viewModel::selectComboComponentPresentation,
             onToggleSlot = viewModel::toggleComboSlot,
+            onSetSlotQuantity = viewModel::setComboSlotQuantity,
             onKitchenNoteChange = viewModel::updateComboConfigureNote,
             onConfirm = viewModel::confirmComboConfigure,
             onDismiss = viewModel::dismissComboConfigure,
@@ -552,7 +553,7 @@ private fun CatalogPane(
     assetsBaseUrl: String?,
     onSearch: (String) -> Unit,
     onCategory: (Int?) -> Unit,
-    onPreparationArea: (String?) -> Unit,
+    onPreparationArea: (Int?) -> Unit,
     onAdd: (PosProduct) -> Unit,
     onComboClick: (PosComboItem) -> Unit,
     onCatalogTab: (PosCatalogTab) -> Unit,
@@ -580,9 +581,9 @@ private fun CatalogPane(
                 )
                 state.preparationAreas.forEach { area ->
                     FilterChip(
-                        selected = state.preparationAreaFilter == area,
-                        onClick = { onPreparationArea(area) },
-                        label = { Text(area) },
+                        selected = state.preparationAreaFilter == area.id,
+                        onClick = { onPreparationArea(area.id) },
+                        label = { Text(area.name) },
                     )
                 }
             }

@@ -53,7 +53,9 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.catalog.normalizedName
+import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
@@ -62,9 +64,6 @@ import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.BluetoothDeviceInfo
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
-
-private val preparationAreasForPrint =
-    PreparationArea.entries.filter { it != PreparationArea.NONE }
 
 @Composable
 fun PrinterTestScreen(
@@ -97,7 +96,7 @@ fun PrinterTestScreen(
             title = "Impresoras",
             subtitle = when (state.selectedSlot) {
                 PrinterSlot.COMANDAS -> if (state.editingAreaKey != null) {
-                    "Comandas · ${PreparationArea.fromApi(state.editingAreaKey).label}"
+                    "Comandas · ${preparationAreaDisplayLabel(state.editingAreaKey!!)}"
                 } else {
                     "Comandas · impresora por defecto"
                 }
@@ -158,7 +157,7 @@ fun PrinterTestScreen(
                                 color = BendeyColors.OnSurfaceVariant,
                             )
                             Text(
-                                PreparationArea.fromApi(state.editingAreaKey).label,
+                                preparationAreaDisplayLabel(state.editingAreaKey!!),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
@@ -183,7 +182,7 @@ fun PrinterTestScreen(
                     PrinterSlot.COMANDAS -> if (state.editingAreaKey == null) {
                         "Productos sin área o áreas sin impresora dedicada"
                     } else {
-                        "Solo comandas de ${PreparationArea.fromApi(state.editingAreaKey).label}"
+                        "Solo comandas de ${preparationAreaDisplayLabel(state.editingAreaKey!!)}"
                     }
                     PrinterSlot.PRECUENTA -> "Tickets de precuenta antes de cobrar"
                     PrinterSlot.DOCUMENTOS -> "Boletas, facturas y notas de venta"
@@ -264,6 +263,7 @@ fun PrinterTestScreen(
                 ComandaAreasCard(
                     expanded = areasExpanded,
                     onToggleExpanded = { areasExpanded = !areasExpanded },
+                    preparationAreas = state.preparationAreas,
                     comandasByArea = state.comandasByArea,
                     defaultConfig = state.let {
                         PrinterSlotConfig(
@@ -442,14 +442,15 @@ private fun PrinterConfigCard(
 private fun ComandaAreasCard(
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
+    preparationAreas: List<PreparationAreaItem>,
     comandasByArea: Map<String, PrinterSlotConfig>,
     defaultConfig: PrinterSlotConfig,
     onConfigureArea: (String) -> Unit,
     onClearArea: (String) -> Unit,
     onTestArea: (String) -> Unit,
 ) {
-    val configuredCount = preparationAreasForPrint.count { area ->
-        comandasByArea[area.apiValue]?.isConfigured == true
+    val configuredCount = preparationAreas.count { area ->
+        comandasByArea[area.normalizedName()]?.isConfigured == true
     }
 
     Card(
@@ -477,7 +478,7 @@ private fun ComandaAreasCard(
                     )
                     Text(
                         if (configuredCount > 0) {
-                            "$configuredCount área(s) con impresora propia · ${preparationAreasForPrint.size} disponibles"
+                            "$configuredCount área(s) con impresora propia · ${preparationAreas.size} disponibles"
                         } else {
                             "Opcional — cocina, bar, postres… Si no configuras, usa la impresora por defecto"
                         },
@@ -501,16 +502,17 @@ private fun ComandaAreasCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    preparationAreasForPrint.forEachIndexed { index, area ->
+                    preparationAreas.forEachIndexed { index, area ->
+                        val areaKey = area.normalizedName()
                         ComandaAreaRow(
                             area = area,
-                            customConfig = comandasByArea[area.apiValue],
+                            customConfig = comandasByArea[areaKey],
                             defaultConfigured = defaultConfig.isConfigured,
-                            onConfigure = { onConfigureArea(area.apiValue) },
-                            onClear = { onClearArea(area.apiValue) },
-                            onTest = { onTestArea(area.apiValue) },
+                            onConfigure = { onConfigureArea(areaKey) },
+                            onClear = { onClearArea(areaKey) },
+                            onTest = { onTestArea(areaKey) },
                         )
-                        if (index < preparationAreasForPrint.lastIndex) {
+                        if (index < preparationAreas.lastIndex) {
                             HorizontalDivider(modifier = Modifier.padding(horizontal = BendeySpacing.sm))
                         }
                     }
@@ -522,7 +524,7 @@ private fun ComandaAreasCard(
 
 @Composable
 private fun ComandaAreaRow(
-    area: PreparationArea,
+    area: PreparationAreaItem,
     customConfig: PrinterSlotConfig?,
     defaultConfigured: Boolean,
     onConfigure: () -> Unit,
@@ -554,7 +556,7 @@ private fun ComandaAreaRow(
                 .clickable(onClick = onConfigure),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
         ) {
-            Text(area.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(area.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             BendeyStatusChip(label = statusLabel, accentColor = statusColor)
             if (hasCustom) {
                 Text(

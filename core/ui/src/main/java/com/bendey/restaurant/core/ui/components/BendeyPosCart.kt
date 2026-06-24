@@ -257,6 +257,18 @@ private fun BendeyCartLineCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    if (line.comboSummaryLines.isNotEmpty()) {
+                        line.comboSummaryLines.forEach { summaryLine ->
+                            Text(
+                                summaryLine,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = BendeySpacing.xxs),
+                            )
+                        }
+                    }
                     line.notes.takeIf { it.isNotBlank() }?.let { notes ->
                         Text(
                             notes,

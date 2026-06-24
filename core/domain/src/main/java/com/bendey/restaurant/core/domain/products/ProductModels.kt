@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.products
 
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+
 enum class ProductosTab(val label: String) {
     PRODUCTOS("Productos"),
     CATEGORIAS("Categorías"),
@@ -8,22 +10,8 @@ enum class ProductosTab(val label: String) {
 enum class CatalogSection(val label: String) {
     PRODUCTOS("Productos"),
     MODIFICADORES("Modificadores"),
+    AREAS_PREPARACION("Áreas prep."),
     COMBOS("Combos"),
-}
-
-enum class PreparationArea(val apiValue: String, val label: String) {
-    NONE("", "Sin área"),
-    COCINA("cocina", "Cocina"),
-    BAR("bar", "Bar"),
-    BARRA("barra", "Barra"),
-    POSTRES("postres", "Postres"),
-    OTRO("otro", "Otro"),
-    ;
-
-    companion object {
-        fun fromApi(value: String?): PreparationArea =
-            entries.firstOrNull { it.apiValue == value.orEmpty().trim() } ?: NONE
-    }
 }
 
 enum class IgvAffectation(val code: String, val label: String) {
@@ -54,7 +42,8 @@ data class ProductItem(
     val unit: String,
     val categoryId: Int?,
     val categoryName: String?,
-    val preparationArea: String?,
+    val preparationAreaId: Int?,
+    val preparationArea: PreparationAreaItem?,
     val imageUrl: String?,
     val manageStock: Boolean,
     val hasModifiers: Boolean,
@@ -72,7 +61,7 @@ data class ProductFormInput(
     val salePrice: String = "",
     val purchasePrice: String = "",
     val categoryId: Int? = null,
-    val preparationArea: PreparationArea = PreparationArea.NONE,
+    val preparationAreaId: Int? = null,
     val igvAffectation: IgvAffectation = IgvAffectation.GRAVADO,
     val priceIncludesIgv: Boolean = true,
     val availableForSale: Boolean = true,
@@ -124,7 +113,7 @@ data class CategoryItem(
 data class ProductListQuery(
     val query: String = "",
     val categoryId: Int? = null,
-    val preparationArea: String? = null,
+    val preparationAreaId: Int? = null,
     val branchId: Int? = null,
     val page: Int = 1,
     val perPage: Int = 25,
@@ -152,7 +141,7 @@ fun ProductItem.toFormInput(
     salePrice = formatProductAmount(salePrice),
     purchasePrice = purchasePrice?.let { formatProductAmount(it) }.orEmpty(),
     categoryId = categoryId,
-    preparationArea = PreparationArea.fromApi(preparationArea),
+    preparationAreaId = preparationAreaId ?: preparationArea?.id,
     igvAffectation = IgvAffectation.fromCode(igvAffectationType),
     priceIncludesIgv = priceIncludesIgv,
     availableForSale = availableForSale,

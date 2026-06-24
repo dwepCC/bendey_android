@@ -24,6 +24,10 @@ enum class ModifierSelectionMode(val apiValue: String, val label: String) {
     companion object {
         fun fromApi(value: String?): ModifierSelectionMode =
             entries.firstOrNull { it.apiValue == value?.trim() } ?: SINGLE
+
+        /** Slots de combo sin selection_mode explícito → multiple (compat legacy). */
+        fun fromComboSlotApi(value: String?): ModifierSelectionMode =
+            entries.firstOrNull { it.apiValue == value?.trim() } ?: MULTIPLE
     }
 }
 
@@ -74,6 +78,7 @@ data class ComboSlot(
     val name: String,
     val minPick: Int = 1,
     val maxPick: Int = 1,
+    val selectionMode: ModifierSelectionMode = ModifierSelectionMode.MULTIPLE,
     val options: List<ComboSlotOption> = emptyList(),
 )
 

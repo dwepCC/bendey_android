@@ -14,7 +14,8 @@ import com.bendey.restaurant.core.domain.catalog.ProductPresentation
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductListQuery
@@ -48,7 +49,8 @@ data class ProductosUiState(
     val perPage: Int = 25,
     val searchQuery: String = "",
     val categoryFilterId: Int? = null,
-    val areaFilter: PreparationArea? = null,
+    val areaFilterId: Int? = null,
+    val preparationAreas: List<PreparationAreaItem> = emptyList(),
     val branchFilterId: Int? = null,
     val branches: List<BranchItem> = emptyList(),
     val stockByProductId: Map<Int, Double> = emptyMap(),
@@ -79,6 +81,7 @@ data class ProductosUiState(
 class ProductosViewModel @Inject constructor(
     private val productsRepository: ProductsRepository,
     private val modifiersRepository: ModifiersRepository,
+    private val preparationAreasRepository: PreparationAreasRepository,
     private val productImportRepository: ProductImportRepository,
     private val productImageRepository: ProductImageRepository,
     private val settingsRepository: SettingsRepository,
@@ -95,6 +98,7 @@ class ProductosViewModel @Inject constructor(
         loadCategories()
         loadBranches()
         loadModifierGroups()
+        loadPreparationAreas()
         refreshProducts()
         viewModelScope.launch {
             searchFlow
@@ -126,8 +130,8 @@ class ProductosViewModel @Inject constructor(
         refreshProducts()
     }
 
-    fun setAreaFilter(area: PreparationArea?) {
-        _uiState.update { it.copy(areaFilter = area, page = 1) }
+    fun setAreaFilter(areaId: Int?) {
+        _uiState.update { it.copy(areaFilterId = areaId, page = 1) }
         refreshProducts()
     }
 
@@ -145,7 +149,7 @@ class ProductosViewModel @Inject constructor(
                     ProductListQuery(
                         query = state.searchQuery,
                         categoryId = state.categoryFilterId,
-                        preparationArea = state.areaFilter?.apiValue,
+                        preparationAreaId = state.areaFilterId,
                         branchId = state.branchFilterId,
                         page = 1,
                         perPage = state.perPage,
@@ -175,7 +179,7 @@ class ProductosViewModel @Inject constructor(
                     ProductListQuery(
                         query = state.searchQuery,
                         categoryId = state.categoryFilterId,
-                        preparationArea = state.areaFilter?.apiValue,
+                        preparationAreaId = state.areaFilterId,
                         branchId = state.branchFilterId,
                         page = state.page + 1,
                         perPage = state.perPage,
@@ -223,6 +227,16 @@ class ProductosViewModel @Inject constructor(
         when (val result = productsRepository.getStockSummary(ids)) {
             is AppResult.Success -> _uiState.update { it.copy(stockByProductId = result.data) }
             else -> Unit
+        }
+    }
+
+    private fun loadPreparationAreas() {
+        viewModelScope.launch {
+            when (val result = preparationAreasRepository.listPreparationAreas(activeOnly = true)) {
+                is AppResult.Success -> _uiState.update { it.copy(preparationAreas = result.data) }
+                is AppResult.Error -> Unit
+                AppResult.Loading -> Unit
+            }
         }
     }
 

@@ -49,6 +49,7 @@ fun CombosScreen(
     onBack: () -> Unit = {},
     onOpenProductos: () -> Unit = {},
     onOpenModificadores: () -> Unit = {},
+    onOpenAreasPreparacion: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CombosViewModel = hiltViewModel(),
 ) {
@@ -70,6 +71,7 @@ fun CombosScreen(
                 current = CatalogSection.COMBOS,
                 onOpenProductos = onOpenProductos,
                 onOpenModificadores = onOpenModificadores,
+                onOpenAreasPreparacion = onOpenAreasPreparacion,
                 onOpenCombos = {},
             )
             state.error?.takeIf { !state.formOpen }?.let {

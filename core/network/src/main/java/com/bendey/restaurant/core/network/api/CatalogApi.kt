@@ -15,6 +15,10 @@ import com.bendey.restaurant.core.network.dto.ListResponseDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupResponseDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaDataResponseDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaStatusRequestDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.RestaurantSettingsDto
 import com.bendey.restaurant.core.network.dto.RestaurantSettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
@@ -23,6 +27,7 @@ import com.bendey.restaurant.core.network.dto.ComboDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -43,6 +48,30 @@ interface ModifierGroupsApi {
 
     @DELETE("/api/modifier-groups/{id}")
     suspend fun deleteModifierGroup(@Path("id") id: Int): SuccessResponseDto
+}
+
+interface PreparationAreasApi {
+    @GET("/api/restaurant/preparation-areas")
+    suspend fun listPreparationAreas(
+        @Query("active_only") activeOnly: String = "true",
+    ): ListResponseDto<PreparationAreaDto>
+
+    @POST("/api/restaurant/preparation-areas")
+    suspend fun createPreparationArea(
+        @Body body: PreparationAreaUpsertRequestDto,
+    ): PreparationAreaDataResponseDto
+
+    @PUT("/api/restaurant/preparation-areas/{id}")
+    suspend fun updatePreparationArea(
+        @Path("id") id: Int,
+        @Body body: PreparationAreaUpsertRequestDto,
+    ): SuccessResponseDto
+
+    @PATCH("/api/restaurant/preparation-areas/{id}/status")
+    suspend fun setPreparationAreaStatus(
+        @Path("id") id: Int,
+        @Body body: PreparationAreaStatusRequestDto,
+    ): SuccessResponseDto
 }
 
 interface CombosApi {

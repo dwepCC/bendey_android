@@ -52,7 +52,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductosTab
@@ -72,6 +72,7 @@ import java.util.Locale
 @Composable
 fun ProductosScreen(
     onOpenModificadores: () -> Unit = {},
+    onOpenAreasPreparacion: () -> Unit = {},
     onOpenCombos: () -> Unit = {},
     onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -123,7 +124,11 @@ fun ProductosScreen(
                     }
                 },
             )
-            ProductCatalogSectionNav(onOpenModificadores = onOpenModificadores, onOpenCombos = onOpenCombos)
+            ProductCatalogSectionNav(
+                onOpenModificadores = onOpenModificadores,
+                onOpenAreasPreparacion = onOpenAreasPreparacion,
+                onOpenCombos = onOpenCombos,
+            )
             ProductosTabRow(selected = state.tab, onSelect = viewModel::selectTab)
             when (state.tab) {
                 ProductosTab.PRODUCTOS -> ProductsTabContent(
@@ -153,6 +158,7 @@ fun ProductosScreen(
         ProductFormDialog(
             form = state.productForm,
             categories = state.categories,
+            preparationAreas = state.preparationAreas,
             modifierGroups = state.modifierGroups,
             tenantBaseUrl = viewModel.tenantBaseUrl,
             showMoreOptions = state.showMoreOptions,
@@ -376,9 +382,9 @@ private fun ProductRow(
                     product.categoryName?.let {
                         Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                     }
-                    product.preparationArea?.let {
+                    product.preparationArea?.name?.let {
                         Text(
-                            PreparationArea.fromApi(it).label,
+                            it,
                             style = MaterialTheme.typography.labelSmall,
                             color = BendeyColors.OnSurfaceVariant,
                         )
@@ -465,6 +471,7 @@ private fun CategoriesTabContent(
 private fun ProductFormDialog(
     form: ProductFormInput,
     categories: List<CategoryItem>,
+    preparationAreas: List<PreparationAreaItem>,
     modifierGroups: List<com.bendey.restaurant.core.domain.catalog.ModifierGroup>,
     tenantBaseUrl: String?,
     showMoreOptions: Boolean,
@@ -516,14 +523,16 @@ private fun ProductFormDialog(
             label = "Categoría",
             placeholder = "Buscar categoría…",
         )
-        BendeySimpleSelect(
-            options = PreparationArea.entries.map { BendeyOption(it.name, it.label) },
-            selectedValue = form.preparationArea.name,
-            onSelect = { value ->
-                val area = PreparationArea.entries.firstOrNull { it.name == value } ?: PreparationArea.NONE
-                onFormChange { it.copy(preparationArea = area) }
-            },
+        val preparationAreaOptions = remember(preparationAreas) {
+            listOf(BendeySelectOption(-1, "Sin área")) +
+                preparationAreas.filter { it.active }.map { BendeySelectOption(it.id, it.name) }
+        }
+        BendeySearchableSelect(
+            options = preparationAreaOptions,
+            selectedId = form.preparationAreaId ?: -1,
+            onSelect = { id -> onFormChange { it.copy(preparationAreaId = if (id == -1) null else id) } },
             label = "Área de preparación",
+            placeholder = "Buscar área…",
         )
         BendeySimpleSelect(
             options = IgvAffectation.entries.map { BendeyOption(it.code, it.label) },

@@ -45,9 +45,13 @@ import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.ComboSlot
 import com.bendey.restaurant.core.domain.catalog.ComboSlotOption
 import com.bendey.restaurant.core.domain.catalog.ComboType
+import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
+import com.bendey.restaurant.core.domain.pos.COMBO_QUANTITY_MODE_HELP
 import com.bendey.restaurant.core.domain.catalog.usesFixed
 import com.bendey.restaurant.core.domain.catalog.usesSlots
 import com.bendey.restaurant.core.domain.products.ProductItem
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -440,6 +444,28 @@ private fun SlotCard(
                 },
                 "Nombre del slot *",
             )
+            BendeySimpleSelect(
+                options = ModifierSelectionMode.entries.map { BendeyOption(it.apiValue, it.label) },
+                selectedValue = slot.selectionMode.apiValue,
+                onSelect = { value ->
+                    val mode = ModifierSelectionMode.entries.firstOrNull { it.apiValue == value } ?: return@BendeySimpleSelect
+                    onFormChange { state ->
+                        state.copy(
+                            slots = state.slots.mapIndexed { i, current ->
+                                if (i == slotIndex) current.copy(selectionMode = mode) else current
+                            },
+                        )
+                    }
+                },
+                label = "Modo de selección",
+            )
+            if (slot.selectionMode == ModifierSelectionMode.QUANTITY) {
+                Text(
+                    COMBO_QUANTITY_MODE_HELP,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BendeyColors.Warning,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
                     slot.minPick.toString(),

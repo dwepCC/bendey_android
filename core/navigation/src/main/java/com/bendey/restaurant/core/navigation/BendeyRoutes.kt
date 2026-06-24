@@ -20,6 +20,7 @@ object BendeyRoutes {
     const val PRODUCTOS = "productos"
     const val CLIENTES = "clientes"
     const val MODIFICADORES = "modificadores"
+    const val AREAS_PREPARACION = "areas_preparacion"
     const val COMBOS = "combos"
     const val CONFIGURACION = "configuracion"
     const val REPARTIDORES = "repartidores"
@@ -38,7 +39,7 @@ object BendeyRoutes {
 
     private val managementRoutes = setOf(
         CAJA, VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES,
-        MODIFICADORES, COMBOS, MESAS_ADMIN,
+        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN,
     )
 
     fun showsBottomBar(route: String?): Boolean {

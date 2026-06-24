@@ -11,7 +11,7 @@ interface PosRepository {
         page: Int,
         branchId: Int?,
         catalogOnly: Boolean? = null,
-        preparationArea: String? = null,
+        preparationAreaId: Int? = null,
     ): AppResult<Pair<List<PosProduct>, Int>>
 
     suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult>

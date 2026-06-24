@@ -10,6 +10,7 @@ import com.bendey.restaurant.core.network.dto.DocumentSeriesDto
 import com.bendey.restaurant.core.network.dto.SeriesCreateRequestDto
 import com.bendey.restaurant.core.network.dto.SeriesUpdateRequestDto
 import com.bendey.restaurant.core.domain.catalog.ComboBranchSetting
+import com.bendey.restaurant.core.domain.catalog.ComboResolveResult
 import com.bendey.restaurant.core.domain.catalog.ComboFixedItem
 import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.ComboItem
@@ -33,6 +34,9 @@ import com.bendey.restaurant.core.domain.catalog.ModifierGroupFormInput
 import com.bendey.restaurant.core.domain.catalog.ModifierOption
 import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaFormInput
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.catalog.RestaurantSettings
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
@@ -41,6 +45,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.network.api.CombosApi
 import com.bendey.restaurant.core.network.api.DeliveryApi
 import com.bendey.restaurant.core.network.api.ModifierGroupsApi
+import com.bendey.restaurant.core.network.api.PreparationAreasApi
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.domain.catalog.StaffCreateFormInput
 import com.bendey.restaurant.core.domain.catalog.StaffEditFormInput
@@ -61,6 +66,9 @@ import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryDriverDto
 import com.bendey.restaurant.core.network.dto.DeliveryDriverUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaStatusRequestDto
+import com.bendey.restaurant.core.network.dto.PreparationAreaUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ModifierOptionDto
@@ -97,6 +105,37 @@ class ModifiersRepositoryImpl @Inject constructor(
 }
 
 @Singleton
+class PreparationAreasRepositoryImpl @Inject constructor(
+    private val tenantRetrofitProvider: TenantRetrofitProvider,
+) : PreparationAreasRepository {
+
+    private val api: PreparationAreasApi
+        get() = tenantRetrofitProvider.create()
+
+    override suspend fun listPreparationAreas(activeOnly: Boolean): AppResult<List<PreparationAreaItem>> =
+        catalogApiCall {
+            api.listPreparationAreas(activeOnly = if (activeOnly) "true" else "false")
+                .data
+                .map { it.toDomain() }
+                .sortedWith(compareBy({ it.sortOrder }, { it.name.lowercase() }))
+        }
+
+    override suspend fun createPreparationArea(input: PreparationAreaFormInput): AppResult<PreparationAreaItem> =
+        catalogApiCall {
+            api.createPreparationArea(input.toDto()).data.toDomain()
+        }
+
+    override suspend fun updatePreparationArea(id: Int, input: PreparationAreaFormInput): AppResult<Unit> =
+        catalogApiCall {
+            api.updatePreparationArea(id, input.toDto())
+        }
+
+    override suspend fun setPreparationAreaStatus(id: Int, active: Boolean): AppResult<Unit> = catalogApiCall {
+        api.setPreparationAreaStatus(id, PreparationAreaStatusRequestDto(active = active))
+    }
+}
+
+@Singleton
 class CombosRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
 ) : CombosRepository {
@@ -126,7 +165,7 @@ class CombosRepositoryImpl @Inject constructor(
         api.getCombo(id).data.toFormInput()
     }
 
-    override suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<Double> =
+    override suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<ComboResolveResult> =
         catalogApiCall {
             val response = api.resolveCombo(
                 id,
@@ -135,10 +174,19 @@ class CombosRepositoryImpl @Inject constructor(
                     comboConfigJson = comboConfigJson.ifBlank { "{}" },
                 ),
             )
-            response.unitPrice ?: response.data?.let { dto ->
-                // fallback if only data returned
-                0.0
-            } ?: 0.0
+            val snapshot = response.data
+            val unitPrice = response.unitPrice
+                ?: snapshot?.unitPrice
+                ?: 0.0
+            val summaryLines = snapshot?.components.orEmpty().map { comp ->
+                com.bendey.restaurant.core.domain.pos.ComboSnapshotComponentInput(
+                    productName = comp.productName,
+                    presentationName = comp.presentationName,
+                    quantity = comp.quantity,
+                    modifiersJson = comp.modifiersJson,
+                )
+            }.let { com.bendey.restaurant.core.domain.pos.formatSnapshotComponentLines(it) }
+            ComboResolveResult(unitPrice = unitPrice, summaryLines = summaryLines)
         }
 
     override suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem> = catalogApiCall {
@@ -393,6 +441,27 @@ private fun DocumentSeriesDto.toDocumentSeries(): DocumentSeries {
     )
 }
 
+private fun PreparationAreaDto.toDomain() = PreparationAreaItem(
+    id = id,
+    name = name,
+    description = description,
+    color = color,
+    estimatedMinutes = estimatedMinutes,
+    sortOrder = sortOrder,
+    active = active,
+)
+
+private fun PreparationAreaFormInput.toDto(): PreparationAreaUpsertRequestDto {
+    return PreparationAreaUpsertRequestDto(
+        name = name.trim(),
+        description = description.trim(),
+        color = color.trim().ifBlank { "#3B82F6" },
+        estimatedMinutes = estimatedMinutes.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+        sortOrder = sortOrder.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+        active = active,
+    )
+}
+
 private fun ModifierGroupDto.toDomain() = ModifierGroup(
     id = id,
     name = name,
@@ -458,6 +527,7 @@ private fun ComboDto.toFormInput() = ComboFormInput(
             name = slot.name,
             minPick = slot.minPick,
             maxPick = slot.maxPick,
+            selectionMode = ModifierSelectionMode.fromComboSlotApi(slot.selectionMode),
             options = slot.options.map { option ->
                 ComboSlotOption(
                     id = option.id,
@@ -500,6 +570,7 @@ private fun ComboFormInput.toDto(): ComboUpsertRequestDto {
                 name = slot.name.trim(),
                 minPick = slot.minPick.coerceAtLeast(1),
                 maxPick = slot.maxPick.coerceAtLeast(1),
+                selectionMode = slot.selectionMode.apiValue,
                 sortOrder = slotIndex,
                 options = slot.options
                     .filter { it.productId > 0 }

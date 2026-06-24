@@ -17,14 +17,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.ComboSlot
-import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
+import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
 import com.bendey.restaurant.core.domain.pos.CartModifierEntry
 import com.bendey.restaurant.core.domain.pos.ComboSlotSelection
+import com.bendey.restaurant.core.domain.pos.canDecrease
+import com.bendey.restaurant.core.domain.pos.canIncrease
+import com.bendey.restaurant.core.domain.pos.formatSlotQuantityStatus
+import com.bendey.restaurant.core.domain.pos.selectionPickQuantity
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.domain.pos.calcUnitPriceWithModifiers
@@ -50,6 +56,9 @@ fun PosCatalogTabRow(
                 selected = selected == tab,
                 onClick = { onSelect(tab) },
                 label = { Text(tab.label) },
+                colors = BendeyChipDefaults.posFilterChipColors(),
+                shape = BendeyShapeTokens.chip,
+                border = null,
             )
         }
     }
@@ -90,6 +99,9 @@ fun ProductConfigureDialog(
                             selected = picked,
                             onClick = { onSelectPresentation(pres) },
                             label = { Text("${pres.name} · ${currency.format(pres.salePrice)}") },
+                            colors = BendeyChipDefaults.posFilterChipColors(),
+                            shape = BendeyShapeTokens.chip,
+                            border = null,
                         )
                     }
                 }
@@ -123,6 +135,9 @@ fun ProductConfigureDialog(
                                     val extra = if (opt.extraPrice > 0) " +${currency.format(opt.extraPrice)}" else ""
                                     Text("${opt.name}$extra")
                                 },
+                                colors = BendeyChipDefaults.posFilterChipColors(),
+                                shape = BendeyShapeTokens.chip,
+                                border = null,
                             )
                         }
                     }
@@ -154,6 +169,7 @@ fun ComboConfigureDialog(
     onToggleComponentModifier: (Int, ModifierGroup, Int) -> Unit = { _, _, _ -> },
     onSelectComponentPresentation: (Int, ProductPresentation) -> Unit = { _, _ -> },
     onToggleSlot: (ComboSlot, Int) -> Unit,
+    onSetSlotQuantity: (ComboSlot, Int, Int) -> Unit = { _, _, _ -> },
     onKitchenNoteChange: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
@@ -179,19 +195,59 @@ fun ComboConfigureDialog(
                     }
                 }
                 form?.slots?.forEach { slot ->
-                    Text(slot.name, style = MaterialTheme.typography.labelLarge)
+                    val slotId = slot.id ?: 0
+                    val mode = slot.selectionMode
+                    Text(slot.name, style = MaterialTheme.typography.labelLarge, color = BendeyColors.OnSurface)
+                    if (mode == ModifierSelectionMode.QUANTITY) {
+                        val status = formatSlotQuantityStatus(slot, selections)
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(status.prompt, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                            Text(status.progress, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                            status.hint?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (status.complete) BendeyColors.Success else BendeyColors.Warning,
+                                )
+                            }
+                        }
+                    }
                     slot.options.forEach { opt ->
                         val optionId = opt.id ?: return@forEach
-                        val picked = selections.any { it.slotId == (slot.id ?: 0) && it.optionId == optionId }
-                        FilterChip(
-                            selected = picked,
-                            onClick = { onToggleSlot(slot, optionId) },
-                            label = {
-                                val label = opt.productName ?: componentProductNames[opt.productId] ?: "Opción $optionId"
-                                val upgrade = if (opt.upgradePrice > 0) " +${currency.format(opt.upgradePrice)}" else ""
-                                Text("$label$upgrade")
-                            },
-                        )
+                        val picked = selections.firstOrNull { it.slotId == slotId && it.optionId == optionId }
+                        val label = opt.productName ?: componentProductNames[opt.productId] ?: "Opción $optionId"
+                        val upgrade = if (opt.upgradePrice > 0) " +${currency.format(opt.upgradePrice)}" else ""
+                        if (mode == ModifierSelectionMode.QUANTITY) {
+                            val qty = picked?.let { selectionPickQuantity(it) } ?: 0
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("$label$upgrade", color = BendeyColors.OnSurface)
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextButton(
+                                        onClick = { onSetSlotQuantity(slot, optionId, qty - 1) },
+                                        enabled = canDecrease(qty),
+                                    ) { Text("-") }
+                                    Text(qty.toString())
+                                    TextButton(
+                                        onClick = { onSetSlotQuantity(slot, optionId, qty + 1) },
+                                        enabled = canIncrease(slot, selections),
+                                    ) { Text("+") }
+                                }
+                            }
+                        } else {
+                            val selected = picked != null
+                            FilterChip(
+                                selected = selected,
+                                onClick = { onToggleSlot(slot, optionId) },
+                                label = { Text("$label$upgrade") },
+                                colors = BendeyChipDefaults.posFilterChipColors(),
+                                shape = BendeyShapeTokens.chip,
+                                border = null,
+                            )
+                        }
                     }
                 }
                 configuredProductIds.forEach { productId ->
@@ -210,6 +266,9 @@ fun ComboConfigureDialog(
                                 selected = picked,
                                 onClick = { onSelectComponentPresentation(productId, pres) },
                                 label = { Text("${pres.name} · ${currency.format(pres.salePrice)}") },
+                                colors = BendeyChipDefaults.posFilterChipColors(),
+                                shape = BendeyShapeTokens.chip,
+                                border = null,
                             )
                         }
                     }
@@ -227,6 +286,9 @@ fun ComboConfigureDialog(
                                     val extra = if (opt.extraPrice > 0) " +${currency.format(opt.extraPrice)}" else ""
                                     Text("${opt.name}$extra")
                                 },
+                                colors = BendeyChipDefaults.posFilterChipColors(),
+                                shape = BendeyShapeTokens.chip,
+                                border = null,
                             )
                         }
                     }

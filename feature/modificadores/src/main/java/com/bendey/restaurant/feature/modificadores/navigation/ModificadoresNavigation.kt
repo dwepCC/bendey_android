@@ -8,12 +8,14 @@ import com.bendey.restaurant.feature.modificadores.ModificadoresScreen
 fun NavGraphBuilder.modificadoresGraph(
     onBack: () -> Unit = {},
     onOpenProductos: () -> Unit = {},
+    onOpenAreasPreparacion: () -> Unit = {},
     onOpenCombos: () -> Unit = {},
 ) {
     composable(BendeyRoutes.MODIFICADORES) {
         ModificadoresScreen(
             onBack = onBack,
             onOpenProductos = onOpenProductos,
+            onOpenAreasPreparacion = onOpenAreasPreparacion,
             onOpenCombos = onOpenCombos,
         )
     }

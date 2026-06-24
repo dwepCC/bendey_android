@@ -1,6 +1,9 @@
 package com.bendey.restaurant.core.data.kitchen
 
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.normalizePreparationAreaName
+import com.bendey.restaurant.core.domain.pos.formatKitchenComponentDisplay
+import com.bendey.restaurant.core.domain.pos.groupSelections
+import com.bendey.restaurant.core.domain.pos.snapshotComponentsToSummaryItems
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
 import kotlinx.serialization.json.Json
@@ -78,26 +81,48 @@ private fun comandaToRoutingLines(item: KitchenItem): List<RoutingLine> {
             if (components.isNotEmpty()) {
                 val lines = mutableListOf<RoutingLine>()
                 val headerByArea = mutableSetOf<String>()
-                for (comp in components) {
-                    val label = comp.presentationName?.let { "${comp.productName} ($it)" } ?: comp.productName
-                    if (label.isBlank()) continue
-                    val area = componentPreparationArea(comp, item.preparationArea)
-                    val areaKey = normalizePreparationAreaKey(area)
+                val lineQty = if (item.quantity > 0) item.quantity else 1.0
+                val grouped = groupSelections(
+                    snapshotComponentsToSummaryItems(
+                        components.map {
+                            com.bendey.restaurant.core.domain.pos.ComboSnapshotComponentInput(
+                                productName = it.productName,
+                                presentationName = it.presentationName,
+                                quantity = it.quantity,
+                                modifiersJson = it.modifiersJson,
+                            )
+                        },
+                    ),
+                )
+                for (group in grouped) {
+                    val matching = components.firstOrNull { comp ->
+                        val label = comp.presentationName?.let { "${comp.productName} ($it)" } ?: comp.productName
+                        label.trim() == group.optionName
+                    } ?: components.first()
+                    val area = componentPreparationArea(matching, item.preparationArea)
+                    val areaKey = normalizePreparationAreaKey(area) ?: "__default__"
                     if (headerByArea.add(areaKey)) {
                         lines += RoutingLine(
                             productName = header,
-                            quantity = item.quantity,
+                            quantity = lineQty,
                             notes = item.notes,
                             modifierLines = emptyList(),
                             preparationArea = area,
                             isComboHeader = true,
                         )
                     }
+                    val display = formatKitchenComponentDisplay(group.optionName, group.quantity, lineQty)
                     lines += RoutingLine(
-                        productName = "  - ${label.trim()}",
-                        quantity = comp.quantity * item.quantity,
+                        productName = "  - ${display.displayName}",
+                        quantity = display.displayQuantity,
                         notes = null,
-                        modifierLines = parseModifierLines(comp.modifiersJson),
+                        modifierLines = components
+                            .filter { comp ->
+                                val label = comp.presentationName?.let { "${comp.productName} ($it)" } ?: comp.productName
+                                label.trim() == group.optionName
+                            }
+                            .flatMap { parseModifierLines(it.modifiersJson) }
+                            .distinct(),
                         preparationArea = area,
                         isComboComponent = true,
                     )
@@ -137,8 +162,8 @@ private fun parseComboComponents(obj: JsonObject): List<ComboSnapshotComponent> 
 
 private fun componentPreparationArea(comp: ComboSnapshotComponent, comandaArea: String?): String {
     val fromComp = comp.preparationArea?.trim().orEmpty()
-    if (fromComp.isNotBlank()) return fromComp
-    return comandaArea?.trim().orEmpty().ifBlank { PreparationArea.COCINA.apiValue }
+    if (fromComp.isNotBlank()) return normalizePreparationAreaName(fromComp).orEmpty()
+    return normalizePreparationAreaName(comandaArea).orEmpty()
 }
 
 private fun parseModifierLines(json: String?): List<String> {

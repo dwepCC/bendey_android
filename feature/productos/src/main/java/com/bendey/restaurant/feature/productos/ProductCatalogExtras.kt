@@ -51,12 +51,14 @@ import java.io.ByteArrayOutputStream
 @Composable
 fun ProductCatalogSectionNav(
     onOpenModificadores: () -> Unit,
+    onOpenAreasPreparacion: () -> Unit = {},
     onOpenCombos: () -> Unit,
 ) {
     CatalogSectionNav(
         current = CatalogSection.PRODUCTOS,
         onOpenProductos = {},
         onOpenModificadores = onOpenModificadores,
+        onOpenAreasPreparacion = onOpenAreasPreparacion,
         onOpenCombos = onOpenCombos,
     )
 }

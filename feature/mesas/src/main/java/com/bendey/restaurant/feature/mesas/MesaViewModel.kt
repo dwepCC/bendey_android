@@ -26,10 +26,12 @@ import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.CombosRepository
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.pos.allComboFormProductIds
 import com.bendey.restaurant.core.domain.pos.appendCartLine
 import com.bendey.restaurant.core.domain.pos.buildComboConfigJson
 import com.bendey.restaurant.core.domain.pos.buildComboConfigureKey
@@ -49,9 +51,11 @@ import com.bendey.restaurant.core.domain.pos.modifierSummaryText
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
+import com.bendey.restaurant.core.domain.pos.productNamesFromCatalog
 import com.bendey.restaurant.core.domain.pos.productNeedsConfiguration
 import com.bendey.restaurant.core.domain.pos.selectPresentation
 import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
+import com.bendey.restaurant.core.domain.pos.setSlotOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleSlotOption
 import com.bendey.restaurant.core.domain.pos.validateModifierSelection
 import com.bendey.restaurant.core.domain.pos.validateSlotSelections
@@ -339,6 +343,7 @@ class MesaViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
                     }
+                    loadComboProductNames(result.data)
                     loadComboComponentModifierGroups()
                 }
                 is AppResult.Error -> _uiState.update {
@@ -357,6 +362,14 @@ class MesaViewModel @Inject constructor(
         _uiState.update { state ->
             val cfg = state.comboConfigure ?: return@update state
             state.copy(comboConfigure = cfg.copy(selections = toggleSlotOption(cfg.selections, slot, optionId), error = null))
+        }
+        previewComboPrice()
+        loadComboComponentModifierGroups()
+    }
+    fun setComboSlotQuantity(slot: com.bendey.restaurant.core.domain.catalog.ComboSlot, optionId: Int, quantity: Int) {
+        _uiState.update { state ->
+            val cfg = state.comboConfigure ?: return@update state
+            state.copy(comboConfigure = cfg.copy(selections = setSlotOptionQuantity(cfg.selections, slot, optionId, quantity), error = null))
         }
         previewComboPrice()
         loadComboComponentModifierGroups()
@@ -388,6 +401,29 @@ class MesaViewModel @Inject constructor(
         }
         previewComboPrice()
     }
+    private fun loadComboProductNames(form: ComboFormInput) {
+        viewModelScope.launch {
+            val allIds = allComboFormProductIds(form)
+            if (allIds.isEmpty()) return@launch
+            val namesMap = productNamesFromCatalog(allIds, _uiState.value.products).toMutableMap()
+            for (productId in allIds) {
+                if (namesMap.containsKey(productId)) continue
+                when (val detail = productsRepository.getProductDetail(productId)) {
+                    is AppResult.Success -> namesMap[productId] = detail.data.toFormInput().name
+                    else -> Unit
+                }
+            }
+            _uiState.update { state ->
+                val cfg = state.comboConfigure ?: return@update state
+                state.copy(
+                    comboConfigure = cfg.copy(
+                        componentProductNames = cfg.componentProductNames + namesMap,
+                    ),
+                )
+            }
+        }
+    }
+
     private fun loadComboComponentModifierGroups() {
         viewModelScope.launch {
             val cfg = _uiState.value.comboConfigure ?: return@launch
@@ -398,7 +434,6 @@ class MesaViewModel @Inject constructor(
                     it.copy(
                         comboConfigure = it.comboConfigure?.copy(
                             componentModifierGroups = emptyMap(),
-                            componentProductNames = emptyMap(),
                             componentPresentations = emptyMap(),
                         ),
                     )
@@ -442,11 +477,12 @@ class MesaViewModel @Inject constructor(
                     else -> Unit
                 }
             }
-            _uiState.update {
-                it.copy(
-                    comboConfigure = it.comboConfigure?.copy(
+            _uiState.update { state ->
+                val current = state.comboConfigure ?: return@update state
+                state.copy(
+                    comboConfigure = current.copy(
                         componentModifierGroups = groupsMap,
-                        componentProductNames = namesMap,
+                        componentProductNames = current.componentProductNames + namesMap,
                         componentPresentations = presentationsMap,
                     ),
                 )
@@ -466,7 +502,7 @@ class MesaViewModel @Inject constructor(
             )
             when (val result = combosRepository.resolveCombo(cfg.combo.id, branchId, configJson)) {
                 is AppResult.Success -> _uiState.update {
-                    it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data))
+                    it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data.unitPrice))
                 }
                 else -> Unit
             }
@@ -504,14 +540,15 @@ class MesaViewModel @Inject constructor(
             return
         }
         val configJson = buildComboConfigJson(config)
-        val unitPrice = knownPrice ?: when (val resolved = combosRepository.resolveCombo(combo.id, branchId, configJson)) {
-            is AppResult.Success -> resolved.data
+        val resolved = when (val result = combosRepository.resolveCombo(combo.id, branchId, configJson)) {
+            is AppResult.Success -> result.data
             is AppResult.Error -> {
-                _uiState.update { it.copy(error = resolved.message) }
+                _uiState.update { it.copy(error = result.message) }
                 return
             }
             AppResult.Loading -> return
         }
+        val unitPrice = knownPrice ?: resolved.unitPrice
         val line = PosCartLine(
             cartKey = buildComboConfigureKey(combo.id, config, notes, unitPrice),
             product = PosProduct(
@@ -530,6 +567,7 @@ class MesaViewModel @Inject constructor(
             unitPrice = unitPrice,
             comboId = combo.id,
             comboConfigJson = configJson,
+            comboSummaryLines = resolved.summaryLines,
         )
         cartFeedback.playAddToCart()
         _uiState.update { it.copy(cart = appendCartLine(it.cart, line)) }

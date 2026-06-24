@@ -97,6 +97,7 @@ data class PosCartLine(
     val comboId: Int? = null,
     val comboConfigJson: String? = null,
     val subtitle: String? = null,
+    val comboSummaryLines: List<String> = emptyList(),
 ) {
     val key: String get() = cartKey.ifBlank { "p-${product.id}" }
     val effectiveUnitPrice: Double get() = unitPrice ?: product.salePrice

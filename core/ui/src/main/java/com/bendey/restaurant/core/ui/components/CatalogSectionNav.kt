@@ -18,6 +18,7 @@ fun CatalogSectionNav(
     current: CatalogSection,
     onOpenProductos: () -> Unit,
     onOpenModificadores: () -> Unit,
+    onOpenAreasPreparacion: () -> Unit = {},
     onOpenCombos: () -> Unit,
 ) {
     Row(
@@ -38,6 +39,12 @@ fun CatalogSectionNav(
             onClick = onOpenModificadores,
             enabled = current != CatalogSection.MODIFICADORES,
             label = { Text(CatalogSection.MODIFICADORES.label) },
+        )
+        FilterChip(
+            selected = current == CatalogSection.AREAS_PREPARACION,
+            onClick = onOpenAreasPreparacion,
+            enabled = current != CatalogSection.AREAS_PREPARACION,
+            label = { Text(CatalogSection.AREAS_PREPARACION.label) },
         )
         FilterChip(
             selected = current == CatalogSection.COMBOS,

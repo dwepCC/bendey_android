@@ -55,6 +55,7 @@ import com.bendey.restaurant.feature.printing.navigation.printingGraph
 import com.bendey.restaurant.feature.clientes.navigation.clientesGraph
 import com.bendey.restaurant.feature.combos.navigation.combosGraph
 import com.bendey.restaurant.feature.configuracion.navigation.configuracionGraph
+import com.bendey.restaurant.feature.areaspreparacion.navigation.areasPreparacionGraph
 import com.bendey.restaurant.feature.modificadores.navigation.modificadoresGraph
 import com.bendey.restaurant.feature.productos.navigation.productosGraph
 import com.bendey.restaurant.feature.repartidores.navigation.repartidoresGraph
@@ -302,6 +303,9 @@ private fun MainShell(
                 onOpenModificadores = {
                     mainNavController.navigate(BendeyRoutes.MODIFICADORES) { launchSingleTop = true }
                 },
+                onOpenAreasPreparacion = {
+                    mainNavController.navigate(BendeyRoutes.AREAS_PREPARACION) { launchSingleTop = true }
+                },
                 onOpenCombos = {
                     mainNavController.navigate(BendeyRoutes.COMBOS) { launchSingleTop = true }
                 },
@@ -311,6 +315,21 @@ private fun MainShell(
                 onBack = { mainNavController.popBackStack() },
                 onOpenProductos = {
                     mainNavController.navigate(TopLevelDestination.PRODUCTOS.route) { launchSingleTop = true }
+                },
+                onOpenAreasPreparacion = {
+                    mainNavController.navigate(BendeyRoutes.AREAS_PREPARACION) { launchSingleTop = true }
+                },
+                onOpenCombos = {
+                    mainNavController.navigate(BendeyRoutes.COMBOS) { launchSingleTop = true }
+                },
+            )
+            areasPreparacionGraph(
+                onBack = { mainNavController.popBackStack() },
+                onOpenProductos = {
+                    mainNavController.navigate(TopLevelDestination.PRODUCTOS.route) { launchSingleTop = true }
+                },
+                onOpenModificadores = {
+                    mainNavController.navigate(BendeyRoutes.MODIFICADORES) { launchSingleTop = true }
                 },
                 onOpenCombos = {
                     mainNavController.navigate(BendeyRoutes.COMBOS) { launchSingleTop = true }
@@ -323,6 +342,9 @@ private fun MainShell(
                 },
                 onOpenModificadores = {
                     mainNavController.navigate(BendeyRoutes.MODIFICADORES) { launchSingleTop = true }
+                },
+                onOpenAreasPreparacion = {
+                    mainNavController.navigate(BendeyRoutes.AREAS_PREPARACION) { launchSingleTop = true }
                 },
             )
             configuracionGraph(

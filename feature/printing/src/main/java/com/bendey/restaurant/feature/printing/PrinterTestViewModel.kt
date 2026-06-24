@@ -7,7 +7,10 @@ import com.bendey.restaurant.core.data.printer.PrinterSettings
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
+import com.bendey.restaurant.core.domain.catalog.normalizedName
+import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.platform.printing.escpos.ComandaItem
 import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
@@ -42,6 +45,7 @@ data class PrinterTestUiState(
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
     val comandasByArea: Map<String, PrinterSlotConfig> = emptyMap(),
+    val preparationAreas: List<PreparationAreaItem> = emptyList(),
     val editingAreaKey: String? = null,
     val pairedDevices: List<BluetoothDeviceInfo> = emptyList(),
     val loading: Boolean = false,
@@ -53,6 +57,7 @@ data class PrinterTestUiState(
 class PrinterTestViewModel @Inject constructor(
     private val printerRepository: PrinterRepository,
     private val printerPreferencesStore: PrinterPreferencesStore,
+    private val preparationAreasRepository: PreparationAreasRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PrinterTestUiState())
@@ -65,6 +70,11 @@ class PrinterTestViewModel @Inject constructor(
         viewModelScope.launch {
             cachedSettings = printerPreferencesStore.settings.first()
             applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
+            when (val result = preparationAreasRepository.listPreparationAreas(activeOnly = true)) {
+                is com.bendey.restaurant.core.domain.model.AppResult.Success ->
+                    _uiState.update { it.copy(preparationAreas = result.data) }
+                else -> Unit
+            }
         }
     }
 
@@ -189,7 +199,7 @@ class PrinterTestViewModel @Inject constructor(
                     waiterName = "Maria Lopez",
                     items = listOf(
                         ComandaItem(
-                            productName = PreparationArea.fromApi(areaKey).label,
+                            productName = preparationAreaDisplayLabel(areaKey),
                             quantity = 1.0,
                             notes = "Prueba área",
                         ),

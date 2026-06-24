@@ -1,15 +1,11 @@
 package com.bendey.restaurant.core.domain.restaurant
 
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.normalizePreparationAreaName
 
-fun normalizePreparationAreaKey(area: String?): String {
-    val raw = area?.trim().orEmpty()
-    if (raw.isBlank()) return PreparationArea.COCINA.apiValue
-    return PreparationArea.fromApi(raw).apiValue
-}
+fun normalizePreparationAreaKey(area: String?): String? = normalizePreparationAreaName(area)
 
 fun collectPreparationAreas(items: List<KitchenItem>): List<String> =
-    items.mapNotNull { it.preparationArea?.let(::normalizePreparationAreaKey) }
+    items.mapNotNull { normalizePreparationAreaKey(it.preparationArea) }
         .distinct()
         .sorted()
 

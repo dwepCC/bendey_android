@@ -26,9 +26,12 @@ import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.pos.ComboConfigureState
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
+import com.bendey.restaurant.core.domain.catalog.ComboFormInput
 import com.bendey.restaurant.core.domain.catalog.CombosRepository
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
+import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.billing.BILLING_NOT_ENABLED_MESSAGE
 import com.bendey.restaurant.core.domain.billing.checkoutContactIsValid
 import com.bendey.restaurant.core.domain.billing.filterRestaurantCheckoutSeries
@@ -43,6 +46,7 @@ import com.bendey.restaurant.core.domain.pos.setOptionQuantity
 import com.bendey.restaurant.core.domain.pos.updateCartLineNotes
 import com.bendey.restaurant.core.domain.pos.updateCartLineUnitPrice
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.pos.allComboFormProductIds
 import com.bendey.restaurant.core.domain.pos.appendCartLine
 import com.bendey.restaurant.core.domain.pos.buildComboConfigJson
 import com.bendey.restaurant.core.domain.pos.buildComboConfigureKey
@@ -60,9 +64,11 @@ import com.bendey.restaurant.core.domain.pos.modifiersToJson
 import com.bendey.restaurant.core.domain.pos.modifierSummaryText
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
+import com.bendey.restaurant.core.domain.pos.productNamesFromCatalog
 import com.bendey.restaurant.core.domain.pos.productNeedsConfiguration
 import com.bendey.restaurant.core.domain.pos.selectPresentation
 import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
+import com.bendey.restaurant.core.domain.pos.setSlotOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleSlotOption
 import com.bendey.restaurant.core.domain.pos.toOrderItemInput
 import com.bendey.restaurant.core.domain.pos.validateModifierSelection
@@ -133,7 +139,8 @@ data class PosUiState(
     val categories: List<ProductCategory> = emptyList(),
     val selectedCategoryId: Int? = null,
     val searchQuery: String = "",
-    val preparationAreaFilter: String? = null,
+    val preparationAreaFilter: Int? = null,
+    val preparationAreas: List<PreparationAreaItem> = emptyList(),
     val catalogTab: PosCatalogTab = PosCatalogTab.PRODUCTS,
     val combos: List<PosComboItem> = emptyList(),
     val productConfigure: ProductConfigureState? = null,
@@ -200,11 +207,6 @@ data class PosUiState(
         get() = calcPayableTotal(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
 
     val canCheckout: Boolean get() = canChargeOrders && checkoutRawTotal > 0 && !checkoutSubmitting && !sending
-
-    val preparationAreas: List<String>
-        get() = products.mapNotNull { it.preparationArea?.trim()?.takeIf { area -> area.isNotEmpty() } }
-            .distinct()
-            .sorted()
 }
 
 private fun roundMoney(value: Double): Double = round(value * 100.0) / 100.0
@@ -222,6 +224,7 @@ class PosViewModel @Inject constructor(
     private val productImageRepository: ProductImageRepository,
     private val productsRepository: ProductsRepository,
     private val modifiersRepository: ModifiersRepository,
+    private val preparationAreasRepository: PreparationAreasRepository,
     private val combosRepository: CombosRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -270,6 +273,10 @@ class PosViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            when (val areasResult = preparationAreasRepository.listPreparationAreas(activeOnly = true)) {
+                is AppResult.Success -> _uiState.update { it.copy(preparationAreas = areasResult.data) }
+                else -> Unit
+            }
             when (val categoriesResult = posRepository.loadCategories()) {
                 is AppResult.Error -> _uiState.update {
                     it.copy(loading = false, error = categoriesResult.message)
@@ -323,8 +330,8 @@ class PosViewModel @Inject constructor(
         }
     }
 
-    fun setPreparationAreaFilter(area: String?) {
-        _uiState.update { it.copy(preparationAreaFilter = area) }
+    fun setPreparationAreaFilter(areaId: Int?) {
+        _uiState.update { it.copy(preparationAreaFilter = areaId) }
         viewModelScope.launch {
             loadProducts(branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id)
         }
@@ -546,6 +553,7 @@ class PosViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
                     }
+                    loadComboProductNames(result.data)
                     loadComboComponentModifierGroups()
                 }
                 is AppResult.Error -> _uiState.update {
@@ -570,6 +578,16 @@ class PosViewModel @Inject constructor(
         _uiState.update { state ->
             val cfg = state.comboConfigure ?: return@update state
             val selections = toggleSlotOption(cfg.selections, slot, optionId)
+            state.copy(comboConfigure = cfg.copy(selections = selections, error = null))
+        }
+        previewComboPrice()
+        loadComboComponentModifierGroups()
+    }
+
+    fun setComboSlotQuantity(slot: com.bendey.restaurant.core.domain.catalog.ComboSlot, optionId: Int, quantity: Int) {
+        _uiState.update { state ->
+            val cfg = state.comboConfigure ?: return@update state
+            val selections = setSlotOptionQuantity(cfg.selections, slot, optionId, quantity)
             state.copy(comboConfigure = cfg.copy(selections = selections, error = null))
         }
         previewComboPrice()
@@ -605,6 +623,29 @@ class PosViewModel @Inject constructor(
         previewComboPrice()
     }
 
+    private fun loadComboProductNames(form: ComboFormInput) {
+        viewModelScope.launch {
+            val allIds = allComboFormProductIds(form)
+            if (allIds.isEmpty()) return@launch
+            val namesMap = productNamesFromCatalog(allIds, _uiState.value.products).toMutableMap()
+            for (productId in allIds) {
+                if (namesMap.containsKey(productId)) continue
+                when (val detail = productsRepository.getProductDetail(productId)) {
+                    is AppResult.Success -> namesMap[productId] = detail.data.toFormInput().name
+                    else -> Unit
+                }
+            }
+            _uiState.update { state ->
+                val cfg = state.comboConfigure ?: return@update state
+                state.copy(
+                    comboConfigure = cfg.copy(
+                        componentProductNames = cfg.componentProductNames + namesMap,
+                    ),
+                )
+            }
+        }
+    }
+
     private fun loadComboComponentModifierGroups() {
         viewModelScope.launch {
             val cfg = _uiState.value.comboConfigure ?: return@launch
@@ -615,7 +656,6 @@ class PosViewModel @Inject constructor(
                     it.copy(
                         comboConfigure = it.comboConfigure?.copy(
                             componentModifierGroups = emptyMap(),
-                            componentProductNames = emptyMap(),
                             componentPresentations = emptyMap(),
                         ),
                     )
@@ -659,11 +699,12 @@ class PosViewModel @Inject constructor(
                     else -> Unit
                 }
             }
-            _uiState.update {
-                it.copy(
-                    comboConfigure = it.comboConfigure?.copy(
+            _uiState.update { state ->
+                val current = state.comboConfigure ?: return@update state
+                state.copy(
+                    comboConfigure = current.copy(
                         componentModifierGroups = groupsMap,
-                        componentProductNames = namesMap,
+                        componentProductNames = current.componentProductNames + namesMap,
                         componentPresentations = presentationsMap,
                     ),
                 )
@@ -684,7 +725,7 @@ class PosViewModel @Inject constructor(
             )
             when (val result = combosRepository.resolveCombo(cfg.combo.id, branchId, configJson)) {
                 is AppResult.Success -> _uiState.update {
-                    it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data))
+                    it.copy(comboConfigure = it.comboConfigure?.copy(resolvedPrice = result.data.unitPrice))
                 }
                 else -> Unit
             }
@@ -725,34 +766,34 @@ class PosViewModel @Inject constructor(
             return
         }
         val configJson = buildComboConfigJson(config)
-        val unitPrice = knownPrice ?: when (val resolved = combosRepository.resolveCombo(combo.id, branchId, configJson)) {
-            is AppResult.Success -> resolved.data
+        val resolved = when (val result = combosRepository.resolveCombo(combo.id, branchId, configJson)) {
+            is AppResult.Success -> result.data
             is AppResult.Error -> {
-                _uiState.update { it.copy(error = resolved.message) }
+                _uiState.update { it.copy(error = result.message) }
                 return
             }
             AppResult.Loading -> return
         }
-        val cartKey = buildComboConfigureKey(combo.id, config, notes, unitPrice)
-        val syntheticProduct = PosProduct(
-            id = -combo.id,
-            code = "COMBO-${combo.id}",
-            name = combo.name,
-            salePrice = unitPrice,
-            categoryId = null,
-            imageUrl = combo.imageUrl,
-            igvAffectationType = null,
-            priceIncludesIgv = true,
-        )
+        val unitPrice = knownPrice ?: resolved.unitPrice
         val line = PosCartLine(
-            cartKey = cartKey,
-            product = syntheticProduct,
+            cartKey = buildComboConfigureKey(combo.id, config, notes, unitPrice),
+            product = PosProduct(
+                id = -combo.id,
+                code = "COMBO-${combo.id}",
+                name = combo.name,
+                salePrice = unitPrice,
+                categoryId = null,
+                imageUrl = combo.imageUrl,
+                igvAffectationType = null,
+                priceIncludesIgv = true,
+            ),
             quantity = 1,
             notes = notes,
             itemKind = "combo",
             unitPrice = unitPrice,
             comboId = combo.id,
             comboConfigJson = configJson,
+            comboSummaryLines = resolved.summaryLines,
         )
         cartFeedback.playAddToCart()
         _uiState.update {
@@ -812,7 +853,7 @@ class PosViewModel @Inject constructor(
                 page = 1,
                 branchId = branchId,
                 catalogOnly = true,
-                preparationArea = _uiState.value.preparationAreaFilter,
+                preparationAreaId = _uiState.value.preparationAreaFilter,
             )) {
                 is AppResult.Success -> {
                     val products = result.data.first
@@ -1625,7 +1666,7 @@ class PosViewModel @Inject constructor(
             page = 1,
             branchId = branchId,
             catalogOnly = true,
-            preparationArea = _uiState.value.preparationAreaFilter,
+            preparationAreaId = _uiState.value.preparationAreaFilter,
         )) {
             is AppResult.Success -> _uiState.update {
                 it.copy(loading = false, products = result.data.first, error = null)

@@ -4,6 +4,37 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class PreparationAreaDto(
+    val id: Int,
+    val name: String,
+    val description: String = "",
+    val color: String = "",
+    @SerialName("estimated_minutes") val estimatedMinutes: Int = 0,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    val active: Boolean = true,
+)
+
+@Serializable
+data class PreparationAreaDataResponseDto(
+    val data: PreparationAreaDto,
+)
+
+@Serializable
+data class PreparationAreaUpsertRequestDto(
+    val name: String,
+    val description: String = "",
+    val color: String = "",
+    @SerialName("estimated_minutes") val estimatedMinutes: Int = 0,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    val active: Boolean = true,
+)
+
+@Serializable
+data class PreparationAreaStatusRequestDto(
+    val active: Boolean,
+)
+
+@Serializable
 data class ProductPresentationDto(
     val id: Int? = null,
     val name: String,
@@ -119,6 +150,7 @@ data class ComboSlotDto(
     val name: String,
     @SerialName("min_pick") val minPick: Int = 1,
     @SerialName("max_pick") val maxPick: Int = 1,
+    @SerialName("selection_mode") val selectionMode: String? = null,
     @SerialName("sort_order") val sortOrder: Int? = null,
     val options: List<ComboSlotOptionDto> = emptyList(),
 )
@@ -166,14 +198,20 @@ data class ComboResolveResponseDto(
 
 @Serializable
 data class ResolvedComboSnapshotDto(
-    val name: String? = null,
-    @SerialName("component_lines") val componentLines: List<ResolvedComboLineDto> = emptyList(),
+    @SerialName("combo_id") val comboId: Int? = null,
+    @SerialName("combo_name") val comboName: String? = null,
+    @SerialName("combo_type") val comboType: String? = null,
+    @SerialName("unit_price") val unitPrice: Double? = null,
+    val components: List<ResolvedComboComponentDto> = emptyList(),
 )
 
 @Serializable
-data class ResolvedComboLineDto(
+data class ResolvedComboComponentDto(
+    @SerialName("product_id") val productId: Int? = null,
     @SerialName("product_name") val productName: String = "",
+    @SerialName("presentation_name") val presentationName: String? = null,
     val quantity: Double = 1.0,
+    @SerialName("modifiers_json") val modifiersJson: String? = null,
 )
 
 @Serializable

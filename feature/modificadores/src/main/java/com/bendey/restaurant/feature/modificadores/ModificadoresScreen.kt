@@ -59,6 +59,7 @@ import java.util.Locale
 fun ModificadoresScreen(
     onBack: () -> Unit = {},
     onOpenProductos: () -> Unit = {},
+    onOpenAreasPreparacion: () -> Unit = {},
     onOpenCombos: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ModificadoresViewModel = hiltViewModel(),
@@ -89,6 +90,7 @@ fun ModificadoresScreen(
                 current = CatalogSection.MODIFICADORES,
                 onOpenProductos = onOpenProductos,
                 onOpenModificadores = {},
+                onOpenAreasPreparacion = onOpenAreasPreparacion,
                 onOpenCombos = onOpenCombos,
             )
             state.error?.let {

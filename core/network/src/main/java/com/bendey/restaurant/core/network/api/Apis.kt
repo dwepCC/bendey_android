@@ -248,7 +248,7 @@ interface ProductsApi {
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 40,
         @Query("category_id") categoryId: Int? = null,
-        @Query("preparation_area") preparationArea: String? = null,
+        @Query("preparation_area_id") preparationAreaId: Int? = null,
         @Query("branch_id") branchId: Int? = null,
     ): ProductListResponseDto
 

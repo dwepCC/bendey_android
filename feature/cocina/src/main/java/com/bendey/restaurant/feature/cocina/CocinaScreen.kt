@@ -55,7 +55,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
-import com.bendey.restaurant.core.domain.products.PreparationArea
+import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -164,7 +164,7 @@ fun CocinaScreen(
                         FilterChip(
                             selected = state.areaFilter == area,
                             onClick = { viewModel.setAreaFilter(area) },
-                            label = { Text(PreparationArea.fromApi(area).label) },
+                            label = { Text(preparationAreaDisplayLabel(area)) },
                             colors = BendeyChipDefaults.filterChipColors(),
                             shape = BendeyShapeTokens.chip,
                             border = null,
@@ -420,7 +420,7 @@ private fun KitchenItemMetaRow(item: KitchenItem) {
     Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         item.preparationArea?.takeIf { it.isNotBlank() }?.let { area ->
             BendeyStatusChip(
-                label = PreparationArea.fromApi(area).label,
+                label = preparationAreaDisplayLabel(area),
                 accentColor = BendeyColors.AccentTeal,
             )
         }

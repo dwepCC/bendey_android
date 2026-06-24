@@ -9,11 +9,23 @@ interface ModifiersRepository {
     suspend fun deleteModifierGroup(id: Int): AppResult<Unit>
 }
 
+interface PreparationAreasRepository {
+    suspend fun listPreparationAreas(activeOnly: Boolean = false): AppResult<List<PreparationAreaItem>>
+    suspend fun createPreparationArea(input: PreparationAreaFormInput): AppResult<PreparationAreaItem>
+    suspend fun updatePreparationArea(id: Int, input: PreparationAreaFormInput): AppResult<Unit>
+    suspend fun setPreparationAreaStatus(id: Int, active: Boolean): AppResult<Unit>
+}
+
+data class ComboResolveResult(
+    val unitPrice: Double,
+    val summaryLines: List<String> = emptyList(),
+)
+
 interface CombosRepository {
     suspend fun listCombos(): AppResult<List<ComboItem>>
     suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>>
     suspend fun getCombo(id: Int): AppResult<ComboFormInput>
-    suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<Double>
+    suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<ComboResolveResult>
     suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem>
     suspend fun updateCombo(id: Int, input: ComboFormInput): AppResult<ComboItem>
     suspend fun deleteCombo(id: Int): AppResult<Unit>

@@ -47,7 +47,25 @@ data class CartModifierEntry(
     val quantity: Int = 1,
 )
 
-data class ComboSlotSelection(val slotId: Int, val optionId: Int)
+data class ComboSlotSelection(val slotId: Int, val optionId: Int, val quantity: Int = 1)
+
+const val MAX_COMBO_SLOT_PICK_QTY = 99
+
+fun selectionPickQuantity(sel: ComboSlotSelection): Int {
+    val q = sel.quantity
+    if (q <= 0) return 1
+    return q.coerceAtMost(MAX_COMBO_SLOT_PICK_QTY)
+}
+
+fun slotPickUnits(slot: com.bendey.restaurant.core.domain.catalog.ComboSlot, selections: List<ComboSlotSelection>): Int {
+    val slotId = slot.id ?: 0
+    val slotSels = selections.filter { it.slotId == slotId }
+    return if (slot.selectionMode == ModifierSelectionMode.QUANTITY) {
+        slotSels.sumOf { selectionPickQuantity(it) }
+    } else {
+        slotSels.size
+    }
+}
 
 data class ComboComponentModifier(val productId: Int, val modifiers: List<CartModifierEntry>)
 
@@ -100,8 +118,13 @@ fun buildConfigureKey(modifiers: List<CartModifierEntry>, kitchenNote: String): 
 }
 
 fun buildComboConfigJson(config: ComboCartConfig): String {
-    val selections = config.selections.joinToString(",") {
-        """{"slot_id":${it.slotId},"option_id":${it.optionId}}"""
+    val selections = config.selections.joinToString(",") { sel ->
+        val q = selectionPickQuantity(sel)
+        if (q > 1) {
+            """{"slot_id":${sel.slotId},"option_id":${sel.optionId},"quantity":$q}"""
+        } else {
+            """{"slot_id":${sel.slotId},"option_id":${sel.optionId}}"""
+        }
     }
     val componentModifiers = config.componentModifiers.joinToString(",") { cm ->
         """{"product_id":${cm.productId},"modifiers_json":${jsonString(modifiersToJson(cm.modifiers))}}"""
@@ -237,16 +260,38 @@ fun validateModifierSelection(
 }
 
 fun validateSlotSelections(slots: List<com.bendey.restaurant.core.domain.catalog.ComboSlot>, selections: List<ComboSlotSelection>): String? {
-    val bySlot = selections.groupingBy { it.slotId }.eachCount()
     for (slot in slots) {
-        val slotId = slot.id ?: 0
-        val n = bySlot[slotId] ?: 0
+        if (slot.selectionMode == ModifierSelectionMode.SINGLE) {
+            val slotId = slot.id ?: 0
+            for (sel in selections.filter { it.slotId == slotId }) {
+                if (selectionPickQuantity(sel) != 1) return "Cantidad inválida en «${slot.name}»"
+            }
+        }
+        val units = slotPickUnits(slot, selections)
         val min = slot.minPick
         val max = slot.maxPick
-        if (n < min) return "Elige al menos $min en «${slot.name}»"
-        if (max > 0 && n > max) return "Máximo $max en «${slot.name}»"
+        if (units < min) return "Elige al menos $min en «${slot.name}»"
+        if (max > 0 && units > max) return "Máximo $max en «${slot.name}»"
     }
     return null
+}
+
+fun setSlotOptionQuantity(
+    selections: List<ComboSlotSelection>,
+    slot: com.bendey.restaurant.core.domain.catalog.ComboSlot,
+    optionId: Int,
+    quantity: Int,
+): List<ComboSlotSelection> {
+    val slotId = slot.id ?: 0
+    val without = selections.filterNot { it.slotId == slotId && it.optionId == optionId }
+    val q = quantity.coerceIn(0, MAX_COMBO_SLOT_PICK_QTY)
+    if (q <= 0) return without
+    val max = slot.maxPick
+    if (max > 0) {
+        val others = without.filter { it.slotId == slotId }.sumOf { selectionPickQuantity(it) }
+        if (others + q > max) return selections
+    }
+    return without + ComboSlotSelection(slotId, optionId, q)
 }
 
 fun toggleSlotOption(
@@ -257,14 +302,14 @@ fun toggleSlotOption(
     val slotId = slot.id ?: 0
     val exists = selections.any { it.slotId == slotId && it.optionId == optionId }
     val max = slot.maxPick
-    val multi = max == 0 || max > 1
+    val multi = slot.selectionMode == ModifierSelectionMode.MULTIPLE && (max == 0 || max > 1)
     if (exists) {
         return selections.filterNot { it.slotId == slotId && it.optionId == optionId }
     }
-    val current = selections.count { it.slotId == slotId }
     return when {
-        !multi -> selections.filterNot { it.slotId == slotId } + ComboSlotSelection(slotId, optionId)
-        max > 0 && current >= max -> selections
+        slot.selectionMode == ModifierSelectionMode.SINGLE || !multi ->
+            selections.filterNot { it.slotId == slotId } + ComboSlotSelection(slotId, optionId)
+        max > 0 && selections.count { it.slotId == slotId } >= max -> selections
         else -> selections + ComboSlotSelection(slotId, optionId)
     }
 }
@@ -277,6 +322,25 @@ fun posComboFromListItem(item: com.bendey.restaurant.core.domain.catalog.ComboIt
     basePrice = item.basePrice,
     imageUrl = null,
 )
+
+fun allComboFormProductIds(form: ComboFormInput): List<Int> {
+    val ids = linkedSetOf<Int>()
+    form.fixedItems.forEach { item ->
+        if (item.productId > 0) ids.add(item.productId)
+    }
+    form.slots.forEach { slot ->
+        slot.options.forEach { option ->
+            if (option.productId > 0) ids.add(option.productId)
+        }
+    }
+    return ids.toList()
+}
+
+fun productNamesFromCatalog(productIds: Collection<Int>, catalog: List<PosProduct>): Map<Int, String> {
+    if (productIds.isEmpty() || catalog.isEmpty()) return emptyMap()
+    val byId = catalog.associateBy { it.id }
+    return productIds.mapNotNull { id -> byId[id]?.let { id to it.name } }.toMap()
+}
 
 fun selectedComboProductIds(form: ComboFormInput, selections: List<ComboSlotSelection>): List<Int> {
     val ids = linkedSetOf<Int>()
@@ -294,7 +358,7 @@ fun comboComponentModifiersList(map: Map<Int, List<CartModifierEntry>>): List<Co
     map.map { (productId, modifiers) -> ComboComponentModifier(productId, modifiers) }
 
 fun buildComboConfigureKey(comboId: Int, config: ComboCartConfig, notes: String, unitPrice: Double): String {
-    val sel = config.selections.map { "${it.slotId}:${it.optionId}" }.sorted().joinToString("|")
+    val sel = config.selections.map { "${it.slotId}:${it.optionId}:q${selectionPickQuantity(it)}" }.sorted().joinToString("|")
     val mods = config.componentModifiers
         .map { "${it.productId}:${modifiersToJson(it.modifiers)}" }
         .sorted()

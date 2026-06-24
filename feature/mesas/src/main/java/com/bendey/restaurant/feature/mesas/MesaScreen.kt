@@ -248,6 +248,7 @@ fun MesaScreen(
             onToggleComponentModifier = viewModel::toggleComboComponentModifier,
             onSelectComponentPresentation = viewModel::selectComboComponentPresentation,
             onToggleSlot = viewModel::toggleComboSlot,
+            onSetSlotQuantity = viewModel::setComboSlotQuantity,
             onKitchenNoteChange = viewModel::updateComboConfigureNote,
             onConfirm = viewModel::confirmComboConfigure,
             onDismiss = viewModel::dismissComboConfigure,
