@@ -16,4 +16,13 @@ interface ProductsRepository {
     suspend fun deleteCategory(id: Int): AppResult<Unit>
     suspend fun searchForComboEditor(query: String, page: Int = 1): AppResult<Pair<List<ProductItem>, Int>>
     suspend fun getStockSummary(productIds: List<Int>): AppResult<Map<Int, Double>>
+
+    /** Resuelve nombres por ID usando hints locales, caché en memoria y GET /products/{id} en paralelo. */
+    suspend fun resolveProductNames(
+        productIds: Collection<Int>,
+        knownNames: Map<Int, String> = emptyMap(),
+    ): AppResult<Map<Int, String>>
+
+    /** Detalle de varios productos en paralelo (modificadores / presentaciones de combo). */
+    suspend fun getProductDetails(productIds: Collection<Int>): AppResult<Map<Int, ProductDetail>>
 }

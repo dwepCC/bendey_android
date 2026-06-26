@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -177,30 +175,34 @@ fun BendeySearchableSelect(
                         modifier = Modifier.padding(8.dp),
                     )
                     HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.5f))
-                    LazyColumn(modifier = Modifier.heightIn(max = 180.dp)) {
-                        items(filtered, key = { it.id }) { option ->
-                            Text(
-                                text = option.label,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onSelect(option.id)
-                                        expanded = false
-                                        query = ""
-                                    }
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (option.id == selectedId) BendeyColors.Primary else BendeyColors.OnSurface,
-                                fontWeight = if (option.id == selectedId) FontWeight.SemiBold else FontWeight.Normal,
-                            )
-                        }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 180.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
                         if (filtered.isEmpty()) {
-                            item {
+                            Text(
+                                text = "Sin resultados",
+                                modifier = Modifier.padding(12.dp),
+                                color = BendeyColors.OnSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        } else {
+                            filtered.forEach { option ->
                                 Text(
-                                    text = "Sin resultados",
-                                    modifier = Modifier.padding(12.dp),
-                                    color = BendeyColors.OnSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = option.label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelect(option.id)
+                                            expanded = false
+                                            query = ""
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (option.id == selectedId) BendeyColors.Primary else BendeyColors.OnSurface,
+                                    fontWeight = if (option.id == selectedId) FontWeight.SemiBold else FontWeight.Normal,
                                 )
                             }
                         }

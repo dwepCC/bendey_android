@@ -69,7 +69,7 @@ class CombosViewModel @Inject constructor(
             productSearchFlow
                 .debounce(300)
                 .distinctUntilChanged()
-                .filter { _uiState.value.formOpen }
+                .filter { _uiState.value.formOpen && _uiState.value.activePicker != null }
                 .collect { query -> searchProducts(query) }
         }
     }
@@ -160,8 +160,16 @@ class CombosViewModel @Inject constructor(
     }
 
     fun openProductPicker(target: ComboProductPickerTarget) {
-        _uiState.update { it.copy(activePicker = target, productSearchQuery = "", productSearchResults = emptyList()) }
+        _uiState.update {
+            it.copy(
+                activePicker = target,
+                productSearchQuery = "",
+                productSearchResults = emptyList(),
+                productSearchLoading = true,
+            )
+        }
         productSearchFlow.value = ""
+        viewModelScope.launch { searchProducts("") }
     }
 
     fun closeProductPicker() {

@@ -5,6 +5,10 @@ import com.bendey.restaurant.core.domain.catalog.ComboType
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.products.ProductsRepository
+import com.bendey.restaurant.core.domain.products.toFormInput
+import com.bendey.restaurant.core.domain.catalog.ModifiersRepository
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import kotlin.math.round
 
@@ -470,5 +474,80 @@ fun manualCartLine(input: ManualProductInput): com.bendey.restaurant.core.domain
         itemKind = "manual",
         unitPrice = price,
         subtitle = "Manual · $igvLabel",
+    )
+}
+
+data class ComboComponentMetadata(
+    val modifierGroups: Map<Int, List<ModifierGroup>> = emptyMap(),
+    val productNames: Map<Int, String> = emptyMap(),
+    val presentations: Map<Int, List<ProductPresentation>> = emptyMap(),
+)
+
+suspend fun resolveComboComponentProductNames(
+    productsRepository: ProductsRepository,
+    form: ComboFormInput,
+    catalogProducts: List<PosProduct>,
+): Map<Int, String> {
+    val ids = allComboFormProductIds(form)
+    if (ids.isEmpty()) return emptyMap()
+    val hints = productNamesFromCatalog(ids, catalogProducts)
+    return when (val result = productsRepository.resolveProductNames(ids, hints)) {
+        is AppResult.Success -> result.data
+        else -> hints
+    }
+}
+
+suspend fun loadComboComponentMetadata(
+    productsRepository: ProductsRepository,
+    modifiersRepository: ModifiersRepository,
+    productIds: List<Int>,
+    existingNames: Map<Int, String> = emptyMap(),
+): ComboComponentMetadata {
+    if (productIds.isEmpty()) {
+        return ComboComponentMetadata(productNames = existingNames)
+    }
+    val allGroups = when (val groupsResult = modifiersRepository.listModifierGroups()) {
+        is AppResult.Success -> groupsResult.data
+        else -> emptyList()
+    }
+    val details = when (val detailsResult = productsRepository.getProductDetails(productIds)) {
+        is AppResult.Success -> detailsResult.data
+        else -> emptyMap()
+    }
+    val groupsMap = mutableMapOf<Int, List<ModifierGroup>>()
+    val namesMap = existingNames.toMutableMap()
+    val presentationsMap = mutableMapOf<Int, List<ProductPresentation>>()
+    for (productId in productIds) {
+        val detail = details[productId] ?: continue
+        val productForm = detail.toFormInput()
+        namesMap.putIfAbsent(productId, productForm.name)
+        val presentations = detail.presentations.filter { it.active && it.name.isNotBlank() }
+        if (presentations.isNotEmpty()) {
+            presentationsMap[productId] = presentations
+        }
+        val stub = PosProduct(
+            id = productId,
+            code = detail.product.code,
+            name = productForm.name,
+            salePrice = detail.product.salePrice,
+            categoryId = detail.product.categoryId,
+            imageUrl = detail.product.imageUrl,
+            igvAffectationType = detail.product.igvAffectationType,
+            priceIncludesIgv = detail.product.priceIncludesIgv,
+            hasModifiers = productForm.hasModifiers,
+            hasVariants = productForm.hasVariants,
+        )
+        if (stub.hasModifiers) {
+            groupsMap[productId] = getProductExtraGroups(
+                productForm.modifierGroupIds,
+                allGroups,
+                stub,
+            )
+        }
+    }
+    return ComboComponentMetadata(
+        modifierGroups = groupsMap,
+        productNames = namesMap,
+        presentations = presentationsMap,
     )
 }

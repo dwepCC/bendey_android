@@ -33,10 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.layout.BendeyBottomBarHeight
 import com.bendey.restaurant.core.ui.layout.BendeyBottomBarInset
 
 data class BendeyNavItem(
@@ -48,7 +50,7 @@ data class BendeyNavItem(
 
 /**
  * Barra inferior móvil: Inicio · Mesas · POS (FAB +) · Comandas · Más.
- * El botón central flotante abre el POS.
+ * El botón central flotante se superpone parcialmente a la barra, más grande que el resto.
  */
 @Composable
 fun BendeyBottomNavigationBar(
@@ -61,70 +63,75 @@ fun BendeyBottomNavigationBar(
     modifier: Modifier = Modifier,
     showCenterFab: Boolean = centerItem != null,
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(BendeyBottomBarInset)
             .navigationBarsPadding(),
     ) {
-        Surface(
+        Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = BendeyColors.Outline.copy(alpha = 0.65f),
-                    shape = BendeyShapeTokens.sheet,
-                ),
-            color = BendeyColors.Surface,
-            shadowElevation = 0.dp,
-            tonalElevation = 0.dp,
+                .height(BendeyBottomBarInset),
         ) {
-            Row(
+            Surface(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(horizontal = BendeySpacing.xxs),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
+                    .border(
+                        width = 1.dp,
+                        color = BendeyColors.Outline.copy(alpha = 0.65f),
+                        shape = BendeyShapeTokens.sheet,
+                    ),
+                color = BendeyColors.Surface,
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp,
             ) {
-                leftItems.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(BendeyBottomBarHeight)
+                        .padding(horizontal = BendeySpacing.xxs),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    leftItems.forEach { item ->
+                        BottomNavTab(
+                            selected = currentRoute == item.route,
+                            icon = item.icon,
+                            label = item.shortLabel,
+                            onClick = { onNavigate(item) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (showCenterFab && centerItem != null) {
+                        Box(modifier = Modifier.weight(1f))
+                    }
+                    rightItems.forEach { item ->
+                        BottomNavTab(
+                            selected = currentRoute == item.route,
+                            icon = item.icon,
+                            label = item.shortLabel,
+                            onClick = { onNavigate(item) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     BottomNavTab(
-                        selected = currentRoute == item.route,
-                        icon = item.icon,
-                        label = item.shortLabel,
-                        onClick = { onNavigate(item) },
+                        selected = false,
+                        icon = Icons.Default.Menu,
+                        label = "Más",
+                        onClick = onMoreClick,
                         modifier = Modifier.weight(1f),
                     )
                 }
-                if (showCenterFab && centerItem != null) {
-                    Box(modifier = Modifier.weight(1f))
-                }
-                rightItems.forEach { item ->
-                    BottomNavTab(
-                        selected = currentRoute == item.route,
-                        icon = item.icon,
-                        label = item.shortLabel,
-                        onClick = { onNavigate(item) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                BottomNavTab(
-                    selected = false,
-                    icon = Icons.Default.Menu,
-                    label = "Más",
-                    onClick = onMoreClick,
-                    modifier = Modifier.weight(1f),
+            }
+            if (showCenterFab && centerItem != null) {
+                CenterPosFab(
+                    selected = currentRoute == centerItem.route,
+                    label = centerItem.shortLabel,
+                    onClick = { onNavigate(centerItem) },
+                    modifier = Modifier.align(Alignment.TopCenter),
                 )
             }
-        }
-        if (showCenterFab && centerItem != null) {
-            CenterPosFab(
-                selected = currentRoute == centerItem.route,
-                label = centerItem.shortLabel,
-                onClick = { onNavigate(centerItem) },
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
         }
     }
 }
@@ -153,9 +160,9 @@ private fun BottomNavTab(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(vertical = BendeySpacing.xxs),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Icon(
             imageVector = icon,
@@ -168,6 +175,8 @@ private fun BottomNavTab(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -209,6 +218,8 @@ private fun CenterPosFab(
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = if (selected) BendeyColors.Primary else BendeyColors.NavInactive,
             modifier = Modifier.offset(y = BendeySpacing.xxs),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

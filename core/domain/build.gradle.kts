@@ -23,4 +23,7 @@ android {
 
 dependencies {
     implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(kotlin("test-junit"))
+    testImplementation(libs.kotlinx.coroutines.core)
 }

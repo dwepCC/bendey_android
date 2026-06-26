@@ -41,13 +41,9 @@ import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
 import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.pos.comboComponentModifiersList
+import com.bendey.restaurant.core.domain.pos.loadComboComponentMetadata
+import com.bendey.restaurant.core.domain.pos.resolveComboComponentProductNames
 import com.bendey.restaurant.core.domain.pos.selectedComboProductIds
-import com.bendey.restaurant.core.domain.pos.setOptionQuantity
-import com.bendey.restaurant.core.domain.pos.updateCartLineNotes
-import com.bendey.restaurant.core.domain.pos.updateCartLineUnitPrice
-import com.bendey.restaurant.core.domain.catalog.ProductPresentation
-import com.bendey.restaurant.core.domain.pos.allComboFormProductIds
-import com.bendey.restaurant.core.domain.pos.appendCartLine
 import com.bendey.restaurant.core.domain.pos.buildComboConfigJson
 import com.bendey.restaurant.core.domain.pos.buildComboConfigureKey
 import com.bendey.restaurant.core.domain.pos.buildConfigureKey
@@ -64,8 +60,12 @@ import com.bendey.restaurant.core.domain.pos.modifiersToJson
 import com.bendey.restaurant.core.domain.pos.modifierSummaryText
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
-import com.bendey.restaurant.core.domain.pos.productNamesFromCatalog
 import com.bendey.restaurant.core.domain.pos.productNeedsConfiguration
+import com.bendey.restaurant.core.domain.pos.setOptionQuantity
+import com.bendey.restaurant.core.domain.pos.updateCartLineNotes
+import com.bendey.restaurant.core.domain.pos.updateCartLineUnitPrice
+import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.pos.appendCartLine
 import com.bendey.restaurant.core.domain.pos.selectPresentation
 import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
 import com.bendey.restaurant.core.domain.pos.setSlotOptionQuantity
@@ -550,10 +550,21 @@ class PosViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = combosRepository.getCombo(combo.id)) {
                 is AppResult.Success -> {
+                    val form = result.data
+                    val productNames = resolveComboComponentProductNames(
+                        productsRepository = productsRepository,
+                        form = form,
+                        catalogProducts = _uiState.value.products,
+                    )
                     _uiState.update {
-                        it.copy(comboConfigure = it.comboConfigure?.copy(loading = false, form = result.data))
+                        it.copy(
+                            comboConfigure = it.comboConfigure?.copy(
+                                loading = false,
+                                form = form,
+                                componentProductNames = productNames,
+                            ),
+                        )
                     }
-                    loadComboProductNames(result.data)
                     loadComboComponentModifierGroups()
                 }
                 is AppResult.Error -> _uiState.update {
@@ -623,29 +634,6 @@ class PosViewModel @Inject constructor(
         previewComboPrice()
     }
 
-    private fun loadComboProductNames(form: ComboFormInput) {
-        viewModelScope.launch {
-            val allIds = allComboFormProductIds(form)
-            if (allIds.isEmpty()) return@launch
-            val namesMap = productNamesFromCatalog(allIds, _uiState.value.products).toMutableMap()
-            for (productId in allIds) {
-                if (namesMap.containsKey(productId)) continue
-                when (val detail = productsRepository.getProductDetail(productId)) {
-                    is AppResult.Success -> namesMap[productId] = detail.data.toFormInput().name
-                    else -> Unit
-                }
-            }
-            _uiState.update { state ->
-                val cfg = state.comboConfigure ?: return@update state
-                state.copy(
-                    comboConfigure = cfg.copy(
-                        componentProductNames = cfg.componentProductNames + namesMap,
-                    ),
-                )
-            }
-        }
-    }
-
     private fun loadComboComponentModifierGroups() {
         viewModelScope.launch {
             val cfg = _uiState.value.comboConfigure ?: return@launch
@@ -662,50 +650,19 @@ class PosViewModel @Inject constructor(
                 }
                 return@launch
             }
-            val groupsResult = modifiersRepository.listModifierGroups()
-            if (groupsResult !is AppResult.Success) return@launch
-            val groupsMap = mutableMapOf<Int, List<ModifierGroup>>()
-            val namesMap = mutableMapOf<Int, String>()
-            val presentationsMap = mutableMapOf<Int, List<ProductPresentation>>()
-            for (productId in productIds) {
-                when (val detail = productsRepository.getProductDetail(productId)) {
-                    is AppResult.Success -> {
-                        val productForm = detail.data.toFormInput()
-                        namesMap[productId] = productForm.name
-                        val presentations = detail.data.presentations.filter { it.active && it.name.isNotBlank() }
-                        if (presentations.isNotEmpty()) {
-                            presentationsMap[productId] = presentations
-                        }
-                        val stub = PosProduct(
-                            id = productId,
-                            code = "",
-                            name = productForm.name,
-                            salePrice = 0.0,
-                            categoryId = null,
-                            imageUrl = null,
-                            igvAffectationType = null,
-                            priceIncludesIgv = null,
-                            hasModifiers = productForm.hasModifiers,
-                            hasVariants = productForm.hasVariants,
-                        )
-                        if (stub.hasModifiers) {
-                            groupsMap[productId] = getProductExtraGroups(
-                                productForm.modifierGroupIds,
-                                groupsResult.data,
-                                stub,
-                            )
-                        }
-                    }
-                    else -> Unit
-                }
-            }
+            val metadata = loadComboComponentMetadata(
+                productsRepository = productsRepository,
+                modifiersRepository = modifiersRepository,
+                productIds = productIds,
+                existingNames = cfg.componentProductNames,
+            )
             _uiState.update { state ->
                 val current = state.comboConfigure ?: return@update state
                 state.copy(
                     comboConfigure = current.copy(
-                        componentModifierGroups = groupsMap,
-                        componentProductNames = current.componentProductNames + namesMap,
-                        componentPresentations = presentationsMap,
+                        componentModifierGroups = metadata.modifierGroups,
+                        componentProductNames = metadata.productNames,
+                        componentPresentations = metadata.presentations,
                     ),
                 )
             }

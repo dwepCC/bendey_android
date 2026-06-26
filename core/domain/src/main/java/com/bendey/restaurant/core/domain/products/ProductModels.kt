@@ -74,29 +74,7 @@ data class ProductFormInput(
     val imageUrl: String? = null,
     val pendingImageBytes: ByteArray? = null,
     val pendingImageMimeType: String? = null,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-        other as ProductFormInput
-        return name == other.name &&
-            code == other.code &&
-            modifierGroupIds == other.modifierGroupIds &&
-            presentations == other.presentations &&
-            imageUrl == other.imageUrl &&
-            pendingImageBytes?.contentEquals(other.pendingImageBytes) != false
-    }
-
-    override fun hashCode(): Int {
-        var result = name.hashCode()
-        result = 31 * result + code.hashCode()
-        result = 31 * result + modifierGroupIds.hashCode()
-        result = 31 * result + presentations.hashCode()
-        result = 31 * result + (imageUrl?.hashCode() ?: 0)
-        result = 31 * result + (pendingImageBytes?.contentHashCode() ?: 0)
-        return result
-    }
-}
+)
 
 data class ProductDetail(
     val product: ProductItem,

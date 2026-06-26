@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.combos
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -7,10 +8,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -332,21 +333,34 @@ private fun FixedItemCard(
                     Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
                 }
             }
-            BendeyTextField(
-                item.quantity.toString(),
-                { v -> onQuantityChange(v.replace(",", ".").toDoubleOrNull() ?: 1.0) },
-                "Cantidad",
-            )
-            ProductPickerSection(
-                open = pickerOpen,
-                query = productSearchQuery,
-                results = productSearchResults,
-                loading = productSearchLoading,
-                onOpen = onOpenPicker,
-                onClose = onClosePicker,
-                onQueryChange = onProductSearchChange,
-                onSelect = onSelectProduct,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BendeyTextField(
+                    item.quantity.toString(),
+                    { v -> onQuantityChange(v.replace(",", ".").toDoubleOrNull() ?: 1.0) },
+                    "Cant.",
+                    fillWidth = false,
+                    modifier = Modifier.widthIn(min = 72.dp, max = 96.dp),
+                )
+                TextButton(onClick = onOpenPicker, modifier = Modifier.weight(1f)) {
+                    Text(if (pickerOpen) "Buscando…" else "Buscar producto")
+                }
+            }
+            if (pickerOpen) {
+                ProductPickerSection(
+                    open = true,
+                    query = productSearchQuery,
+                    results = productSearchResults,
+                    loading = productSearchLoading,
+                    onOpen = onOpenPicker,
+                    onClose = onClosePicker,
+                    onQueryChange = onProductSearchChange,
+                    onSelect = onSelectProduct,
+                )
+            }
         }
     }
 }
@@ -466,7 +480,10 @@ private fun SlotCard(
                     color = BendeyColors.Warning,
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            ) {
                 BendeyTextField(
                     slot.minPick.toString(),
                     { value ->
@@ -591,31 +608,48 @@ private fun SlotOptionRow(
     onRemove: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
                 option.productName?.takeIf { it.isNotBlank() }
                     ?: if (option.productId > 0) "Producto #${option.productId}" else "Opción sin producto",
                 style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
             }
         }
-        BendeyTextField(
-            option.upgradePrice.toString(),
-            { v -> onUpgradeChange(v.replace(",", ".").toDoubleOrNull() ?: 0.0) },
-            "Precio adicional",
-        )
-        ProductPickerSection(
-            open = pickerOpen,
-            query = productSearchQuery,
-            results = productSearchResults,
-            loading = productSearchLoading,
-            onOpen = onOpenPicker,
-            onClose = onClosePicker,
-            onQueryChange = onProductSearchChange,
-            onSelect = onSelectProduct,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BendeyTextField(
+                option.upgradePrice.toString(),
+                { v -> onUpgradeChange(v.replace(",", ".").toDoubleOrNull() ?: 0.0) },
+                "Extra",
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onOpenPicker) {
+                Text(if (pickerOpen) "Buscando…" else "Buscar")
+            }
+        }
+        if (pickerOpen) {
+            ProductPickerSection(
+                open = true,
+                query = productSearchQuery,
+                results = productSearchResults,
+                loading = productSearchLoading,
+                onOpen = onOpenPicker,
+                onClose = onClosePicker,
+                onQueryChange = onProductSearchChange,
+                onSelect = onSelectProduct,
+            )
+        }
     }
 }
 
@@ -709,23 +743,40 @@ private fun ProductPickerSection(
             TextButton(onClick = onClose) { Text("Cerrar") }
         }
         BendeyTextField(query, onQueryChange, "Nombre o código")
-        if (loading) {
-            CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.xs))
-        } else if (results.isEmpty() && query.isNotBlank()) {
-            Text("Sin resultados", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 180.dp),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
-            ) {
-                items(results, key = { it.id }) { product ->
-                    TextButton(
-                        onClick = { onSelect(product) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(Modifier.fillMaxWidth()) {
+        when {
+            loading -> {
+                CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.xs))
+            }
+            results.isEmpty() && query.isNotBlank() -> {
+                Text(
+                    "Sin resultados",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            results.isEmpty() -> {
+                Text(
+                    "Escriba para filtrar productos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 180.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                ) {
+                    results.forEach { product ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(BendeyShapeTokens.md)
+                                .clickable { onSelect(product) }
+                                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
+                        ) {
                             Text(product.name, fontWeight = FontWeight.Medium)
                             Text(
                                 "${product.code} · S/ ${product.salePrice}",

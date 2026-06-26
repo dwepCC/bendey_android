@@ -30,8 +30,12 @@ import com.bendey.restaurant.core.network.dto.ProductDto
 import com.bendey.restaurant.core.network.dto.ProductPresentationDto
 import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 private const val BULK_CHUNK_SIZE = 25
 
@@ -42,6 +46,8 @@ class ProductsRepositoryImpl @Inject constructor(
 
     private val api: ProductsApi
         get() = tenantRetrofitProvider.create()
+
+    private val productNameCache = ConcurrentHashMap<Int, String>()
 
     override suspend fun listProducts(query: ProductListQuery): AppResult<Pair<List<ProductItem>, Int>> = apiCall {
         val response = api.listProducts(
@@ -57,7 +63,9 @@ class ProductsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getProduct(id: Int): AppResult<ProductItem> = apiCall {
-        api.getProduct(id).data.toDomain()
+        api.getProduct(id).data.toDomain().also { product ->
+            productNameCache[product.id] = product.name
+        }
     }
 
     override suspend fun getProductDetail(id: Int): AppResult<ProductDetail> = apiCall {
@@ -120,6 +128,62 @@ class ProductsRepositoryImpl @Inject constructor(
                 perPage = 25,
             ),
         )
+
+    override suspend fun resolveProductNames(
+        productIds: Collection<Int>,
+        knownNames: Map<Int, String>,
+    ): AppResult<Map<Int, String>> = apiCall {
+        val uniqueIds = productIds.filter { it > 0 }.distinct()
+        if (uniqueIds.isEmpty()) return@apiCall emptyMap()
+
+        val resolved = LinkedHashMap<Int, String>()
+        val missing = mutableListOf<Int>()
+        for (id in uniqueIds) {
+            val known = knownNames[id]?.takeIf { it.isNotBlank() }
+                ?: productNameCache[id]?.takeIf { it.isNotBlank() }
+            if (known != null) {
+                resolved[id] = known
+            } else {
+                missing.add(id)
+            }
+        }
+
+        if (missing.isNotEmpty()) {
+            coroutineScope {
+                missing.map { productId ->
+                    async {
+                        runCatching { api.getProduct(productId).data.toDomain().name.trim() }
+                            .getOrNull()
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { productId to it }
+                    }
+                }.awaitAll().filterNotNull().forEach { (id, name) ->
+                    productNameCache[id] = name
+                    resolved[id] = name
+                }
+            }
+        }
+        resolved
+    }
+
+    override suspend fun getProductDetails(productIds: Collection<Int>): AppResult<Map<Int, ProductDetail>> = apiCall {
+        val uniqueIds = productIds.filter { it > 0 }.distinct()
+        if (uniqueIds.isEmpty()) return@apiCall emptyMap()
+        coroutineScope {
+            uniqueIds.map { productId ->
+                async {
+                    runCatching {
+                        val response = api.getProduct(productId)
+                        productId to ProductDetail(
+                            product = response.data.toDomain(),
+                            modifierGroupIds = response.modifierGroupIds,
+                            presentations = response.presentations.map { it.toDomain() },
+                        )
+                    }.getOrNull()
+                }
+            }.awaitAll().filterNotNull().toMap()
+        }
+    }
 }
 
 @Singleton
