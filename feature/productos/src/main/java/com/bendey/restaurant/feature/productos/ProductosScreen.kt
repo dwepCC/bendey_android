@@ -1,17 +1,19 @@
 package com.bendey.restaurant.feature.productos
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -19,15 +21,17 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.AlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
+import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,9 +48,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -56,7 +60,7 @@ import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductosTab
-import com.bendey.restaurant.core.ui.components.BindSnackMessage
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
@@ -64,7 +68,13 @@ import com.bendey.restaurant.core.ui.components.BendeySelectOption
 import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
+import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
+import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
+import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -79,82 +89,152 @@ fun ProductosScreen(
     viewModel: ProductosViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val useTwoPane = rememberUseAdaptiveTwoPane()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
-    BindSnackMessage(
+    BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
     )
 
-    PullToRefreshBox(
-        isRefreshing = state.loading && state.products.isEmpty() && state.tab == ProductosTab.PRODUCTOS,
-        onRefresh = {
-            if (state.tab == ProductosTab.PRODUCTOS) viewModel.refreshProducts() else viewModel.loadCategories()
-        },
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            BendeyScreenToolbar(
-                title = "Catálogo",
-                subtitle = when (state.tab) {
-                    ProductosTab.PRODUCTOS -> "${state.total} productos"
-                    ProductosTab.CATEGORIAS -> "${state.categories.size} categorías"
-                },
-                actions = {
-                    if (state.tab == ProductosTab.PRODUCTOS) {
-                        IconButton(onClick = viewModel::openImportDialog) {
-                            Icon(Icons.Default.UploadFile, contentDescription = "Importar Excel")
+    BendeyListScreenLayout(
+            modifier = modifier.fillMaxSize(),
+            isRefreshing = state.loading && state.products.isEmpty() && state.tab == ProductosTab.PRODUCTOS,
+            onRefresh = {
+                if (state.tab == ProductosTab.PRODUCTOS) viewModel.refreshProducts() else viewModel.loadCategories()
+            },
+            header = {
+                BendeyScreenToolbar(
+                    title = "Catálogo",
+                    subtitle = when (state.tab) {
+                        ProductosTab.PRODUCTOS -> "${state.total} productos"
+                        ProductosTab.CATEGORIAS -> "${state.categories.size} categorías"
+                    },
+                    actions = {
+                        if (state.tab == ProductosTab.PRODUCTOS) {
+                            BendeyIconButton(
+                                onClick = viewModel::openImportDialog,
+                                icon = Icons.Default.UploadFile,
+                                contentDescription = "Importar Excel",
+                            )
                         }
-                    }
-                    IconButton(onClick = {
-                        if (state.tab == ProductosTab.PRODUCTOS) viewModel.refreshProducts()
-                        else viewModel.loadCategories()
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                    }
-                    if (state.tab == ProductosTab.PRODUCTOS) {
-                        IconButton(onClick = viewModel::openCreateProduct) {
-                            Icon(Icons.Default.Add, contentDescription = "Nuevo producto")
+                        BendeyIconButton(
+                            onClick = {
+                                if (state.tab == ProductosTab.PRODUCTOS) viewModel.refreshProducts()
+                                else viewModel.loadCategories()
+                            },
+                            icon = Icons.Default.Refresh,
+                            contentDescription = "Actualizar",
+                        )
+                        if (state.tab == ProductosTab.PRODUCTOS) {
+                            BendeyIconButton(
+                                onClick = viewModel::openCreateProduct,
+                                icon = Icons.Default.Add,
+                                contentDescription = "Nuevo producto",
+                            )
+                        } else {
+                            BendeyIconButton(
+                                onClick = viewModel::openCreateCategory,
+                                icon = Icons.Default.Add,
+                                contentDescription = "Nueva categoría",
+                            )
+                        }
+                    },
+                )
+                ProductCatalogSectionNav(
+                    onOpenModificadores = onOpenModificadores,
+                    onOpenAreasPreparacion = onOpenAreasPreparacion,
+                    onOpenCombos = onOpenCombos,
+                )
+                ProductosTabRow(selected = state.tab, onSelect = viewModel::selectTab)
+            },
+        ) { contentModifier ->
+            when (state.tab) {
+                ProductosTab.PRODUCTOS -> {
+                    if (useTwoPane) {
+                        Row(modifier = contentModifier.fillMaxSize()) {
+                            ProductsTabContent(
+                                state = state,
+                                currency = currency,
+                                assetsBaseUrl = viewModel.tenantBaseUrl,
+                                error = state.error?.takeIf { !state.productFormOpen },
+                                selectedProductId = if (state.productFormOpen) state.editingProductId else null,
+                                onSearch = viewModel::setSearchQuery,
+                                onCategoryFilter = viewModel::setCategoryFilter,
+                                onBranchFilter = viewModel::setBranchFilter,
+                                onEdit = viewModel::openEditProduct,
+                                onDelete = viewModel::requestDeleteProduct,
+                                onLoadMore = viewModel::loadMoreProducts,
+                                modifier = Modifier
+                                    .weight(0.42f)
+                                    .fillMaxHeight(),
+                            )
+                            VerticalDivider()
+                            Column(
+                                modifier = Modifier
+                                    .weight(0.58f)
+                                    .fillMaxHeight()
+                                    .padding(BendeySpacing.md),
+                            ) {
+                                if (state.productFormOpen) {
+                                    ProductFormPane(
+                                        form = state.productForm,
+                                        categories = state.categories,
+                                        preparationAreas = state.preparationAreas,
+                                        modifierGroups = state.modifierGroups,
+                                        tenantBaseUrl = viewModel.tenantBaseUrl,
+                                        showMoreOptions = state.showMoreOptions,
+                                        presentationsOpen = state.presentationsOpen,
+                                        loading = state.actionLoading,
+                                        error = state.error,
+                                        isEditing = state.editingProductId != null,
+                                        onDismiss = viewModel::dismissProductForm,
+                                        onFormChange = viewModel::updateProductForm,
+                                        onToggleMore = viewModel::toggleMoreOptions,
+                                        onTogglePresentations = viewModel::togglePresentationsSheet,
+                                        onDismissPresentations = viewModel::dismissPresentationsSheet,
+                                        onToggleModifierGroup = viewModel::toggleModifierGroup,
+                                        onImagePicked = viewModel::setPendingImage,
+                                        onSave = viewModel::saveProduct,
+                                    )
+                                } else {
+                                    BendeyEmptyState(
+                                        title = "Selecciona o crea un producto",
+                                        description = "Edita el catálogo sin ocultar la lista de productos.",
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                }
+                            }
                         }
                     } else {
-                        IconButton(onClick = viewModel::openCreateCategory) {
-                            Icon(Icons.Default.Add, contentDescription = "Nueva categoría")
-                        }
+                        ProductsTabContent(
+                            state = state,
+                            currency = currency,
+                            assetsBaseUrl = viewModel.tenantBaseUrl,
+                            error = state.error?.takeIf { !state.productFormOpen },
+                            onSearch = viewModel::setSearchQuery,
+                            onCategoryFilter = viewModel::setCategoryFilter,
+                            onBranchFilter = viewModel::setBranchFilter,
+                            onEdit = viewModel::openEditProduct,
+                            onDelete = viewModel::requestDeleteProduct,
+                            onLoadMore = viewModel::loadMoreProducts,
+                            modifier = contentModifier,
+                        )
                     }
-                },
-            )
-            ProductCatalogSectionNav(
-                onOpenModificadores = onOpenModificadores,
-                onOpenAreasPreparacion = onOpenAreasPreparacion,
-                onOpenCombos = onOpenCombos,
-            )
-            ProductosTabRow(selected = state.tab, onSelect = viewModel::selectTab)
-            when (state.tab) {
-                ProductosTab.PRODUCTOS -> ProductsTabContent(
-                    state = state,
-                    currency = currency,
-                    assetsBaseUrl = viewModel.tenantBaseUrl,
-                    error = state.error?.takeIf { !state.productFormOpen },
-                    onSearch = viewModel::setSearchQuery,
-                    onCategoryFilter = viewModel::setCategoryFilter,
-                    onBranchFilter = viewModel::setBranchFilter,
-                    onEdit = viewModel::openEditProduct,
-                    onDelete = viewModel::requestDeleteProduct,
-                    onLoadMore = viewModel::loadMoreProducts,
-                )
+                }
                 ProductosTab.CATEGORIAS -> CategoriesTabContent(
                     categories = state.categories,
                     loading = state.loading,
                     error = state.error?.takeIf { !state.categoryFormOpen },
                     onEdit = viewModel::openEditCategory,
                     onDelete = viewModel::requestDeleteCategory,
+                    modifier = contentModifier,
                 )
             }
         }
-    }
 
-    if (state.productFormOpen) {
+    if (state.productFormOpen && !useTwoPane) {
         ProductFormDialog(
             form = state.productForm,
             categories = state.categories,
@@ -225,21 +305,19 @@ private fun ProductosTabRow(
     selected: ProductosTab,
     onSelect: (ProductosTab) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+    BendeyHorizontalScrollRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            horizontal = BendeySpacing.md,
+            vertical = BendeySpacing.xs,
+        ),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         ProductosTab.entries.forEach { tab ->
-            FilterChip(
+            BendeyFilterChip(
                 selected = selected == tab,
                 onClick = { onSelect(tab) },
-                label = { Text(tab.label) },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
+                text = tab.label,
             )
         }
     }
@@ -251,14 +329,18 @@ private fun ProductsTabContent(
     currency: NumberFormat,
     assetsBaseUrl: String?,
     error: String?,
+    selectedProductId: Int? = null,
     onSearch: (String) -> Unit,
     onCategoryFilter: (Int?) -> Unit,
     onBranchFilter: (Int?) -> Unit,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
     onLoadMore: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column {
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
+    val listState = rememberLazyListState()
+    Column(modifier = modifier.fillMaxSize()) {
         error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
@@ -281,63 +363,67 @@ private fun ProductsTabContent(
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         )
         if (state.branches.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.md,
+                    vertical = BendeySpacing.xxs,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = state.branchFilterId == null,
                     onClick = { onBranchFilter(null) },
-                    label = { Text("Todas sucursales") },
-                    colors = BendeyChipDefaults.filterChipColors(),
-                    shape = BendeyShapeTokens.chip,
-                    border = null,
+                    text = "Todas sucursales",
                 )
                 state.branches.forEach { branch ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.branchFilterId == branch.id,
                         onClick = { onBranchFilter(branch.id) },
                         label = { Text(branch.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
                     )
                 }
             }
         }
-        if (state.products.isEmpty() && !state.loading) {
-            Text(
-                "Sin productos",
-                color = BendeyColors.OnSurfaceVariant,
-                modifier = Modifier.padding(BendeySpacing.md),
-            )
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(BendeySpacing.md),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(state.products, key = { it.id }) { product ->
-                    ProductRow(
-                        product = product,
-                        stockQty = state.stockByProductId[product.id],
-                        currency = currency,
-                        assetsBaseUrl = assetsBaseUrl,
-                        onEdit = { onEdit(product.id) },
-                        onDelete = { onDelete(product.id) },
-                    )
-                }
-                if (state.hasMore) {
-                    item {
-                        BendeyPrimaryButton(
-                            text = if (state.loading) "Cargando…" else "Cargar más",
-                            onClick = onLoadMore,
-                            enabled = !state.loading,
-                            modifier = Modifier.fillMaxWidth(),
+        BendeyFlexibleContentSlot {
+            if (state.products.isEmpty() && !state.loading) {
+                BendeyEmptyState(
+                    title = "Sin productos",
+                    inline = true,
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
+            } else {
+                BendeyLazyColumn(
+                    modifier = it,
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = BendeySpacing.md,
+                        end = BendeySpacing.md,
+                        top = BendeySpacing.md,
+                        bottom = BendeySpacing.md + bottomScrollPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
+                    items(state.products, key = { it.id }) { product ->
+                        ProductRow(
+                            product = product,
+                            stockQty = state.stockByProductId[product.id],
+                            currency = currency,
+                            assetsBaseUrl = assetsBaseUrl,
+                            selected = product.id == selectedProductId,
+                            onEdit = { onEdit(product.id) },
+                            onDelete = { onDelete(product.id) },
                         )
+                    }
+                    if (state.hasMore) {
+                        item {
+                            BendeyPrimaryButton(
+                                text = if (state.loading) "Cargando…" else "Cargar más",
+                                onClick = onLoadMore,
+                                enabled = !state.loading,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }
@@ -351,11 +437,15 @@ private fun ProductRow(
     stockQty: Double?,
     currency: NumberFormat,
     assetsBaseUrl: String?,
+    selected: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
-    BendeyManagementCard {
+    BendeyCard(
+        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+        contentPadding = PaddingValues(BendeySpacing.cardPadding),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -407,12 +497,17 @@ private fun ProductRow(
                     }
                 }
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar")
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = BendeyColors.Error)
-            }
+            BendeyIconButton(
+                onClick = onEdit,
+                icon = Icons.Default.Edit,
+                contentDescription = "Editar",
+            )
+            BendeyIconButton(
+                onClick = onDelete,
+                icon = Icons.Default.Delete,
+                contentDescription = "Eliminar",
+                tint = BendeyColors.Error,
+            )
         }
     }
 }
@@ -424,51 +519,67 @@ private fun CategoriesTabContent(
     error: String?,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
+    val listState = rememberLazyListState()
+    Column(modifier = modifier) {
         error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
         }
-    if (categories.isEmpty() && !loading) {
-        Text(
-            "Sin categorías",
-            color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(BendeySpacing.md),
-        )
-        return@Column
-    }
-    LazyColumn(
-        contentPadding = PaddingValues(BendeySpacing.md),
-        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        items(categories, key = { it.id }) { category ->
-            BendeyManagementCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            if (categories.isEmpty() && !loading) {
+                BendeyEmptyState(
+                    title = "Sin categorías",
+                    inline = true,
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
+            } else {
+                BendeyLazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        start = BendeySpacing.md,
+                        end = BendeySpacing.md,
+                        top = BendeySpacing.md,
+                        bottom = BendeySpacing.md + bottomScrollPadding,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(category.name, fontWeight = FontWeight.SemiBold)
-                        category.description?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    items(categories, key = { it.id }) { category ->
+                        BendeyManagementCard {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(category.name, fontWeight = FontWeight.SemiBold)
+                                    category.description?.let {
+                                        Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                                    }
+                                }
+                                BendeyIconButton(
+                                    onClick = { onEdit(category.id) },
+                                    icon = Icons.Default.Edit,
+                                    contentDescription = "Editar categoría",
+                                )
+                                BendeyIconButton(
+                                    onClick = { onDelete(category.id) },
+                                    icon = Icons.Default.Delete,
+                                    contentDescription = "Eliminar categoría",
+                                    tint = BendeyColors.Error,
+                                )
+                            }
                         }
-                    }
-                    IconButton(onClick = { onEdit(category.id) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Editar")
-                    }
-                    IconButton(onClick = { onDelete(category.id) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = BendeyColors.Error)
                     }
                 }
             }
         }
     }
-    }
 }
 
 @Composable
-private fun ProductFormDialog(
+private fun ProductFormPane(
     form: ProductFormInput,
     categories: List<CategoryItem>,
     preparationAreas: List<PreparationAreaItem>,
@@ -488,15 +599,74 @@ private fun ProductFormDialog(
     onImagePicked: (ByteArray, String) -> Unit,
     onSave: () -> Unit,
 ) {
-    BendeyFormDialog(
-        onDismissRequest = onDismiss,
-        title = if (isEditing) "Editar producto" else "Nuevo producto",
-        confirmText = if (loading) "Guardando…" else "Guardar",
-        onConfirm = onSave,
-        onDismiss = onDismiss,
-        confirmEnabled = !loading,
-        loading = loading,
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            if (isEditing) "Editar producto" else "Nuevo producto",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = BendeySpacing.sm),
+        )
+        BendeyVerticalScrollColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        ) {
+            ProductFormFields(
+                form = form,
+                categories = categories,
+                preparationAreas = preparationAreas,
+                modifierGroups = modifierGroups,
+                tenantBaseUrl = tenantBaseUrl,
+                showMoreOptions = showMoreOptions,
+                presentationsOpen = presentationsOpen,
+                isEditing = isEditing,
+                error = error,
+                onFormChange = onFormChange,
+                onToggleMore = onToggleMore,
+                onTogglePresentations = onTogglePresentations,
+                onDismissPresentations = onDismissPresentations,
+                onToggleModifierGroup = onToggleModifierGroup,
+                onImagePicked = onImagePicked,
+            )
+        }
+        HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        ) {
+            BendeyTextButton(
+                text = "Cancelar",
+                onClick = onDismiss,
+                enabled = !loading,
+                modifier = Modifier.weight(1f),
+            )
+            BendeyPrimaryButton(
+                text = if (loading) "Guardando…" else "Guardar",
+                onClick = onSave,
+                enabled = !loading,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductFormFields(
+    form: ProductFormInput,
+    categories: List<CategoryItem>,
+    preparationAreas: List<PreparationAreaItem>,
+    modifierGroups: List<com.bendey.restaurant.core.domain.catalog.ModifierGroup>,
+    tenantBaseUrl: String?,
+    showMoreOptions: Boolean,
+    presentationsOpen: Boolean,
+    isEditing: Boolean,
+    error: String?,
+    onFormChange: ((ProductFormInput) -> ProductFormInput) -> Unit,
+    onToggleMore: () -> Unit,
+    onTogglePresentations: () -> Unit,
+    onDismissPresentations: () -> Unit,
+    onToggleModifierGroup: (Int) -> Unit,
+    onImagePicked: (ByteArray, String) -> Unit,
+) {
         BendeyTextField(
             value = form.name,
             onValueChange = { value -> onFormChange { it.copy(name = value) } },
@@ -568,21 +738,23 @@ private fun ProductFormDialog(
             )
         }
         ProductImageSection(form, tenantBaseUrl, onImagePicked)
-        Text("Presentaciones / variantes", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onTogglePresentations) {
-            Text(if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)")
-        }
+        BendeySectionTitle(text = "Presentaciones / variantes")
+        BendeyTextButton(
+            text = if (form.presentations.isEmpty()) "Agregar presentaciones" else "${form.presentations.size} presentación(es)",
+            onClick = onTogglePresentations,
+        )
         if (presentationsOpen) {
             ProductPresentationsSection(form.presentations) { list ->
                 onFormChange { it.copy(presentations = list, hasVariants = list.any { p -> p.name.isNotBlank() }) }
             }
-            TextButton(onClick = onDismissPresentations) { Text("Cerrar presentaciones") }
+            BendeyTextButton(text = "Cerrar presentaciones", onClick = onDismissPresentations)
         }
-        Text("Grupos de modificadores", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        BendeySectionTitle(text = "Grupos de modificadores")
         ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
-        TextButton(onClick = onToggleMore) {
-            Text(if (showMoreOptions) "Menos opciones" else "Más opciones")
-        }
+        BendeyTextButton(
+            text = if (showMoreOptions) "Menos opciones" else "Más opciones",
+            onClick = onToggleMore,
+        )
         if (showMoreOptions) {
             BendeyTextField(
                 value = form.description,
@@ -599,6 +771,55 @@ private fun ProductFormDialog(
         error?.let {
             Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
         }
+}
+
+@Composable
+private fun ProductFormDialog(
+    form: ProductFormInput,
+    categories: List<CategoryItem>,
+    preparationAreas: List<PreparationAreaItem>,
+    modifierGroups: List<com.bendey.restaurant.core.domain.catalog.ModifierGroup>,
+    tenantBaseUrl: String?,
+    showMoreOptions: Boolean,
+    presentationsOpen: Boolean,
+    loading: Boolean,
+    error: String?,
+    isEditing: Boolean,
+    onDismiss: () -> Unit,
+    onFormChange: ((ProductFormInput) -> ProductFormInput) -> Unit,
+    onToggleMore: () -> Unit,
+    onTogglePresentations: () -> Unit,
+    onDismissPresentations: () -> Unit,
+    onToggleModifierGroup: (Int) -> Unit,
+    onImagePicked: (ByteArray, String) -> Unit,
+    onSave: () -> Unit,
+) {
+    BendeyFormDialog(
+        onDismissRequest = onDismiss,
+        title = if (isEditing) "Editar producto" else "Nuevo producto",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+        confirmEnabled = !loading,
+        loading = loading,
+    ) {
+        ProductFormFields(
+            form = form,
+            categories = categories,
+            preparationAreas = preparationAreas,
+            modifierGroups = modifierGroups,
+            tenantBaseUrl = tenantBaseUrl,
+            showMoreOptions = showMoreOptions,
+            presentationsOpen = presentationsOpen,
+            isEditing = isEditing,
+            error = error,
+            onFormChange = onFormChange,
+            onToggleMore = onToggleMore,
+            onTogglePresentations = onTogglePresentations,
+            onDismissPresentations = onDismissPresentations,
+            onToggleModifierGroup = onToggleModifierGroup,
+            onImagePicked = onImagePicked,
+        )
     }
 }
 
@@ -645,17 +866,11 @@ private fun ConfirmDeleteDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = BendeyColors.Surface,
-        tonalElevation = 0.dp,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            BendeyPrimaryButton(text = "Eliminar", onClick = onConfirm)
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
-        },
+        title = title,
+        message = message,
+        onConfirm = onConfirm,
+        confirmText = "Eliminar",
     )
 }

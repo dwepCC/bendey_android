@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.bendey.restaurant.core.designsystem.theme.BendeyExpressiveScope
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.auth.home.HomeScreen
 import com.bendey.restaurant.feature.auth.login.EmailLoginScreen
@@ -18,26 +19,30 @@ fun NavGraphBuilder.authGraph(
     onAuthenticated: (initialRoute: String) -> Unit,
 ) {
     composable(BendeyRoutes.WELCOME) {
-        WelcomeScreen(
-            onBound = {
-                navController.navigate(BendeyRoutes.HOME) {
-                    popUpTo(BendeyRoutes.WELCOME) { inclusive = true }
-                }
-            },
-            onCreateRestaurant = {
-                navController.navigate(BendeyRoutes.REGISTER)
-            },
-        )
+        BendeyExpressiveScope {
+            WelcomeScreen(
+                onBound = {
+                    navController.navigate(BendeyRoutes.HOME) {
+                        popUpTo(BendeyRoutes.WELCOME) { inclusive = true }
+                    }
+                },
+                onCreateRestaurant = {
+                    navController.navigate(BendeyRoutes.REGISTER)
+                },
+            )
+        }
     }
     composable(BendeyRoutes.REGISTER) {
-        RegisterScreen(
-            onBack = { navController.popBackStack() },
-            onRegistered = { restaurantName ->
-                navController.navigate(BendeyRoutes.registerSuccess(restaurantName)) {
-                    popUpTo(BendeyRoutes.WELCOME) { inclusive = false }
-                }
-            },
-        )
+        BendeyExpressiveScope {
+            RegisterScreen(
+                onBack = { navController.popBackStack() },
+                onRegistered = { restaurantName ->
+                    navController.navigate(BendeyRoutes.registerSuccess(restaurantName)) {
+                        popUpTo(BendeyRoutes.WELCOME) { inclusive = false }
+                    }
+                },
+            )
+        }
     }
     composable(
         route = BendeyRoutes.REGISTER_SUCCESS,
@@ -48,36 +53,44 @@ fun NavGraphBuilder.authGraph(
             },
         ),
     ) { entry ->
-        RegisterSuccessScreen(
-            restaurantName = entry.arguments?.getString("restaurantName").orEmpty(),
-            onContinueToLogin = {
-                navController.navigate(BendeyRoutes.HOME) {
-                    popUpTo(BendeyRoutes.WELCOME) { inclusive = true }
-                }
-            },
-        )
+        BendeyExpressiveScope {
+            RegisterSuccessScreen(
+                restaurantName = entry.arguments?.getString("restaurantName").orEmpty(),
+                onContinueToLogin = {
+                    navController.navigate(BendeyRoutes.HOME) {
+                        popUpTo(BendeyRoutes.WELCOME) { inclusive = true }
+                    }
+                },
+            )
+        }
     }
     composable(BendeyRoutes.HOME) {
-        HomeScreen(
-            onPinStation = { station ->
-                navController.navigate(BendeyRoutes.pin(station.routeKey))
-            },
-            onAdminLogin = { navController.navigate(BendeyRoutes.LOGIN) },
-        )
+        BendeyExpressiveScope {
+            HomeScreen(
+                onPinStation = { station ->
+                    navController.navigate(BendeyRoutes.pin(station.routeKey))
+                },
+                onAdminLogin = { navController.navigate(BendeyRoutes.LOGIN) },
+            )
+        }
     }
     composable(
         route = BendeyRoutes.PIN,
         arguments = listOf(navArgument("station") { type = NavType.StringType }),
     ) {
-        PinLoginScreen(
-            onBack = { navController.popBackStack() },
-            onAuthenticated = onAuthenticated,
-        )
+        BendeyExpressiveScope {
+            PinLoginScreen(
+                onBack = { navController.popBackStack() },
+                onAuthenticated = onAuthenticated,
+            )
+        }
     }
     composable(BendeyRoutes.LOGIN) {
-        EmailLoginScreen(
-            onBack = { navController.popBackStack() },
-            onAuthenticated = onAuthenticated,
-        )
+        BendeyExpressiveScope {
+            EmailLoginScreen(
+                onBack = { navController.popBackStack() },
+                onAuthenticated = onAuthenticated,
+            )
+        }
     }
 }

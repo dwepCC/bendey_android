@@ -1,7 +1,7 @@
 package com.bendey.restaurant.feature.combos
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,14 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,8 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -126,29 +126,26 @@ fun ComboEditorSheet(
                     )
                 }
 
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        horizontal = BendeySpacing.md,
+                        vertical = BendeySpacing.xxs,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     ComboEditorTab.entries.forEach { tab ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = editorTab == tab,
                             onClick = { onTabChange(tab) },
-                            label = { Text(tab.label) },
-                            colors = BendeyChipDefaults.filterChipColors(),
-                            shape = BendeyShapeTokens.chip,
-                            border = null,
+                            text = tab.label,
                         )
                     }
                 }
 
-                Column(
-                    Modifier
+                BendeyVerticalScrollColumn(
+                    modifier = Modifier
                         .weight(1f)
-                        .verticalScroll(rememberScrollState())
                         .padding(BendeySpacing.md),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
@@ -216,19 +213,16 @@ private fun GeneralTab(
         "Descripción",
         singleLine = false,
     )
-    Text("Tipo de combo", fontWeight = FontWeight.SemiBold)
+    BendeySectionTitle(text = "Tipo de combo")
     Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         ComboType.entries.chunked(2).forEach { rowTypes ->
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 rowTypes.forEach { type ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.comboType == type,
                         onClick = { onFormChange { it.copy(comboType = type) } },
                         label = { Text(type.label) },
                         modifier = Modifier.weight(1f),
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
                     )
                 }
                 if (rowTypes.size == 1) {
@@ -739,7 +733,7 @@ private fun ProductPickerSection(
     }
     Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Buscar producto", fontWeight = FontWeight.SemiBold)
+            BendeySectionTitle(text = "Buscar producto")
             TextButton(onClick = onClose) { Text("Cerrar") }
         }
         BendeyTextField(query, onQueryChange, "Nombre o código")
@@ -762,11 +756,10 @@ private fun ProductPickerSection(
                 )
             }
             else -> {
-                Column(
+                BendeyVerticalScrollColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 180.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .heightIn(max = 180.dp),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                 ) {
                     results.forEach { product ->

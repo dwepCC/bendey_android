@@ -20,6 +20,7 @@ fun BendeyAdminScreen(
         modifier = modifier
             .fillMaxSize()
             .background(BendeyColors.Background)
+            .bendeyImePadding()
             .padding(horizontal = BendeySpacing.screenHorizontal),
         content = content,
     )

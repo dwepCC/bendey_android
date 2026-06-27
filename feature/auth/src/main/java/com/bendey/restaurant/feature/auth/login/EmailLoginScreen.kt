@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
+import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyTextField
@@ -54,42 +55,52 @@ fun EmailLoginScreen(
                     .padding(horizontal = BendeySpacing.lg, vertical = BendeySpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                BendeyBrandLogo(height = 52.dp, showBackground = true)
+                BendeyExpressiveReveal(index = 0) {
+                    BendeyBrandLogo(height = 52.dp, showBackground = true)
+                }
                 Spacer(modifier = Modifier.height(BendeySpacing.xs))
-                Text(
-                    text = "Bienvenido de nuevo",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = "Inicia sesión en tu cuenta para continuar",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = BendeySpacing.xxs, bottom = BendeySpacing.lg),
-                )
-                BendeyTextField(
-                    value = state.email,
-                    onValueChange = viewModel::onEmailChange,
-                    label = "Email",
-                )
-                Spacer(modifier = Modifier.height(BendeySpacing.sm))
-                BendeyTextField(
-                    value = state.password,
-                    onValueChange = viewModel::onPasswordChange,
-                    label = "Contraseña",
-                    visualTransformation = PasswordVisualTransformation(),
-                )
-                Spacer(modifier = Modifier.height(BendeySpacing.md))
-                BendeyPrimaryButton(
-                    text = "INICIAR SESIÓN",
-                    onClick = { viewModel.submit(onAuthenticated) },
-                    loading = state.loading,
-                )
-                state.error?.let {
-                    Spacer(modifier = Modifier.height(BendeySpacing.xs))
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
+                BendeyExpressiveReveal(index = 1) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Bienvenido de nuevo",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = "Inicia sesión en tu cuenta para continuar",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(top = BendeySpacing.xxs, bottom = BendeySpacing.lg),
+                        )
+                    }
+                }
+                BendeyExpressiveReveal(index = 2) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        BendeyTextField(
+                            value = state.email,
+                            onValueChange = viewModel::onEmailChange,
+                            label = "Email",
+                        )
+                        Spacer(modifier = Modifier.height(BendeySpacing.sm))
+                        BendeyTextField(
+                            value = state.password,
+                            onValueChange = viewModel::onPasswordChange,
+                            label = "Contraseña",
+                            visualTransformation = PasswordVisualTransformation(),
+                        )
+                        Spacer(modifier = Modifier.height(BendeySpacing.md))
+                        BendeyPrimaryButton(
+                            text = "INICIAR SESIÓN",
+                            onClick = { viewModel.submit(onAuthenticated) },
+                            loading = state.loading,
+                        )
+                        state.error?.let {
+                            Spacer(modifier = Modifier.height(BendeySpacing.xs))
+                            Text(text = it, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }

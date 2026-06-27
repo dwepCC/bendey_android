@@ -11,11 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
@@ -97,15 +96,13 @@ fun ReceiptPrintModal(
                     ) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
-                    Column(
-                        modifier = Modifier
-                            .verticalScroll(rememberScrollState())
-                            .padding(
-                                start = BendeySpacing.md,
-                                end = BendeySpacing.md,
-                                top = BendeySpacing.md,
-                                bottom = BendeySpacing.xs,
-                            ),
+                    BendeyVerticalScrollColumn(
+                        modifier = Modifier.padding(
+                            start = BendeySpacing.md,
+                            end = BendeySpacing.md,
+                            top = BendeySpacing.md,
+                            bottom = BendeySpacing.xs,
+                        ),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

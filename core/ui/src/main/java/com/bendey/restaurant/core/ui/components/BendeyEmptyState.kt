@@ -19,7 +19,16 @@ fun BendeyEmptyState(
     modifier: Modifier = Modifier,
     description: String? = null,
     action: @Composable (() -> Unit)? = null,
+    inline: Boolean = false,
 ) {
+    if (inline) {
+        Text(
+            text = title,
+            modifier = modifier.padding(BendeySpacing.md),
+            color = BendeyColors.OnSurfaceVariant,
+        )
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()

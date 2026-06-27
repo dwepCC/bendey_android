@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,25 +24,24 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material.icons.filled.Wallet
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import com.bendey.restaurant.core.designsystem.components.BendeyBadge
+import com.bendey.restaurant.core.designsystem.components.BendeyCard
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,12 +63,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveCrossfadeValue
+import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
@@ -91,18 +93,21 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isExpanded = rememberIsExpandedWidth()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val dash = state.dashboard
+    val listState = rememberLazyListState()
 
     PullToRefreshBox(
         isRefreshing = state.loading || state.catalogLoading,
         onRefresh = viewModel::refresh,
         modifier = modifier.fillMaxSize(),
     ) {
-        LazyColumn(
+        BendeyLazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(BendeyColors.Background),
+            state = listState,
             contentPadding = PaddingValues(
                 start = BendeySpacing.screenHorizontal,
                 end = BendeySpacing.screenHorizontal,
@@ -112,11 +117,13 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
         ) {
             item {
-                GreetingCard(
-                    userName = state.userName,
-                    isOnline = state.isOnline,
-                    cashLabel = state.cashLabel,
-                )
+                BendeyExpressiveReveal(index = 0) {
+                    GreetingCard(
+                        userName = state.userName,
+                        isOnline = state.isOnline,
+                        cashLabel = state.cashLabel,
+                    )
+                }
             }
             if (state.canChangeDateRange) {
                 item {
@@ -140,112 +147,229 @@ fun DashboardScreen(
                 }
             }
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     DashboardTab.entries.forEach { tab ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.tab == tab,
                             onClick = { viewModel.selectTab(tab) },
-                            label = { Text(tab.label) },
-                            colors = BendeyChipDefaults.filterChipColors(),
-                            shape = BendeyShapeTokens.chip,
-                            border = null,
+                            text = tab.label,
                         )
                     }
                 }
             }
             if (state.tab == DashboardTab.OPERACION) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    DashboardMetricCard(
-                        label = revenueLabel(state.range),
-                        value = currency.format(dash.summary.totalRevenue),
-                        changePct = dash.summary.revenueChangePct,
-                        range = state.range,
-                        icon = Icons.Default.ShowChart,
-                        iconBg = BendeyColors.PrimaryContainer,
-                        iconTint = BendeyColors.Primary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    DashboardMetricCard(
-                        label = ordersLabel(state.range),
-                        value = dash.summary.totalSessions.toString(),
-                        changePct = dash.summary.sessionsChangePct,
-                        range = state.range,
-                        icon = Icons.Default.ShoppingBag,
-                        iconBg = BendeyColors.SuccessContainer,
-                        iconTint = BendeyColors.Success,
-                        modifier = Modifier.weight(1f),
-                    )
+                if (isExpanded) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        BendeyExpressiveReveal(index = 0, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                            DashboardMetricCard(
+                                label = revenueLabel(state.range),
+                                value = currency.format(dash.summary.totalRevenue),
+                                changePct = dash.summary.revenueChangePct,
+                                range = state.range,
+                                icon = Icons.AutoMirrored.Filled.ShowChart,
+                                iconBg = BendeyColors.PrimaryContainer,
+                                iconTint = BendeyColors.Primary,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        BendeyExpressiveReveal(index = 1, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                            DashboardMetricCard(
+                                label = ordersLabel(state.range),
+                                value = dash.summary.totalSessions.toString(),
+                                changePct = dash.summary.sessionsChangePct,
+                                range = state.range,
+                                icon = Icons.Default.ShoppingBag,
+                                iconBg = BendeyColors.SuccessContainer,
+                                iconTint = BendeyColors.Success,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        BendeyExpressiveReveal(index = 2, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                            DashboardMetricCard(
+                                label = "Ticket promedio",
+                                value = currency.format(dash.summary.avgTicket),
+                                changePct = null,
+                                range = state.range,
+                                icon = Icons.Default.Wallet,
+                                iconBg = BendeyColors.AccentPurpleContainer,
+                                iconTint = BendeyColors.AccentPurple,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        BendeyExpressiveReveal(index = 3, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                            DashboardMetricCard(
+                                label = "Comensales",
+                                value = dash.summary.totalGuests.toString(),
+                                changePct = null,
+                                range = state.range,
+                                icon = Icons.Default.Group,
+                                iconBg = BendeyColors.InfoContainer,
+                                iconTint = BendeyColors.Info,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            BendeyExpressiveReveal(index = 0, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                                DashboardMetricCard(
+                                    label = revenueLabel(state.range),
+                                    value = currency.format(dash.summary.totalRevenue),
+                                    changePct = dash.summary.revenueChangePct,
+                                    range = state.range,
+                                    icon = Icons.AutoMirrored.Filled.ShowChart,
+                                    iconBg = BendeyColors.PrimaryContainer,
+                                    iconTint = BendeyColors.Primary,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            BendeyExpressiveReveal(index = 1, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                                DashboardMetricCard(
+                                    label = ordersLabel(state.range),
+                                    value = dash.summary.totalSessions.toString(),
+                                    changePct = dash.summary.sessionsChangePct,
+                                    range = state.range,
+                                    icon = Icons.Default.ShoppingBag,
+                                    iconBg = BendeyColors.SuccessContainer,
+                                    iconTint = BendeyColors.Success,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            BendeyExpressiveReveal(index = 2, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                                DashboardMetricCard(
+                                    label = "Ticket promedio",
+                                    value = currency.format(dash.summary.avgTicket),
+                                    changePct = null,
+                                    range = state.range,
+                                    icon = Icons.Default.Wallet,
+                                    iconBg = BendeyColors.AccentPurpleContainer,
+                                    iconTint = BendeyColors.AccentPurple,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            BendeyExpressiveReveal(index = 3, resetKey = state.range, modifier = Modifier.weight(1f)) {
+                                DashboardMetricCard(
+                                    label = "Comensales",
+                                    value = dash.summary.totalGuests.toString(),
+                                    changePct = null,
+                                    range = state.range,
+                                    icon = Icons.Default.Group,
+                                    iconBg = BendeyColors.InfoContainer,
+                                    iconTint = BendeyColors.Info,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
                 }
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    DashboardMetricCard(
-                        label = "Ticket promedio",
-                        value = currency.format(dash.summary.avgTicket),
-                        changePct = null,
-                        range = state.range,
-                        icon = Icons.Default.Wallet,
-                        iconBg = BendeyColors.AccentPurpleContainer,
-                        iconTint = BendeyColors.AccentPurple,
-                        modifier = Modifier.weight(1f),
-                    )
-                    DashboardMetricCard(
-                        label = "Comensales",
-                        value = dash.summary.totalGuests.toString(),
-                        changePct = null,
-                        range = state.range,
-                        icon = Icons.Default.Group,
-                        iconBg = BendeyColors.InfoContainer,
-                        iconTint = BendeyColors.Info,
-                        modifier = Modifier.weight(1f),
-                    )
+                if (isExpanded) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
+                    ) {
+                        SessionStatsRow(summary = dash.summary, modifier = Modifier.weight(1f))
+                        TableStatusSection(
+                            summary = dash.tableSummary,
+                            onVerMapa = onOpenMesas,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                } else {
+                    SessionStatsRow(summary = dash.summary)
                 }
-            }
-            item {
-                SessionStatsRow(summary = dash.summary)
             }
             if (dash.recentSessions.isNotEmpty()) {
                 item {
                     RecentSessionsSection(sessions = dash.recentSessions, currency = currency)
                 }
             }
-            item {
-                TableStatusSection(
-                    summary = dash.tableSummary,
-                    onVerMapa = onOpenMesas,
-                )
+            if (!isExpanded) {
+                item {
+                    TableStatusSection(
+                        summary = dash.tableSummary,
+                        onVerMapa = onOpenMesas,
+                    )
+                }
             }
             item {
-                RevenueTrendCard(
-                    points = dash.daily30,
-                    currency = currency,
-                    onVerReporte = onOpenVentas,
-                )
+                if (isExpanded) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
+                    ) {
+                        RevenueTrendCard(
+                            points = dash.daily30,
+                            currency = currency,
+                            onVerReporte = onOpenVentas,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TopProductsSection(
+                            products = dash.topProducts,
+                            currency = currency,
+                            onVerTodos = onOpenVentas,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                } else {
+                    RevenueTrendCard(
+                        points = dash.daily30,
+                        currency = currency,
+                        onVerReporte = onOpenVentas,
+                    )
+                }
+            }
+            if (!isExpanded) {
+                item {
+                    TopProductsSection(
+                        products = dash.topProducts,
+                        currency = currency,
+                        onVerTodos = onOpenVentas,
+                    )
+                }
             }
             item {
-                TopProductsSection(
-                    products = dash.topProducts,
-                    currency = currency,
-                    onVerTodos = onOpenVentas,
-                )
+                if (isExpanded) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
+                    ) {
+                        OrderTypesSection(
+                            slices = dash.orderTypes,
+                            currency = currency,
+                            modifier = Modifier.weight(1f),
+                        )
+                        PaymentMethodsSection(
+                            methods = dash.paymentMethods,
+                            currency = currency,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                } else {
+                    OrderTypesSection(
+                        slices = dash.orderTypes,
+                        currency = currency,
+                    )
+                }
             }
-            item {
-                OrderTypesSection(
-                    slices = dash.orderTypes,
-                    currency = currency,
-                )
-            }
-            item {
-                PaymentMethodsSection(
-                    methods = dash.paymentMethods,
-                    currency = currency,
-                )
+            if (!isExpanded) {
+                item {
+                    PaymentMethodsSection(
+                        methods = dash.paymentMethods,
+                        currency = currency,
+                    )
+                }
             }
             }
             if (state.tab == DashboardTab.CATALOGO) {
@@ -253,18 +377,81 @@ fun DashboardScreen(
                     item { CircularProgressIndicator(modifier = Modifier.padding(24.dp)) }
                 } else {
                     state.catalog?.let { catalog ->
-                        item { CatalogKpiRow(catalog, currency) }
-                        if (catalog.topProducts.isNotEmpty()) {
-                            item { CatalogRankSection("Top productos", catalog.topProducts, currency) }
+                        item {
+                            BendeyExpressiveReveal(index = 0, resetKey = state.tab) {
+                                CatalogKpiSection(catalog, currency, isExpanded)
+                            }
                         }
-                        if (catalog.topCombos.isNotEmpty()) {
-                            item { CatalogRankSection("Top combos", catalog.topCombos, currency) }
-                        }
-                        if (catalog.topPresentations.isNotEmpty()) {
-                            item { CatalogRankSection("Top presentaciones", catalog.topPresentations, currency) }
-                        }
-                        if (catalog.topExtras.isNotEmpty()) {
-                            item { CatalogRankSection("Top extras", catalog.topExtras, currency) }
+                        if (isExpanded) {
+                            if (catalog.topProducts.isNotEmpty() && catalog.topCombos.isNotEmpty()) {
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
+                                    ) {
+                                        CatalogRankSection(
+                                            "Top productos",
+                                            catalog.topProducts,
+                                            currency,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        CatalogRankSection(
+                                            "Top combos",
+                                            catalog.topCombos,
+                                            currency,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            } else {
+                                if (catalog.topProducts.isNotEmpty()) {
+                                    item { CatalogRankSection("Top productos", catalog.topProducts, currency) }
+                                }
+                                if (catalog.topCombos.isNotEmpty()) {
+                                    item { CatalogRankSection("Top combos", catalog.topCombos, currency) }
+                                }
+                            }
+                            if (catalog.topPresentations.isNotEmpty() && catalog.topExtras.isNotEmpty()) {
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
+                                    ) {
+                                        CatalogRankSection(
+                                            "Top presentaciones",
+                                            catalog.topPresentations,
+                                            currency,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        CatalogRankSection(
+                                            "Top extras",
+                                            catalog.topExtras,
+                                            currency,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            } else {
+                                if (catalog.topPresentations.isNotEmpty()) {
+                                    item { CatalogRankSection("Top presentaciones", catalog.topPresentations, currency) }
+                                }
+                                if (catalog.topExtras.isNotEmpty()) {
+                                    item { CatalogRankSection("Top extras", catalog.topExtras, currency) }
+                                }
+                            }
+                        } else {
+                            if (catalog.topProducts.isNotEmpty()) {
+                                item { CatalogRankSection("Top productos", catalog.topProducts, currency) }
+                            }
+                            if (catalog.topCombos.isNotEmpty()) {
+                                item { CatalogRankSection("Top combos", catalog.topCombos, currency) }
+                            }
+                            if (catalog.topPresentations.isNotEmpty()) {
+                                item { CatalogRankSection("Top presentaciones", catalog.topPresentations, currency) }
+                            }
+                            if (catalog.topExtras.isNotEmpty()) {
+                                item { CatalogRankSection("Top extras", catalog.topExtras, currency) }
+                            }
                         }
                         item { CatalogComboStats(catalog, currency) }
                     } ?: item {
@@ -287,16 +474,10 @@ private fun GreetingCard(
     isOnline: Boolean,
     cashLabel: String?,
 ) {
-    Card(
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
+    BendeyCard(
+        contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -355,17 +536,12 @@ private fun DashboardMetricCard(
     iconTint: Color,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    BendeyCard(
         modifier = modifier,
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
+        contentPadding = PaddingValues(BendeySpacing.sm),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(BendeySpacing.sm),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             Row(
@@ -388,14 +564,16 @@ private fun DashboardMetricCard(
                     Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
                 }
             }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = BendeyColors.OnSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            BendeyExpressiveCrossfadeValue(targetState = value) { animatedValue ->
+                Text(
+                    text = animatedValue,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = BendeyColors.OnSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             changePct?.let { pct ->
                 ChangeBadge(pct = pct, range = range)
             }
@@ -420,54 +598,43 @@ private fun ChangeBadge(pct: Double, range: DashboardRange) {
     val icon = when {
         pct > 0 -> Icons.AutoMirrored.Filled.TrendingUp
         pct < 0 -> Icons.AutoMirrored.Filled.TrendingDown
-        else -> Icons.Default.TrendingFlat
+        else -> Icons.AutoMirrored.Filled.TrendingFlat
     }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-        Text(
-            text = when {
-                pct > 0 -> "+${pct.roundToInt()}%$suffix"
-                pct < 0 -> "${pct.roundToInt()}%$suffix"
-                else -> "Sin cambio$suffix"
-            },
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = color,
-        )
-    }
+    BendeyBadge(
+        text = when {
+            pct > 0 -> "+${pct.roundToInt()}%$suffix"
+            pct < 0 -> "${pct.roundToInt()}%$suffix"
+            else -> "Sin cambio$suffix"
+        },
+        color = color,
+        icon = icon,
+    )
 }
 
 @Composable
 private fun TableStatusSection(
     summary: DashboardTableSummary,
     onVerMapa: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    BendeyCard(modifier = modifier, contentPadding = PaddingValues(BendeySpacing.md)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                BendeySectionTitle(
                     text = "Estado de mesas",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
-                TextButton(onClick = onVerMapa, contentPadding = PaddingValues(0.dp)) {
-                    Text("Ver mapa", color = BendeyColors.Info, fontWeight = FontWeight.SemiBold)
-                }
+                BendeyTextButton(
+                    text = "Ver mapa",
+                    onClick = onVerMapa,
+                    textColor = BendeyColors.Info,
+                    contentPadding = PaddingValues(),
+                )
             }
             if (summary.total == 0) {
                 Text("No hay mesas configuradas", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
@@ -476,10 +643,10 @@ private fun TableStatusSection(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TableStatusChip("Libres", summary.libre, Color(0xFF2E7D32), Color(0xFFE8F5E9), Modifier.weight(1f))
-                    TableStatusChip("Ocupadas", summary.ocupada, Color(0xFFDC2626), Color(0xFFFEE2E2), Modifier.weight(1f))
-                    TableStatusChip("Reservadas", summary.reservada, Color(0xFFD97706), Color(0xFFFEF3C7), Modifier.weight(1f))
-                    TableStatusChip("Consum.", summary.enConsumo, Color(0xFF2563EB), Color(0xFFDBEAFE), Modifier.weight(1f))
+                    TableStatusChip("Libres", summary.libre, BendeyColors.DashboardTableLibre, BendeyColors.DashboardTableLibreContainer, Modifier.weight(1f))
+                    TableStatusChip("Ocupadas", summary.ocupada, BendeyColors.DashboardTableOcupada, BendeyColors.DashboardTableOcupadaContainer, Modifier.weight(1f))
+                    TableStatusChip("Reservadas", summary.reservada, BendeyColors.DashboardTableReservada, BendeyColors.DashboardTableReservadaContainer, Modifier.weight(1f))
+                    TableStatusChip("Consum.", summary.enConsumo, BendeyColors.DashboardTableConsumo, BendeyColors.DashboardTableConsumoContainer, Modifier.weight(1f))
                 }
             }
         }
@@ -527,30 +694,26 @@ private fun RevenueTrendCard(
     points: List<DashboardDailyPoint>,
     currency: NumberFormat,
     onVerReporte: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    BendeyCard(modifier = modifier, contentPadding = PaddingValues(BendeySpacing.md)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                BendeySectionTitle(
                     text = "Tendencia de ingresos (30 días)",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
-                TextButton(onClick = onVerReporte, contentPadding = PaddingValues(0.dp)) {
-                    Text("Ver reporte", color = BendeyColors.Info, fontWeight = FontWeight.SemiBold)
-                }
+                BendeyTextButton(
+                    text = "Ver reporte",
+                    onClick = onVerReporte,
+                    textColor = BendeyColors.Info,
+                    contentPadding = PaddingValues(),
+                )
             }
             if (points.isEmpty()) {
                 Text("Sin datos de tendencia", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -669,30 +832,26 @@ private fun TopProductsSection(
     products: List<DashboardTopProduct>,
     currency: NumberFormat,
     onVerTodos: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    BendeyCard(modifier = modifier, contentPadding = PaddingValues(BendeySpacing.md)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
+                BendeySectionTitle(
                     text = "Platos más vendidos",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
-                TextButton(onClick = onVerTodos, contentPadding = PaddingValues(0.dp)) {
-                    Text("Ver todos", color = BendeyColors.Info, fontWeight = FontWeight.SemiBold)
-                }
+                BendeyTextButton(
+                    text = "Ver todos",
+                    onClick = onVerTodos,
+                    textColor = BendeyColors.Info,
+                    contentPadding = PaddingValues(),
+                )
             }
             if (products.isEmpty()) {
                 Text(
@@ -723,9 +882,9 @@ private val topProductPalette = listOf(
     BendeyColors.Warning,
     BendeyColors.AccentPurple,
     BendeyColors.Info,
-    Color(0xFFF97316),
-    Color(0xFF84CC16),
-    Color(0xFFEC4899),
+    BendeyColors.DashboardChartOrange,
+    BendeyColors.DashboardChartLime,
+    BendeyColors.DashboardChartPink,
 )
 
 @Composable
@@ -803,29 +962,21 @@ private fun DateRangeFilterRow(
     onSelect: (DashboardRange) -> Unit,
     onCustomClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+    BendeyHorizontalScrollRow(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         DashboardRange.entries.filter { it != DashboardRange.CUSTOM }.forEach { range ->
-            FilterChip(
+            BendeyFilterChip(
                 selected = selected == range,
                 onClick = { onSelect(range) },
-                label = { Text(range.label) },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
+                text = range.label,
             )
         }
-        FilterChip(
+        BendeyFilterChip(
             selected = selected == DashboardRange.CUSTOM,
             onClick = onCustomClick,
-            label = { Text("Rango") },
-            colors = BendeyChipDefaults.filterChipColors(),
-            shape = BendeyShapeTokens.chip,
-            border = null,
+            text = "Rango",
         )
     }
 }
@@ -862,9 +1013,10 @@ private fun CustomDateRangeDialog(
 @Composable
 private fun SessionStatsRow(
     summary: com.bendey.restaurant.core.domain.dashboard.DashboardSummaryBlock,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         MiniStatChip(
@@ -879,7 +1031,7 @@ private fun SessionStatsRow(
             label = "Abiertos",
             value = summary.openSessions.toString(),
             icon = Icons.Default.Schedule,
-            tint = Color(0xFFD97706),
+            tint = BendeyColors.DashboardChartAmber,
             bg = BendeyColors.WarningContainer,
             modifier = Modifier.weight(1f),
         )
@@ -935,8 +1087,9 @@ private fun MiniStatChip(
 private fun PaymentMethodsSection(
     methods: List<com.bendey.restaurant.core.domain.dashboard.DashboardPaymentSlice>,
     currency: NumberFormat,
+    modifier: Modifier = Modifier,
 ) {
-    DashboardChartCard(title = "Métodos de pago") {
+    DashboardChartCard(title = "Métodos de pago", modifier = modifier) {
         if (methods.isEmpty()) {
             Text("Sin pagos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
@@ -987,8 +1140,9 @@ private fun orderTypeLabel(type: String): String = when (type.lowercase()) {
 private fun OrderTypesSection(
     slices: List<com.bendey.restaurant.core.domain.dashboard.DashboardOrderTypeSlice>,
     currency: NumberFormat,
+    modifier: Modifier = Modifier,
 ) {
-    DashboardChartCard(title = "Pedidos por tipo") {
+    DashboardChartCard(title = "Pedidos por tipo", modifier = modifier) {
         if (slices.isEmpty()) {
             Text("Sin pedidos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
@@ -1042,19 +1196,16 @@ private fun OrderTypesSection(
 @Composable
 private fun DashboardChartCard(
     title: String,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Card(
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    BendeyCard(modifier = modifier, contentPadding = PaddingValues(BendeySpacing.md)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+            BendeySectionTitle(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
             content()
         }
     }
@@ -1112,6 +1263,32 @@ private fun RecentSessionsSection(
 }
 
 @Composable
+private fun CatalogKpiSection(catalog: CatalogAnalytics, currency: NumberFormat, isExpanded: Boolean) {
+    val kpi = catalog.kpi
+    val cards = listOf(
+        "Ingresos" to currency.format(kpi.totalRevenue),
+        "Ventas" to kpi.salesCount.toString(),
+        "Productos" to String.format("%.0f", kpi.productsSold),
+        "Combos" to String.format("%.0f", kpi.combosSold),
+        "Ticket prom." to currency.format(kpi.avgTicket),
+        "Extras" to currency.format(kpi.extrasRevenue),
+    )
+    if (isExpanded) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            cards.chunked(4).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    row.forEach { (label, value) ->
+                        CatalogKpiCard(label, value, Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    } else {
+        CatalogKpiRow(catalog, currency)
+    }
+}
+
+@Composable
 private fun CatalogKpiRow(catalog: CatalogAnalytics, currency: NumberFormat) {
     val kpi = catalog.kpi
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1137,8 +1314,13 @@ private fun CatalogKpiCard(label: String, value: String, modifier: Modifier = Mo
 }
 
 @Composable
-private fun CatalogRankSection(title: String, rows: List<CatalogAnalyticsRow>, currency: NumberFormat) {
-    DashboardChartCard(title = title) {
+private fun CatalogRankSection(
+    title: String,
+    rows: List<CatalogAnalyticsRow>,
+    currency: NumberFormat,
+    modifier: Modifier = Modifier,
+) {
+    DashboardChartCard(title = title, modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             rows.take(10).forEachIndexed { index, row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

@@ -1,7 +1,10 @@
 package com.bendey.restaurant.feature.auth.home
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
+import com.bendey.restaurant.core.designsystem.theme.BendeyMotion
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -32,9 +37,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.model.PinStation
+import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
 
 data class StationCard(
@@ -81,24 +89,26 @@ fun HomeScreen(
                 .bendeySafeDrawingPadding()
                 .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-            ) {
-                BendeyBrandLogo(height = 40.dp, showBackground = true)
-                Column {
-                    Text(
-                        text = "Bendey Resto",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = BendeyColors.PrimaryContainer.copy(alpha = 0.9f),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Operación en sala",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = BendeyColors.OnPrimary,
-                        fontWeight = FontWeight.Bold,
-                    )
+            BendeyExpressiveReveal(index = 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                ) {
+                    BendeyBrandLogo(height = 40.dp, showBackground = true)
+                    Column {
+                        Text(
+                            text = "Bendey Resto",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BendeyColors.PrimaryContainer.copy(alpha = 0.9f),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "Operación en sala",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = BendeyColors.OnPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         }
@@ -108,72 +118,82 @@ fun HomeScreen(
                 .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.md),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.md),
         ) {
-            Surface(
-                shape = BendeyShapeTokens.xl,
-                color = BendeyColors.Surface,
-                border = BendeyCardDefaults.border,
-                shadowElevation = 0.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(modifier = Modifier.padding(BendeySpacing.cardPadding)) {
-                    Text(
-                        text = "Tu restaurante en Bendey",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = BendeyColors.Primary,
-                    )
-                    Text(
-                        text = tenant?.name ?: "Restaurante",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    tenant?.ruc?.takeIf { it.isNotBlank() }?.let { ruc ->
+            BendeyExpressiveReveal(index = 1) {
+                Surface(
+                    shape = BendeyShapeTokens.xl,
+                    color = BendeyColors.Surface,
+                    border = BendeyCardDefaults.border,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(BendeySpacing.cardPadding)) {
                         Text(
-                            text = "RUC $ruc",
+                            text = "Tu restaurante en Bendey",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = BendeyColors.Primary,
+                        )
+                        Text(
+                            text = tenant?.name ?: "Restaurante",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        tenant?.ruc?.takeIf { it.isNotBlank() }?.let { ruc ->
+                            Text(
+                                text = "RUC $ruc",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                                modifier = Modifier.padding(top = BendeySpacing.xxs),
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(BendeySpacing.xxs))
+                        Text(
+                            text = "Inicia sesión para operar mesas, pedidos y caja.",
                             style = MaterialTheme.typography.bodySmall,
                             color = BendeyColors.OnSurfaceVariant,
-                            modifier = Modifier.padding(top = BendeySpacing.xxs),
                         )
                     }
-                    Spacer(modifier = Modifier.height(BendeySpacing.xxs))
+                }
+            }
+            BendeyExpressiveReveal(index = 2) {
+                AdminSessionCard(onClick = onAdminLogin)
+            }
+            BendeyExpressiveReveal(index = 3) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = "Inicia sesión para operar mesas, pedidos y caja.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BendeyColors.OnSurfaceVariant,
+                        text = "Acceso por estación",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "PIN",
+                        modifier = Modifier
+                            .clip(BendeyShapeTokens.md)
+                            .background(BendeyColors.PrimaryContainer)
+                            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = BendeyColors.OnPrimaryContainer,
                     )
                 }
             }
-            AdminSessionCard(onClick = onAdminLogin)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Acceso por estación",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "PIN",
-                    modifier = Modifier
-                        .clip(BendeyShapeTokens.md)
-                        .background(BendeyColors.PrimaryContainer)
-                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = BendeyColors.OnPrimaryContainer,
-                )
-            }
-            LazyVerticalGrid(
+            BendeyLazyVerticalGrid(
                 columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f),
+                state = rememberLazyGridState(),
                 contentPadding = PaddingValues(bottom = BendeySpacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                modifier = Modifier.weight(1f),
             ) {
                 items(stations) { card ->
-                    StationAccessCard(card = card, onClick = { onPinStation(card.station) })
+                    val cardIndex = stations.indexOf(card) + 4
+                    BendeyExpressiveReveal(index = cardIndex) {
+                        StationAccessCard(card = card, onClick = { onPinStation(card.station) })
+                    }
                 }
             }
         }
@@ -231,14 +251,28 @@ private fun AdminSessionCard(onClick: () -> Unit) {
 
 @Composable
 private fun StationAccessCard(card: StationCard, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val elevation by animateFloatAsState(
+        targetValue = if (pressed) 3f else 1f,
+        animationSpec = BendeyMotion.ExpressiveEffectsTween,
+        label = "station_card_elevation",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.99f else 1f,
+        animationSpec = BendeyMotion.ExpressiveSpatialSpring,
+        label = "station_card_scale",
+    )
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .scale(scale),
         shape = BendeyShapeTokens.xl,
         color = BendeyColors.Surface,
         border = BendeyCardDefaults.border,
-        shadowElevation = 0.dp,
+        shadowElevation = elevation.dp,
+        onClick = onClick,
+        interactionSource = interactionSource,
     ) {
         Row(
             modifier = Modifier.padding(BendeySpacing.sm),

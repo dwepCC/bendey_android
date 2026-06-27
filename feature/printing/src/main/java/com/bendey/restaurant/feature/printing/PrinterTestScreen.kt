@@ -17,8 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
@@ -105,10 +104,9 @@ fun PrinterTestScreen(
             },
             onBack = onBack,
         )
-        Column(
+        BendeyVerticalScrollColumn(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {

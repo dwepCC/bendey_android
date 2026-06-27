@@ -54,6 +54,7 @@ import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
 import com.bendey.restaurant.core.domain.pos.productNeedsConfiguration
 import com.bendey.restaurant.core.domain.pos.selectPresentation
+import com.bendey.restaurant.core.domain.pos.setOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
 import com.bendey.restaurant.core.domain.pos.setSlotOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleSlotOption
@@ -312,6 +313,19 @@ class MesaViewModel @Inject constructor(
             state.copy(productConfigure = cfg.copy(selected = toggleExtraSelection(cfg.selected, group, optionId), error = null))
         }
     }
+
+    fun setProductExtraQuantity(group: ModifierGroup, optionId: Int, quantity: Int) {
+        _uiState.update { state ->
+            val cfg = state.productConfigure ?: return@update state
+            state.copy(
+                productConfigure = cfg.copy(
+                    selected = setOptionQuantity(cfg.selected, group, optionId, quantity),
+                    error = null,
+                ),
+            )
+        }
+    }
+
     fun confirmProductConfigure() {
         val cfg = _uiState.value.productConfigure ?: return
         val validation = validateModifierSelection(cfg.presentations, cfg.extraGroups, cfg.selected, cfg.product)

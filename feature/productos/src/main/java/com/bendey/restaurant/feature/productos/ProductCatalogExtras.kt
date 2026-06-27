@@ -17,12 +17,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -90,10 +90,8 @@ fun ProductImportDialog(
         }
     }
 
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = BendeyColors.Surface,
-        tonalElevation = 0.dp,
         title = { Text("Importar productos (Excel)") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
@@ -126,7 +124,7 @@ fun ProductImportDialog(
                 enabled = !loading && validation != null && validation.errors.isEmpty() && validation.rows.isNotEmpty(),
             )
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        dismissButton = { BendeyTextButton(text = "Cerrar", onClick = onDismiss) },
     )
 }
 
@@ -192,9 +190,10 @@ fun ProductPresentationsSection(
                 )
             }
         }
-        TextButton(onClick = { onChange(presentations + ProductPresentation(name = "", salePrice = 0.0)) }) {
-            Text("Agregar presentación")
-        }
+        BendeyTextButton(
+            text = "Agregar presentación",
+            onClick = { onChange(presentations + ProductPresentation(name = "", salePrice = 0.0)) },
+        )
     }
 }
 
@@ -210,13 +209,10 @@ fun ProductModifiersSection(
     }
     Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         groups.forEach { group ->
-            FilterChip(
+            BendeyFilterChip(
                 selected = selectedIds.contains(group.id),
                 onClick = { onToggle(group.id) },
                 label = { Text(group.name) },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
             )
         }
     }

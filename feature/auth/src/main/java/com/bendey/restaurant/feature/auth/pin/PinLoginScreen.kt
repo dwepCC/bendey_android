@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPinKeypad
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -54,30 +55,41 @@ fun PinLoginScreen(
                     .padding(horizontal = BendeySpacing.lg, vertical = BendeySpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                BendeyBrandLogo(height = 48.dp, showBackground = true)
+                BendeyExpressiveReveal(index = 0) {
+                    BendeyBrandLogo(height = 48.dp, showBackground = true)
+                }
                 Spacer(modifier = Modifier.height(BendeySpacing.sm))
-                Text(
-                    text = "Ingresa tu PIN de operación",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = BendeySpacing.md),
-                )
-                BendeyPinKeypad(
-                    onDigit = viewModel::appendDigit,
-                    onBackspace = viewModel::backspace,
-                    currentLength = state.pin.length,
-                )
-                Spacer(modifier = Modifier.height(BendeySpacing.md))
-                BendeyPrimaryButton(
-                    text = "INGRESAR",
-                    onClick = { viewModel.submit(onAuthenticated) },
-                    loading = state.loading,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                state.error?.let {
-                    Spacer(modifier = Modifier.height(BendeySpacing.xs))
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
+                BendeyExpressiveReveal(index = 1) {
+                    Text(
+                        text = "Ingresa tu PIN de operación",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = BendeySpacing.md),
+                    )
+                }
+                BendeyExpressiveReveal(index = 2) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BendeyPinKeypad(
+                            onDigit = viewModel::appendDigit,
+                            onBackspace = viewModel::backspace,
+                            currentLength = state.pin.length,
+                        )
+                        Spacer(modifier = Modifier.height(BendeySpacing.md))
+                        BendeyPrimaryButton(
+                            text = "INGRESAR",
+                            onClick = { viewModel.submit(onAuthenticated) },
+                            loading = state.loading,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        state.error?.let {
+                            Spacer(modifier = Modifier.height(BendeySpacing.xs))
+                            Text(text = it, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 }
             }
         }

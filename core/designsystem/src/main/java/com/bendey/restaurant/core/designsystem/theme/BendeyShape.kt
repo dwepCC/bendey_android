@@ -10,6 +10,14 @@ object BendeyShapeTokens {
     val md = RoundedCornerShape(12.dp)
     val lg = RoundedCornerShape(14.dp)
     val xl = RoundedCornerShape(16.dp)
+
+    /** Alias semánticos — equivalen a la escala Material3 mapeada en [BendeyShapes]. */
+    val ExtraSmall get() = xs
+    val Small get() = sm
+    val Medium get() = md
+    val Large get() = lg
+    val ExtraLarge get() = xl
+
     val sheet = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     val pill = RoundedCornerShape(20.dp)
     val chip = RoundedCornerShape(20.dp)

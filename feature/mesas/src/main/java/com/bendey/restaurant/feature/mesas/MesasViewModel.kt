@@ -146,8 +146,10 @@ class MesasViewModel @Inject constructor(
                 AppResult.Loading -> Unit
             }
             when (val tablesResult = mesasRepository.loadTables(floorId = null)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, tables = tablesResult.data)
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(loading = false, tables = tablesResult.data)
+                    }
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(loading = false, error = tablesResult.message)

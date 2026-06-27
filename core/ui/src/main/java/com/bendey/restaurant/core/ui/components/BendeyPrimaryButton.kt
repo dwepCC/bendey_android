@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.previews.BendeyPhonePreview
+import com.bendey.restaurant.core.designsystem.previews.BendeyPreviewSurface
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 @Composable
@@ -53,5 +55,13 @@ fun BendeyPrimaryButton(
                 fontWeight = FontWeight.SemiBold,
             )
         }
+    }
+}
+
+@BendeyPhonePreview
+@Composable
+private fun BendeyPrimaryButtonPreview() {
+    BendeyPreviewSurface {
+        BendeyPrimaryButton(text = "Guardar", onClick = {})
     }
 }

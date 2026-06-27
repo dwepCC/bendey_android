@@ -1,24 +1,24 @@
 package com.bendey.restaurant.feature.caja
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import java.text.NumberFormat
 
@@ -32,9 +32,8 @@ fun ArqueoDialogContent(
 ) {
     val total = sumArqueo(values)
     val diff = total - expectedBalance
-    Column(
-        modifier = modifier
-            .verticalScroll(rememberScrollState()),
+    BendeyVerticalScrollColumn(
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -106,7 +105,7 @@ fun ArqueoDialog(
     onConfirm: () -> Unit,
 ) {
     if (!open) return
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Arqueo de caja") },
         text = {
@@ -120,7 +119,7 @@ fun ArqueoDialog(
             )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            BendeyTextButton(text = "Cancelar", onClick = onDismiss)
         },
     )
 }
@@ -137,7 +136,7 @@ fun CloseCashDialog(
     onFormChange: ((CloseCashForm) -> CloseCashForm) -> Unit,
     onArqueoQtyChange: (String, Int) -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Cerrar caja") },
         text = {
@@ -164,19 +163,19 @@ fun CloseCashDialog(
                     Text("Saldo sistema")
                     Text(currency.format(expectedBalance), fontWeight = FontWeight.Bold)
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    androidx.compose.material3.FilterChip(
+                    BendeyFilterChip(
                         selected = form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = true) } },
-                        label = { Text("Con arqueo") },
+                        text = "Con arqueo",
                     )
-                    androidx.compose.material3.FilterChip(
+                    BendeyFilterChip(
                         selected = !form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = false) } },
-                        label = { Text("Sin arqueo") },
+                        text = "Sin arqueo",
                     )
                 }
                 if (form.useArqueo) {
@@ -204,7 +203,7 @@ fun CloseCashDialog(
             )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            BendeyTextButton(text = "Cancelar", onClick = onDismiss)
         },
     )
 }

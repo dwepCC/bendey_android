@@ -1,0 +1,244 @@
+---
+description: Desarrollo Android Bendey — versiones reales, docs oficiales, M3, compilación obligatoria
+globs: front_tenant_restaurant_android/**/*.kt
+alwaysApply: true
+---
+
+# Reglas obligatorias — Bendey Restaurant Android
+
+## 0. Flujo antes de modificar cualquier archivo
+
+1. **Leer versiones reales** (no asumir):
+   - `gradle/libs.versions.toml`
+   - `build.gradle.kts` (root + módulo afectado)
+   - `settings.gradle.kts`
+   - [Compose BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping) para versiones resueltas por el BOM
+2. **Consultar documentación oficial** (orden de prioridad):
+   1. [developer.android.com](https://developer.android.com)
+   2. [AndroidX API Reference](https://developer.android.com/reference/androidx)
+   3. [Material Design 3](https://m3.material.io)
+   4. [Material 3 Expressive](https://developer.android.com/develop/ui/compose/designsystems/material3)
+3. **Gate de adopción de APIs** (ver §2) — checklist obligatorio antes de importar cualquier API.
+4. **Política de versión estable** (ver §4.1): usar la última versión **compatible con `libs.versions.toml`**; si la API requiere algo más nuevo, **proponer actualización del ecosistema Compose antes de tocar código**.
+5. **Implementar** solo con APIs que pasen el gate §2 y sean compatibles con el TOML actual (o tras upgrade acordado).
+6. **Compilar** antes de dar por terminada la tarea: `.\gradlew :app:compileDebugKotlin`
+
+No usar blogs, StackOverflow ni snippets sin contrastar con la referencia oficial.
+
+---
+
+## 1. Versiones del proyecto (snapshot — re-leer `libs.versions.toml` si cambió)
+
+Fuente: `gradle/libs.versions.toml` + `app/build.gradle.kts`.
+
+| Componente | Versión declarada | Versión resuelta (BOM) |
+|------------|-------------------|------------------------|
+| Kotlin | **2.1.0** | — |
+| KSP | **2.1.0-1.0.29** | — |
+| Android Gradle Plugin | **8.7.3** | — |
+| compileSdk / targetSdk | **35** | — |
+| minSdk | **29** | — |
+| Compose BOM | **2025.12.01** | — |
+| Compose UI | (BOM) | **~1.8.x** (ver BOM mapping) |
+| Material3 | (BOM) | **~1.4.0** |
+| Material3 Adaptive | **1.2.0** (pin explícito) | — |
+| material3-window-size-class | (BOM) | **~1.4.0** |
+| Activity Compose | **1.10.0** | — |
+| Lifecycle Compose | **2.9.0** | — |
+| Navigation Compose | **2.9.0** | — |
+| Core KTX | **1.15.0** | — |
+| Hilt | **2.54** | — |
+| Coil | **2.7.0** | — |
+| CameraX | **1.4.1** | — |
+| Coroutines | **1.9.0** | — |
+
+**No declarado:** `androidx.window:window` (Java WindowManager). El proyecto usa `material3-adaptive` + `currentWindowAdaptiveInfo()`.
+
+**Accompanist:** ausente (correcto — sustituido por WindowInsets + `enableEdgeToEdge`).
+
+---
+
+## 2. Gate de adopción de APIs — NUNCA implementar solo porque existe
+
+> **No adoptar una API oficial únicamente porque aparece en la documentación o en un ejemplo.**  
+> La existencia de una API **no es motivo suficiente** para usarla en este proyecto.
+
+Antes de **importar, invocar o refactorizar hacia** cualquier API oficial, completar **las 5 verificaciones**:
+
+| # | Verificación | Cómo comprobarlo | Si falla |
+|---|--------------|------------------|----------|
+| 1 | **Existe en la versión instalada** | [AndroidX API Reference](https://developer.android.com/reference/androidx) + versión resuelta en [BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping) para el `composeBom` del TOML | **NO usar** — proponer upgrade ecosistema |
+| 2 | **Pertenece al Compose BOM actual** (o dependencia explícita en el módulo) | Artefacto gestionado por `platform(libs.androidx.compose.bom)` o declarado en `build.gradle.kts` del módulo | **NO usar** — añadir dep solo tras plan integral; no pinneos sueltos |
+| 3 | **Es estable** | Release **stable** en [AndroidX releases](https://developer.android.com/jetpack/androidx/versions); no alpha/beta/RC salvo acuerdo explícito del usuario | **NO usar** — proponer upgrade a stable |
+| 4 | **No está marcada como Experimental** | Sin `@ExperimentalMaterial3Api`, `@ExperimentalMaterial3AdaptiveApi`, `@ExperimentalLayoutApi`, etc.; sin `@RequiresOptIn` en la referencia | **NO usar** — buscar alternativa stable o proponer upgrade |
+| 5 | **No existe reemplazo oficial más reciente** | Revisar [Migrate M2→M3](https://developer.android.com/develop/ui/compose/designsystems/material2-material3) y release notes por APIs deprecadas/sustituidas | Usar el **reemplazo oficial**, no la API legacy |
+
+### Si alguna condición no se cumple
+
+1. **NO** escribir código con esa API.
+2. **NO** añadir `@OptIn` para sortear experimental sin upgrade acordado.
+3. Documentar: versión mínima requerida, impacto, plan de actualización **completo** del ecosistema Compose (§5).
+4. Esperar aprobación / aplicar upgrade → compilar → **recién entonces** implementar.
+
+### Ejemplos en este proyecto (BOM `2025.12.01`, M3 ~1.4.0)
+
+| API | ¿Usar ahora? | Motivo |
+|-----|--------------|--------|
+| `MaterialTheme`, `FilterChip`, `WindowInsets.safeDrawing` | ✅ | Stable en M3 1.4.0 |
+| `PullToRefreshBox` | ✅ | Stable en M3 1.4.0 |
+| `currentWindowAdaptiveInfo()` | ✅ | Adaptive 1.2.0 declarado |
+| `MotionScheme.expressive()` directo | ❌ | **Internal** en M3 1.4.0 — usar `BendeyExpressiveScope` + `BendeyMotion.Expressive*` |
+| `MaterialExpressiveTheme` / componentes Expressive alpha | ❌ | Canal alpha 1.5 — no en BOM stable |
+| `ListDetailPaneScaffold` | ❌ | Artefacto `adaptive-layout` no declarado |
+| `NavigationSuiteScaffold` | ❌ | Artefacto no declarado; usar `BendeyNavigationSuite` |
+
+---
+
+## 3. APIs NO disponibles con las versiones actuales
+
+No introducir código que requiera estas APIs sin actualizar dependencias primero:
+
+| API | Versión mínima | Acción si se necesita |
+|-----|----------------|----------------------|
+| `MotionScheme.expressive()` directo en app code | API **pública** en M3 futuro | Hoy: `BendeyExpressiveScope` + tokens Bendey (ver `android-compose-architecture-final.mdc`) |
+| Componentes M3 Expressive (ButtonGroup, SplitButton, etc.) | Material3 **≥ 1.5 alpha** | No usar en stable |
+| BOM más reciente | Actualizar `composeBom` en TOML | Actualizar ecosistema completo (ver §5) |
+
+Con **Material3 ~1.4.0** (BOM `2025.12.01`): Experience Layer vía Compose Animation + Bendey tokens. Expressive **solo** pantallas admin (ver `android-compose-architecture-final.mdc` §4).
+
+---
+
+## 4. Compatibilidad
+
+- Toda implementación debe compilar con las versiones detectadas en **`libs.versions.toml`**.
+- **Usar siempre la última versión estable compatible con el TOML del proyecto** — no asumir BOM/APIs más recientes que las declaradas.
+- Si una API oficial requiere versión más reciente:
+  1. **Detener** la implementación en código.
+  2. Indicar en qué versión se incorpora la API.
+  3. Contrastar con [Compose BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping) y releases oficiales (solo **stable**, no alpha/beta salvo acuerdo explícito).
+  4. **Proponer actualización completa del ecosistema Compose** (BOM, Material3, Activity, Lifecycle, Navigation, Adaptive, Kotlin/AGP si aplica) **antes de modificar código**.
+  5. Tras acordar/aplicar el upgrade, entonces implementar.
+- Actualización coordinada — **nunca** una sola lib aislada.
+- **Nunca** introducir código que no compile con el BOM/versions actuales.
+
+### 4.1 Política de versión estable (regla explícita)
+
+> **Usa la última versión estable compatible con `libs.versions.toml` del proyecto. Si detectas que existe una versión más nueva, propón la actualización completa del ecosistema Compose antes de modificar el código.**
+
+| Situación | Acción |
+|-----------|--------|
+| API disponible en BOM/TOML actual | Implementar con docs oficiales |
+| API requiere BOM/lib más nueva | **Proponer upgrade ecosistema → esperar/aplicar → luego codificar** |
+| Existe BOM stable más reciente pero la tarea no lo exige | Mantener TOML actual; mencionar gap solo si aporta valor (p. ej. M3 Expressive) |
+| Docs muestran versión no publicada en Maven | Usar última stable **resoluble** en Google Maven, no la de docs preview |
+
+**Ecosistema Compose** = `composeBom` + libs resueltas por BOM + `activity-compose` + `lifecycle-*-compose` + `navigation-compose` + `material3-adaptive` + alineación Kotlin/AGP/KSP.
+
+**Ejemplo (post Fase 2.0):** BOM `2025.12.01` (M3 ~1.4.0). `MotionScheme` disponible tras upgrade — Expressive solo en fases 2.3 según `android-compose-phase2-migration.mdc` (no en POS).
+
+---
+
+## 5. Actualización de dependencias
+
+**Orden obligatorio:** detectar gap de versión → **proponer plan de upgrade** → aplicar TOML de forma consistente → compilar → **recién entonces** implementar features que dependían del upgrade.
+
+Actualizar de forma **consistente** todo el ecosistema Compose:
+
+```
+composeBom → material3 (vía BOM) → activity-compose → lifecycle → navigation-compose → material3-adaptive
+```
+
+Reglas:
+
+- No mezclar versiones incompatibles (p. ej. adaptive 1.2 con BOM antiguo sin verificar).
+- Tras cambiar `libs.versions.toml`, compilar **todos** los módulos UI.
+- Eliminar artefactos no usados (`adaptive-layout`, `window-size-class`) solo tras confirmar cero referencias.
+
+Referencias: [Compose BOM](https://developer.android.com/develop/ui/compose/bom), [Material3 releases](https://developer.android.com/jetpack/androidx/releases/compose-material3), [Adaptive releases](https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive).
+
+---
+
+## 6. Calidad — tarea no terminada si hay errores
+
+Antes de cerrar cualquier tarea:
+
+- [ ] `.\gradlew :app:compileDebugKotlin` sin errores
+- [ ] Sin imports ambiguos o muertos
+- [ ] Sin APIs deprecadas nuevas
+- [ ] Sin mezclar Material 2 UI con Material 3
+- [ ] Toda API nueva pasó el **gate §2** (versión, BOM, stable, no experimental, reemplazo)
+- [ ] Sin `@OptIn` añadido para APIs experimentales sin upgrade acordado
+
+---
+
+## 7. Material Design
+
+- **Solo** `androidx.compose.material3` para componentes UI.
+- `androidx.compose.material.icons.*` es válido (iconos, no componentes M2).
+- Prohibido `androidx.compose.material` (Button, Scaffold, AlertDialog de M2, etc.).
+- No duplicar componentes M3 existentes (Scaffold, NavigationBar, ModalBottomSheet…).
+- Preferir componentes oficiales **estables** sobre implementaciones custom (gate §2).
+- `@OptIn(ExperimentalMaterial3Api)` solo en código **ya existente** hasta upgrade; **prohibido** en código nuevo sin pasar gate §2.
+
+Guía: [Migrate M2 → M3](https://developer.android.com/develop/ui/compose/designsystems/material2-material3). Experimental APIs: [documentación oficial](https://developer.android.com/develop/ui/compose/designsystems/material2-material3#experimental-apis).
+
+---
+
+## 8. Layout adaptativo
+
+Ver **`android-compose-architecture-final.mdc` §3** (estrategia completa).
+
+Resumen:
+
+- Compose: `currentWindowAdaptiveInfo()` + helpers en `BendeyDeviceFormFactor.kt`.
+- Two-pane: **solo** `rememberUseAdaptiveTwoPane()`.
+- Multi-columna Dashboard: `rememberIsExpandedWidth()`.
+- Declarar `material3-adaptive` en el módulo que lo use.
+- No usar `adaptive-layout` / `adaptive-navigation` (no declarados).
+
+Referencia: [Adaptive layouts](https://developer.android.com/develop/ui/compose/layouts/adaptive).
+
+---
+
+## 9. WindowInsets (edge-to-edge)
+
+- `enableEdgeToEdge()` en Activity ([Activity](https://developer.android.com/reference/androidx/activity/ComponentActivity#enableEdgeToEdge())).
+- Modifiers oficiales: `safeDrawingPadding()`, `statusBarsPadding()`, `navigationBarsPadding()`, `imePadding()`, `displayCutoutPadding()`.
+- Insets compuestos — solo dentro de `@Composable`:
+
+```kotlin
+@Composable
+fun Modifier.horizontalSafeDrawing(): Modifier = windowInsetsPadding(
+    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+)
+```
+
+- No inventar insets custom si Android ya los provee.
+- No apilar `safeDrawingPadding()` dentro de shells que ya aplican insets.
+
+Referencia: [WindowInsets in Compose](https://developer.android.com/develop/ui/compose/layouts/insets).
+
+---
+
+## 10. Arquitectura y calidad Compose
+
+Priorizar:
+
+- Componentes y APIs oficiales Google
+- `collectAsStateWithLifecycle` (no `collectAsState` en UI)
+- `key` en `LazyColumn`/`LazyGrid` items
+- Touch target mínimo **48dp**
+- `contentDescription` en iconos accionables
+- Código reutilizable en `core:designsystem` y `core:ui`
+- Rendimiento: `remember`, `derivedStateOf` donde aplique
+
+No crear soluciones manuales cuando AndroidX ya provee una oficial **estable** (gate §2).
+
+---
+
+## 11. Referencias rápidas
+
+- [Material 3 in Compose](https://developer.android.com/develop/ui/compose/designsystems/material)
+- [MotionScheme API](https://developer.android.com/reference/kotlin/androidx/compose/material3/MotionScheme) (requiere M3 1.4+)
+- [WindowInsets](https://developer.android.com/develop/ui/compose/layouts/insets)
+- [Compose BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping)

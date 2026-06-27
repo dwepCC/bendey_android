@@ -11,6 +11,14 @@ object BendeySpacing {
     val lg = 24.dp
     val xl = 32.dp
 
+    /** Alias semánticos (documentación / APIs externas). */
+    val ExtraExtraSmall get() = xxs
+    val ExtraSmall get() = xs
+    val Small get() = sm
+    val Medium get() = md
+    val Large get() = lg
+    val ExtraLarge get() = xl
+
     val screenHorizontal = md
     val screenVertical = sm
     val cardPadding = md

@@ -7,21 +7,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,7 +35,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.ComboItem
 import com.bendey.restaurant.core.domain.products.CatalogSection
-import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 import java.text.NumberFormat
@@ -55,6 +53,7 @@ fun CombosScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val listState = rememberLazyListState()
 
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -63,8 +62,16 @@ fun CombosScreen(
                 subtitle = "${state.combos.size} combos",
                 onBack = onBack,
                 actions = {
-                    IconButton(onClick = viewModel::refresh) { Icon(Icons.Default.Refresh, contentDescription = null) }
-                    IconButton(onClick = viewModel::openCreate) { Icon(Icons.Default.Add, contentDescription = null) }
+                    BendeyIconButton(
+                        onClick = viewModel::refresh,
+                        icon = Icons.Default.Refresh,
+                        contentDescription = "Actualizar",
+                    )
+                    BendeyIconButton(
+                        onClick = viewModel::openCreate,
+                        icon = Icons.Default.Add,
+                        contentDescription = "Nuevo combo",
+                    )
                 },
             )
             CatalogSectionNav(
@@ -77,7 +84,12 @@ fun CombosScreen(
             state.error?.takeIf { !state.formOpen }?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
-            LazyColumn(contentPadding = PaddingValues(BendeySpacing.md), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeyLazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            ) {
                 items(state.combos, key = { it.id }) { combo ->
                     ComboRow(combo, currency, { viewModel.openEdit(combo.id) }, { viewModel.requestDelete(combo.id) })
                 }
@@ -109,12 +121,12 @@ fun CombosScreen(
     )
 
     state.deleteId?.let {
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDelete,
-            title = { Text("Eliminar combo") },
-            text = { Text("¿Eliminar este combo?") },
-            confirmButton = { BendeyPrimaryButton("Eliminar", viewModel::confirmDelete) },
-            dismissButton = { TextButton(onClick = viewModel::dismissDelete) { Text("Cancelar") } },
+            title = "Eliminar combo",
+            message = "¿Eliminar este combo?",
+            onConfirm = viewModel::confirmDelete,
+            confirmText = "Eliminar",
         )
     }
 }
@@ -141,8 +153,17 @@ private fun ComboRow(combo: ComboItem, currency: NumberFormat, onEdit: () -> Uni
                 }
                 if (!combo.active) BendeyStatusChip("Inactivo", BendeyColors.Warning)
             }
-            IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = null) }
-            IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error) }
+            BendeyIconButton(
+                onClick = onEdit,
+                icon = Icons.Default.Edit,
+                contentDescription = "Editar combo",
+            )
+            BendeyIconButton(
+                onClick = onDelete,
+                icon = Icons.Default.Delete,
+                contentDescription = "Eliminar combo",
+                tint = BendeyColors.Error,
+            )
         }
     }
 }

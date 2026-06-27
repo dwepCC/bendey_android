@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -31,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeySessionOrderCard
 
 @Composable
@@ -80,10 +81,12 @@ fun PosSentOrdersSection(
                 Text(if (orders.size > 1) "Todas" else "Reimprimir", style = MaterialTheme.typography.labelMedium)
             }
         }
-        LazyColumn(
+        val listState = rememberLazyListState()
+        BendeyLazyColumn(
             modifier = Modifier
                 .padding(top = 8.dp)
                 .heightIn(max = 200.dp),
+            state = listState,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(orders, key = { it.id }) { order ->
@@ -93,7 +96,7 @@ fun PosSentOrdersSection(
                     reprintEnabled = reprintingOrderId != order.id && !reprintingAll,
                     onReprint = { onReprint(order) },
                     comandaActions = { comanda ->
-                        IconButton(
+                        BendeyIconButton(
                             onClick = { onEditComandaNotes(comanda) },
                             modifier = Modifier.size(32.dp),
                         ) {
@@ -105,7 +108,7 @@ fun PosSentOrdersSection(
                             )
                         }
                         if (canAnularComanda) {
-                            IconButton(
+                            BendeyIconButton(
                                 onClick = { onVoidComanda(comanda) },
                                 modifier = Modifier.size(32.dp),
                             ) {

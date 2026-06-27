@@ -1,0 +1,67 @@
+---
+description: Fase 2 COMPLETADA — referencia histórica + reglas vigentes
+globs: front_tenant_restaurant_android/**/*
+alwaysApply: true
+---
+
+# Fase 2 — Migración controlada (COMPLETADA)
+
+**Estado:** todas las subfases cerradas con BUILD SUCCESSFUL y QA funcional.
+
+**Reglas vigentes para desarrollo futuro:** `android-compose-architecture-final.mdc` + gate §2 en `android-compose-material3.mdc`.
+
+---
+
+## Resumen de fases
+
+| Fase | Estado | Resultado |
+|------|--------|-----------|
+| **2.0** Ecosistema Compose | ✅ | BOM `2025.12.01`, M3 ~1.4, Kotlin 2.1 |
+| **2.1** Design System | ✅ | Tokens Bendey consolidados |
+| **2.2** Adaptive | ✅ | Two-pane POS/Mesas/Caja/etc.; layouts canónicos |
+| **2.3** Expressive | ✅ | Experience Layer en auth/Dashboard/Perfil/Splash |
+| **2.4** Pulido | ✅ | Scroll indicators, Safe Areas, auditoría final |
+
+---
+
+## Reglas de oro (permanentes)
+
+### R1 — No romper operación
+
+POS, Mesas, Cocina, Caja, Ventas operativas: comportamiento idéntico.
+
+### R2 — Identidad Bendey
+
+Material3 es infraestructura. Paleta tomate, tokens, aspecto POS intactos.
+
+### R3 — M3 solo con beneficio técnico
+
+Sin rebranding ni demo genérica Material.
+
+### R4 — Adaptive oficial
+
+Two-pane: `rememberUseAdaptiveTwoPane()` únicamente. Ver architecture-final §3.
+
+### R5 — Expressive selectivo
+
+| **SÍ** | **NO** |
+|--------|--------|
+| Splash, Login, Welcome, Register, RUC, Estaciones, Dashboard, Perfil | POS, Mesas, Cocina, Caja, Scanner, Printing, Checkout |
+
+Implementación: `BendeyExpressiveScope` + `BendeyExpressiveMotion` (no `MotionScheme` directo — internal en M3 1.4).
+
+### R6 — BendeyNavigationSuite
+
+Conservar UX actual. No migrar a `NavigationSuiteScaffold` sin análisis y QA.
+
+### R7 — Bendey Design System > Material3
+
+Tokens desde `core:designsystem` — sin hardcode.
+
+---
+
+## Gate entre fases (histórico)
+
+Build verde + funcionalidad intacta + identidad Bendey → siguiente fase.
+
+**Auditoría final de arquitectura:** completada — ver informe en conversación / `android-compose-architecture-final.mdc`.

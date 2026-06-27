@@ -1,9 +1,7 @@
 package com.bendey.restaurant.feature.mesas
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,22 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import com.bendey.restaurant.core.ui.components.BendeyFormDialog
-import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
-import com.bendey.restaurant.core.ui.components.BendeySelectOption
-import com.bendey.restaurant.core.ui.components.BendeyTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,14 +25,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChipVariant
 import com.bendey.restaurant.core.designsystem.components.BendeyTableCard
 import com.bendey.restaurant.core.designsystem.components.BendeyTableStatsRow
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
-import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
-import com.bendey.restaurant.core.ui.components.BindSnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
+import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
+import com.bendey.restaurant.core.ui.components.BendeySelectOption
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +52,10 @@ fun MesasScreen(
     viewModel: MesasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
+    val tableCount = state.floorSections.sumOf { it.tables.size }
 
-    BindSnackMessage(
+    BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
@@ -68,12 +68,11 @@ fun MesasScreen(
         }
     }
 
-    PullToRefreshBox(
+    BendeyListScreenLayout(
+        modifier = modifier.fillMaxSize(),
         isRefreshing = state.loading,
         onRefresh = viewModel::refresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        header = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -91,33 +90,32 @@ fun MesasScreen(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
-                IconButton(onClick = viewModel::refresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                }
+                BendeyIconButton(
+                    onClick = viewModel::refresh,
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Actualizar",
+                )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.sm,
+                    vertical = BendeySpacing.xxs,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = state.selectedFloorId == null,
                     onClick = { viewModel.selectFloor(null) },
-                    label = { Text("Todas") },
-                    colors = BendeyChipDefaults.posFilterChipColors(),
-                    shape = BendeyShapeTokens.chip,
-                    border = null,
+                    text = "Todas",
+                    variant = BendeyFilterChipVariant.Pos,
                 )
                 state.floors.forEach { floor ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.selectedFloorId == floor.id,
                         onClick = { viewModel.selectFloor(floor.id) },
-                        label = { Text(floor.name) },
-                        colors = BendeyChipDefaults.posFilterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
+                        text = floor.name,
+                        variant = BendeyFilterChipVariant.Pos,
                     )
                 }
             }
@@ -134,45 +132,57 @@ fun MesasScreen(
                 label = "Buscar mesa...",
                 modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
             )
-            BoxWithConstraints(modifier = Modifier.weight(1f)) {
-                val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
-                    contentPadding = PaddingValues(
-                        start = BendeySpacing.sm,
-                        end = BendeySpacing.sm,
-                        top = BendeySpacing.xxs,
-                        bottom = BendeySpacing.sm,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    state.floorSections.forEach { section ->
-                        val showSectionHeader = state.selectedFloorId == null && state.floors.size > 1
-                        if (showSectionHeader) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                FloorSectionHeader(
-                                    title = section.floorName,
-                                    tableCount = section.tables.size,
-                                )
-                            }
-                        }
-                        items(section.tables, key = { it.id }) { table ->
-                            BendeyTableCard(
-                                table = table,
-                                onClick = { viewModel.onTableClick(table) },
-                            )
-                        }
-                    }
-                }
-            }
             state.error?.let {
                 Text(
                     text = it,
                     color = BendeyColors.Error,
-                    modifier = Modifier.padding(BendeySpacing.md),
+                    modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
                 )
+            }
+        },
+    ) { innerModifier ->
+        BoxWithConstraints(modifier = innerModifier) {
+            val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
+            val gridState = rememberLazyGridState()
+            BendeyLazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                modifier = Modifier.fillMaxSize(),
+                state = gridState,
+                contentPadding = PaddingValues(
+                    start = BendeySpacing.sm,
+                    end = BendeySpacing.sm,
+                    top = BendeySpacing.xxs,
+                    bottom = BendeySpacing.sm + bottomScrollPadding,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            ) {
+                if (tableCount == 0 && !state.loading) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            "No hay mesas para mostrar",
+                            color = BendeyColors.OnSurfaceVariant,
+                            modifier = Modifier.padding(BendeySpacing.md),
+                        )
+                    }
+                }
+                state.floorSections.forEach { section ->
+                    val showSectionHeader = state.selectedFloorId == null && state.floors.size > 1
+                    if (showSectionHeader) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            FloorSectionHeader(
+                                title = section.floorName,
+                                tableCount = section.tables.size,
+                            )
+                        }
+                    }
+                    items(section.tables, key = { it.id }) { table ->
+                        BendeyTableCard(
+                            table = table,
+                            onClick = { viewModel.onTableClick(table) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -235,19 +245,18 @@ private fun FloorSectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = BendeySpacing.xxs),
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = title,
+            title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = BendeyColors.OnSurface,
         )
         Text(
-            text = "$tableCount mesas",
-            style = MaterialTheme.typography.labelSmall,
+            "$tableCount mesas",
+            style = MaterialTheme.typography.labelMedium,
             color = BendeyColors.OnSurfaceVariant,
         )
     }

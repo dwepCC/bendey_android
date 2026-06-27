@@ -5,11 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,7 +25,6 @@ val BendeyBottomBarInset = BendeyBottomBarHeight + BendeyBottomBarFabOverlap
 /**
  * Shell operativo: barra de estado tomate; contenido blanco a ancho completo
  * con esquinas superiores redondeadas (como React `RestaurantLayout`).
- * El FAB de la barra inferior puede superponerse al contenido sin recortarse.
  */
 @Composable
 fun BendeyRestaurantShell(
@@ -44,7 +38,7 @@ fun BendeyRestaurantShell(
         modifier = modifier
             .fillMaxSize()
             .background(BendeyColors.Rest900)
-            .bendeyStatusBarsPadding(),
+            .bendeyTopSystemInsetsPadding(),
     ) {
         topBar()
         Box(
@@ -54,12 +48,10 @@ fun BendeyRestaurantShell(
                 .clip(BendeyShapeTokens.sheet)
                 .background(BendeyColors.Surface),
         ) {
-            val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val contentBottomPad = if (showBottomBar) BendeyBottomBarHeight + navigationBarPadding else 0.dp
             content(
                 Modifier
                     .fillMaxSize()
-                    .padding(bottom = contentBottomPad),
+                    .bendeyHorizontalSafeDrawingPadding(),
             )
             if (showBottomBar) {
                 Box(

@@ -1,6 +1,5 @@
 package com.bendey.restaurant.feature.mesas
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -9,26 +8,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,8 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
@@ -47,18 +41,23 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
-import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.Floor
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
 
@@ -76,15 +75,21 @@ fun MesasAdminScreen(
             title = "Configurar mesas",
             subtitle = "${state.filteredTables.size} mesas · ${state.floors.size} ambientes",
             actions = {
-                IconButton(onClick = viewModel::openFloorsSheet) {
-                    Icon(Icons.Default.Layers, contentDescription = "Ambientes")
-                }
-                IconButton(onClick = viewModel::refresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                }
-                IconButton(onClick = viewModel::openCreateTable) {
-                    Icon(Icons.Default.Add, contentDescription = "Nueva mesa")
-                }
+                BendeyIconButton(
+                    onClick = viewModel::openFloorsSheet,
+                    icon = Icons.Default.Layers,
+                    contentDescription = "Ambientes",
+                )
+                BendeyIconButton(
+                    onClick = viewModel::refresh,
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Actualizar",
+                )
+                BendeyIconButton(
+                    onClick = viewModel::openCreateTable,
+                    icon = Icons.Default.Add,
+                    contentDescription = "Nueva mesa",
+                )
             },
         )
         state.error?.let {
@@ -96,29 +101,24 @@ fun MesasAdminScreen(
             label = "Buscar mesa",
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+        BendeyHorizontalScrollRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = BendeySpacing.md,
+                vertical = BendeySpacing.xxs,
+            ),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
-            FilterChip(
+            BendeyFilterChip(
                 selected = state.floorFilterId == null,
                 onClick = { viewModel.setFloorFilter(null) },
-                label = { Text("Todos") },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
+                text = "Todos",
             )
             state.floors.forEach { floor ->
-                FilterChip(
+                BendeyFilterChip(
                     selected = state.floorFilterId == floor.id,
                     onClick = { viewModel.setFloorFilter(floor.id) },
-                    label = { Text(floor.name) },
-                    colors = BendeyChipDefaults.filterChipColors(),
-                    shape = BendeyShapeTokens.chip,
-                    border = null,
+                    text = floor.name,
                 )
             }
         }
@@ -126,21 +126,15 @@ fun MesasAdminScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
             horizontalArrangement = Arrangement.End,
         ) {
-            FilterChip(
+            BendeyFilterChip(
                 selected = state.viewMode == MesasAdminViewMode.GRID,
                 onClick = { viewModel.setViewMode(MesasAdminViewMode.GRID) },
-                label = { Icon(Icons.Default.GridView, contentDescription = null) },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
+                label = { Icon(Icons.Default.GridView, contentDescription = "Vista cuadrícula") },
             )
-            FilterChip(
+            BendeyFilterChip(
                 selected = state.viewMode == MesasAdminViewMode.LIST,
                 onClick = { viewModel.setViewMode(MesasAdminViewMode.LIST) },
-                label = { Icon(Icons.Default.List, contentDescription = null) },
-                colors = BendeyChipDefaults.filterChipColors(),
-                shape = BendeyShapeTokens.chip,
-                border = null,
+                label = { Icon(Icons.Default.List, contentDescription = "Vista lista") },
                 modifier = Modifier.padding(start = BendeySpacing.xs),
             )
         }
@@ -155,12 +149,13 @@ fun MesasAdminScreen(
             if (state.viewMode == MesasAdminViewMode.GRID) {
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
-                    LazyVerticalGrid(
+                    BendeyLazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
+                        modifier = Modifier.fillMaxSize(),
+                        state = rememberLazyGridState(),
                         contentPadding = PaddingValues(BendeySpacing.md),
                         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                        modifier = Modifier.fillMaxSize(),
                     ) {
                         items(tables, key = { it.id }) { table ->
                             AdminTableCard(
@@ -175,8 +170,9 @@ fun MesasAdminScreen(
                     }
                 }
             } else {
-                LazyColumn(
+                BendeyLazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
+                    state = rememberLazyListState(),
                     contentPadding = PaddingValues(BendeySpacing.md),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
@@ -198,14 +194,17 @@ fun MesasAdminScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = { viewModel.setPage(state.page - 1) }, enabled = state.page > 0) {
-                        Text("Anterior")
-                    }
+                    BendeyTextButton(
+                        text = "Anterior",
+                        onClick = { viewModel.setPage(state.page - 1) },
+                        enabled = state.page > 0,
+                    )
                     Text("Página ${state.page + 1} / ${state.pageCount}", style = MaterialTheme.typography.bodySmall)
-                    TextButton(
+                    BendeyTextButton(
+                        text = "Siguiente",
                         onClick = { viewModel.setPage(state.page + 1) },
                         enabled = state.page < state.pageCount - 1,
-                    ) { Text("Siguiente") }
+                    )
                 }
             }
         }
@@ -237,12 +236,17 @@ fun MesasAdminScreen(
                                 Text(floor.name, fontWeight = FontWeight.SemiBold)
                                 Text("Orden ${floor.sortOrder}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                             }
-                            IconButton(onClick = { viewModel.openEditFloor(floor) }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Editar")
-                            }
-                            IconButton(onClick = { viewModel.requestDeleteFloor(floor.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = BendeyColors.Error)
-                            }
+                            BendeyIconButton(
+                                onClick = { viewModel.openEditFloor(floor) },
+                                icon = Icons.Default.Edit,
+                                contentDescription = "Editar",
+                            )
+                            BendeyIconButton(
+                                onClick = { viewModel.requestDeleteFloor(floor.id) },
+                                icon = Icons.Default.Delete,
+                                contentDescription = "Eliminar",
+                                tint = BendeyColors.Error,
+                            )
                         }
                     }
                 }
@@ -271,9 +275,11 @@ fun MesasAdminScreen(
                 label = "Orden",
             )
             if (state.floorForm.id != null) {
-                TextButton(onClick = { viewModel.requestDeleteFloor(state.floorForm.id!!) }) {
-                    Text("Eliminar ambiente", color = BendeyColors.Error)
-                }
+                BendeyTextButton(
+                    text = "Eliminar ambiente",
+                    onClick = { viewModel.requestDeleteFloor(state.floorForm.id!!) },
+                    textColor = BendeyColors.Error,
+                )
             }
         }
     }
@@ -289,18 +295,14 @@ fun MesasAdminScreen(
             loading = state.saving,
         ) {
             Text("Ambiente", style = MaterialTheme.typography.labelLarge)
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            BendeyHorizontalScrollRow(
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 state.floors.forEach { floor ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.tableForm.floorId == floor.id,
                         onClick = { viewModel.updateTableForm { it.copy(floorId = floor.id) } },
-                        label = { Text(floor.name) },
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
+                        text = floor.name,
                     )
                 }
             }
@@ -320,10 +322,8 @@ fun MesasAdminScreen(
     state.deleteTableId?.let { id ->
         val table = state.tables.firstOrNull { it.id == id }
         val blocked = table?.let(viewModel::tableDeleteBlockedReason)
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDeleteTable,
-            containerColor = BendeyColors.Surface,
-            tonalElevation = 0.dp,
             title = { Text("Eliminar mesa") },
             text = {
                 Text(blocked ?: "¿Eliminar la mesa ${table?.name.orEmpty()}?")
@@ -337,16 +337,14 @@ fun MesasAdminScreen(
                 )
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteTable) { Text("Cancelar") }
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissDeleteTable)
             },
         )
     }
 
     state.deleteFloorId?.let {
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDeleteFloor,
-            containerColor = BendeyColors.Surface,
-            tonalElevation = 0.dp,
             title = { Text("Eliminar ambiente") },
             text = { Text("¿Eliminar este ambiente? Debe estar vacío de mesas activas.") },
             confirmButton = {
@@ -358,7 +356,7 @@ fun MesasAdminScreen(
                 )
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteFloor) { Text("Cancelar") }
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissDeleteFloor)
             },
         )
     }
@@ -426,9 +424,11 @@ private fun TableContextMenu(
     onOpenSession: (() -> Unit)?,
 ) {
     var open by remember { mutableStateOf(false) }
-    IconButton(onClick = { open = true }) {
-        Icon(Icons.Default.MoreVert, contentDescription = "Menú")
-    }
+    BendeyIconButton(
+        onClick = { open = true },
+        icon = Icons.Default.MoreVert,
+        contentDescription = "Menú",
+    )
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
         DropdownMenuItem(text = { Text("Editar") }, onClick = { open = false; onEdit() })
         onOpenSession?.let { go ->

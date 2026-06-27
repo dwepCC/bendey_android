@@ -1,10 +1,8 @@
 package com.bendey.restaurant.core.ui.components
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,19 +19,18 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChipVariant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,14 +45,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
+import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
-import com.bendey.restaurant.core.ui.motion.BendeyMotion
 import java.text.NumberFormat
 
 @Composable
@@ -109,19 +105,21 @@ fun BendeyPosCatalogPane(
 ) {
     if (sidebarCategories) {
         Row(modifier = modifier.fillMaxSize()) {
-            LazyColumn(
+            val categoryListState = rememberLazyListState()
+            BendeyLazyColumn(
                 modifier = Modifier
                     .widthIn(min = 96.dp, max = 120.dp)
                     .fillMaxHeight()
                     .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f))
                     .padding(4.dp),
+                state = categoryListState,
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 item {
-                    CategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
+                    PosCategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
                 }
                 items(categories, key = { it.id }) { category ->
-                    CategoryChip(selectedCategoryId == category.id, category.name) {
+                    PosCategoryChip(selectedCategoryId == category.id, category.name) {
                         onCategorySelect(category.id)
                     }
                 }
@@ -133,7 +131,9 @@ fun BendeyPosCatalogPane(
                 currency = currency,
                 assetsBaseUrl = assetsBaseUrl,
                 onProductClick = onProductClick,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 compactCards = compactCards,
                 posCatalogStyle = posCatalogStyle,
                 barcodeScanEnabled = barcodeScanEnabled,
@@ -183,69 +183,71 @@ private fun CatalogGridBody(
     gridBottomPadding: Dp = 12.dp,
     searchPlaceholder: String = "Buscar producto…",
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val columns = if (posCatalogStyle) {
-            BendeyTabletTokens.posProductGridColumns(maxWidth)
-        } else {
-            BendeyTabletTokens.productGridColumns(maxWidth)
-        }
-        Column(modifier = Modifier.fillMaxSize()) {
-            PosCompactSearchField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                placeholder = searchPlaceholder,
-                barcodeScanEnabled = barcodeScanEnabled,
-                onBarcodeScanChange = onBarcodeScanChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-            )
-            if (categories.isNotEmpty() && onCategorySelect != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    CategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
-                    categories.forEach { category ->
-                        CategoryChip(selectedCategoryId == category.id, category.name) {
-                            onCategorySelect(category.id)
-                        }
+    Column(modifier = modifier.fillMaxSize()) {
+        PosCompactSearchField(
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            placeholder = searchPlaceholder,
+            barcodeScanEnabled = barcodeScanEnabled,
+            onBarcodeScanChange = onBarcodeScanChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 2.dp),
+        )
+        if (categories.isNotEmpty() && onCategorySelect != null) {
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                PosCategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
+                categories.forEach { category ->
+                    PosCategoryChip(selectedCategoryId == category.id, category.name) {
+                        onCategorySelect(category.id)
                     }
                 }
             }
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                items(products, key = { it.id }) { product ->
-                    if (posCatalogStyle) {
-                        BendeyPosProductCard(
-                            name = product.name,
-                            price = product.salePrice,
-                            currency = currency,
-                            imageUrl = product.imageUrl,
-                            assetsBaseUrl = assetsBaseUrl,
-                            onClick = { onProductClick(product) },
-                            enabled = product.availableForSale,
-                        )
-                    } else {
-                        BendeyProductCard(
-                            name = product.name,
-                            price = product.salePrice,
-                            currency = currency,
-                            imageUrl = product.imageUrl,
-                            assetsBaseUrl = assetsBaseUrl,
-                            onClick = { onProductClick(product) },
-                            badges = product.productBadges(),
-                            compact = compactCards,
-                            enabled = product.availableForSale,
-                        )
+        }
+        val gridState = rememberLazyGridState()
+        BendeyFlexibleContentSlot {
+            BoxWithConstraints(modifier = it) {
+                val columns = if (posCatalogStyle) {
+                    BendeyTabletTokens.posProductGridColumns(maxWidth)
+                } else {
+                    BendeyTabletTokens.productGridColumns(maxWidth)
+                }
+                BendeyLazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    modifier = Modifier.fillMaxSize(),
+                    state = gridState,
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(products, key = { it.id }) { product ->
+                        if (posCatalogStyle) {
+                            BendeyPosProductCard(
+                                name = product.name,
+                                price = product.salePrice,
+                                currency = currency,
+                                imageUrl = product.imageUrl,
+                                assetsBaseUrl = assetsBaseUrl,
+                                onClick = { onProductClick(product) },
+                                enabled = product.availableForSale,
+                            )
+                        } else {
+                            BendeyProductCard(
+                                name = product.name,
+                                price = product.salePrice,
+                                currency = currency,
+                                imageUrl = product.imageUrl,
+                                assetsBaseUrl = assetsBaseUrl,
+                                onClick = { onProductClick(product) },
+                                badges = product.productBadges(),
+                                compact = compactCards,
+                                enabled = product.availableForSale,
+                            )
+                        }
                     }
                 }
             }
@@ -344,28 +346,11 @@ private fun BendeyCompactSearchInput(
 }
 
 @Composable
-private fun CategoryChip(selected: Boolean, label: String, onClick: () -> Unit) {
-    val containerColor by animateColorAsState(
-        targetValue = if (selected) BendeyColors.Primary else BendeyColors.SurfaceVariant,
-        animationSpec = BendeyMotion.ChipColorSpring,
-        label = "chipBg",
-    )
-    val labelColor by animateColorAsState(
-        targetValue = if (selected) BendeyColors.OnPrimary else BendeyColors.NavInactive,
-        animationSpec = BendeyMotion.ChipColorSpring,
-        label = "chipLabel",
-    )
-    FilterChip(
+private fun PosCategoryChip(selected: Boolean, label: String, onClick: () -> Unit) {
+    BendeyFilterChip(
         selected = selected,
         onClick = onClick,
+        variant = BendeyFilterChipVariant.Pos,
         label = { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = containerColor,
-            selectedLabelColor = labelColor,
-            containerColor = BendeyColors.SurfaceVariant,
-            labelColor = BendeyColors.OnSurfaceVariant,
-        ),
-        shape = BendeyShapeTokens.chip,
-        border = null,
     )
 }

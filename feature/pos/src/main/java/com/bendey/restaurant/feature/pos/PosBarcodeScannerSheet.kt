@@ -30,7 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
@@ -108,12 +108,12 @@ fun PosBarcodeScannerSheet(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    IconButton(
+                    BendeyIconButton(
                         onClick = onDismiss,
+                        icon = Icons.Default.Close,
+                        contentDescription = "Cerrar",
                         modifier = Modifier.align(Alignment.TopEnd),
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
-                    }
+                    )
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -1,5 +1,7 @@
 package com.bendey.restaurant
 
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -13,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyTheme
+import com.bendey.restaurant.core.ui.layout.BendeyDeviceFormFactor
 import com.bendey.restaurant.navigation.BendeyAppNavHost
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        applyOrientationPolicy()
         super.onCreate(savedInstanceState)
         val statusTomato = BendeyColors.Rest900.toArgb()
         enableEdgeToEdge(
@@ -41,6 +45,24 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyOrientationPolicy()
+    }
+
+    /**
+     * Teléfonos: solo portrait.
+     * Tablets (smallestScreenWidthDp ≥ 600): portrait y landscape.
+     */
+    private fun applyOrientationPolicy() {
+        val smallestWidth = resources.configuration.smallestScreenWidthDp
+        requestedOrientation = if (BendeyDeviceFormFactor.isTablet(smallestWidth)) {
+            ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 }

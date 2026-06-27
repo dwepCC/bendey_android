@@ -2,16 +2,19 @@ package com.bendey.restaurant.feature.caja
 
 import android.content.Intent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.VerticalDivider
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -20,16 +23,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,10 +41,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyKpiCard
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -57,10 +56,15 @@ import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
-import com.bendey.restaurant.core.ui.components.BindSnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -75,68 +79,70 @@ fun CajaScreen(
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val context = LocalContext.current
 
-    BindSnackMessage(
+    BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
     )
 
-    PullToRefreshBox(
+    BendeyListScreenLayout(
+        modifier = modifier,
         isRefreshing = state.loading,
         onRefresh = viewModel::refresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        header = {
             BendeyScreenToolbar(
                 title = "Caja",
                 subtitle = state.branchName ?: state.session?.branchName,
                 actions = {
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                    }
+                    BendeyIconButton(
+                        onClick = viewModel::refresh,
+                        icon = Icons.Default.Refresh,
+                        contentDescription = "Actualizar",
+                    )
                 },
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.sm,
+                    vertical = BendeySpacing.xxs,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 CajaTab.entries.filter { tab ->
                     tab != CajaTab.CONFIG || state.canViewCashSettings
                 }.forEach { tab ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.tab == tab,
                         onClick = { viewModel.setTab(tab) },
-                        label = { Text(tab.label) },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = tab.label,
                     )
                 }
             }
-            when {
-                state.session == null && state.tab == CajaTab.SESSION && !state.loading -> {
-                    ClosedCashCard(onOpen = viewModel::showOpenDialog)
-                }
-                state.tab == CajaTab.SESSION && state.session != null -> {
-                    SessionTab(state, currency, viewModel)
-                }
-                state.tab == CajaTab.MOVEMENTS -> {
-                    MovementsTab(state, currency, viewModel, context)
-                }
-                state.tab == CajaTab.REPORT -> {
-                    ReportTab(state, currency, viewModel, context)
-                }
-                state.tab == CajaTab.HISTORY -> {
-                    HistoryTab(state, currency, viewModel)
-                }
-                state.tab == CajaTab.CONFIG -> {
-                    ConfigTab(state, currency, viewModel)
-                }
+        },
+    ) { contentModifier ->
+        when {
+            state.session == null && state.tab == CajaTab.SESSION && !state.loading -> {
+                ClosedCashCard(onOpen = viewModel::showOpenDialog, modifier = contentModifier)
             }
-            state.error?.let {
-                Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
+            state.tab == CajaTab.SESSION && state.session != null -> {
+                SessionTab(state, currency, viewModel, contentModifier)
             }
+            state.tab == CajaTab.MOVEMENTS -> {
+                MovementsTab(state, currency, viewModel, context, contentModifier)
+            }
+            state.tab == CajaTab.REPORT -> {
+                ReportTab(state, currency, viewModel, context, contentModifier)
+            }
+            state.tab == CajaTab.HISTORY -> {
+                HistoryTab(state, currency, viewModel, contentModifier)
+            }
+            state.tab == CajaTab.CONFIG -> {
+                ConfigTab(state, currency, viewModel, contentModifier)
+            }
+        }
+        state.error?.let {
+            Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
         }
     }
 
@@ -216,7 +222,7 @@ fun CajaScreen(
         )
     }
     if (state.showCloseForceConfirm) {
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissCloseForceConfirm,
             title = { Text("Operaciones activas") },
             text = {
@@ -233,16 +239,21 @@ fun CajaScreen(
                 )
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissCloseForceConfirm) { Text("Cancelar") }
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissCloseForceConfirm)
             },
         )
     }
 }
 
 @Composable
-private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
+private fun SessionTab(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    modifier: Modifier = Modifier,
+) {
     val session = state.session ?: return
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
@@ -292,7 +303,7 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
-        LazyColumn(
+        BendeyLazyColumn(state = rememberLazyListState(),
             contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.weight(1f),
@@ -305,11 +316,17 @@ private fun SessionTab(state: CajaUiState, currency: NumberFormat, viewModel: Ca
 }
 
 @Composable
-private fun MovementsTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel, context: android.content.Context) {
-    LazyColumn(
+private fun MovementsTab(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    context: android.content.Context,
+    modifier: Modifier = Modifier,
+) {
+    BendeyLazyColumn(state = rememberLazyListState(),
         contentPadding = PaddingValues(BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
         if (state.session != null) {
             item {
@@ -432,56 +449,93 @@ private fun ReportTab(
     currency: NumberFormat,
     viewModel: CajaViewModel,
     context: android.content.Context,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(BendeySpacing.md)) {
-        val sessions = buildList {
-            state.session?.let { add(it.id) }
-            addAll(state.historySessions.map { it.id })
-        }.distinct()
-        if (sessions.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+    val useTwoPane = rememberUseAdaptiveTwoPane()
+    val sessions = buildList {
+        state.session?.let { add(it.id) }
+        addAll(state.historySessions.map { it.id })
+    }.distinct()
+
+    @Composable
+    fun ReportDetailContent(modifier: Modifier = Modifier) {
+        Column(modifier = modifier) {
+            if (state.reportLoading) {
+                CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
+            } else {
+                state.report?.let { report ->
+                    ReportContent(report, state.reportProducts, currency)
+                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.sm)) {
+                        OutlinedButton(
+                            onClick = {
+                                val text = formatSessionReportText(report, currency)
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, "Reporte caja #${report.session.id}")
+                                            putExtra(Intent.EXTRA_TEXT, text)
+                                        },
+                                        "Compartir reporte",
+                                    ),
+                                )
+                            },
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null)
+                            Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
+                        }
+                        OutlinedButton(onClick = { viewModel.exportSessionReportPdf(context) }) {
+                            Text("Exportar PDF")
+                        }
+                    }
+                } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
+            }
+        }
+    }
+
+    if (useTwoPane && sessions.isNotEmpty()) {
+        Row(modifier = modifier.fillMaxSize()) {
+            BendeyLazyColumn(state = rememberLazyListState(),
+                contentPadding = PaddingValues(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                modifier = Modifier
+                    .weight(0.32f)
+                    .fillMaxHeight(),
             ) {
-                sessions.take(10).forEach { id ->
-                    FilterChip(
+                items(sessions.take(10)) { id ->
+                    BendeyFilterChip(
                         selected = state.reportSessionId == id,
                         onClick = { viewModel.loadReport(id) },
-                        label = { Text("Sesión #$id") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = "Sesión #$id",
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
+            VerticalDivider()
+            ReportDetailContent(
+                modifier = Modifier
+                    .weight(0.68f)
+                    .fillMaxHeight()
+                    .padding(BendeySpacing.md),
+            )
         }
-        if (state.reportLoading) {
-            CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
-        } else {
-            state.report?.let { report ->
-                ReportContent(report, state.reportProducts, currency)
-                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.sm)) {
-                    OutlinedButton(
-                        onClick = {
-                            val text = formatSessionReportText(report, currency)
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_SUBJECT, "Reporte caja #${report.session.id}")
-                                        putExtra(Intent.EXTRA_TEXT, text)
-                                    },
-                                    "Compartir reporte",
-                                ),
-                            )
-                        },
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = null)
-                        Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
-                    }
-                    OutlinedButton(onClick = { viewModel.exportSessionReportPdf(context) }) {
-                        Text("Exportar PDF")
+    } else {
+        Column(modifier = modifier.fillMaxSize().padding(BendeySpacing.md)) {
+            if (sessions.isNotEmpty()) {
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
+                    sessions.take(10).forEach { id ->
+                        BendeyFilterChip(
+                            selected = state.reportSessionId == id,
+                            onClick = { viewModel.loadReport(id) },
+                            text = "Sesión #$id",
+                        )
                     }
                 }
-            } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
+            }
+            ReportDetailContent()
         }
     }
 }
@@ -564,11 +618,16 @@ private fun ReportRow(label: String, value: String, bold: Boolean = false) {
 }
 
 @Composable
-private fun HistoryTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
-    LazyColumn(
+private fun HistoryTab(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    modifier: Modifier = Modifier,
+) {
+    BendeyLazyColumn(state = rememberLazyListState(),
         contentPadding = PaddingValues(BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
         if (state.historySessions.isEmpty()) {
             item { Text("Sin historial de sesiones", color = BendeyColors.OnSurfaceVariant) }
@@ -604,9 +663,9 @@ private fun HistorySessionCard(
 }
 
 @Composable
-private fun ClosedCashCard(onOpen: () -> Unit) {
+private fun ClosedCashCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(BendeySpacing.lg),
+        modifier = modifier.fillMaxSize().padding(BendeySpacing.lg),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -649,7 +708,7 @@ private fun OpenCashDialog(
     onConfirm: () -> Unit,
     onFormChange: ((OpenCashForm) -> OpenCashForm) -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = { if (!mandatory) onDismiss() },
         title = { Text("Abrir caja") },
         text = {
@@ -660,7 +719,11 @@ private fun OpenCashDialog(
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Abriendo…" else "Abrir caja", onConfirm, enabled = !loading) },
-        dismissButton = { if (!mandatory) TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = {
+            if (!mandatory) {
+                BendeyTextButton(text = "Cancelar", onClick = onDismiss)
+            }
+        },
     )
 }
 
@@ -674,31 +737,29 @@ private fun MovementDialog(
     onFormChange: ((MovementForm) -> MovementForm) -> Unit,
 ) {
     val categories = if (form.type == CashMovementType.INCOME) incomeMovementCategories else expenseMovementCategories
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (form.type == CashMovementType.INCOME) "Registrar ingreso" else "Registrar egreso") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     categories.forEach { cat ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = form.category == cat.value,
                             onClick = { onFormChange { it.copy(category = cat.value) } },
-                            label = { Text(cat.label) },
-                            colors = BendeyChipDefaults.filterChipColors(),
+                            text = cat.label,
                         )
                     }
                 }
                 BendeyTextField(form.amount, { v -> onFormChange { it.copy(amount = v) } }, "Monto (S/)")
                 if (paymentMethods.isNotEmpty()) {
                     Text("Método de pago", style = MaterialTheme.typography.labelMedium)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         paymentMethods.filter { it.active }.forEach { pm ->
-                            FilterChip(
+                            BendeyFilterChip(
                                 selected = form.paymentMethod == pm.code,
                                 onClick = { onFormChange { it.copy(paymentMethod = pm.code) } },
-                                label = { Text(pm.name) },
-                                colors = BendeyChipDefaults.filterChipColors(),
+                                text = pm.name,
                             )
                         }
                     }
@@ -708,20 +769,25 @@ private fun MovementDialog(
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { BendeyTextButton(text = "Cancelar", onClick = onDismiss) },
     )
 }
 
 @Composable
-private fun ConfigTab(state: CajaUiState, currency: NumberFormat, viewModel: CajaViewModel) {
+private fun ConfigTab(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    modifier: Modifier = Modifier,
+) {
     if (state.configLoading) {
-        CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
+        CircularProgressIndicator(modifier = modifier.padding(BendeySpacing.lg))
         return
     }
-    LazyColumn(
+    BendeyLazyColumn(state = rememberLazyListState(),
         contentPadding = PaddingValues(BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -840,7 +906,7 @@ private fun PaymentMethodDialog(
     onConfirm: () -> Unit,
     onFormChange: ((PaymentMethodForm) -> PaymentMethodForm) -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (form.id != null) "Editar método" else "Nuevo método de pago") },
         text = {
@@ -849,43 +915,39 @@ private fun PaymentMethodDialog(
                 BendeyTextField(form.code, { v -> onFormChange { it.copy(code = v) } }, "Código")
                 Text("Destino", style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.destinationType == "cash",
                         onClick = { onFormChange { it.copy(destinationType = "cash", bankAccountId = null) } },
-                        label = { Text("Caja") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = "Caja",
                     )
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.destinationType == "bank_account",
                         onClick = { onFormChange { it.copy(destinationType = "bank_account") } },
-                        label = { Text("Cuenta") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = "Cuenta",
                     )
                 }
                 if (form.destinationType == "bank_account") {
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         bankAccounts.forEach { acc ->
-                            FilterChip(
+                            BendeyFilterChip(
                                 selected = form.bankAccountId == acc.id,
                                 onClick = { onFormChange { it.copy(bankAccountId = acc.id) } },
-                                label = { Text(acc.name) },
-                                colors = BendeyChipDefaults.filterChipColors(),
+                                text = acc.name,
                             )
                         }
                     }
                 }
                 if (form.id != null) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.active,
                         onClick = { onFormChange { it.copy(active = !it.active) } },
-                        label = { Text(if (form.active) "Activo" else "Inactivo") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = if (form.active) "Activo" else "Inactivo",
                     )
                 }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { BendeyTextButton(text = "Cancelar", onClick = onDismiss) },
     )
 }
 
@@ -898,7 +960,7 @@ private fun BankAccountDialog(
     onConfirm: () -> Unit,
     onFormChange: ((BankAccountForm) -> BankAccountForm) -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (form.id != null) "Editar cuenta" else "Nueva cuenta bancaria") },
         text = {
@@ -911,29 +973,27 @@ private fun BankAccountDialog(
                 }
                 if (paymentMethods.isNotEmpty()) {
                     Text("Método vinculado", style = MaterialTheme.typography.labelMedium)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         paymentMethods.filter { it.active }.forEach { pm ->
-                            FilterChip(
+                            BendeyFilterChip(
                                 selected = form.paymentMethod == pm.code,
                                 onClick = { onFormChange { it.copy(paymentMethod = pm.code) } },
-                                label = { Text(pm.name) },
-                                colors = BendeyChipDefaults.filterChipColors(),
+                                text = pm.name,
                             )
                         }
                     }
                 }
                 if (form.id != null) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.active,
                         onClick = { onFormChange { it.copy(active = !it.active) } },
-                        label = { Text(if (form.active) "Activa" else "Inactiva") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = if (form.active) "Activa" else "Inactiva",
                     )
                 }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { BendeyTextButton(text = "Cancelar", onClick = onDismiss) },
     )
 }
 
@@ -948,7 +1008,7 @@ private fun BankMovementsDialog(
     onConfirm: () -> Unit,
     onFormChange: ((BankMovementForm) -> BankMovementForm) -> Unit,
 ) {
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Movimientos · ${accountName.orEmpty()}") },
         text = {
@@ -957,17 +1017,15 @@ private fun BankMovementsDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.type == "credit",
                         onClick = { onFormChange { it.copy(type = "credit") } },
-                        label = { Text("Ingreso") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = "Ingreso",
                     )
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = form.type == "debit",
                         onClick = { onFormChange { it.copy(type = "debit") } },
-                        label = { Text("Egreso") },
-                        colors = BendeyChipDefaults.filterChipColors(),
+                        text = "Egreso",
                     )
                 }
                 BendeyTextField(form.description, { v -> onFormChange { it.copy(description = v) } }, "Descripción")
@@ -995,6 +1053,6 @@ private fun BankMovementsDialog(
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Registrar", onConfirm, enabled = !loading) },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        dismissButton = { BendeyTextButton(text = "Cerrar", onClick = onDismiss) },
     )
 }

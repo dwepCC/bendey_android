@@ -67,4 +67,20 @@ object BendeyColors {
     val KpiTicket = AccentPurple
     val KpiTables = Success
     val KpiComandas = Warning
+
+    /** Chips resumen mesas en Dashboard (valores fijos aprobados — distintos del mapa operativo). */
+    val DashboardTableLibre = Success
+    val DashboardTableLibreContainer = SuccessContainer
+    val DashboardTableOcupada = Color(0xFFDC2626)
+    val DashboardTableOcupadaContainer = Color(0xFFFEE2E2)
+    val DashboardTableReservada = Color(0xFFD97706)
+    val DashboardTableReservadaContainer = Color(0xFFFEF3C7)
+    val DashboardTableConsumo = Color(0xFF2563EB)
+    val DashboardTableConsumoContainer = Color(0xFFDBEAFE)
+
+    /** Paleta gráficos Dashboard (top productos / tipos). */
+    val DashboardChartOrange = Color(0xFFF97316)
+    val DashboardChartLime = Color(0xFF84CC16)
+    val DashboardChartPink = Color(0xFFEC4899)
+    val DashboardChartAmber = Color(0xFFD97706)
 }

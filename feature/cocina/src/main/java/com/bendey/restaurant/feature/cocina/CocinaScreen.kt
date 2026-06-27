@@ -1,7 +1,6 @@
 package com.bendey.restaurant.feature.cocina
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -17,12 +16,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
@@ -31,7 +29,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -48,9 +45,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -58,6 +58,7 @@ import com.bendey.restaurant.core.designsystem.theme.accentColor
 import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 
@@ -102,109 +103,98 @@ fun CocinaScreen(
                         color = BendeyColors.OnSurfaceVariant,
                     )
                 }
-                IconButton(onClick = viewModel::refresh) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                }
+                BendeyIconButton(
+                    onClick = viewModel::refresh,
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Actualizar",
+                )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.xs,
+                    vertical = BendeySpacing.xxs,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 CocinaViewMode.entries.forEach { mode ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.viewMode == mode,
                         onClick = { viewModel.setViewMode(mode) },
-                        label = { Text(mode.label) },
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
+                        text = mode.label,
                     )
                 }
             }
             if (state.viewMode == CocinaViewMode.ORDERS) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        horizontal = BendeySpacing.xs,
+                        vertical = BendeySpacing.xxs,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     CocinaOrderTab.entries.forEach { tab ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.orderTab == tab,
                             onClick = { viewModel.setOrderTab(tab) },
-                            label = { Text(tab.label) },
-                            colors = BendeyChipDefaults.filterChipColors(),
-                            shape = BendeyShapeTokens.chip,
-                            border = null,
+                            text = tab.label,
                         )
                     }
                 }
             }
             if (state.availableAreas.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        horizontal = BendeySpacing.xs,
+                        vertical = BendeySpacing.xxs,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.areaFilter == "all",
                         onClick = { viewModel.setAreaFilter("all") },
-                        label = { Text("Todas áreas") },
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
+                        text = "Todas áreas",
                     )
                     state.availableAreas.forEach { area ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.areaFilter == area,
                             onClick = { viewModel.setAreaFilter(area) },
-                            label = { Text(preparationAreaDisplayLabel(area)) },
-                            colors = BendeyChipDefaults.filterChipColors(),
-                            shape = BendeyShapeTokens.chip,
-                            border = null,
+                            text = preparationAreaDisplayLabel(area),
                         )
                     }
                 }
             }
             if (state.viewMode == CocinaViewMode.ORDERS && state.availableTables.size > 1) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        horizontal = BendeySpacing.xs,
+                        vertical = BendeySpacing.xxs,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.tableFilter == "all",
                         onClick = { viewModel.setTableFilter("all") },
-                        label = { Text("Todas mesas") },
-                        colors = BendeyChipDefaults.filterChipColors(),
-                        shape = BendeyShapeTokens.chip,
-                        border = null,
+                        text = "Todas mesas",
                     )
                     state.availableTables.forEach { table ->
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.tableFilter == table,
                             onClick = { viewModel.setTableFilter(table) },
-                            label = { Text(table) },
-                            colors = BendeyChipDefaults.filterChipColors(),
-                            shape = BendeyShapeTokens.chip,
-                            border = null,
+                            text = table,
                         )
                     }
                 }
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.xs,
+                    vertical = BendeySpacing.xxs,
+                ),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 STATUS_FILTERS.forEach { status ->
@@ -255,12 +245,13 @@ fun CocinaScreen(
                     )
                 } else when (state.viewMode) {
                     CocinaViewMode.ITEMS -> {
-                        LazyVerticalGrid(
+                        BendeyLazyVerticalGrid(
                             columns = GridCells.Fixed(columns),
+                            modifier = Modifier.fillMaxSize(),
+                            state = rememberLazyGridState(),
                             contentPadding = PaddingValues(bottom = BendeySpacing.sm),
                             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                            modifier = Modifier.fillMaxSize(),
                         ) {
                             items(filtered, key = { it.kdsKey }) { item ->
                                 KitchenCard(
@@ -276,10 +267,11 @@ fun CocinaScreen(
                         }
                     }
                     CocinaViewMode.ORDERS -> {
-                        LazyColumn(
+                        BendeyLazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = rememberLazyListState(),
                             contentPadding = PaddingValues(bottom = BendeySpacing.sm),
                             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                            modifier = Modifier.fillMaxSize(),
                         ) {
                             items(groups, key = { it.key }) { group ->
                                 KitchenOrderCard(
@@ -399,9 +391,13 @@ private fun KitchenOrderCard(
                         }
                     }
                     if (canVoid) {
-                        IconButton(onClick = { onVoid(item) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
-                        }
+                        BendeyIconButton(
+                            onClick = { onVoid(item) },
+                            modifier = Modifier.size(32.dp),
+                            icon = Icons.Default.Delete,
+                            contentDescription = "Anular",
+                            tint = BendeyColors.Error,
+                        )
                     }
                 }
                 item.notes?.takeIf { it.isNotBlank() }?.let {
@@ -469,9 +465,13 @@ private fun KitchenCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (canVoid) {
-                        IconButton(onClick = onVoid, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "Anular", tint = BendeyColors.Error)
-                        }
+                        BendeyIconButton(
+                            onClick = onVoid,
+                            modifier = Modifier.size(32.dp),
+                            icon = Icons.Default.Delete,
+                            contentDescription = "Anular",
+                            tint = BendeyColors.Error,
+                        )
                     }
                 }
                 Text(

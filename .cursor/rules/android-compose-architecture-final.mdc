@@ -1,0 +1,227 @@
+---
+description: Arquitectura final Bendey — Adaptive + Expressive + Design System (post Fase 2)
+globs: front_tenant_restaurant_android/**/*
+alwaysApply: true
+---
+
+# Arquitectura final — Bendey Restaurant Android
+
+Estado: **Fase 2 completada** (Compose BOM `2025.12.01`, M3 ~1.4, Adaptive 1.2, Experience Layer Expressive).
+
+Referencia de versiones: `gradle/libs.versions.toml` + gate §2 en `android-compose-material3.mdc`.
+
+---
+
+## 1. Ecosistema Compose (versiones fijadas)
+
+| Componente | Versión |
+|------------|---------|
+| Kotlin / Compose Plugin | **2.1.0** |
+| Compose BOM | **2025.12.01** |
+| Material3 | **~1.4.0** (vía BOM) |
+| Material3 Adaptive | **1.2.0** |
+| Navigation Compose | **2.9.0** |
+| Lifecycle Compose | **2.9.0** |
+| Activity Compose | **1.10.0** |
+
+**Prohibido:** APIs de versiones superiores, Material 2 UI (`androidx.compose.material.*` salvo icons), dependencias adaptive no declaradas (`adaptive-layout`, `adaptive-navigation`).
+
+**Válido:** `androidx.compose.material.icons.*` (iconos).
+
+---
+
+## 2. Bendey Design System — uso obligatorio
+
+Todo UI debe usar tokens de `core:designsystem`:
+
+| Token | Ubicación |
+|-------|-----------|
+| `BendeyTheme` | Raíz app (`MainActivity`) |
+| `BendeyColors` | Colores semánticos + mesas/cocina/dashboard |
+| `BendeyTypography` | Tipografía |
+| `BendeySpacing` | Padding, gaps, touch targets |
+| `BendeyShapeTokens` / `BendeyShapes` | Radios |
+| `BendeyElevation` | Elevaciones |
+| `BendeyMotion` | Motion estándar (operativo) |
+| `BendeyExpressiveMotion` | Helpers Experience Layer |
+
+**Prohibido:** hardcode de `Color(0x…)`, `dp` arbitrarios para spacing, radios o elevaciones en features.
+
+**Excepción:** valores en `BendeyColors` / `BendeyTheme` (única fuente de verdad).
+
+Componentes compartidos: `core:designsystem` (primitivos M3 Bendey) + `core:ui` (compuestos reutilizables).
+
+---
+
+## 3. Material 3 Adaptive — estrategia única
+
+Detección centralizada en `core/ui/layout/BendeyDeviceFormFactor.kt`:
+
+| API | Cuándo usar |
+|-----|-------------|
+| `rememberUseAdaptiveTwoPane()` | **Única** API para list-detail / two-pane manual (POS, Mesas, Caja, Ventas, Productos, Clientes, Config, Repartidores) |
+| `rememberIsTabletDevice()` | Tablet física (`smallestScreenWidthDp ≥ 600`) — base de two-pane |
+| `rememberIsExpandedWidth()` | Multi-columna / densidad (Dashboard, NavigationSuite drawer vs bottom bar) — **no** para two-pane |
+| `rememberWindowWidthSizeClass()` | Lectura directa — solo dentro de `BendeyDeviceFormFactor` |
+
+**Regla:** teléfono → layout compacto; tablet → two-pane donde la pantalla lo implemente.
+
+**Layouts canónicos** (`core/ui/layout/`):
+
+- `BendeyListScreenLayout` + `BendeyFlexibleContentSlot` — listas con header + slot scroll
+- `BendeyCatalogOverlayLayout` — catálogo + barra inferior (POS/Mesa)
+- `BendeyAdaptiveSplitLayout` — split tablet genérico
+
+**Prohibido:** `WindowWidthSizeClass` fuera de `BendeyDeviceFormFactor.kt`.
+
+---
+
+## 4. Material 3 Expressive — alcance restringido
+
+### Cuándo SÍ (Experience Layer)
+
+Envolver rutas/pantallas con `BendeyExpressiveScope`:
+
+- Splash (`BendeySplashScreen`)
+- Auth: Welcome, Register, RUC, Home (estaciones), Login, PIN
+- Dashboard
+- Perfil (zona avatar/menú en `BendeyAppHeader`)
+
+Helpers: `BendeyExpressiveReveal`, `BendeyExpressiveFadeSlideIn`, `BendeyExpressiveCrossfadeValue`, `BendeyExpressiveAnimatedContent`.
+
+Motion tokens: `BendeyMotion.ExpressiveSpatialSpring`, `BendeyMotion.ExpressiveEffectsTween`.
+
+### Cuándo NO
+
+**Prohibido Expressive** en flujos operativos:
+
+- POS, Mesas, Mesa, Cocina, Caja, Ventas operativas
+- Scanner, Printing, Checkout, diálogos críticos de operación
+
+Operativo usa `BendeyMotion` estándar (NavSpring, FadeTween) — rapidez primero.
+
+### Nota técnica MotionScheme
+
+`MotionScheme.expressive()` es **internal** en M3 1.4.0 del BOM actual. La Experience Layer usa Compose Animation + tokens Bendey. Cuando Google exponga `MotionScheme` como API pública, conectar en `BendeyExpressiveScope` sin cambiar pantallas.
+
+**Prohibido:** `MaterialExpressiveTheme`, componentes Expressive alpha (ButtonGroup, LoadingIndicator M3), `@OptIn(ExperimentalMaterial3ExpressiveApi)`.
+
+---
+
+## 5. Scroll — implementación estándar
+
+Usar **solo** wrappers de `BendeyScrollIndicators.kt`:
+
+- `BendeyLazyColumn` / `BendeyLazyVerticalGrid`
+- `BendeyVerticalScrollColumn` / `BendeyHorizontalScrollRow`
+
+**Prohibido:** `LazyColumn`/`LazyVerticalGrid`/`horizontalScroll`/`verticalScroll` directos en features (salvo implementación interna de wrappers).
+
+**Excepciones aceptadas:** diálogos técnicos (p. ej. visor XML en Ventas) donde indicadores de scroll no aplican.
+
+Indicadores: solo cuando hay contenido adicional (`BendeyScrollHintProvider`).
+
+---
+
+## 6. Layout — patrones seguros
+
+**Evitar:**
+
+- `Modifier.weight()` anidado en `Column` sin slot con altura acotada
+- `LazyColumn`/`LazyGrid` con altura 0 (usar `BendeyFlexibleContentSlot` + `fillMaxSize()`)
+- `PullToRefreshBox` sin contenedor con tamaño definido
+- Overlays que tapen contenido operativo
+
+**Safe Areas:** `bendeySafeDrawingPadding()` / insets oficiales — no apilar `safeDrawingPadding` en shells que ya lo aplican.
+
+---
+
+## 7. Componentes — no duplicar
+
+Usar componentes existentes en `core:ui/components/`:
+
+| Necesidad | Componente |
+|-----------|------------|
+| Botón primario | `BendeyPrimaryButton` |
+| Botón texto | `BendeyTextButton` |
+| Campo | `BendeyTextField` |
+| Diálogo form | `BendeyFormDialog` |
+| Snackbar | `BendeySnackbarHost` |
+| Empty state | `BendeyEmptyState` |
+| Loading pantalla | `BendeyLoadingOverlay` |
+| Toolbar | `BendeyScreenToolbar` |
+| Card | `BendeyCard` / `BendeyManagementCard` (designsystem) |
+| Chip filtro | `BendeyFilterChip` (designsystem) |
+
+**Prohibido:** crear wrappers de un solo uso que dupliquen M3/Bendey existentes.
+
+**POS:** componentes POS (`BendeyPosCart`, `BendeyPosProductCard`, etc.) permanecen en `core:ui` — **no** mover al designsystem.
+
+---
+
+## 8. Rendimiento
+
+- `collectAsStateWithLifecycle` (nunca `collectAsState` en UI)
+- `remember` / `derivedStateOf` para cálculos derivados costosos
+- `key` en items de LazyList/LazyGrid
+- Animaciones discretas; no animar listas operativas completas
+- Expressive: duraciones ≤ 220 ms, stagger ≤ 45 ms
+
+---
+
+## 9. Accesibilidad
+
+- Touch target mínimo **48dp** (`BendeySpacing.touchTarget`)
+- `contentDescription` en iconos accionables
+- Contraste vía tokens Bendey (no grises ad hoc)
+- TalkBack: labels en botones e iconos de acción
+
+---
+
+## 10. Arquitectura de capas
+
+```
+app/          → NavHost, MainActivity, DI raíz
+feature/*     → Pantallas, ViewModels, navegación feature
+core/ui       → Componentes Compose compartidos, layouts, checkout
+core/designsystem → Tema, tokens, primitivos Bendey
+core/navigation   → Rutas, BendeyNavigationSuite
+core/domain       → Modelos, casos de uso (sin Compose)
+core/data         → Repositorios (sin Compose)
+```
+
+**Prohibido:** lógica de negocio en composables; dependencias feature→feature cruzadas sin `:core:navigation`.
+
+---
+
+## 11. POS — restricciones permanentes
+
+El POS y flujos de sala son **intocables** en identidad y velocidad:
+
+- Sin Expressive
+- Sin cambios de layout adaptativo sin QA manual
+- Sin experimentación con motion en checkout/caja/mesas
+- Scroll indicators estilo POS son la referencia para toda la app
+
+---
+
+## 12. Calidad — gate antes de merge
+
+- [ ] `.\gradlew :app:assembleDebug` sin errores
+- [ ] Gate APIs §2 (`android-compose-material3.mdc`)
+- [ ] Sin hardcode colores/spacing en código nuevo
+- [ ] Lazy lists vía wrappers Bendey
+- [ ] Expressive solo en pantallas autorizadas
+- [ ] Two-pane vía `rememberUseAdaptiveTwoPane()` únicamente
+
+---
+
+## 13. Actualización futura del ecosistema
+
+Antes de subir BOM / M3 / Adaptive:
+
+1. Leer [BOM mapping](https://developer.android.com/develop/ui/compose/bom/bom-mapping) y release notes
+2. Actualizar **todo** el ecosistema Compose de forma coordinada
+3. Compilar todos los módulos
+4. Re-evaluar `MotionScheme.expressive()` si pasa a API pública
+5. QA POS + Mesas + Caja obligatorio

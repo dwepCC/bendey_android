@@ -12,17 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -39,7 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.DEFAULT_PREPARATION_AREA_COLORS
@@ -50,6 +49,7 @@ import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeySwitch
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 
@@ -76,12 +76,16 @@ fun AreasPreparacionScreen(
                 subtitle = "${state.filteredAreas.size} áreas",
                 onBack = onBack,
                 actions = {
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                    }
-                    IconButton(onClick = viewModel::openCreate) {
-                        Icon(Icons.Default.Add, contentDescription = "Nueva área")
-                    }
+                    BendeyIconButton(
+                        onClick = viewModel::refresh,
+                        icon = Icons.Default.Refresh,
+                        contentDescription = "Actualizar",
+                    )
+                    BendeyIconButton(
+                        onClick = viewModel::openCreate,
+                        icon = Icons.Default.Add,
+                        contentDescription = "Nueva área",
+                    )
                 },
             )
             CatalogSectionNav(
@@ -103,26 +107,26 @@ fun AreasPreparacionScreen(
                     .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = !state.showInactive,
                     onClick = { viewModel.setShowInactive(false) },
-                    label = { Text("Activas") },
-                    colors = BendeyChipDefaults.filterChipColors(),
+                    text = "Activas",
                 )
-                FilterChip(
+                BendeyFilterChip(
                     selected = state.showInactive,
                     onClick = { viewModel.setShowInactive(true) },
-                    label = { Text("Incluir inactivas") },
-                    colors = BendeyChipDefaults.filterChipColors(),
+                    text = "Incluir inactivas",
                 )
             }
             state.error?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
-            LazyColumn(
+            val listState = rememberLazyListState()
+            BendeyLazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
                 contentPadding = PaddingValues(BendeySpacing.md),
                 verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.filteredAreas, key = { it.id }) { area ->
                     PreparationAreaRow(
@@ -187,9 +191,11 @@ private fun PreparationAreaRow(
                 checked = area.active,
                 onCheckedChange = onToggleStatus,
             )
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Editar")
-            }
+            BendeyIconButton(
+                onClick = onEdit,
+                icon = Icons.Default.Edit,
+                contentDescription = "Editar área",
+            )
         }
     }
 }
@@ -220,7 +226,7 @@ private fun PreparationAreaFormDialog(
             "Descripción",
             singleLine = false,
         )
-        Text("Color", fontWeight = FontWeight.SemiBold)
+        BendeySectionTitle(text = "Color")
         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             DEFAULT_PREPARATION_AREA_COLORS.forEach { color ->
                 val selected = form.color.equals(color, ignoreCase = true)

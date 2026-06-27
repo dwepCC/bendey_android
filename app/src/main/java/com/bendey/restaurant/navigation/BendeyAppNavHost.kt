@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import com.bendey.restaurant.core.ui.components.BendeySnackbarHost
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +43,7 @@ import com.bendey.restaurant.core.navigation.routeRequiredFeature
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.bendey.restaurant.core.ui.components.BendeyAppHeader
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySplashScreen
 import com.bendey.restaurant.BuildConfig
 import com.bendey.restaurant.core.ui.cash.OpenCashSessionDialog
 import com.bendey.restaurant.feature.auth.navigation.authGraph
@@ -96,14 +97,7 @@ fun BendeyAppNavHost(
 
     Box(modifier = modifier.fillMaxSize()) {
         if (!sessionReady || startDestination == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BendeyColors.Rest900),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = BendeyColors.OnPrimary)
-            }
+            BendeySplashScreen(modifier = Modifier.fillMaxSize())
         } else {
         key(startDestination) {
             NavHost(
@@ -128,7 +122,7 @@ fun BendeyAppNavHost(
             }
         }
         }
-        SnackbarHost(
+        BendeySnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)

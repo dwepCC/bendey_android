@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,14 +17,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
@@ -46,10 +45,10 @@ import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyOption
-import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import java.text.NumberFormat
 import java.util.Locale
@@ -78,12 +77,16 @@ fun ModificadoresScreen(
                 subtitle = "${state.groups.size} grupos",
                 onBack = onBack,
                 actions = {
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                    }
-                    IconButton(onClick = viewModel::openCreate) {
-                        Icon(Icons.Default.Add, contentDescription = "Nuevo grupo")
-                    }
+                    BendeyIconButton(
+                        onClick = viewModel::refresh,
+                        icon = Icons.Default.Refresh,
+                        contentDescription = "Actualizar",
+                    )
+                    BendeyIconButton(
+                        onClick = viewModel::openCreate,
+                        icon = Icons.Default.Add,
+                        contentDescription = "Nuevo grupo",
+                    )
                 },
             )
             CatalogSectionNav(
@@ -96,10 +99,12 @@ fun ModificadoresScreen(
             state.error?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
-            LazyColumn(
+            val listState = rememberLazyListState()
+            BendeyLazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
                 contentPadding = PaddingValues(BendeySpacing.md),
                 verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier.fillMaxSize(),
             ) {
                 items(state.groups, key = { it.id }) { group ->
                     ModifierGroupRow(
@@ -126,12 +131,12 @@ fun ModificadoresScreen(
     }
 
     state.deleteId?.let {
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDelete,
-            title = { Text("Eliminar grupo") },
-            text = { Text("¿Eliminar este grupo de modificadores?") },
-            confirmButton = { BendeyPrimaryButton("Eliminar", viewModel::confirmDelete) },
-            dismissButton = { TextButton(onClick = viewModel::dismissDelete) { Text("Cancelar") } },
+            title = "Eliminar grupo",
+            message = "¿Eliminar este grupo de modificadores?",
+            onConfirm = viewModel::confirmDelete,
+            confirmText = "Eliminar",
         )
     }
 }
@@ -162,10 +167,17 @@ private fun ModifierGroupRow(
                     Text("+${group.options.size - 3} más", style = MaterialTheme.typography.labelSmall)
                 }
             }
-            IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = "Editar") }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Eliminar", tint = BendeyColors.Error)
-            }
+            BendeyIconButton(
+                onClick = onEdit,
+                icon = Icons.Default.Edit,
+                contentDescription = "Editar",
+            )
+            BendeyIconButton(
+                onClick = onDelete,
+                icon = Icons.Default.Delete,
+                contentDescription = "Eliminar",
+                tint = BendeyColors.Error,
+            )
         }
     }
 }
@@ -207,7 +219,7 @@ private fun ModifierGroupFormDialog(
         )
         BendeyTextField(form.minSelect, { v -> onFormChange { it.copy(minSelect = v) } }, "Mínimo")
         BendeyTextField(form.maxSelect, { v -> onFormChange { it.copy(maxSelect = v) } }, "Máximo")
-        Text("Opciones", fontWeight = FontWeight.SemiBold)
+        BendeySectionTitle(text = "Opciones")
         form.options.forEachIndexed { index, option ->
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyTextField(
@@ -224,9 +236,10 @@ private fun ModifierGroupFormDialog(
                 )
             }
         }
-        TextButton(onClick = { onFormChange { it.copy(options = it.options + ModifierOption(name = "")) } }) {
-            Text("Agregar opción")
-        }
+        BendeyTextButton(
+            text = "Agregar opción",
+            onClick = { onFormChange { it.copy(options = it.options + ModifierOption(name = "")) } },
+        )
         error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
     }
 }

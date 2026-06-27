@@ -10,16 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenuItem
@@ -30,12 +26,10 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,7 +49,12 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
 import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import java.text.NumberFormat
 
@@ -87,9 +86,13 @@ fun PosPendingOrdersBar(
             )
         }
         if (showEditDetails) {
-            IconButton(onClick = onEditDetails, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "Datos del pedido", tint = BendeyColors.Primary)
-            }
+            BendeyIconButton(
+                onClick = onEditDetails,
+                icon = Icons.Default.Edit,
+                contentDescription = "Datos del pedido",
+                tint = BendeyColors.Primary,
+                modifier = Modifier.size(40.dp),
+            )
         }
         OutlinedButton(
             onClick = onOpenPending,
@@ -123,7 +126,7 @@ fun OrderDetailsDialog(
     onConfirm: () -> Unit,
 ) {
     if (modal == null) return
-    AlertDialog(
+    BendeyAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
@@ -134,11 +137,10 @@ fun OrderDetailsDialog(
             )
         },
         text = {
-            Column(
+            BendeyVerticalScrollColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .heightIn(max = 420.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (modal == PosOrderDetailsModal.TAKEAWAY) {
@@ -198,9 +200,10 @@ fun OrderDetailsDialog(
             )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(if (modal == PosOrderDetailsModal.TAKEAWAY) "Omitir" else "Cerrar")
-            }
+            BendeyTextButton(
+                text = if (modal == PosOrderDetailsModal.TAKEAWAY) "Omitir" else "Cerrar",
+                onClick = onDismiss,
+            )
         },
     )
 }
@@ -288,7 +291,7 @@ fun PendingOrdersSheet(
                         color = BendeyColors.OnSurfaceVariant,
                     )
                 }
-                TextButton(onClick = onDismiss) { Text("Cerrar") }
+                BendeyTextButton(text = "Cerrar", onClick = onDismiss)
             }
             HorizontalDivider()
             if (orders.isEmpty()) {
@@ -299,11 +302,12 @@ fun PendingOrdersSheet(
                     color = BendeyColors.OnSurfaceVariant,
                 )
             } else {
-                LazyColumn(
+                BendeyLazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 480.dp)
                         .padding(12.dp),
+                    state = rememberLazyListState(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(orders, key = { it.id }) { order ->
@@ -380,9 +384,12 @@ private fun PendingOrderCard(
                 }
             }
         }
-        IconButton(onClick = onVoid) {
-            Icon(Icons.Default.Delete, contentDescription = "Anular pedido", tint = BendeyColors.Error)
-        }
+        BendeyIconButton(
+            onClick = onVoid,
+            icon = Icons.Default.Delete,
+            contentDescription = "Anular pedido",
+            tint = BendeyColors.Error,
+        )
     }
 }
 

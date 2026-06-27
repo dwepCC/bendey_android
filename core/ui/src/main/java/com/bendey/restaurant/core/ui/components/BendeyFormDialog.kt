@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -76,10 +77,9 @@ fun BendeyFormDialog(
                     fontWeight = FontWeight.SemiBold,
                     color = BendeyColors.OnSurface,
                 )
-                Column(
+                BendeyVerticalScrollColumn(
                     modifier = Modifier
                         .heightIn(max = 480.dp)
-                        .verticalScroll(rememberScrollState())
                         .padding(top = BendeySpacing.md),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
@@ -292,32 +292,5 @@ fun BendeySimpleSelect(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun BendeySecondaryButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    Row(
-        modifier = modifier
-            .heightIn(min = BendeySpacing.buttonHeight)
-            .clip(BendeyShapeTokens.md)
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.75f), BendeyShapeTokens.md)
-            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) BendeyColors.OnSurface else BendeyColors.OnSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-        )
     }
 }

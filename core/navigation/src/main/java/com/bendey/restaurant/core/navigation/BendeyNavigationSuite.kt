@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.navigation
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,14 +10,14 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.ui.components.BendeyScrollHintProvider
 import com.bendey.restaurant.core.ui.components.BendeyBottomNavigationBar
 import com.bendey.restaurant.core.ui.components.BendeyNavItem
 import com.bendey.restaurant.core.ui.layout.BendeyRestaurantShell
@@ -38,8 +39,7 @@ fun BendeyNavigationSuite(
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
-    val isCompact = widthClass == WindowWidthSizeClass.COMPACT
+    val isCompact = !rememberIsExpandedWidth()
     val leftItems = visibleBottomBarDestinations.filter { it in TopLevelDestination.bottomBarLeft }.map {
         BendeyNavItem(it.route, it.label, it.shortLabel, it.icon)
     }
@@ -59,7 +59,8 @@ fun BendeyNavigationSuite(
         }
     }
 
-    ModalNavigationDrawer(
+    BendeyScrollHintProvider {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = true,
         drawerContent = {
@@ -102,7 +103,10 @@ fun BendeyNavigationSuite(
         ) { innerModifier ->
             if (!isCompact) {
                 Row(modifier = innerModifier.fillMaxSize()) {
-                    NavigationRail(containerColor = BendeyColors.Surface) {
+                    NavigationRail(
+                        modifier = Modifier.fillMaxHeight(),
+                        containerColor = BendeyColors.Surface,
+                    ) {
                         railDestinations.forEach { destination ->
                             NavigationRailItem(
                                 selected = currentRoute == destination.route,
@@ -117,11 +121,12 @@ fun BendeyNavigationSuite(
                             )
                         }
                     }
-                    content(Modifier.weight(1f))
+                    content(Modifier.weight(1f).fillMaxHeight())
                 }
             } else {
                 content(innerModifier)
             }
         }
+    }
     }
 }

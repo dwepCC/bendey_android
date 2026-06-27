@@ -1,28 +1,29 @@
 package com.bendey.restaurant.feature.ventas
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import com.bendey.restaurant.core.designsystem.components.BendeyCard
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +32,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.DropdownMenuItem
@@ -52,8 +54,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
-import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
-import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.saleStatusAccentColor
@@ -79,10 +79,18 @@ import com.bendey.restaurant.core.domain.sales.notaVentaListStatusLabel
 import com.bendey.restaurant.core.domain.sales.saleStatusDisplayLabel
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
-import com.bendey.restaurant.core.ui.components.BindSnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
+import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
+import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
+import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -95,11 +103,12 @@ fun VentasScreen(
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val useTwoPane = rememberUseAdaptiveTwoPane()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
-    BindSnackMessage(
+    BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
@@ -121,106 +130,158 @@ fun VentasScreen(
         VentasTab.FACTURACION -> " · SUNAT en vivo"
         else -> ""
     }
+    val detailError = if (state.voidDialogOpen || state.emitDialogOpen) null else state.error
 
-    PullToRefreshBox(
-        isRefreshing = state.loading && state.sales.isEmpty(),
-        onRefresh = viewModel::refresh,
-        modifier = modifier.fillMaxSize(),
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            BendeyScreenToolbar(
-                title = "Ventas",
-                subtitle = "${state.total} registros$billingHint",
-                actions = {
-                    IconButton(onClick = viewModel::refresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
-                    }
-                },
-            )
-            VentasTabRow(
-                selected = state.tab,
-                sunatEnabled = state.sunatEnabled,
-                onSelect = viewModel::selectTab,
-            )
-            VentasFiltersSection(
-                state = state,
-                paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                onSearchChange = viewModel::setSearchQuery,
-                onDatePreset = viewModel::setDatePreset,
-                onFromDateChange = viewModel::setFromDate,
-                onToDateChange = viewModel::setToDate,
-                onPaymentMethodChange = viewModel::setPaymentMethodFilter,
-                onBillingStatusChange = viewModel::setBillingStatusFilter,
-                onExportPdf = { viewModel.exportListPdf(context) },
-                onExportExcel = { viewModel.exportListExcel(context) },
-            )
-            if (state.tab == VentasTab.FACTURACION && !state.sunatEnabled) {
-                Text(
-                    "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
-                    color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+    BendeyListScreenLayout(
+            modifier = modifier.fillMaxSize(),
+            isRefreshing = state.loading && state.sales.isEmpty(),
+            onRefresh = viewModel::refresh,
+            header = {
+                BendeyScreenToolbar(
+                    title = "Ventas",
+                    subtitle = "${state.total} registros$billingHint",
+                    actions = {
+                        IconButton(onClick = viewModel::refresh) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                        }
+                    },
                 )
-            } else if (state.tab != VentasTab.CREDITOS && state.listSummary.paymentTotals.isNotEmpty()) {
-                SalesPaymentSummaryRow(
-                    summary = state.listSummary,
-                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                    currency = currency,
-                )
-            }
-            if (state.error != null && state.sales.isEmpty() && state.selectedSaleId == null) {
-                Text(
-                    state.error.orEmpty(),
-                    color = BendeyColors.Error,
-                    modifier = Modifier.padding(BendeySpacing.md),
-                )
-            } else if (!state.canFetchList) {
-                Text(
-                    "No hay comprobantes en esta sección",
-                    color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(BendeySpacing.md),
-                )
-            } else if (state.sales.isEmpty() && !state.loading) {
-                Text(
-                    "No hay comprobantes en esta sección",
-                    color = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.padding(BendeySpacing.md),
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(BendeySpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    items(state.sales, key = { it.id }) { sale ->
-                        SaleRow(
-                            sale = sale,
-                            tab = state.tab,
+                if (!useTwoPane) {
+                    VentasTabRow(
+                        selected = state.tab,
+                        sunatEnabled = state.sunatEnabled,
+                        onSelect = viewModel::selectTab,
+                    )
+                    VentasFiltersSection(
+                        state = state,
+                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                        onSearchChange = viewModel::setSearchQuery,
+                        onDatePreset = viewModel::setDatePreset,
+                        onFromDateChange = viewModel::setFromDate,
+                        onToDateChange = viewModel::setToDate,
+                        onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                        onBillingStatusChange = viewModel::setBillingStatusFilter,
+                        onExportPdf = { viewModel.exportListPdf(context) },
+                        onExportExcel = { viewModel.exportListExcel(context) },
+                    )
+                    VentasListHintsAndSummary(
+                        state = state,
+                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                        currency = currency,
+                    )
+                }
+            },
+        ) { contentModifier ->
+            if (useTwoPane) {
+                Row(modifier = contentModifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .weight(0.42f)
+                            .fillMaxHeight(),
+                    ) {
+                        VentasTabRow(
+                            selected = state.tab,
                             sunatEnabled = state.sunatEnabled,
-                            currency = currency,
-                            onClick = { viewModel.openSaleDetail(sale.id) },
+                            onSelect = viewModel::selectTab,
                         )
+                        VentasFiltersSection(
+                            state = state,
+                            paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                            onSearchChange = viewModel::setSearchQuery,
+                            onDatePreset = viewModel::setDatePreset,
+                            onFromDateChange = viewModel::setFromDate,
+                            onToDateChange = viewModel::setToDate,
+                            onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                            onBillingStatusChange = viewModel::setBillingStatusFilter,
+                            onExportPdf = { viewModel.exportListPdf(context) },
+                            onExportExcel = { viewModel.exportListExcel(context) },
+                        )
+                        VentasListHintsAndSummary(
+                            state = state,
+                            paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                            currency = currency,
+                        )
+                        BendeyFlexibleContentSlot {
+                            VentasSalesList(
+                                state = state,
+                                listState = listState,
+                                currency = currency,
+                                selectedSaleId = state.selectedSaleId,
+                                onSaleClick = viewModel::openSaleDetail,
+                                modifier = it,
+                            )
+                        }
                     }
-                    if (state.loading && state.sales.isNotEmpty()) {
-                        item {
-                            Text(
-                                "Cargando más…",
-                                modifier = Modifier.fillMaxWidth().padding(BendeySpacing.sm),
-                                color = BendeyColors.OnSurfaceVariant,
+                    VerticalDivider()
+                    Column(
+                        modifier = Modifier
+                            .weight(0.58f)
+                            .fillMaxHeight()
+                            .padding(BendeySpacing.md),
+                    ) {
+                        if (state.selectedSaleId != null) {
+                            BendeyVerticalScrollColumn(
+                                modifier = Modifier.fillMaxSize(),
+                            ) {
+                                SaleDetailContent(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    tab = state.tab,
+                                    sunatEnabled = state.sunatEnabled,
+                                    loading = state.detailLoading,
+                                    detail = state.detail,
+                                    printing = state.detailPrinting,
+                                    billingBusy = state.billingBusy,
+                                    currency = currency,
+                                    error = detailError,
+                                    onReprint = viewModel::reprintSelectedSale,
+                                    onOpenPdf = viewModel::openReceiptModal,
+                                    onVoidCreditNote = viewModel::openVoidCreditNote,
+                                    onCancelNota = viewModel::openCancelNota,
+                                    onEmitElectronic = viewModel::openEmitElectronic,
+                                    onSendSunat = viewModel::sendToSunat,
+                                    onResendSunat = viewModel::resendToSunat,
+                                    onOpenOfficialPdf = { viewModel.openOfficialSunatPdf(context) },
+                                    onViewXmlSent = viewModel::viewXmlSent,
+                                    onViewXmlGenerated = viewModel::viewXmlGenerated,
+                                    onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
+                                    onDownloadXmlGenerated = { viewModel.downloadXmlGenerated(context) },
+                                    onDownloadCdr = { viewModel.downloadCdr(context) },
+                                )
+                            }
+                        } else {
+                            BendeyEmptyState(
+                                title = "Selecciona un comprobante",
+                                description = "El detalle aparecerá aquí para consultar ítems y acciones sin ocultar la lista.",
+                                inline = true,
+                                modifier = Modifier.fillMaxSize(),
                             )
                         }
                     }
                 }
+            } else {
+                VentasSalesList(
+                    state = state,
+                    listState = listState,
+                    currency = currency,
+                    selectedSaleId = state.selectedSaleId,
+                    onSaleClick = viewModel::openSaleDetail,
+                    modifier = contentModifier,
+                )
             }
         }
-    }
 
-    if (state.selectedSaleId != null) {
+    if (!useTwoPane && state.selectedSaleId != null) {
         ModalBottomSheet(
             onDismissRequest = viewModel::dismissSaleDetail,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
-            SaleDetailSheet(
+            BendeyVerticalScrollColumn(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SaleDetailContent(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
                 tab = state.tab,
                 sunatEnabled = state.sunatEnabled,
                 loading = state.detailLoading,
@@ -228,7 +289,7 @@ fun VentasScreen(
                 printing = state.detailPrinting,
                 billingBusy = state.billingBusy,
                 currency = currency,
-                error = if (state.voidDialogOpen || state.emitDialogOpen) null else state.error,
+                error = detailError,
                 onReprint = viewModel::reprintSelectedSale,
                 onOpenPdf = viewModel::openReceiptModal,
                 onVoidCreditNote = viewModel::openVoidCreditNote,
@@ -242,7 +303,8 @@ fun VentasScreen(
                 onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
                 onDownloadXmlGenerated = { viewModel.downloadXmlGenerated(context) },
                 onDownloadCdr = { viewModel.downloadCdr(context) },
-            )
+                )
+            }
         }
     }
 
@@ -320,21 +382,21 @@ private fun VentasTabRow(
     sunatEnabled: Boolean,
     onSelect: (VentasTab) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+    BendeyHorizontalScrollRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            horizontal = BendeySpacing.md,
+            vertical = BendeySpacing.xs,
+        ),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         VentasTab.entries.filter { tab ->
             tab != VentasTab.CREDITOS || sunatEnabled
         }.forEach { tab ->
-            FilterChip(
+            BendeyFilterChip(
                 selected = tab == selected,
                 onClick = { onSelect(tab) },
-                label = { Text(tab.label) },
-                colors = BendeyChipDefaults.filterChipColors(),
+                text = tab.label,
             )
         }
     }
@@ -368,18 +430,15 @@ private fun VentasFiltersSection(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+        BendeyHorizontalScrollRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             VentasDatePreset.entries.forEach { preset ->
-                FilterChip(
+                BendeyFilterChip(
                     selected = state.datePreset == preset,
                     onClick = { onDatePreset(preset) },
-                    label = { Text(preset.label) },
-                    colors = BendeyChipDefaults.filterChipColors(),
+                    text = preset.label,
                 )
             }
         }
@@ -480,14 +539,95 @@ private fun FilterDropdown(
 }
 
 @Composable
+private fun VentasListHintsAndSummary(
+    state: VentasUiState,
+    paymentMethods: List<PaymentMethodOption>,
+    currency: NumberFormat,
+) {
+    if (state.tab == VentasTab.FACTURACION && !state.sunatEnabled) {
+        Text(
+            "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
+            color = BendeyColors.OnSurfaceVariant,
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        )
+    } else if (state.tab != VentasTab.CREDITOS && state.listSummary.paymentTotals.isNotEmpty()) {
+        SalesPaymentSummaryRow(
+            summary = state.listSummary,
+            paymentMethods = paymentMethods,
+            currency = currency,
+        )
+    }
+}
+
+@Composable
+private fun VentasSalesList(
+    state: VentasUiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    currency: NumberFormat,
+    selectedSaleId: Int?,
+    onSaleClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
+    if (state.error != null && state.sales.isEmpty() && selectedSaleId == null) {
+        Text(
+            state.error.orEmpty(),
+            color = BendeyColors.Error,
+            modifier = Modifier.padding(BendeySpacing.md),
+        )
+    } else if (!state.canFetchList) {
+        BendeyEmptyState(title = "No hay comprobantes en esta sección", inline = true, modifier = modifier)
+    } else if (state.sales.isEmpty() && !state.loading) {
+        BendeyEmptyState(title = "No hay comprobantes en esta sección", inline = true, modifier = modifier)
+    } else {
+        BendeyLazyColumn(
+            modifier = modifier.fillMaxSize(),
+            state = listState,
+            contentPadding = PaddingValues(
+                start = BendeySpacing.md,
+                end = BendeySpacing.md,
+                top = BendeySpacing.md,
+                bottom = BendeySpacing.md + bottomScrollPadding,
+            ),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            items(state.sales, key = { it.id }) { sale ->
+                SaleRow(
+                    sale = sale,
+                    tab = state.tab,
+                    sunatEnabled = state.sunatEnabled,
+                    currency = currency,
+                    selected = sale.id == selectedSaleId,
+                    onClick = { onSaleClick(sale.id) },
+                )
+            }
+            if (state.loading && state.sales.isNotEmpty()) {
+                item {
+                    Text(
+                        "Cargando más…",
+                        modifier = Modifier.fillMaxWidth().padding(BendeySpacing.sm),
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SaleRow(
     sale: SaleSummary,
     tab: VentasTab,
     sunatEnabled: Boolean,
     currency: NumberFormat,
+    selected: Boolean = false,
     onClick: () -> Unit,
 ) {
-    BendeyManagementCard(onClick = onClick) {
+    BendeyCard(
+        onClick = onClick,
+        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+        contentPadding = PaddingValues(BendeySpacing.cardPadding),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -556,7 +696,8 @@ private fun SaleRow(
 }
 
 @Composable
-private fun SaleDetailSheet(
+private fun SaleDetailContent(
+    modifier: Modifier = Modifier,
     tab: VentasTab,
     sunatEnabled: Boolean,
     loading: Boolean,
@@ -580,9 +721,7 @@ private fun SaleDetailSheet(
     onDownloadCdr: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
         when {
@@ -603,7 +742,10 @@ private fun SaleDetailSheet(
                     }
                 }
                 HorizontalDivider()
-                Text("Ítems", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                BendeySectionTitle(
+                    text = "Ítems",
+                    style = MaterialTheme.typography.titleSmall,
+                )
                 detail.items.forEach { line ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
@@ -632,7 +774,10 @@ private fun SaleDetailSheet(
                 }
                 if (detail.payments.isNotEmpty()) {
                     HorizontalDivider()
-                    Text("Pagos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    BendeySectionTitle(
+                        text = "Pagos",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
                     detail.payments.forEach { payment ->
                         Text("${payment.method}: ${currency.format(payment.amount)}")
                     }
@@ -916,20 +1061,18 @@ private fun SalesPaymentSummaryRow(
     fun methodLabel(code: String): String =
         paymentMethods.find { it.code == code }?.name ?: code.replace('_', ' ')
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+    BendeyHorizontalScrollRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(
+            horizontal = BendeySpacing.md,
+            vertical = BendeySpacing.xs,
+        ),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
-        Card(
-            shape = BendeyCardDefaults.shape,
-            colors = CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
-            elevation = BendeyCardDefaults.elevation(),
-            border = BendeyCardDefaults.border,
+        BendeyCard(
+            containerColor = BendeyColors.PrimaryContainer,
+            contentPadding = PaddingValues(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
         ) {
-            Column(Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm)) {
                 Text("Total", style = MaterialTheme.typography.labelMedium, color = BendeyColors.Primary)
                 Text(
                     currency.format(summary.sumActive.takeIf { it > 0 } ?: summary.sumTotal),
@@ -944,7 +1087,6 @@ private fun SalesPaymentSummaryRow(
                         color = BendeyColors.OnSurfaceVariant,
                     )
                 }
-            }
         }
         summary.paymentTotals.forEach { pt ->
             BendeyManagementCard {

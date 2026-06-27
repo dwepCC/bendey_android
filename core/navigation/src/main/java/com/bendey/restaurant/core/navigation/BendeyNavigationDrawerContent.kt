@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 
 @Composable
 fun BendeyNavigationDrawerContent(
@@ -38,7 +39,9 @@ fun BendeyNavigationDrawerContent(
         drawerContainerColor = BendeyColors.Surface,
         drawerContentColor = BendeyColors.OnSurface,
     ) {
-        Column(modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.md)) {
+        BendeyVerticalScrollColumn(
+            modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.md),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
