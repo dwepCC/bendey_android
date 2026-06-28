@@ -25,13 +25,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyOrientationPolicy()
         super.onCreate(savedInstanceState)
-        val statusTomato = BendeyColors.Rest900.toArgb()
+        val systemTomato = BendeyColors.Rest900.toArgb()
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(statusTomato),
-            navigationBarStyle = SystemBarStyle.light(
-                android.graphics.Color.WHITE,
-                android.graphics.Color.WHITE,
-            ),
+            statusBarStyle = SystemBarStyle.dark(systemTomato),
+            navigationBarStyle = SystemBarStyle.dark(systemTomato),
         )
         setContent {
             BendeyTheme {

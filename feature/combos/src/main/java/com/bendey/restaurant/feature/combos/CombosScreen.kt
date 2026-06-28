@@ -2,7 +2,6 @@ package com.bendey.restaurant.feature.combos
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +37,8 @@ import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
+import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
+import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -54,6 +55,12 @@ fun CombosScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val listState = rememberLazyListState()
+    val isExpanded = rememberIsExpandedWidth()
+    val listContentPadding = rememberBendeyLazyListContentPadding(
+        includeBottomBar = !isExpanded,
+        horizontal = BendeySpacing.md,
+        top = BendeySpacing.md,
+    )
 
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -85,9 +92,11 @@ fun CombosScreen(
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
             BendeyLazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
                 state = listState,
-                contentPadding = PaddingValues(BendeySpacing.md),
+                contentPadding = listContentPadding,
                 verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 items(state.combos, key = { it.id }) { combo ->

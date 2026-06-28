@@ -22,13 +22,14 @@ import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -271,7 +272,7 @@ fun VentasScreen(
         }
 
     if (!useTwoPane && state.selectedSaleId != null) {
-        ModalBottomSheet(
+        BendeyBottomSheet(
             onDismissRequest = viewModel::dismissSaleDetail,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
@@ -518,7 +519,7 @@ private fun FilterDropdown(
             label = { Text(label) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
         )
         ExposedDropdownMenu(
@@ -987,7 +988,12 @@ private fun EmitElectronicDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Tipo") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !loading,
+                            ),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kindExpanded) },
                     )
                     ExposedDropdownMenu(expanded = kindExpanded, onDismissRequest = { kindExpanded = false }) {
@@ -1011,7 +1017,12 @@ private fun EmitElectronicDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Serie") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(
+                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                                enabled = !loading,
+                            ),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = seriesExpanded) },
                     )
                     ExposedDropdownMenu(expanded = seriesExpanded, onDismissRequest = { seriesExpanded = false }) {

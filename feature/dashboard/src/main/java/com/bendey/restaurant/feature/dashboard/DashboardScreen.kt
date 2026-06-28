@@ -71,6 +71,7 @@ import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
@@ -97,6 +98,10 @@ fun DashboardScreen(
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val dash = state.dashboard
     val listState = rememberLazyListState()
+    val contentPadding = rememberBendeyLazyListContentPadding(
+        includeBottomBar = !isExpanded,
+        extraBottom = -BendeySpacing.sm,
+    )
 
     PullToRefreshBox(
         isRefreshing = state.loading || state.catalogLoading,
@@ -108,23 +113,9 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .background(BendeyColors.Background),
             state = listState,
-            contentPadding = PaddingValues(
-                start = BendeySpacing.screenHorizontal,
-                end = BendeySpacing.screenHorizontal,
-                top = BendeySpacing.sm,
-                bottom = 88.dp,
-            ),
+            contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
         ) {
-            item {
-                BendeyExpressiveReveal(index = 0) {
-                    GreetingCard(
-                        userName = state.userName,
-                        isOnline = state.isOnline,
-                        cashLabel = state.cashLabel,
-                    )
-                }
-            }
             if (state.canChangeDateRange) {
                 item {
                     var showCustomRange by remember { mutableStateOf(false) }
@@ -463,63 +454,6 @@ fun DashboardScreen(
                 item {
                     Text(error, color = BendeyColors.Error, modifier = Modifier.padding(8.dp))
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GreetingCard(
-    userName: String,
-    isOnline: Boolean,
-    cashLabel: String?,
-) {
-    BendeyCard(
-        contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Hola, ${userName.ifBlank { "Administrador" }}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = BendeyColors.OnSurface,
-                )
-                Text(
-                    text = "Resumen de tu restaurante",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                if (isOnline) BendeyColors.Success else BendeyColors.Error,
-                                CircleShape,
-                            ),
-                    )
-                    Text(
-                        text = if (isOnline) "Online" else "Offline",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isOnline) BendeyColors.Success else BendeyColors.Error,
-                    )
-                }
-                Text(
-                    text = cashLabel ?: "Caja S/ 0.00",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = BendeyColors.OnSurface,
-                )
             }
         }
     }
@@ -1291,17 +1225,22 @@ private fun CatalogKpiSection(catalog: CatalogAnalytics, currency: NumberFormat,
 @Composable
 private fun CatalogKpiRow(catalog: CatalogAnalytics, currency: NumberFormat) {
     val kpi = catalog.kpi
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        CatalogKpiCard("Ingresos", currency.format(kpi.totalRevenue), Modifier.weight(1f))
-        CatalogKpiCard("Ventas", kpi.salesCount.toString(), Modifier.weight(1f))
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-        CatalogKpiCard("Productos", String.format("%.0f", kpi.productsSold), Modifier.weight(1f))
-        CatalogKpiCard("Combos", String.format("%.0f", kpi.combosSold), Modifier.weight(1f))
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-        CatalogKpiCard("Ticket prom.", currency.format(kpi.avgTicket), Modifier.weight(1f))
-        CatalogKpiCard("Extras", currency.format(kpi.extrasRevenue), Modifier.weight(1f))
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            CatalogKpiCard("Ingresos", currency.format(kpi.totalRevenue), Modifier.weight(1f))
+            CatalogKpiCard("Ventas", kpi.salesCount.toString(), Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            CatalogKpiCard("Productos", String.format("%.0f", kpi.productsSold), Modifier.weight(1f))
+            CatalogKpiCard("Combos", String.format("%.0f", kpi.combosSold), Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            CatalogKpiCard("Ticket prom.", currency.format(kpi.avgTicket), Modifier.weight(1f))
+            CatalogKpiCard("Extras", currency.format(kpi.extrasRevenue), Modifier.weight(1f))
+        }
     }
 }
 

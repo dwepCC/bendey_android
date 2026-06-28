@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -53,6 +53,8 @@ fun BendeyFormDialog(
     dismissText: String = "Cancelar",
     confirmEnabled: Boolean = true,
     loading: Boolean = false,
+    enableContentScroll: Boolean = false,
+    fullWidth: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit = onDismissRequest,
     content: @Composable () -> Unit,
@@ -63,24 +65,49 @@ fun BendeyFormDialog(
     ) {
         Surface(
             modifier = modifier
-                .fillMaxWidth(0.94f)
+                .then(
+                    if (fullWidth) {
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                    } else {
+                        Modifier.fillMaxWidth(0.94f)
+                    },
+                )
+                .wrapContentHeight()
                 .heightIn(max = 720.dp),
             shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             tonalElevation = 0.dp,
             shadowElevation = 6.dp,
         ) {
-            Column(modifier = Modifier.padding(BendeySpacing.lg)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 720.dp)
+                    .padding(BendeySpacing.lg),
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = BendeyColors.OnSurface,
                 )
-                BendeyVerticalScrollColumn(
-                    modifier = Modifier
-                        .heightIn(max = 480.dp)
-                        .padding(top = BendeySpacing.md),
+                val scrollState = rememberScrollState()
+                val contentModifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = BendeySpacing.md)
+                    .then(
+                        if (enableContentScroll) {
+                            Modifier
+                                .heightIn(max = 540.dp)
+                                .verticalScroll(scrollState)
+                        } else {
+                            Modifier.wrapContentHeight()
+                        },
+                    )
+                Column(
+                    modifier = contentModifier,
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
                     content()

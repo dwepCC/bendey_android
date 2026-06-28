@@ -8,13 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
 import com.bendey.restaurant.core.ui.components.BendeySnackbarHost
+import com.bendey.restaurant.core.ui.layout.rememberBendeySnackbarBottomPadding
+import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -116,24 +117,22 @@ fun BendeyAppNavHost(
                 composable(BendeyRoutes.MAIN) {
                     val sessionKey by appViewModel.sessionKey.collectAsStateWithLifecycle()
                     key(sessionKey) {
-                        MainShell(onShowMessage = onShowMessage)
+                        MainShell(
+                            onShowMessage = onShowMessage,
+                            snackbarHostState = snackbarHostState,
+                        )
                     }
                 }
             }
         }
         }
-        BendeySnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding(),
-        )
     }
 }
 
 @Composable
 private fun MainShell(
     onShowMessage: (String) -> Unit,
+    snackbarHostState: SnackbarHostState,
     headerViewModel: AppHeaderViewModel = hiltViewModel(),
     sessionViewModel: AppSessionViewModel = hiltViewModel(),
     cashSessionViewModel: AppCashSessionViewModel = hiltViewModel(),
@@ -229,6 +228,14 @@ private fun MainShell(
         return
     }
 
+    val isCompactWidth = !rememberIsExpandedWidth()
+    val snackbarBottomPadding = rememberBendeySnackbarBottomPadding(
+        currentRoute = currentRoute,
+        showBottomBar = BendeyRoutes.showsBottomBar(currentRoute),
+        isCompactWidth = isCompactWidth,
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
     BendeyNavigationSuite(
         currentRoute = currentRoute ?: mainStartRoute,
         appVersion = BuildConfig.VERSION_NAME,
@@ -348,6 +355,13 @@ private fun MainShell(
             repartidoresGraph(onBack = { mainNavController.popBackStack() })
             clientesGraph(onShowMessage = onShowMessage)
         }
+    }
+    BendeySnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = snackbarBottomPadding),
+    )
     }
 }
 

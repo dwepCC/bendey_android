@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyCard
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -85,7 +86,7 @@ fun ClientesScreen(
             header = {
                 BendeyScreenToolbar(
                     title = "Clientes",
-                    subtitle = "${state.contacts.size} clientes activos",
+                    subtitle = clientesSubtitle(state),
                     actions = {
                         BendeyIconButton(
                             onClick = viewModel::refresh,
@@ -109,6 +110,7 @@ fun ClientesScreen(
                         onDelete = viewModel::requestDelete,
                         onToggle = viewModel::toggleActive,
                         onSearchChange = viewModel::setSearchQuery,
+                        onShowInactiveChange = viewModel::setShowInactive,
                         modifier = Modifier
                             .weight(0.42f)
                             .fillMaxHeight(),
@@ -148,6 +150,7 @@ fun ClientesScreen(
                     onDelete = viewModel::requestDelete,
                     onToggle = viewModel::toggleActive,
                     onSearchChange = viewModel::setSearchQuery,
+                    onShowInactiveChange = viewModel::setShowInactive,
                     modifier = contentModifier,
                 )
             }
@@ -178,6 +181,15 @@ fun ClientesScreen(
     }
 }
 
+private fun clientesSubtitle(state: ClientesUiState): String {
+    val count = state.contacts.size
+    return when {
+        state.showInactive -> if (count == 1) "1 cliente" else "$count clientes"
+        count == 1 -> "1 cliente activo"
+        else -> "$count clientes activos"
+    }
+}
+
 @Composable
 private fun ClientesListPane(
     state: ClientesUiState,
@@ -185,6 +197,7 @@ private fun ClientesListPane(
     onDelete: (Int) -> Unit,
     onToggle: (Int) -> Unit,
     onSearchChange: (String) -> Unit,
+    onShowInactiveChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -196,6 +209,23 @@ private fun ClientesListPane(
             label = "Buscar por nombre o documento",
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            BendeyFilterChip(
+                selected = !state.showInactive,
+                onClick = { onShowInactiveChange(false) },
+                text = "Activos",
+            )
+            BendeyFilterChip(
+                selected = state.showInactive,
+                onClick = { onShowInactiveChange(true) },
+                text = "Incluir inactivos",
+            )
+        }
         state.error?.takeIf { !state.formOpen }?.let { error ->
             Text(
                 error,
@@ -308,25 +338,23 @@ private fun ContactFormFields(
         },
         label = "Tipo de documento",
     )
-    Row(
+    BendeyTextField(
+        value = form.docNumber,
+        onValueChange = { value -> onFormChange { it.copy(docNumber = value) } },
+        label = "N° documento *",
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BendeyTextField(
-            value = form.docNumber,
-            onValueChange = { value -> onFormChange { it.copy(docNumber = value) } },
-            label = "N° documento *",
-            modifier = Modifier.weight(1f),
+    )
+    if (ContactDocType.supportsConsulta(form.docType.code)) {
+        BendeyPrimaryButton(
+            text = when {
+                consulting -> "Validando…"
+                else -> "Validar"
+            },
+            onClick = onConsult,
+            enabled = !consulting && !loading,
+            loading = consulting,
+            modifier = Modifier.fillMaxWidth(),
         )
-        if (ContactDocType.supportsConsulta(form.docType.code)) {
-            BendeyPrimaryButton(
-                text = if (consulting) "…" else "Consultar",
-                onClick = onConsult,
-                enabled = !consulting && !loading,
-                modifier = Modifier.weight(0.55f),
-            )
-        }
     }
     BendeyTextField(
         value = form.businessName,
@@ -445,6 +473,7 @@ private fun ContactFormDialog(
         onDismiss = onDismiss,
         confirmEnabled = !loading && !consulting,
         loading = loading,
+        enableContentScroll = true,
     ) {
         ContactFormFields(
             form = form,

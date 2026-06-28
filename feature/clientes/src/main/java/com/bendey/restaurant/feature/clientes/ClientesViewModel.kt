@@ -27,6 +27,7 @@ data class ClientesUiState(
     val consulting: Boolean = false,
     val contacts: List<CustomerContact> = emptyList(),
     val searchQuery: String = "",
+    val showInactive: Boolean = false,
     val tenantRuc: String = "",
     val formOpen: Boolean = false,
     val editingContactId: Int? = null,
@@ -74,10 +75,18 @@ class ClientesViewModel @Inject constructor(
         searchFlow.value = value
     }
 
+    fun setShowInactive(show: Boolean) {
+        _uiState.update { it.copy(showInactive = show) }
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
-            when (val result = contactsRepository.listCustomers(_uiState.value.searchQuery)) {
+            when (val result = contactsRepository.listCustomers(
+                query = _uiState.value.searchQuery,
+                includeInactive = _uiState.value.showInactive,
+            )) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(loading = false, contacts = result.data)
                 }

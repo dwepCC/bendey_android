@@ -489,4 +489,8 @@ class ProductosViewModel @Inject constructor(
     }
 
     fun consumeSnackMessage() { _uiState.update { it.copy(snackMessage = null) } }
+
+    fun showSnackMessage(message: String) {
+        _uiState.update { it.copy(snackMessage = message) }
+    }
 }

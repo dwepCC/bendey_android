@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.data.cache
 
 import com.bendey.restaurant.core.domain.billing.BillingRepository
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +19,7 @@ import javax.inject.Singleton
 class OperationalDataPreloader @Inject constructor(
     private val billingRepository: BillingRepository,
     private val posRepository: PosRepository,
+    private val settingsRepository: SettingsRepository,
     private val sessionStore: UserSessionStore,
     private val cache: OperationalDataCache,
 ) {
@@ -52,5 +54,6 @@ class OperationalDataPreloader @Inject constructor(
         if (cache.getCategories().isNullOrEmpty()) {
             posRepository.loadCategories()
         }
+        settingsRepository.preloadTenantSettings()
     }
 }

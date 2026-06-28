@@ -61,6 +61,7 @@ import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 
 private val STATUS_FILTERS = listOf(
     ComandaStatus.PENDIENTE,
@@ -79,6 +80,7 @@ fun CocinaScreen(
     var activeStatus by remember { mutableStateOf(ComandaStatus.PENDIENTE) }
     val filtered = remember(state, activeStatus) { state.filteredItems(activeStatus) }
     val groups = remember(state, activeStatus) { state.orderGroups(activeStatus) }
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
 
     PullToRefreshBox(
         isRefreshing = state.loading,
@@ -249,7 +251,7 @@ fun CocinaScreen(
                             columns = GridCells.Fixed(columns),
                             modifier = Modifier.fillMaxSize(),
                             state = rememberLazyGridState(),
-                            contentPadding = PaddingValues(bottom = BendeySpacing.sm),
+                            contentPadding = PaddingValues(bottom = BendeySpacing.sm + bottomScrollPadding),
                             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                         ) {
@@ -270,7 +272,7 @@ fun CocinaScreen(
                         BendeyLazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             state = rememberLazyListState(),
-                            contentPadding = PaddingValues(bottom = BendeySpacing.sm),
+                            contentPadding = PaddingValues(bottom = BendeySpacing.sm + bottomScrollPadding),
                             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         ) {
                             items(groups, key = { it.key }) { group ->

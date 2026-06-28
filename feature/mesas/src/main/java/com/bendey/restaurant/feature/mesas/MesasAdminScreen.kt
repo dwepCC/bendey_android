@@ -14,13 +14,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
+import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +60,7 @@ import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +70,7 @@ fun MesasAdminScreen(
     viewModel: MesasAdminViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
 
     Column(modifier = modifier.fillMaxSize()) {
         BendeyScreenToolbar(
@@ -134,7 +136,7 @@ fun MesasAdminScreen(
             BendeyFilterChip(
                 selected = state.viewMode == MesasAdminViewMode.LIST,
                 onClick = { viewModel.setViewMode(MesasAdminViewMode.LIST) },
-                label = { Icon(Icons.Default.List, contentDescription = "Vista lista") },
+                label = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Vista lista") },
                 modifier = Modifier.padding(start = BendeySpacing.xs),
             )
         }
@@ -153,7 +155,12 @@ fun MesasAdminScreen(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier.fillMaxSize(),
                         state = rememberLazyGridState(),
-                        contentPadding = PaddingValues(BendeySpacing.md),
+                        contentPadding = PaddingValues(
+                            start = BendeySpacing.md,
+                            end = BendeySpacing.md,
+                            top = BendeySpacing.md,
+                            bottom = BendeySpacing.md + bottomScrollPadding,
+                        ),
                         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                     ) {
@@ -173,7 +180,12 @@ fun MesasAdminScreen(
                 BendeyLazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     state = rememberLazyListState(),
-                    contentPadding = PaddingValues(BendeySpacing.md),
+                    contentPadding = PaddingValues(
+                        start = BendeySpacing.md,
+                        end = BendeySpacing.md,
+                        top = BendeySpacing.md,
+                        bottom = BendeySpacing.md + bottomScrollPadding,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     items(tables, key = { it.id }) { table ->
@@ -211,7 +223,7 @@ fun MesasAdminScreen(
     }
 
     if (state.floorsSheetOpen) {
-        ModalBottomSheet(
+        BendeyBottomSheet(
             onDismissRequest = viewModel::dismissFloorsSheet,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {

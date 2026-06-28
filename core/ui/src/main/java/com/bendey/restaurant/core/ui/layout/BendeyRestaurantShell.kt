@@ -16,15 +16,15 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 /** Altura visible de la barra inferior (sin clearance del FAB). */
 val BendeyBottomBarHeight = 56.dp
 
-/** Espacio superior reservado para el FAB central flotante. */
-val BendeyBottomBarFabOverlap = 20.dp
+/** Espacio superior reservado para el FAB central y su etiqueta. */
+val BendeyBottomBarFabOverlap = 24.dp
 
 /** Espacio total reservado en el contenedor (barra + FAB flotante). */
 val BendeyBottomBarInset = BendeyBottomBarHeight + BendeyBottomBarFabOverlap
 
 /**
- * Shell operativo: barra de estado tomate; contenido blanco a ancho completo
- * con esquinas superiores redondeadas (como React `RestaurantLayout`).
+ * Shell operativo: safe areas superiores e inferiores del sistema en tomate (Rest900);
+ * contenido blanco a ancho completo con esquinas superiores redondeadas.
  */
 @Composable
 fun BendeyRestaurantShell(
@@ -65,3 +65,4 @@ fun BendeyRestaurantShell(
         }
     }
 }
+

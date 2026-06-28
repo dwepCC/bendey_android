@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.fastexcel.reader)
     implementation(libs.fastexcel)
     implementation(libs.coil.compose)
+    implementation(libs.zxing.core)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 }

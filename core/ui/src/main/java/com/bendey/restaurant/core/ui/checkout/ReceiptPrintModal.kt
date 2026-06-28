@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
-import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import androidx.compose.material.icons.Icons
@@ -75,18 +75,23 @@ fun ReceiptPrintModal(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+        ),
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
-                .heightIn(max = 640.dp)
+                .wrapContentHeight()
+                .heightIn(max = 520.dp)
                 .border(BendeyCardDefaults.border, BendeyShapeTokens.xl),
             shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             shadowElevation = 6.dp,
         ) {
-            Column {
+            Column(modifier = Modifier.wrapContentHeight()) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     IconButton(
                         onClick = onDismiss,
@@ -96,18 +101,22 @@ fun ReceiptPrintModal(
                     ) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
-                    BendeyVerticalScrollColumn(
-                        modifier = Modifier.padding(
+                }
+                Column(
+                    modifier = Modifier
+                        .wrapContentHeight()
+                        .padding(
                             start = BendeySpacing.md,
                             end = BendeySpacing.md,
-                            top = BendeySpacing.md,
+                            top = 0.dp,
                             bottom = BendeySpacing.xs,
                         ),
-                    ) {
+                ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                            modifier = Modifier.padding(end = 36.dp),
+                            modifier = Modifier
+                                .padding(end = 36.dp, top = BendeySpacing.xs),
                         ) {
                             Box(
                                 modifier = Modifier
@@ -252,11 +261,10 @@ fun ReceiptPrintModal(
                                 contentColor = BendeyColors.OnPrimary,
                                 enabled = busyAction == null && printData != null,
                                 onClick = onShareWhatsApp,
-                                modifier = Modifier.weight(1f),
-                            )
+                            modifier = Modifier.weight(1f),
+                        )
                         }
                     }
-                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

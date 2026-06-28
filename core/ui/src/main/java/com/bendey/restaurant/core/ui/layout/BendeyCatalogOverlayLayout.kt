@@ -10,12 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.components.BendeyOverlayBanner
 
-/** Altura visual de la barra compacta de carrito POS (card + márgenes). */
-val BendeyCompactCartBarHeight = 68.dp
+/** Altura visual de la barra flotante POS (chips redondeados). */
+val BendeyCompactCartBarHeight = 76.dp
 
-/** Altura visual de la barra compacta en detalle de mesa. */
-val BendeyCompactMesaBarHeight = 72.dp
+/** Altura visual de la barra compacta en detalle de mesa (padding + botón). */
+val BendeyCompactMesaBarHeight = 76.dp
 
 /**
  * Padding inferior para catálogo POS/Mesa con barra compacta superpuesta.
@@ -25,13 +27,16 @@ val BendeyCompactMesaBarHeight = 72.dp
  */
 @Composable
 fun rememberBendeyCatalogOverlayBottomInset(includeBottomBar: Boolean): Dp =
-    rememberBendeyBottomBarScrollPadding(includeBottomBar = includeBottomBar)
+    rememberBendeyFloatingActionsBottomOffset(includeBottomBar = includeBottomBar)
 
 @Composable
 fun rememberBendeyCatalogGridBottomPadding(
     includeBottomBar: Boolean,
     compactBarHeight: Dp,
-): Dp = compactBarHeight + rememberBendeyCatalogOverlayBottomInset(includeBottomBar) + 4.dp
+): Dp = rememberBendeyCatalogScrollBottomPadding(
+    includeBottomBar = includeBottomBar,
+    compactBarHeight = compactBarHeight,
+)
 
 /**
  * Catálogo scrollable + barra compacta anclada al fondo del viewport visible.
@@ -44,6 +49,8 @@ fun BendeyCatalogOverlayLayout(
     modifier: Modifier = Modifier,
     includeBottomBar: Boolean,
     compactBarHeight: Dp,
+    bannerMessage: String? = null,
+    onBannerDismiss: (() -> Unit)? = null,
     catalog: @Composable (Modifier, Dp) -> Unit,
     compactBar: @Composable BoxScope.(Modifier) -> Unit,
 ) {
@@ -59,6 +66,17 @@ fun BendeyCatalogOverlayLayout(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(bottom = bottomInset),
+        )
+        BendeyOverlayBanner(
+            message = bannerMessage,
+            onDismiss = onBannerDismiss,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = BendeySpacing.sm,
+                    end = BendeySpacing.sm,
+                    bottom = bottomInset + compactBarHeight + BendeySpacing.xs,
+                ),
         )
     }
 }

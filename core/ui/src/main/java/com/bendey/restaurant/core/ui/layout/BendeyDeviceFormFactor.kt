@@ -4,13 +4,13 @@ import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.window.core.layout.WindowWidthSizeClass
+import androidx.window.core.layout.WindowSizeClass
 
 /**
  * Detección teléfono vs tablet.
  *
  * - Activity / orientación: [smallestScreenWidthDp] ≥ 600 ([Android large screens](https://developer.android.com/develop/ui/compose/layouts/adaptive)).
- * - Layout Compose: [WindowWidthSizeClass] vía [currentWindowAdaptiveInfo].
+ * - Layout Compose: [WindowSizeClass] vía [currentWindowAdaptiveInfo].
  */
 @Stable
 object BendeyDeviceFormFactor {
@@ -32,7 +32,8 @@ fun rememberIsTabletDevice(): Boolean {
 /** Ancho distinto de Compact — API [currentWindowAdaptiveInfo] (Material 3 Adaptive). */
 @Composable
 fun rememberIsExpandedWidth(): Boolean {
-    return rememberWindowWidthSizeClass() != WindowWidthSizeClass.COMPACT
+    return rememberWindowSizeClass()
+        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 }
 
 /**
@@ -42,8 +43,8 @@ fun rememberIsExpandedWidth(): Boolean {
 @Composable
 fun rememberUseAdaptiveTwoPane(): Boolean = rememberIsTabletDevice()
 
-/** Clase de ancho actual (Material 3 Adaptive). Una lectura por recomposición de pantalla. */
+/** Clase de tamaño de ventana actual (Material 3 Adaptive). */
 @Composable
-fun rememberWindowWidthSizeClass(): WindowWidthSizeClass {
-    return currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
+fun rememberWindowSizeClass(): WindowSizeClass {
+    return currentWindowAdaptiveInfo().windowSizeClass
 }

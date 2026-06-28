@@ -18,6 +18,7 @@ material3Adaptive = "1.2.0"
 fastexcel = "0.18.0"
 coil = "2.7.0"
 mlkitBarcode = "17.3.0"
+zxing = "3.5.3"
 cameraX = "1.4.1"
 junit = "4.13.2"
 junitExt = "1.2.1"
@@ -57,6 +58,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 fastexcel-reader = { group = "org.dhatim", name = "fastexcel-reader", version.ref = "fastexcel" }
 fastexcel = { group = "org.dhatim", name = "fastexcel", version.ref = "fastexcel" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraX" }
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }

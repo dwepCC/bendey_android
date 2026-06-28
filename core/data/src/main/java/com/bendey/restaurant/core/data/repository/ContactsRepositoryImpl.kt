@@ -29,8 +29,12 @@ class ContactsRepositoryImpl @Inject constructor(
     private val consultaApi: ConsultaApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listCustomers(query: String): AppResult<List<CustomerContact>> = apiCall {
-        contactsApi.listContacts(query = query, type = "customer").data.map { it.toCustomer() }
+    override suspend fun listCustomers(query: String, includeInactive: Boolean): AppResult<List<CustomerContact>> = apiCall {
+        contactsApi.listContacts(
+            query = query,
+            type = "customer",
+            status = if (includeInactive) "all" else "active",
+        ).data.map { it.toCustomer() }
     }
 
     override suspend fun getCustomer(id: Int): AppResult<CustomerContact> = apiCall {

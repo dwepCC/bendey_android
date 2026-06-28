@@ -1,9 +1,12 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.data.receipt.ReceiptLogoLoader
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
+import com.bendey.restaurant.platform.printing.escpos.EscPosLogoRaster
+import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrintResult
 import com.bendey.restaurant.platform.printing.transport.PrinterRepository
 import kotlinx.coroutines.flow.first
@@ -14,6 +17,7 @@ import javax.inject.Singleton
 class DocumentPrintService @Inject constructor(
     private val printerRepository: PrinterRepository,
     private val printerPreferencesStore: PrinterPreferencesStore,
+    private val logoLoader: ReceiptLogoLoader,
 ) {
     /** null = sin impresora / auto-print off; true = OK; false = error. */
     suspend fun printSaleDocument(data: SalePrintData?, force: Boolean = false): Boolean? {
@@ -23,7 +27,8 @@ class DocumentPrintService @Inject constructor(
         val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
             ?: return null
-        return when (printerRepository.printDocument(target, data.toInput())) {
+        val logoRaster = loadLogoRaster(data.companyLogoUrl, target.paperWidth)
+        return when (printerRepository.printDocument(target, data.toInput(logoRaster))) {
             is PrintResult.Success -> true
             is PrintResult.Error -> false
         }
@@ -34,14 +39,26 @@ class DocumentPrintService @Inject constructor(
         return settings.targetFor(PrinterSlot.DOCUMENTOS) != null ||
             settings.targetFor(PrinterSlot.COMANDAS) != null
     }
+
+    private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm): ByteArray? {
+        val maxLogoPx = when (paperWidth) {
+            PaperWidthMm.W58 -> 360
+            PaperWidthMm.W80 -> 520
+        }
+        val bitmap = logoLoader.load(logoUrl, maxLogoPx) ?: return null
+        return EscPosLogoRaster.encode(bitmap, paperWidth).also {
+            if (bitmap.isRecycled.not()) bitmap.recycle()
+        }
+    }
 }
 
-private fun SalePrintData.toInput() = DocumentPrintInput(
+private fun SalePrintData.toInput(logoRaster: ByteArray?) = DocumentPrintInput(
     docType = docType,
     sunatCode = sunatCode,
     number = number,
     issueDate = issueDate,
     companyName = companyName,
+    companyLegalName = companyLegalName,
     companyRuc = companyRuc,
     companyAddress = companyAddress,
     branchName = branchName,
@@ -65,4 +82,5 @@ private fun SalePrintData.toInput() = DocumentPrintInput(
     legendText = legendText,
     qrData = qrData,
     sunatHash = sunatHash,
+    logoRaster = logoRaster,
 )

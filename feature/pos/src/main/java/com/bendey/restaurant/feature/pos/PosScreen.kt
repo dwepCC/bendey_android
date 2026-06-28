@@ -41,7 +41,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import com.bendey.restaurant.core.ui.layout.BendeyAdaptiveSplitLayout
@@ -89,13 +88,18 @@ import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
+import com.bendey.restaurant.core.ui.components.BendeyCartAction
+import com.bendey.restaurant.core.ui.components.BendeyCartActionGrid
+import com.bendey.restaurant.core.ui.components.BendeyCartActionStyle
 import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.pos.ManualProductDialog
 import com.bendey.restaurant.core.navigation.CashCheckoutGate
 import com.bendey.restaurant.core.navigation.CashCheckoutGateNoOp
 import com.bendey.restaurant.core.ui.components.BendeyTextField
-import com.bendey.restaurant.core.ui.components.BendeySnackMessage
+import com.bendey.restaurant.core.ui.components.BendeyOverlayBanner
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import java.text.NumberFormat
 import java.util.Locale
@@ -126,18 +130,22 @@ fun PosScreen(
             viewModel.openCheckout()
         }
     }
+    val overlayError = state.error?.takeIf { !state.checkoutOpen && state.voidTarget == null }
 
-    BendeySnackMessage(
-        message = state.snackMessage,
-        onShow = onShowMessage,
-        onConsume = viewModel::consumeSnackMessage,
-    )
+    LaunchedEffect(state.snackMessage) {
+        if (state.snackMessage != null) {
+            viewModel.consumeSnackMessage()
+        }
+    }
 
-    Column(
+    val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(BendeyColors.Background),
     ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         OrderTypeRow(
             selected = state.orderType,
             onSelect = { type ->
@@ -146,13 +154,15 @@ fun PosScreen(
             },
             compact = isExpanded,
         )
-        PosPendingOrdersBar(
-            count = state.pendingOrdersCount,
-            orderCode = state.orderCode,
-            showEditDetails = state.isRestaurantOrder,
-            onOpenPending = viewModel::openPendingOrdersSheet,
-            onEditDetails = viewModel::openOrderDetailsModal,
-        )
+        if (isExpanded) {
+            PosPendingOrdersBar(
+                count = state.pendingOrdersCount,
+                orderCode = state.orderCode,
+                showEditDetails = state.isRestaurantOrder,
+                onOpenPending = viewModel::openPendingOrdersSheet,
+                onEditDetails = viewModel::openOrderDetailsModal,
+            )
+        }
         if (isExpanded && (state.checkoutRawTotal > 0 || state.activeSessionId != null)) {
             PosSessionBar(
                 orderCode = state.orderCode,
@@ -224,6 +234,8 @@ fun PosScreen(
                     modifier = inner,
                     includeBottomBar = true,
                     compactBarHeight = BendeyCompactCartBarHeight,
+                    bannerMessage = overlayError,
+                    onBannerDismiss = viewModel::dismissError,
                     catalog = { catalogModifier, gridBottomPadding ->
                         CatalogPane(
                             state = state,
@@ -246,34 +258,38 @@ fun PosScreen(
                         )
                     },
                     compactBar = { barModifier ->
-                        CompactCartBar(
+                        PosFloatingActionsBar(
+                            pendingCount = state.pendingOrdersCount,
+                            cartCount = state.cartCount,
                             payableTotal = state.checkoutRawTotal,
                             cartTotal = state.cartTotal,
-                            count = state.cartCount,
                             currency = currency,
-                            sending = state.sending,
-                            checkoutLoading = state.checkoutSubmitting,
-                            canCheckout = state.canCheckout,
+                            onOpenPending = viewModel::openPendingOrdersSheet,
                             onOpenCart = { showCartSheet = true },
-                            onSend = viewModel::sendComanda,
-                            onCheckout = onCheckout,
                             modifier = barModifier,
                         )
                     },
                 )
             }
         }
-        state.error?.let { error ->
-            Text(
-                text = error,
-                color = BendeyColors.Error,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        }
+        if (isExpanded) {
+            BendeyOverlayBanner(
+                message = overlayError,
+                onDismiss = viewModel::dismissError,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        start = BendeySpacing.md,
+                        end = BendeySpacing.md,
+                        bottom = tabletBannerBottomPadding,
+                    ),
             )
         }
     }
 
     if (!isExpanded && showCartSheet) {
-        ModalBottomSheet(
+        BendeyBottomSheet(
             onDismissRequest = { showCartSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         ) {
@@ -305,7 +321,7 @@ fun PosScreen(
                 canAnularComanda = state.canAnularComanda,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .fillMaxHeight(0.92f),
             )
         }
     }
@@ -741,33 +757,42 @@ private fun CartPane(
             onLineUnitPriceChange = onCartLineUnitPriceChange,
             modifier = Modifier.weight(1f),
             primaryAction = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    BendeyPrimaryButton(
-                        text = "Producto manual",
-                        onClick = onManualProduct,
-                        modifier = Modifier.fillMaxWidth(),
+                val actions = buildList {
+                    add(
+                        BendeyCartAction(
+                            text = "Producto manual",
+                            onClick = onManualProduct,
+                            style = BendeyCartActionStyle.SecondaryFilled,
+                        ),
                     )
                     if (state.isRestaurantOrder) {
-                        BendeyPrimaryButton(
-                            text = if (state.sending) "Enviando…" else "Enviar comanda",
-                            onClick = onSend,
-                            enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
-                            modifier = Modifier.fillMaxWidth(),
+                        add(
+                            BendeyCartAction(
+                                text = if (state.sending) "Enviando…" else "Enviar comanda",
+                                onClick = onSend,
+                                enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
+                                style = BendeyCartActionStyle.FilledTonal,
+                            ),
                         )
-                        BendeyPrimaryButton(
-                            text = if (state.savingDraft) "Guardando…" else "Guardar borrador",
-                            onClick = onSaveDraft,
-                            enabled = !state.sending && !state.savingDraft,
-                            modifier = Modifier.fillMaxWidth(),
+                        add(
+                            BendeyCartAction(
+                                text = if (state.savingDraft) "Guardando…" else "Guardar borrador",
+                                onClick = onSaveDraft,
+                                enabled = !state.sending && !state.savingDraft,
+                                style = BendeyCartActionStyle.NeutralFilled,
+                            ),
                         )
-                        BendeyPrimaryButton(
-                            text = if (state.printingPrecuenta) "Precuenta…" else "Precuenta",
-                            onClick = onPrintPrecuenta,
-                            enabled = !state.sending && !state.savingDraft && !state.printingPrecuenta,
-                            modifier = Modifier.fillMaxWidth(),
+                        add(
+                            BendeyCartAction(
+                                text = if (state.printingPrecuenta) "Precuenta…" else "Precuenta",
+                                onClick = onPrintPrecuenta,
+                                enabled = !state.sending && !state.savingDraft && !state.printingPrecuenta,
+                                style = BendeyCartActionStyle.LowEmphasisFilled,
+                            ),
                         )
                     }
                 }
+                BendeyCartActionGrid(actions = actions)
             },
             secondaryAction = if (canCheckout) {
                 {
@@ -782,102 +807,5 @@ private fun CartPane(
                 null
             },
         )
-    }
-}
-
-@Composable
-private fun CompactCartBar(
-    payableTotal: Double,
-    cartTotal: Double,
-    count: Int,
-    currency: NumberFormat,
-    sending: Boolean,
-    checkoutLoading: Boolean,
-    canCheckout: Boolean,
-    onOpenCart: () -> Unit,
-    onSend: () -> Unit,
-    onCheckout: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val total = if (payableTotal > 0) payableTotal else cartTotal
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        shape = BendeyShapeTokens.lg,
-        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.55f)),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpenCart)
-                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(BendeyColors.PrimaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                BadgedBox(
-                    badge = {
-                        if (count > 0) {
-                            Badge { Text(count.coerceAtMost(99).toString()) }
-                        }
-                    },
-                ) {
-                    Icon(
-                        Icons.Default.ShoppingCart,
-                        contentDescription = "Carrito",
-                        tint = BendeyColors.Primary,
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Ver carrito",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = if (count == 1) "1 producto" else "$count productos",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "Total",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-                Text(
-                    text = currency.format(total),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = BendeyColors.Primary,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(BendeyColors.Primary)
-                    .clickable(onClick = onOpenCart),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Abrir carrito",
-                    tint = BendeyColors.OnPrimary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        }
     }
 }

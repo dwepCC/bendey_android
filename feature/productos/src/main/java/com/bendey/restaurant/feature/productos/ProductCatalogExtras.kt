@@ -74,6 +74,7 @@ fun ProductImportDialog(
     onFilePicked: (ByteArray) -> Unit,
     onImport: () -> Unit,
     onDownloadTemplate: () -> ByteArray,
+    onDownloadError: (String) -> Unit = {},
 ) {
     if (!open) return
     val context = LocalContext.current
@@ -82,10 +83,13 @@ fun ProductImportDialog(
     }
     val templateLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(EXCEL_MIME)) { uri ->
         uri?.let {
-            runCatching {
+            val writeResult = runCatching {
                 context.contentResolver.openOutputStream(it)?.use { stream ->
                     stream.write(onDownloadTemplate())
-                }
+                } ?: error("No fue posible abrir el destino seleccionado.")
+            }
+            if (writeResult.isFailure) {
+                onDownloadError("No fue posible guardar el archivo.")
             }
         }
     }

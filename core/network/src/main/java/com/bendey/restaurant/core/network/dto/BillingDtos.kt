@@ -81,6 +81,9 @@ data class PrintCompanyDto(
     @SerialName("trade_name") val tradeName: String? = null,
     val address: String? = null,
     val phone: String? = null,
+    val email: String? = null,
+    val website: String? = null,
+    @SerialName("logo_url") val logoUrl: String? = null,
 )
 
 @Serializable

@@ -52,9 +52,18 @@ fun BendeyQuantityStepper(
     increaseEnabled: Boolean = true,
     buttonSize: Dp = BendeySpacing.touchTarget,
     compact: Boolean = false,
+    dense: Boolean = false,
 ) {
-    val innerGap = if (compact) BendeySpacing.sm else BendeySpacing.md
-    val quantityMinWidth = if (compact) 36.dp else 44.dp
+    val innerGap = when {
+        dense -> BendeySpacing.xxs
+        compact -> BendeySpacing.sm
+        else -> BendeySpacing.md
+    }
+    val quantityMinWidth = when {
+        dense -> 28.dp
+        compact -> 36.dp
+        else -> 44.dp
+    }
     val iconSize = if (compact) 20.dp else 22.dp
     val quantityStyle = if (compact) {
         MaterialTheme.typography.titleLarge

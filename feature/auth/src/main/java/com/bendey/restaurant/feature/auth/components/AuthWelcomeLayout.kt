@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
@@ -17,13 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
 import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
+import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 
 @Composable
 fun AuthWelcomeLayout(
@@ -34,25 +35,39 @@ fun AuthWelcomeLayout(
     scrollable: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val isExpanded = rememberIsExpandedWidth()
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(BendeyColors.Background)
-            .bendeySafeDrawingPadding(),
+            .bendeySafeDrawingPadding()
+            .imePadding(),
         contentAlignment = Alignment.TopCenter,
     ) {
         val columnModifier = Modifier
-            .widthIn(max = 480.dp)
+            .widthIn(
+                max = if (isExpanded) {
+                    AuthLayoutTokens.contentMaxWidthExpanded
+                } else {
+                    AuthLayoutTokens.contentMaxWidthCompact
+                },
+            )
             .fillMaxWidth()
-            .padding(horizontal = BendeySpacing.lg, vertical = BendeySpacing.xl)
+            .padding(
+                horizontal = BendeySpacing.lg,
+                vertical = if (isExpanded) BendeySpacing.lg else BendeySpacing.md,
+            )
 
         val welcomeBody: @Composable ColumnScope.() -> Unit = {
             BendeyExpressiveReveal(index = 0) {
-                BendeyBrandLogo(height = 64.dp, showBackground = true)
+                BendeyBrandLogo(height = AuthLayoutTokens.logoHeightWelcome, showBackground = true)
             }
-            Spacer(modifier = Modifier.height(BendeySpacing.lg))
+            Spacer(modifier = Modifier.height(BendeySpacing.md))
             BendeyExpressiveReveal(index = 1) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     title?.let {
                         Text(
                             text = it,
@@ -66,11 +81,12 @@ fun AuthWelcomeLayout(
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
                         color = BendeyColors.OnSurface,
                         textAlign = TextAlign.Center,
                     )
-                    Spacer(modifier = Modifier.height(BendeySpacing.xs))
                     if (description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(BendeySpacing.xs))
                         Text(
                             text = description,
                             style = MaterialTheme.typography.bodyMedium,
@@ -80,7 +96,7 @@ fun AuthWelcomeLayout(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(BendeySpacing.xl))
+            Spacer(modifier = Modifier.height(BendeySpacing.lg))
             BendeyExpressiveReveal(index = 2) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -99,11 +115,16 @@ fun AuthWelcomeLayout(
                 )
             }
         } else {
-            Column(
+            BendeyVerticalScrollColumn(
                 modifier = columnModifier,
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = welcomeBody,
-            )
+                showScrollHints = false,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    content = welcomeBody,
+                )
+            }
         }
     }
 }

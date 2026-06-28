@@ -18,6 +18,7 @@ data class DocumentPrintInput(
     val number: String,
     val issueDate: String,
     val companyName: String,
+    val companyLegalName: String? = null,
     val companyRuc: String,
     val companyAddress: String?,
     val branchName: String?,
@@ -33,6 +34,7 @@ data class DocumentPrintInput(
     val qrData: String? = null,
     val sunatHash: String? = null,
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
+    val logoRaster: ByteArray? = null,
 )
 
 /** Ticket de venta — port de buildSaleDocumentEscPos (QR SUNAT en CPE electrónicos). */
@@ -45,9 +47,15 @@ object DocumentLayoutBuilder {
 
         b.init()
         b.align(EscPosAlign.CENTER)
+        input.logoRaster?.let { raster ->
+            b.raw(raster)
+        }
         b.bold(true)
         EscPosTextUtils.wrapText(input.companyName.ifBlank { "EMPRESA" }, cols).forEach { b.line(it) }
         b.bold(false)
+        input.companyLegalName?.takeIf { it.isNotBlank() }?.let { legal ->
+            EscPosTextUtils.wrapText(legal, cols).forEach { b.line(it) }
+        }
         if (input.companyRuc.isNotBlank()) b.line("RUC: ${input.companyRuc}")
         input.companyAddress?.takeIf { it.isNotBlank() }?.let { addr ->
             EscPosTextUtils.wrapText(addr, cols).forEach { b.line(it) }

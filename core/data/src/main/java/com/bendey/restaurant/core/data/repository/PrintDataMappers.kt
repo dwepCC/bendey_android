@@ -1,21 +1,27 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.receipt.resolvePrintCompanyNames
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.domain.billing.SalePrintLine
 import com.bendey.restaurant.core.domain.billing.SalePrintPayment
 import com.bendey.restaurant.core.network.dto.PrintDataDto
 
 internal fun PrintDataDto.toDomain(): SalePrintData {
-    val companyName = company?.tradeName?.takeIf { it.isNotBlank() }
-        ?: company?.businessName.orEmpty()
+    val names = resolvePrintCompanyNames(company)
     return SalePrintData(
         docType = docType.ifBlank { "NOTA DE VENTA" },
         sunatCode = sunatCode,
         number = formatPrintNumber(series, number),
         issueDate = issueDate,
-        companyName = companyName,
+        issueTime = issueTime?.takeIf { it.isNotBlank() },
+        companyName = names.commercial,
+        companyLegalName = names.legal,
         companyRuc = company?.ruc.orEmpty(),
         companyAddress = company?.address ?: branch?.address,
+        companyPhone = company?.phone?.takeIf { it.isNotBlank() },
+        companyEmail = company?.email?.takeIf { it.isNotBlank() },
+        companyWebsite = company?.website?.takeIf { it.isNotBlank() },
+        companyLogoUrl = company?.logoUrl?.takeIf { it.isNotBlank() },
         branchName = branch?.name,
         clientName = client?.businessName,
         clientDocNumber = client?.docNumber,

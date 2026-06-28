@@ -44,6 +44,9 @@ interface DeliveryRepository {
 }
 
 interface SettingsRepository {
+    suspend fun preloadTenantSettings()
+    fun invalidateTenantSettingsCache()
+    fun peekTenantSettings(): TenantSettingsSnapshot?
     suspend fun getCompanyConfig(): AppResult<CompanyConfig>
     suspend fun updateCompanyConfig(input: CompanyConfigFormInput): AppResult<CompanyConfig>
     suspend fun getSunatConfig(): AppResult<SunatConfig>

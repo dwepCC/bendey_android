@@ -484,8 +484,11 @@ private fun ReportTab(
                             Icon(Icons.Default.Share, contentDescription = null)
                             Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
                         }
-                        OutlinedButton(onClick = { viewModel.exportSessionReportPdf(context) }) {
-                            Text("Exportar PDF")
+                        OutlinedButton(
+                            onClick = { viewModel.exportSessionReportPdf(context) },
+                            enabled = !state.sessionReportExportBusy,
+                        ) {
+                            Text(if (state.sessionReportExportBusy) "Exportando PDF…" else "Exportar PDF")
                         }
                     }
                 } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)

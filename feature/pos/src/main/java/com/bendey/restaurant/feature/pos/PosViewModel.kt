@@ -5,9 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.feedback.CartFeedback
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
+import com.bendey.restaurant.core.data.export.BendeyFileShareService
+import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
-import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
 import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
@@ -219,6 +220,7 @@ class PosViewModel @Inject constructor(
     private val kitchenPrintService: KitchenPrintService,
     private val documentPrintService: DocumentPrintService,
     private val receiptPdfService: ReceiptPdfService,
+    private val fileShareService: BendeyFileShareService,
     private val cartFeedback: CartFeedback,
     private val sessionStore: UserSessionStore,
     private val productImageRepository: ProductImageRepository,
@@ -388,9 +390,16 @@ class PosViewModel @Inject constructor(
     }
 
     fun setCatalogTab(tab: PosCatalogTab) {
-        _uiState.update { it.copy(catalogTab = tab) }
-        if (tab == PosCatalogTab.COMBOS && _uiState.value.combos.isEmpty()) {
-            loadCombos()
+        if (_uiState.value.catalogTab == tab) return
+        _uiState.update { it.copy(catalogTab = tab, searchQuery = "") }
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
+            if (tab == PosCatalogTab.PRODUCTS) {
+                loadProducts(branchId = branchId)
+            }
+            if (tab == PosCatalogTab.COMBOS && _uiState.value.combos.isEmpty()) {
+                loadCombos()
+            }
         }
     }
 
@@ -837,6 +846,10 @@ class PosViewModel @Inject constructor(
         _uiState.update { it.copy(snackMessage = null) }
     }
 
+    fun dismissError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
     fun addManualProduct(input: ManualProductInput) {
         val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull()
         if (input.description.trim().isBlank() || price == null || price < 0) {
@@ -1215,7 +1228,7 @@ class PosViewModel @Inject constructor(
                     _uiState.update { it.copy(checkoutSubmitting = false) }
                     return@launch
                 }
-                if (state.cart.isNotEmpty() && !sendCartItems(sessionId, state)) {
+                if (state.cart.isNotEmpty() && !sendCartItems(sessionId, state, printKitchen = false)) {
                     _uiState.update { it.copy(checkoutSubmitting = false) }
                     return@launch
                 }
@@ -1237,16 +1250,12 @@ class PosViewModel @Inject constructor(
                 is AppResult.Success -> {
                     val printNote = documentPrintNote(documentPrintService.printSaleDocument(result.data.printData))
                     val hasPrinter = documentPrintService.hasConfiguredPrinter()
-                    _uiState.update {
-                        it.copy(
-                            checkoutSubmitting = false,
-                            checkoutOpen = false,
-                            checkoutSuccess = result.data,
-                            checkoutPrintNote = printNote,
-                            receiptHasPrinter = hasPrinter,
-                        )
-                    }
-                    resetSessionState(newType = state.orderType)
+                    resetSessionState(
+                        newType = PosOrderType.QUICK_SALE,
+                        checkoutSuccess = result.data,
+                        checkoutPrintNote = printNote,
+                        receiptHasPrinter = hasPrinter,
+                    )
                     loadPendingOrders()
                 }
                 is AppResult.Error -> _uiState.update {
@@ -1285,12 +1294,14 @@ class PosViewModel @Inject constructor(
             _uiState.update { it.copy(receiptBusy = "share") }
             try {
                 val file = receiptPdfService.generate(data, ReceiptPdfFormat.TICKET)
-                val uri = receiptPdfService.uriFor(file)
-                withContext(Dispatchers.Main) {
-                    ReceiptShareHelper.sharePdfWhatsApp(context, uri, "Comprobante ${data.number}")
+                val shareResult = withContext(Dispatchers.Main) {
+                    fileShareService.sharePdfWhatsApp(context, file, "Comprobante ${data.number}")
+                }
+                if (shareResult is ExportShareResult.Failure) {
+                    _uiState.update { it.copy(snackMessage = shareResult.userMessage) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo compartir") }
+                _uiState.update { it.copy(snackMessage = fileShareService.failureFrom(e).userMessage) }
             } finally {
                 _uiState.update { it.copy(receiptBusy = null) }
             }
@@ -1303,12 +1314,14 @@ class PosViewModel @Inject constructor(
             _uiState.update { it.copy(receiptBusy = "pdf") }
             try {
                 val file = receiptPdfService.generate(data, format)
-                val uri = receiptPdfService.uriFor(file)
-                withContext(Dispatchers.Main) {
-                    ReceiptShareHelper.openPdfExternal(context, uri)
+                val shareResult = withContext(Dispatchers.Main) {
+                    fileShareService.openPdf(context, file)
+                }
+                if (shareResult is ExportShareResult.Failure) {
+                    _uiState.update { it.copy(snackMessage = shareResult.userMessage) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo abrir el PDF") }
+                _uiState.update { it.copy(snackMessage = fileShareService.failureFrom(e).userMessage) }
             } finally {
                 _uiState.update { it.copy(receiptBusy = null) }
             }
@@ -1317,7 +1330,13 @@ class PosViewModel @Inject constructor(
 
     // --- Internos ---
 
-    private fun resetSessionState(newType: PosOrderType, snack: String? = null) {
+    private fun resetSessionState(
+        newType: PosOrderType = PosOrderType.QUICK_SALE,
+        snack: String? = null,
+        checkoutSuccess: BillSessionResult? = null,
+        checkoutPrintNote: String? = null,
+        receiptHasPrinter: Boolean? = null,
+    ) {
         _uiState.update {
             PosUiState(
                 loading = it.loading,
@@ -1334,10 +1353,9 @@ class PosViewModel @Inject constructor(
                 pendingOrders = it.pendingOrders,
                 deliveryDrivers = it.deliveryDrivers,
                 snackMessage = snack,
-                checkoutSuccess = it.checkoutSuccess,
-                checkoutPrintNote = it.checkoutPrintNote,
-                receiptHasPrinter = it.receiptHasPrinter,
-                receiptBusy = it.receiptBusy,
+                checkoutSuccess = checkoutSuccess ?: it.checkoutSuccess,
+                checkoutPrintNote = checkoutPrintNote ?: it.checkoutPrintNote,
+                receiptHasPrinter = receiptHasPrinter ?: it.receiptHasPrinter,
                 canChargeOrders = it.canChargeOrders,
                 canAnularComanda = it.canAnularComanda,
                 canOperateCash = it.canOperateCash,

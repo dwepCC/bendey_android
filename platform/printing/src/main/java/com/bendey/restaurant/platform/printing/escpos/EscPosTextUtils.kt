@@ -14,10 +14,13 @@ object EscPosTextUtils {
         Regex("º") to "o",
         Regex("[—–]") to "-",
         Regex("…") to "...",
+        /** Ticketeras ESC/POS suelen no soportar UTF-8; × y · salen como basura (a veces "tm"). */
+        Regex("×") to "x",
         Regex("[·•]") to "-",
         Regex("[\u201c\u201d]") to "\"",
         Regex("[\u2018\u2019]") to "'",
         Regex("[\u200b-\u200d\ufeff]") to "",
+        Regex("[™✓✔]") to "",
     )
 
     /** Paridad con normalizeTextForTicketPrint.ts */

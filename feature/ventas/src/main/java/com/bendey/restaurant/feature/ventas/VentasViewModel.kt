@@ -3,10 +3,11 @@ package com.bendey.restaurant.feature.ventas
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.export.BendeyFileShareService
+import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
-import com.bendey.restaurant.core.data.receipt.ReceiptShareHelper
 import com.bendey.restaurant.core.domain.billing.BillingDocumentKind
 import com.bendey.restaurant.core.domain.billing.BillingRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
@@ -115,6 +116,7 @@ class VentasViewModel @Inject constructor(
     private val billingRepository: BillingRepository,
     private val documentPrintService: DocumentPrintService,
     private val receiptPdfService: ReceiptPdfService,
+    private val fileShareService: BendeyFileShareService,
     private val billingEventsClient: BillingEventsClient,
     private val sessionStore: UserSessionStore,
 ) : ViewModel() {
@@ -645,23 +647,34 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(billingBusy = kind.pathSegment) }
             when (val result = billingRepository.downloadBillingDocument(saleId, kind)) {
                 is AppResult.Success -> {
-                    withContext(Dispatchers.Main) {
+                    val shareResult = withContext(Dispatchers.Main) {
                         if (openPdf) {
-                            val uri = receiptPdfService.uriFor(result.data)
-                            ReceiptShareHelper.openPdfExternal(context, uri)
+                            fileShareService.openPdf(context, result.data)
                         } else {
-                            shareBillingDocumentFile(context, result.data, kind.mimeType, kind.defaultFileName)
+                            shareBillingDocumentFile(
+                                context,
+                                fileShareService,
+                                result.data,
+                                kind.mimeType,
+                                kind.defaultFileName,
+                            )
                         }
                     }
                     _uiState.update {
-                        it.copy(
-                            billingBusy = null,
-                            snackMessage = when (kind) {
-                                BillingDocumentKind.PDF -> "PDF oficial abierto"
-                                BillingDocumentKind.CDR -> "CDR listo para compartir"
-                                else -> "XML listo para compartir"
-                            },
-                        )
+                        when (shareResult) {
+                            ExportShareResult.Success -> it.copy(
+                                billingBusy = null,
+                                snackMessage = when (kind) {
+                                    BillingDocumentKind.PDF -> "PDF oficial abierto"
+                                    BillingDocumentKind.CDR -> "CDR listo para compartir"
+                                    else -> "XML listo para compartir"
+                                },
+                            )
+                            is ExportShareResult.Failure -> it.copy(
+                                billingBusy = null,
+                                snackMessage = shareResult.userMessage,
+                            )
+                        }
                     }
                 }
                 is AppResult.Error -> _uiState.update {
@@ -699,17 +712,21 @@ class VentasViewModel @Inject constructor(
                 )
             ) {
                 is AppResult.Success -> {
-                    withContext(Dispatchers.Main) {
+                    val shareResult = withContext(Dispatchers.Main) {
                         if (format == "pdf") {
-                            exportSalesListPdf(context, state.tab, result.data, state.fromDate, state.toDate)
+                            exportSalesListPdf(context, fileShareService, state.tab, result.data, state.fromDate, state.toDate)
                         } else {
-                            exportSalesListCsv(context, state.tab, result.data, state.fromDate, state.toDate)
+                            exportSalesListCsv(context, fileShareService, state.tab, result.data, state.fromDate, state.toDate)
                         }
                     }
                     _uiState.update {
                         it.copy(
                             exportBusy = null,
-                            snackMessage = if (format == "pdf") "Listado PDF exportado" else "Listado Excel exportado",
+                            snackMessage = when (shareResult) {
+                                ExportShareResult.Success ->
+                                    if (format == "pdf") "Listado PDF exportado" else "Listado Excel exportado"
+                                is ExportShareResult.Failure -> shareResult.userMessage
+                            },
                         )
                     }
                 }
@@ -793,12 +810,14 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(receiptBusy = "share") }
             try {
                 val file = receiptPdfService.generate(data, ReceiptPdfFormat.TICKET)
-                val uri = receiptPdfService.uriFor(file)
-                withContext(Dispatchers.Main) {
-                    ReceiptShareHelper.sharePdfWhatsApp(context, uri, "Comprobante ${data.number}")
+                val shareResult = withContext(Dispatchers.Main) {
+                    fileShareService.sharePdfWhatsApp(context, file, "Comprobante ${data.number}")
+                }
+                if (shareResult is ExportShareResult.Failure) {
+                    _uiState.update { it.copy(snackMessage = shareResult.userMessage) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo compartir") }
+                _uiState.update { it.copy(snackMessage = fileShareService.failureFrom(e).userMessage) }
             } finally {
                 _uiState.update { it.copy(receiptBusy = null) }
             }
@@ -811,12 +830,14 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(receiptBusy = "pdf") }
             try {
                 val file = receiptPdfService.generate(data, format)
-                val uri = receiptPdfService.uriFor(file)
-                withContext(Dispatchers.Main) {
-                    ReceiptShareHelper.openPdfExternal(context, uri)
+                val shareResult = withContext(Dispatchers.Main) {
+                    fileShareService.openPdf(context, file)
+                }
+                if (shareResult is ExportShareResult.Failure) {
+                    _uiState.update { it.copy(snackMessage = shareResult.userMessage) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(snackMessage = e.message ?: "No se pudo abrir el PDF") }
+                _uiState.update { it.copy(snackMessage = fileShareService.failureFrom(e).userMessage) }
             } finally {
                 _uiState.update { it.copy(receiptBusy = null) }
             }

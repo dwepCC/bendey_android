@@ -229,6 +229,14 @@ data class RestaurantSettings(
     val hasDeletionPin: Boolean,
 )
 
+/** Snapshot en memoria de configuración del tenant (precarga al iniciar sesión). */
+data class TenantSettingsSnapshot(
+    val config: CompanyConfig,
+    val sunat: SunatConfig,
+    val settings: RestaurantSettings,
+    val branches: List<BranchItem>,
+)
+
 data class RestaurantStaffManagementRow(
     val userId: Int,
     val name: String,

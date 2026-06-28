@@ -1,11 +1,11 @@
 package com.bendey.restaurant.feature.auth.pin
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
@@ -15,17 +15,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyBrandLogo
-import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
+import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPinKeypad
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
+import com.bendey.restaurant.feature.auth.components.AuthLayoutTokens
 
 @Composable
 fun PinLoginScreen(
@@ -36,36 +38,43 @@ fun PinLoginScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Column(modifier = modifier.fillMaxSize().bendeySafeDrawingPadding()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .bendeySafeDrawingPadding()
+            .imePadding(),
+    ) {
         BendeyScreenToolbar(
             title = state.station.label,
             subtitle = "Ingresa tu PIN",
             onBack = onBack,
         )
-        Box(
+        BendeyVerticalScrollColumn(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
+            showScrollHints = false,
         ) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = 360.dp)
+                    .widthIn(max = AuthLayoutTokens.pinFormMaxWidth)
                     .fillMaxWidth()
                     .padding(horizontal = BendeySpacing.lg, vertical = BendeySpacing.md),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 BendeyExpressiveReveal(index = 0) {
-                    BendeyBrandLogo(height = 48.dp, showBackground = true)
+                    BendeyBrandLogo(height = AuthLayoutTokens.logoHeightPin, showBackground = true)
                 }
                 Spacer(modifier = Modifier.height(BendeySpacing.sm))
                 BendeyExpressiveReveal(index = 1) {
                     Text(
                         text = "Ingresa tu PIN de operación",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = BendeyColors.OnSurfaceVariant,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = BendeySpacing.md),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = BendeySpacing.md),
                     )
                 }
                 BendeyExpressiveReveal(index = 2) {
@@ -80,14 +89,21 @@ fun PinLoginScreen(
                         )
                         Spacer(modifier = Modifier.height(BendeySpacing.md))
                         BendeyPrimaryButton(
-                            text = "INGRESAR",
+                            text = if (state.loading) "Ingresando…" else "Ingresar",
                             onClick = { viewModel.submit(onAuthenticated) },
                             loading = state.loading,
+                            enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        state.error?.let {
+                        state.error?.let { error ->
                             Spacer(modifier = Modifier.height(BendeySpacing.xs))
-                            Text(text = it, color = MaterialTheme.colorScheme.error)
+                            Text(
+                                text = error,
+                                color = BendeyColors.Error,
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
                     }
                 }

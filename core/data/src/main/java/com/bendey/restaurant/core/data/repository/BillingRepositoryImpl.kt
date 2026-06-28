@@ -184,7 +184,7 @@ class BillingRepositoryImpl @Inject constructor(
 
     override suspend fun downloadBillingDocument(saleId: Int, kind: BillingDocumentKind): AppResult<File> = apiCall {
         val body = tenantRetrofitProvider.create<BillingApi>().downloadDocument(saleId, kind.pathSegment)
-        val dir = File(context.cacheDir, "sunat-docs").also { it.mkdirs() }
+        val dir = com.bendey.restaurant.core.data.export.BendeyExportPaths.sunatDocsDir(context)
         val file = File(dir, "sunat-$saleId-${kind.pathSegment}.${fileExtension(kind)}")
         body.byteStream().use { input ->
             file.outputStream().use { output -> input.copyTo(output) }

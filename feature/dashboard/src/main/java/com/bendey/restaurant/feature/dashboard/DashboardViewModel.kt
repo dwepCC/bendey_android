@@ -6,7 +6,6 @@ import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.DashboardRepository
 import com.bendey.restaurant.core.domain.dashboard.RestaurantDashboard
 import com.bendey.restaurant.core.domain.model.AppResult
-import com.bendey.restaurant.core.domain.model.CashSessionSnapshot
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,9 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.time.LocalDate
-import java.util.Locale
 import javax.inject.Inject
 
 enum class DashboardRange(val label: String) {
@@ -44,10 +41,6 @@ data class DashboardUiState(
     val catalogLoading: Boolean = false,
     val error: String? = null,
     val branchName: String? = null,
-    val userName: String = "",
-    val isOnline: Boolean = true,
-    val cashLabel: String? = null,
-    val cashSession: CashSessionSnapshot? = null,
 ) {
     val fromApi: String get() = fromDate.toApiDate()
     val toApi: String get() = toDate.toApiDate()
@@ -56,7 +49,7 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val dashboardRepository: DashboardRepository,
-    sessionManager: UserSessionStore,
+    private val sessionManager: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -75,7 +68,6 @@ class DashboardViewModel @Inject constructor(
                     }
                     state.copy(
                         branchName = session?.activeBranch?.name,
-                        userName = session?.user?.name.orEmpty(),
                         canChangeDateRange = canChange,
                         fromDate = from,
                         toDate = to,
@@ -83,20 +75,6 @@ class DashboardViewModel @Inject constructor(
                     )
                 }
                 if (!canChange) refresh()
-            }
-        }
-        viewModelScope.launch {
-            sessionManager.cashSessionFlow.collect { cash ->
-                val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
-                _uiState.update {
-                    it.copy(
-                        cashSession = cash,
-                        cashLabel = cash?.let { session ->
-                            val balance = session.expectedBalance ?: session.openingAmount
-                            "Caja ${currency.format(balance)}"
-                        } ?: "Caja ${currency.format(0.0)}",
-                    )
-                }
             }
         }
         refresh()

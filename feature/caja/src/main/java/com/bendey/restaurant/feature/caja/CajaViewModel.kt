@@ -3,6 +3,8 @@ package com.bendey.restaurant.feature.caja
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.export.BendeyFileShareService
+import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
@@ -30,7 +32,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class CajaTab(val label: String) {
@@ -135,6 +139,7 @@ data class CajaUiState(
     val filterUsers: List<CashFilterUser> = emptyList(),
     val reportProducts: List<CashSessionProductSold> = emptyList(),
     val movementsExportBusy: Boolean = false,
+    val sessionReportExportBusy: Boolean = false,
     val showOpenDialog: Boolean = false,
     val showMovementDialog: Boolean = false,
     val showCloseDialog: Boolean = false,
@@ -155,6 +160,7 @@ class CajaViewModel @Inject constructor(
     private val cashRepository: CashRepository,
     private val mesasRepository: MesasRepository,
     private val sessionStore: UserSessionStore,
+    private val fileShareService: BendeyFileShareService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CajaUiState())
@@ -629,14 +635,25 @@ class CajaViewModel @Inject constructor(
                     val electronic = filterNonCashPayments(
                         (paymentsResult as? AppResult.Success)?.data,
                     )
-                    exportCashMovementsCsv(
-                        context = context,
-                        cashRows = cashResult.data.rows,
-                        electronicRows = electronic,
-                        from = filter.dateFrom,
-                        to = filter.dateTo,
-                    )
-                    _uiState.update { it.copy(movementsExportBusy = false, snackMessage = "Movimientos exportados") }
+                    val shareResult = withContext(Dispatchers.Main) {
+                        exportCashMovementsCsv(
+                            context = context,
+                            fileShareService = fileShareService,
+                            cashRows = cashResult.data.rows,
+                            electronicRows = electronic,
+                            from = filter.dateFrom,
+                            to = filter.dateTo,
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            movementsExportBusy = false,
+                            snackMessage = when (shareResult) {
+                                ExportShareResult.Success -> "Movimientos exportados"
+                                is ExportShareResult.Failure -> shareResult.userMessage
+                            },
+                        )
+                    }
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(movementsExportBusy = false, snackMessage = cashResult.message ?: "No se pudo exportar")
@@ -648,9 +665,28 @@ class CajaViewModel @Inject constructor(
 
     fun exportSessionReportPdf(context: Context) {
         val report = _uiState.value.report ?: return
-        val lines = formatSessionReportLines(report, _uiState.value.reportProducts)
-        shareSessionReportPdf(context, "Reporte caja #${report.session.id}", lines)
-        _uiState.update { it.copy(snackMessage = "Reporte PDF exportado") }
+        if (_uiState.value.sessionReportExportBusy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(sessionReportExportBusy = true) }
+            val lines = formatSessionReportLines(report, _uiState.value.reportProducts)
+            val shareResult = withContext(Dispatchers.Main) {
+                shareSessionReportPdf(
+                    context = context,
+                    fileShareService = fileShareService,
+                    title = "Reporte caja #${report.session.id}",
+                    lines = lines,
+                )
+            }
+            _uiState.update {
+                it.copy(
+                    sessionReportExportBusy = false,
+                    snackMessage = when (shareResult) {
+                        ExportShareResult.Success -> "Reporte PDF exportado"
+                        is ExportShareResult.Failure -> shareResult.userMessage
+                    },
+                )
+            }
+        }
     }
 
     private fun filterNonCashPayments(report: CashPaymentsReport?): List<com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow> {

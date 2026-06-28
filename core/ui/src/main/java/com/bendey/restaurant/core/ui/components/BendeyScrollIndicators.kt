@@ -56,6 +56,9 @@ private val EdgeInset = 6.dp
 
 private val LocalScrollHintBounce = compositionLocalOf { 0f }
 
+/** false dentro de [BendeyBottomSheet] para no mostrar flechas de scroll sobre el contenido. */
+val LocalBendeyScrollHintsEnabled = compositionLocalOf { true }
+
 /**
  * Provee una única [rememberInfiniteTransition] compartida para todas las flechas de scroll.
  * Montar una vez en [com.bendey.restaurant.core.ui.layout.BendeyRestaurantShell].
@@ -195,7 +198,7 @@ fun BendeyLazyColumn(
     horizontalAlignment: Alignment.Horizontal = Alignment.Start,
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
     userScrollEnabled: Boolean = true,
-    showScrollHints: Boolean = true,
+    showScrollHints: Boolean = LocalBendeyScrollHintsEnabled.current,
     content: LazyListScope.() -> Unit,
 ) {
     Box(modifier = modifier) {
@@ -228,7 +231,7 @@ fun BendeyLazyVerticalGrid(
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
     flingBehavior: FlingBehavior = ScrollableDefaults.flingBehavior(),
     userScrollEnabled: Boolean = true,
-    showScrollHints: Boolean = true,
+    showScrollHints: Boolean = LocalBendeyScrollHintsEnabled.current,
     content: LazyGridScope.() -> Unit,
 ) {
     Box(modifier = modifier) {

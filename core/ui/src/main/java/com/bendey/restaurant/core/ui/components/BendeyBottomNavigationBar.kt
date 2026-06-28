@@ -2,16 +2,15 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +39,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.layout.BendeyBottomBarHeight
 import com.bendey.restaurant.core.ui.layout.BendeyBottomBarInset
+import com.bendey.restaurant.core.ui.layout.BendeyNavigationBarScrim
 
 data class BendeyNavItem(
     val route: String,
@@ -50,7 +50,7 @@ data class BendeyNavItem(
 
 /**
  * Barra inferior móvil: Inicio · Mesas · POS (FAB +) · Comandas · Más.
- * El botón central flotante se superpone parcialmente a la barra, más grande que el resto.
+ * El tomate solo pinta el inset del sistema; la barra blanca queda pegada al contenido.
  */
 @Composable
 fun BendeyBottomNavigationBar(
@@ -63,11 +63,7 @@ fun BendeyBottomNavigationBar(
     modifier: Modifier = Modifier,
     showCenterFab: Boolean = centerItem != null,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
-    ) {
+    Column(modifier = modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -77,13 +73,9 @@ fun BendeyBottomNavigationBar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .border(
-                        width = 1.dp,
-                        color = BendeyColors.Outline.copy(alpha = 0.65f),
-                        shape = BendeyShapeTokens.sheet,
-                    ),
+                    .height(BendeyBottomBarHeight),
                 color = BendeyColors.Surface,
-                shadowElevation = 0.dp,
+                shadowElevation = 1.dp,
                 tonalElevation = 0.dp,
             ) {
                 Row(
@@ -133,6 +125,7 @@ fun BendeyBottomNavigationBar(
                 )
             }
         }
+        BendeyNavigationBarScrim()
     }
 }
 
@@ -195,7 +188,7 @@ private fun CenterPosFab(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .shadow(4.dp, CircleShape)
+                .shadow(2.dp, CircleShape)
                 .clip(CircleShape)
                 .background(if (selected) BendeyColors.Rest800 else BendeyColors.Primary)
                 .clickable(

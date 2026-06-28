@@ -46,6 +46,9 @@ class EscPosLayoutTest {
         val withDot = EscPosTextUtils.normalizeForPrint("Mesa · Cocina")
         assertTrue(withDot.contains("Mesa - Cocina"))
         assertTrue(!withDot.contains("·"))
+        val comboQty = EscPosTextUtils.normalizeForPrint("Americana ×2")
+        assertTrue(comboQty.contains("Americana x2"))
+        assertTrue(!comboQty.contains("×"))
     }
 
     @Test

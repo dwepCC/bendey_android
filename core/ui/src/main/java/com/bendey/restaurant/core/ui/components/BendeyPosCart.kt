@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
@@ -229,18 +231,18 @@ private fun BendeyCartLineCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
                         line.product.name,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
                     line.subtitle?.takeIf { it.isNotBlank() }?.let { subtitle ->
@@ -260,7 +262,6 @@ private fun BendeyCartLineCard(
                                 color = BendeyColors.OnSurfaceVariant,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(start = BendeySpacing.xxs),
                             )
                         }
                     }
@@ -280,37 +281,28 @@ private fun BendeyCartLineCard(
                     onDecrement = onDecrement,
                 )
             }
-            if (showNotesButton && onNotesClick != null) {
-                OutlinedButton(
-                    onClick = onNotesClick,
-                    contentPadding = PaddingValues(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
-                    shape = BendeyShapeTokens.xs,
-                ) {
-                    Icon(
-                        Icons.Default.EditNote,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = BendeySpacing.xxs)
-                            .size(14.dp),
-                    )
-                    Text(
-                        if (line.notes.isBlank()) "Notas" else "Editar notas",
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
+                if (showNotesButton && onNotesClick != null) {
+                    BendeyIconButton(
+                        onClick = onNotesClick,
+                        icon = Icons.Default.EditNote,
+                        contentDescription = if (line.notes.isBlank()) "Notas" else "Editar notas",
+                        tint = if (line.notes.isBlank()) BendeyColors.OnSurfaceVariant else BendeyColors.Primary,
+                        modifier = Modifier.size(36.dp),
+                    )
+                }
                 if (editablePrice && onUnitPriceChange != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.weight(1f, fill = false),
                     ) {
                         Text(
-                            text = "P. unit.",
+                            text = "P.u.",
                             style = MaterialTheme.typography.labelSmall,
                             color = BendeyColors.OnSurfaceVariant,
                         )
@@ -320,12 +312,13 @@ private fun BendeyCartLineCard(
                             onUnitPriceChange = onUnitPriceChange,
                         )
                     }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
-                Spacer(modifier = Modifier.weight(1f))
                 Text(
                     currency.format(line.lineTotal),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = BendeyColors.Primary,
                 )
             }
@@ -379,8 +372,8 @@ private fun CartUnitPriceField(
         ),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = Modifier
-            .width(84.dp)
-            .height(40.dp)
+            .width(72.dp)
+            .height(36.dp)
             .onFocusChanged { state ->
                 isFocused = state.isFocused
                 if (!state.isFocused) {
@@ -417,5 +410,87 @@ private fun CartQuantityStepper(
         onDecrease = onDecrement,
         onIncrease = onIncrement,
         buttonSize = 40.dp,
+        compact = true,
+        dense = true,
     )
+}
+
+data class BendeyCartAction(
+    val text: String,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true,
+    val style: BendeyCartActionStyle = BendeyCartActionStyle.FilledTonal,
+)
+
+enum class BendeyCartActionStyle {
+    Primary,
+    FilledTonal,
+    SecondaryFilled,
+    NeutralFilled,
+    LowEmphasisFilled,
+}
+
+/**
+ * Grid adaptativo de acciones del carrito POS (2 columnas, filas automáticas).
+ */
+@Composable
+fun BendeyCartActionGrid(
+    actions: List<BendeyCartAction>,
+    modifier: Modifier = Modifier,
+    horizontalSpacing: Dp = BendeySpacing.sm,
+    verticalSpacing: Dp = BendeySpacing.sm,
+) {
+    if (actions.isEmpty()) return
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(verticalSpacing),
+    ) {
+        actions.chunked(2).forEach { rowActions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+            ) {
+                rowActions.forEach { action ->
+                    val buttonModifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                    when (action.style) {
+                        BendeyCartActionStyle.Primary -> BendeyPrimaryButton(
+                            text = action.text,
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            modifier = buttonModifier,
+                        )
+                        BendeyCartActionStyle.FilledTonal -> BendeyFilledTonalButton(
+                            text = action.text,
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            modifier = buttonModifier,
+                        )
+                        BendeyCartActionStyle.SecondaryFilled -> BendeyFilledSecondaryCartButton(
+                            text = action.text,
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            modifier = buttonModifier,
+                        )
+                        BendeyCartActionStyle.NeutralFilled -> BendeyFilledNeutralCartButton(
+                            text = action.text,
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            modifier = buttonModifier,
+                        )
+                        BendeyCartActionStyle.LowEmphasisFilled -> BendeyFilledLowEmphasisCartButton(
+                            text = action.text,
+                            onClick = action.onClick,
+                            enabled = action.enabled,
+                            modifier = buttonModifier,
+                        )
+                    }
+                }
+                if (rowActions.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
 }

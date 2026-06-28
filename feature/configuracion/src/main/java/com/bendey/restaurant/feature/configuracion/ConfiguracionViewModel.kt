@@ -20,6 +20,8 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +38,7 @@ enum class ConfigTab(val label: String) {
 
 data class ConfiguracionUiState(
     val loading: Boolean = false,
+    val refreshing: Boolean = false,
     val actionLoading: Boolean = false,
     val tab: ConfigTab = ConfigTab.GENERAL,
     val config: CompanyConfig? = null,
@@ -76,6 +79,7 @@ class ConfiguracionViewModel @Inject constructor(
     val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
 
     init {
+        applyCachedSettings()
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
@@ -84,7 +88,22 @@ class ConfiguracionViewModel @Inject constructor(
                 }
             }
         }
-        refresh()
+        refresh(forceNetwork = false)
+    }
+
+    private fun applyCachedSettings() {
+        repository.peekTenantSettings()?.let { cached ->
+            _uiState.update {
+                it.copy(
+                    loading = false,
+                    config = cached.config,
+                    sunat = cached.sunat,
+                    settings = cached.settings,
+                    branches = cached.branches,
+                    selectedBranchId = it.selectedBranchId ?: cached.branches.firstOrNull()?.id,
+                )
+            }
+        }
     }
 
     private fun requireManageSettings(): Boolean {
@@ -102,28 +121,61 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun refresh() {
+    fun refresh(forceNetwork: Boolean = true) {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
-            val config = repository.getCompanyConfig()
-            val sunat = repository.getSunatConfig()
-            val settings = repository.getRestaurantSettings()
-            val branches = repository.listBranches()
+            if (!forceNetwork) {
+                repository.peekTenantSettings()?.let { cached ->
+                    _uiState.update {
+                        it.copy(
+                            loading = false,
+                            refreshing = false,
+                            config = cached.config,
+                            sunat = cached.sunat,
+                            settings = cached.settings,
+                            branches = cached.branches,
+                            selectedBranchId = it.selectedBranchId ?: cached.branches.firstOrNull()?.id,
+                            error = null,
+                        )
+                    }
+                    return@launch
+                }
+            }
+            val hasData = _uiState.value.config != null
+            if (forceNetwork) repository.invalidateTenantSettingsCache()
             _uiState.update {
                 it.copy(
-                    loading = false,
-                    config = (config as? AppResult.Success)?.data,
-                    sunat = (sunat as? AppResult.Success)?.data,
-                    settings = (settings as? AppResult.Success)?.data,
-                    branches = (branches as? AppResult.Success)?.data.orEmpty(),
-                    selectedBranchId = it.selectedBranchId ?: (branches as? AppResult.Success)?.data?.firstOrNull()?.id,
-                    error = listOfNotNull(
-                        (config as? AppResult.Error)?.message,
-                        (sunat as? AppResult.Error)?.message,
-                        (settings as? AppResult.Error)?.message,
-                        (branches as? AppResult.Error)?.message,
-                    ).firstOrNull(),
+                    loading = !hasData,
+                    refreshing = hasData && forceNetwork,
+                    error = null,
                 )
+            }
+            coroutineScope {
+                val config = async { repository.getCompanyConfig() }
+                val sunat = async { repository.getSunatConfig() }
+                val settings = async { repository.getRestaurantSettings() }
+                val branches = async { repository.listBranches() }
+                val configResult = config.await()
+                val sunatResult = sunat.await()
+                val settingsResult = settings.await()
+                val branchesResult = branches.await()
+                _uiState.update {
+                    it.copy(
+                        loading = false,
+                        refreshing = false,
+                        config = (configResult as? AppResult.Success)?.data ?: it.config,
+                        sunat = (sunatResult as? AppResult.Success)?.data ?: it.sunat,
+                        settings = (settingsResult as? AppResult.Success)?.data ?: it.settings,
+                        branches = (branchesResult as? AppResult.Success)?.data ?: it.branches,
+                        selectedBranchId = it.selectedBranchId
+                            ?: (branchesResult as? AppResult.Success)?.data?.firstOrNull()?.id,
+                        error = listOfNotNull(
+                            (configResult as? AppResult.Error)?.message,
+                            (sunatResult as? AppResult.Error)?.message,
+                            (settingsResult as? AppResult.Error)?.message,
+                            (branchesResult as? AppResult.Error)?.message,
+                        ).firstOrNull(),
+                    )
+                }
             }
             if (_uiState.value.tab == ConfigTab.SERIES) loadSeries()
         }
@@ -186,7 +238,7 @@ class ConfiguracionViewModel @Inject constructor(
             it.copy(
                 sunatFormOpen = true,
                 sunatForm = SunatConfigFormInput(
-                    taxRate = sunat.taxRate.toString(),
+                    taxRate = normalizeIgvRateOption(sunat.taxRate),
                     igvRegime = sunat.igvRegime,
                     taxBenefitZone = sunat.taxBenefitZone,
                 ),
@@ -202,9 +254,9 @@ class ConfiguracionViewModel @Inject constructor(
 
     fun saveSunat() {
         if (!requireManageSettings()) return
-        val rate = _uiState.value.sunatForm.taxRate.replace(",", ".").toDoubleOrNull()
-        if (rate == null || rate < 0 || rate > 30) {
-            _uiState.update { it.copy(error = "Tasa de IGV inválida (0–30)") }
+        val rateOption = _uiState.value.sunatForm.taxRate
+        if (rateOption !in IGV_RATE_OPTIONS) {
+            _uiState.update { it.copy(error = "Selecciona una tasa de IGV válida") }
             return
         }
         viewModelScope.launch {
@@ -554,3 +606,8 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 }
+
+private val IGV_RATE_OPTIONS = setOf("18", "10.5")
+
+private fun normalizeIgvRateOption(rate: Double): String =
+    if (rate in 10.0..11.0) "10.5" else "18"

@@ -51,8 +51,6 @@ data class BendeyAppHeaderState(
     val branchName: String = "",
     val userName: String = "",
     val userInitials: String = "",
-    val cashLabel: String? = null,
-    val isCashOpen: Boolean = false,
     val isOnline: Boolean = true,
     val notificationCount: Int = 0,
 )
@@ -204,23 +202,6 @@ fun BendeyAppHeader(
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                }
-                            }
-                            state.cashLabel?.let { cashLabel ->
-                                Surface(
-                                    shape = BendeyShapeTokens.sm,
-                                    color = if (state.isCashOpen) {
-                                        BendeyColors.SuccessContainer.copy(alpha = 0.65f)
-                                    } else {
-                                        BendeyColors.SurfaceVariant
-                                    },
-                                ) {
-                                    Text(
-                                        text = cashLabel,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (state.isCashOpen) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
-                                    )
                                 }
                             }
                             HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))

@@ -4,30 +4,39 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -39,8 +48,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
@@ -49,11 +61,10 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
 import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
+import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
-import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
-import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
-import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import java.text.NumberFormat
@@ -126,86 +137,64 @@ fun OrderDetailsDialog(
     onConfirm: () -> Unit,
 ) {
     if (modal == null) return
-    BendeyAlertDialog(
+    val title = when (modal) {
+        PosOrderDetailsModal.TAKEAWAY -> "Para llevar"
+        PosOrderDetailsModal.DELIVERY -> "Delivery"
+    }
+    val confirmText = if (modal == PosOrderDetailsModal.TAKEAWAY) "Listo" else "Guardar"
+    val dismissText = if (modal == PosOrderDetailsModal.TAKEAWAY) "Omitir" else "Cerrar"
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                when (modal) {
-                    PosOrderDetailsModal.TAKEAWAY -> "Para llevar"
-                    PosOrderDetailsModal.DELIVERY -> "Delivery"
-                },
+        title = title,
+        confirmText = confirmText,
+        dismissText = dismissText,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        enableContentScroll = true,
+        fullWidth = true,
+    ) {
+        BendeyTextField(
+            value = details.customerName,
+            onValueChange = { onDetailsChange(details.copy(customerName = it)) },
+            label = if (modal == PosOrderDetailsModal.DELIVERY) "Contacto entrega (nombre)" else "Nombre quien recoge",
+        )
+        BendeyTextField(
+            value = details.customerPhone,
+            onValueChange = { onDetailsChange(details.copy(customerPhone = it)) },
+            label = "Teléfono",
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
+        )
+        if (modal == PosOrderDetailsModal.DELIVERY) {
+            BendeyTextField(
+                value = details.deliveryAddress,
+                onValueChange = { onDetailsChange(details.copy(deliveryAddress = it)) },
+                label = "Dirección *",
             )
-        },
-        text = {
-            BendeyVerticalScrollColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                if (modal == PosOrderDetailsModal.TAKEAWAY) {
-                    Text(
-                        "Datos opcionales del pedido. El cliente del comprobante se elige al cobrar.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BendeyColors.OnSurfaceVariant,
-                    )
-                }
-                BendeyTextField(
-                    value = details.customerName,
-                    onValueChange = { onDetailsChange(details.copy(customerName = it)) },
-                    label = if (modal == PosOrderDetailsModal.DELIVERY) "Contacto entrega (nombre)" else "Nombre quien recoge",
-                )
-                BendeyTextField(
-                    value = details.customerPhone,
-                    onValueChange = { onDetailsChange(details.copy(customerPhone = it)) },
-                    label = "Teléfono",
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
-                )
-                if (modal == PosOrderDetailsModal.DELIVERY) {
-                    BendeyTextField(
-                        value = details.deliveryAddress,
-                        onValueChange = { onDetailsChange(details.copy(deliveryAddress = it)) },
-                        label = "Dirección *",
-                    )
-                    BendeyTextField(
-                        value = details.deliveryReference,
-                        onValueChange = { onDetailsChange(details.copy(deliveryReference = it)) },
-                        label = "Referencia",
-                    )
-                    DriverDropdown(
-                        drivers = drivers,
-                        loading = driversLoading,
-                        selectedId = details.deliveryDriverId,
-                        onSelect = { onDetailsChange(details.copy(deliveryDriverId = it)) },
-                    )
-                    BendeyTextField(
-                        value = details.estimatedMinutes,
-                        onValueChange = { onDetailsChange(details.copy(estimatedMinutes = it.filter { ch -> ch.isDigit() })) },
-                        label = "Tiempo estimado (min)",
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-                    )
-                }
-                BendeyTextField(
-                    value = details.orderNotes,
-                    onValueChange = { onDetailsChange(details.copy(orderNotes = it)) },
-                    label = "Notas del pedido",
-                    singleLine = false,
-                )
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (modal == PosOrderDetailsModal.TAKEAWAY) "Listo" else "Guardar",
-                onClick = onConfirm,
+            BendeyTextField(
+                value = details.deliveryReference,
+                onValueChange = { onDetailsChange(details.copy(deliveryReference = it)) },
+                label = "Referencia",
             )
-        },
-        dismissButton = {
-            BendeyTextButton(
-                text = if (modal == PosOrderDetailsModal.TAKEAWAY) "Omitir" else "Cerrar",
-                onClick = onDismiss,
+            DriverDropdown(
+                drivers = drivers,
+                loading = driversLoading,
+                selectedId = details.deliveryDriverId,
+                onSelect = { onDetailsChange(details.copy(deliveryDriverId = it)) },
             )
-        },
-    )
+            BendeyTextField(
+                value = details.estimatedMinutes,
+                onValueChange = { onDetailsChange(details.copy(estimatedMinutes = it.filter { ch -> ch.isDigit() })) },
+                label = "Tiempo estimado (min)",
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+        }
+        BendeyTextField(
+            value = details.orderNotes,
+            onValueChange = { onDetailsChange(details.copy(orderNotes = it)) },
+            label = "Notas del pedido",
+            singleLine = false,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -231,7 +220,7 @@ private fun DriverDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = !loading),
+                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !loading),
             shape = MaterialTheme.shapes.large,
         )
         ExposedDropdownMenu(
@@ -260,6 +249,128 @@ private fun DriverDropdown(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun PosFloatingActionsBar(
+    pendingCount: Int,
+    cartCount: Int,
+    payableTotal: Double,
+    cartTotal: Double,
+    currency: NumberFormat,
+    onOpenPending: () -> Unit,
+    onOpenCart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val total = if (payableTotal > 0) payableTotal else cartTotal
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.sm),
+    ) {
+        PosFloatingActionChip(
+            icon = Icons.AutoMirrored.Filled.List,
+            contentDescription = "Pedidos",
+            badgeCount = pendingCount,
+            label = "Pedidos",
+            onClick = onOpenPending,
+            modifier = Modifier.align(Alignment.BottomStart),
+        )
+        PosFloatingActionChip(
+            icon = Icons.Default.ShoppingCart,
+            contentDescription = "Carrito",
+            badgeCount = cartCount,
+            label = currency.format(total),
+            onClick = onOpenCart,
+            emphasized = true,
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
+    }
+}
+
+@Composable
+private fun PosFloatingActionChip(
+    icon: ImageVector,
+    contentDescription: String,
+    badgeCount: Int,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    emphasized: Boolean = false,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.size(76.dp),
+        shape = BendeyShapeTokens.lg,
+        colors = CardDefaults.cardColors(
+            containerColor = if (emphasized) BendeyColors.Primary else BendeyColors.Surface,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        border = if (emphasized) {
+            null
+        } else {
+            androidx.compose.foundation.BorderStroke(
+                1.dp,
+                BendeyColors.Outline.copy(alpha = 0.35f),
+            )
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            BadgedBox(
+                badge = {
+                    if (badgeCount > 0) {
+                        val badgeLabel = if (badgeCount > 99) "99+" else badgeCount.toString()
+                        if (emphasized) {
+                            Badge(
+                                modifier = Modifier.offset(x = 4.dp, y = (-10).dp),
+                                containerColor = BendeyColors.OnPrimary,
+                                contentColor = BendeyColors.Primary,
+                            ) {
+                                Text(
+                                    badgeLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        } else {
+                            Badge {
+                                Text(
+                                    badgeLabel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                },
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = contentDescription,
+                    tint = if (emphasized) BendeyColors.OnPrimary else BendeyColors.OnSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                color = if (emphasized) BendeyColors.OnPrimary else BendeyColors.OnSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun PendingOrdersSheet(
     orders: List<OpenOrderSummary>,
     currency: NumberFormat,
@@ -267,14 +378,14 @@ fun PendingOrdersSheet(
     onOpen: (Int) -> Unit,
     onVoid: (OpenOrderSummary) -> Unit,
 ) {
-    ModalBottomSheet(
+    BendeyBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp),
+                .padding(bottom = 12.dp),
         ) {
             Row(
                 modifier = Modifier

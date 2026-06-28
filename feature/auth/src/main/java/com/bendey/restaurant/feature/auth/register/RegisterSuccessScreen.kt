@@ -15,11 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.feature.auth.components.AuthExpressiveCard
+import com.bendey.restaurant.feature.auth.components.AuthLayoutTokens
 import com.bendey.restaurant.feature.auth.components.AuthWelcomeLayout
 
 @Composable
@@ -34,16 +34,16 @@ fun RegisterSuccessScreen(
         subtitle = "Restaurante creado correctamente",
         description = "",
     ) {
-        BendeyManagementCard(modifier = Modifier.fillMaxWidth()) {
+        AuthExpressiveCard(tonal = true) {
             Box(
                 modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
+                    contentDescription = "Registro completado",
                     tint = BendeyColors.Success,
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(AuthLayoutTokens.successIconSize),
                 )
             }
             Spacer(modifier = Modifier.height(BendeySpacing.md))

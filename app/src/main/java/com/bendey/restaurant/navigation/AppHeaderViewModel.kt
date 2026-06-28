@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
-import java.util.Locale
 import javax.inject.Inject
 
 /** Paridad con `resolveHeaderDisplayName` en RestaurantHeader.tsx */
@@ -58,10 +56,9 @@ class AppHeaderViewModel @Inject constructor(
     val headerState: StateFlow<BendeyAppHeaderState> = combine(
         sessionStore.tenantFlow,
         sessionStore.userSessionFlow,
-        sessionStore.cashSessionFlow,
         companyTradeName,
         companyBusinessName,
-    ) { tenant, session, cash, tradeName, businessName ->
+    ) { tenant, session, tradeName, businessName ->
         val user = session?.user
         val name = user?.name.orEmpty()
         val initials = name.split(" ")
@@ -69,7 +66,6 @@ class AppHeaderViewModel @Inject constructor(
             .take(2)
             .joinToString("") { it.first().uppercaseChar().toString() }
             .ifBlank { "?" }
-        val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
         BendeyAppHeaderState(
             restaurantName = resolveHeaderDisplayName(
                 tradeName = tradeName,
@@ -79,11 +75,6 @@ class AppHeaderViewModel @Inject constructor(
             branchName = session?.activeBranch?.name.orEmpty(),
             userName = name,
             userInitials = initials,
-            isCashOpen = cash != null,
-            cashLabel = cash?.let {
-                val balance = it.expectedBalance ?: it.openingAmount
-                "Caja ${currency.format(balance)}"
-            },
             isOnline = true,
             notificationCount = 0,
         )

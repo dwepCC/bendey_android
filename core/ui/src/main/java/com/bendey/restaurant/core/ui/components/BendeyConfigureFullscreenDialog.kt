@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.HorizontalDivider
@@ -22,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.layout.BendeyNavigationBarScrim
 import com.bendey.restaurant.core.ui.layout.bendeyHorizontalSafeInsetsPadding
 import com.bendey.restaurant.core.ui.layout.bendeyImePadding
 import com.bendey.restaurant.core.ui.layout.bendeyTopSystemInsetsPadding
@@ -121,7 +121,6 @@ fun BendeyConfigureFullscreenDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .navigationBarsPadding()
                         .bendeyHorizontalSafeInsetsPadding()
                         .bendeyImePadding()
                         .padding(
@@ -164,6 +163,7 @@ fun BendeyConfigureFullscreenDialog(
                         )
                     }
                 }
+                BendeyNavigationBarScrim()
             }
         }
     }

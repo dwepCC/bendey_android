@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,7 +54,7 @@ fun BendeyPosProductCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(168.dp)
+            .aspectRatio(0.82f)
             .alpha(alpha)
             .border(1.dp, BendeyColors.Outline.copy(alpha = 0.55f), BendeyShapeTokens.lg)
             .clickable(enabled = enabled, onClick = onClick),
@@ -63,8 +65,9 @@ fun BendeyPosProductCard(
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f, fill = true)
                     .fillMaxWidth()
+                    .defaultMinSize(minHeight = 72.dp)
                     .background(BendeyColors.SurfaceVariant),
             ) {
                 if (resolvedUrl != null) {
@@ -109,26 +112,27 @@ fun BendeyPosProductCard(
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.OnPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Box(
+            Text(
+                text = name,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(42.dp)
-                    .padding(horizontal = BendeySpacing.xs),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    lineHeight = MaterialTheme.typography.labelSmall.lineHeight,
-                    color = BendeyColors.OnSurface,
-                )
-            }
+                    .defaultMinSize(minHeight = 40.dp)
+                    .padding(
+                        horizontal = BendeySpacing.xs,
+                        vertical = BendeySpacing.xxs,
+                    ),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                lineHeight = MaterialTheme.typography.labelSmall.lineHeight,
+                color = BendeyColors.OnSurface,
+            )
         }
     }
 }

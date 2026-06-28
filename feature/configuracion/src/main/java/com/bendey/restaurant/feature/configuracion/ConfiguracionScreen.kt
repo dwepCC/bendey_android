@@ -50,6 +50,8 @@ import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
@@ -66,7 +68,7 @@ fun ConfiguracionScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val useTwoPane = rememberUseAdaptiveTwoPane()
 
-    PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
+    PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { viewModel.refresh(forceNetwork = true) }, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             BendeyScreenToolbar(
                 title = "Configuración",
@@ -74,7 +76,7 @@ fun ConfiguracionScreen(
                 onBack = onBack,
                 actions = {
                     BendeyIconButton(
-                        onClick = viewModel::refresh,
+                        onClick = { viewModel.refresh(forceNetwork = true) },
                         icon = Icons.Default.Refresh,
                         contentDescription = "Actualizar",
                     )
@@ -529,6 +531,10 @@ private fun SeriesCard(
 }
 
 @Composable private fun SunatFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
+    val igvOptions = listOf(
+        BendeyOption("18", "IGV 18%"),
+        BendeyOption("10.5", "IGV 10.5%"),
+    )
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissEditSunat,
         title = "Configuración IGV",
@@ -538,8 +544,12 @@ private fun SeriesCard(
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
     ) {
-        BendeyTextField(state.sunatForm.taxRate, { v -> viewModel.updateSunatForm { it.copy(taxRate = v) } }, "Tasa IGV (%)")
-        BendeyTextField(state.sunatForm.igvRegime, { v -> viewModel.updateSunatForm { it.copy(igvRegime = v) } }, "Régimen IGV")
+        BendeySimpleSelect(
+            options = igvOptions,
+            selectedValue = state.sunatForm.taxRate,
+            onSelect = { value -> viewModel.updateSunatForm { it.copy(taxRate = value) } },
+            label = "Tasa IGV",
+        )
         BendeySwitchRow(
             label = "Zona de beneficio tributario",
             checked = state.sunatForm.taxBenefitZone,

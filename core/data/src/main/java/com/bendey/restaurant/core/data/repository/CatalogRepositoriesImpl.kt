@@ -1,7 +1,10 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.cache.CachedTenantSettings
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.domain.catalog.BranchFormInput
 import com.bendey.restaurant.core.domain.catalog.BranchItem
+import com.bendey.restaurant.core.domain.catalog.TenantSettingsSnapshot
 import com.bendey.restaurant.core.domain.catalog.SeriesFormInput
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.network.api.CompanyApi
@@ -74,6 +77,8 @@ import com.bendey.restaurant.core.network.dto.ModifierGroupUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ModifierOptionDto
 import com.bendey.restaurant.core.network.dto.RestaurantSettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -246,13 +251,50 @@ class DeliveryRepositoryImpl @Inject constructor(
 @Singleton
 class SettingsRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
 ) : SettingsRepository {
 
     private val api: SettingsApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun getCompanyConfig(): AppResult<CompanyConfig> = catalogApiCall {
-        api.getCompanyConfig().toDomain()
+    override fun invalidateTenantSettingsCache() {
+        operationalDataCache.clearTenantSettings()
+    }
+
+    override fun peekTenantSettings(): TenantSettingsSnapshot? =
+        operationalDataCache.getTenantSettings()?.toSnapshot()
+
+    override suspend fun preloadTenantSettings() {
+        if (operationalDataCache.getTenantSettings() != null) return
+        coroutineScope {
+            val configDeferred = async { runCatching { fetchCompanyConfig() }.getOrNull() }
+            val sunatDeferred = async { runCatching { fetchSunatConfig() }.getOrNull() }
+            val settingsDeferred = async { runCatching { fetchRestaurantSettings() }.getOrNull() }
+            val branchesDeferred = async { runCatching { fetchBranches() }.getOrNull() }
+            val config = configDeferred.await()
+            val sunat = sunatDeferred.await()
+            val settings = settingsDeferred.await()
+            val branches = branchesDeferred.await()
+            if (config != null && sunat != null && settings != null && branches != null) {
+                operationalDataCache.setTenantSettings(
+                    CachedTenantSettings(
+                        config = config,
+                        sunat = sunat,
+                        settings = settings,
+                        branches = branches,
+                    ),
+                )
+            }
+        }
+    }
+
+    override suspend fun getCompanyConfig(): AppResult<CompanyConfig> {
+        operationalDataCache.getTenantSettings()?.config?.let { return AppResult.Success(it) }
+        return catalogApiCall {
+            fetchCompanyConfig().also { config ->
+                operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateCompanyConfig(config) }
+            }
+        }
     }
 
     override suspend fun updateCompanyConfig(input: CompanyConfigFormInput): AppResult<CompanyConfig> =
@@ -265,11 +307,16 @@ class SettingsRepositoryImpl @Inject constructor(
                     phone = input.phone.trim().ifBlank { current.phone },
                     email = input.email.trim().ifBlank { current.email },
                 ),
-            ).data.toDomain()
+            ).data.toDomain().also { operationalDataCache.updateCompanyConfig(it) }
         }
 
-    override suspend fun getSunatConfig(): AppResult<SunatConfig> = catalogApiCall {
-        api.getSunatConfig().toDomain()
+    override suspend fun getSunatConfig(): AppResult<SunatConfig> {
+        operationalDataCache.getTenantSettings()?.sunat?.let { return AppResult.Success(it) }
+        return catalogApiCall {
+            fetchSunatConfig().also { sunat ->
+                operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateSunatConfig(sunat) }
+            }
+        }
     }
 
     override suspend fun updateSunatConfig(input: SunatConfigFormInput): AppResult<SunatConfig> = catalogApiCall {
@@ -282,20 +329,15 @@ class SettingsRepositoryImpl @Inject constructor(
                 taxBenefitZone = input.taxBenefitZone,
             ),
         )
-        api.getSunatConfig().toDomain()
+        api.getSunatConfig().toDomain().also { operationalDataCache.updateSunatConfig(it) }
     }
 
-    override suspend fun listBranches(): AppResult<List<BranchItem>> = catalogApiCall {
-        api.listBranches().data.map {
-            BranchItem(
-                id = it.id,
-                name = it.name,
-                address = it.address,
-                phone = it.phone,
-                fiscalDomicileCode = it.fiscalDomicileCode.orEmpty(),
-                isMain = it.isMain,
-                active = it.active ?: true,
-            )
+    override suspend fun listBranches(): AppResult<List<BranchItem>> {
+        operationalDataCache.getTenantSettings()?.branches?.let { return AppResult.Success(it) }
+        return catalogApiCall {
+            fetchBranches().also { branches ->
+                operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateBranches(branches) }
+            }
         }
     }
 
@@ -349,12 +391,18 @@ class SettingsRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.create<CompanyApi>().deleteSeries(id)
     }
 
-    override suspend fun getRestaurantSettings(): AppResult<RestaurantSettings> = catalogApiCall {
-        RestaurantSettings(hasDeletionPin = api.getRestaurantSettings().hasDeletionPin)
+    override suspend fun getRestaurantSettings(): AppResult<RestaurantSettings> {
+        operationalDataCache.getTenantSettings()?.settings?.let { return AppResult.Success(it) }
+        return catalogApiCall {
+            fetchRestaurantSettings().also { settings ->
+                operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateRestaurantSettings(settings) }
+            }
+        }
     }
 
     override suspend fun updateDeletionPin(pin: String): AppResult<Unit> = catalogApiCall {
         api.updateRestaurantSettings(RestaurantSettingsUpdateRequestDto(deletionPin = pin))
+        fetchRestaurantSettings().also { operationalDataCache.updateRestaurantSettings(it) }
     }
 
     override suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>> = catalogApiCall {
@@ -388,7 +436,36 @@ class SettingsRepositoryImpl @Inject constructor(
             ),
         )
     }
+
+    private suspend fun fetchCompanyConfig(): CompanyConfig =
+        api.getCompanyConfig().toDomain()
+
+    private suspend fun fetchSunatConfig(): SunatConfig =
+        api.getSunatConfig().toDomain()
+
+    private suspend fun fetchRestaurantSettings(): RestaurantSettings =
+        RestaurantSettings(hasDeletionPin = api.getRestaurantSettings().hasDeletionPin)
+
+    private suspend fun fetchBranches(): List<BranchItem> =
+        api.listBranches().data.map {
+            BranchItem(
+                id = it.id,
+                name = it.name,
+                address = it.address,
+                phone = it.phone,
+                fiscalDomicileCode = it.fiscalDomicileCode.orEmpty(),
+                isMain = it.isMain,
+                active = it.active ?: true,
+            )
+        }
 }
+
+private fun CachedTenantSettings.toSnapshot() = TenantSettingsSnapshot(
+    config = config,
+    sunat = sunat,
+    settings = settings,
+    branches = branches,
+)
 
 private fun StaffManagementDto.toDomain() = RestaurantStaffManagementRow(
     userId = userId,

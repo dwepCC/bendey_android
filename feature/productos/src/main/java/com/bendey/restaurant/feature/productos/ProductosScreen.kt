@@ -267,6 +267,7 @@ fun ProductosScreen(
         onFilePicked = viewModel::validateImportFile,
         onImport = viewModel::runImport,
         onDownloadTemplate = viewModel::getImportTemplateBytes,
+        onDownloadError = { message -> viewModel.showSnackMessage(message) },
     )
 
     if (state.categoryFormOpen) {
@@ -802,6 +803,7 @@ private fun ProductFormDialog(
         onDismiss = onDismiss,
         confirmEnabled = !loading,
         loading = loading,
+        enableContentScroll = true,
     ) {
         ProductFormFields(
             form = form,

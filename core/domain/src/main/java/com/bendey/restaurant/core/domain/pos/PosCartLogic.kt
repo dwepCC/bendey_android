@@ -141,7 +141,12 @@ fun modifiersToJson(modifiers: List<CartModifierEntry>): String {
     val items = modifiers.joinToString(",") { m ->
         buildString {
             append("""{"group_id":${m.groupId},"group_name":${jsonString(m.groupName)},"type":${jsonString(m.type)},"option_id":${m.optionId},"option_name":${jsonString(m.optionName)},"extra_price":${m.extraPrice}""")
-            if (m.quantity > 1) append(""","quantity":${m.quantity}""")
+            when {
+                m.type == "modifier" && m.quantity > 0 ->
+                    append(""","quantity":${modifierEntryQuantity(m)}""")
+                m.quantity > 1 ->
+                    append(""","quantity":${m.quantity}""")
+            }
             append("}")
         }
     }
