@@ -61,7 +61,6 @@ import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +70,6 @@ fun ClientesScreen(
     viewModel: ClientesViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val useTwoPane = rememberUseAdaptiveTwoPane()
 
     BendeySnackMessage(
         message = state.snackMessage,
@@ -102,61 +100,18 @@ fun ClientesScreen(
                 )
             },
         ) { contentModifier ->
-            if (useTwoPane) {
-                Row(modifier = contentModifier.fillMaxSize()) {
-                    ClientesListPane(
-                        state = state,
-                        onEdit = viewModel::openEdit,
-                        onDelete = viewModel::requestDelete,
-                        onToggle = viewModel::toggleActive,
-                        onSearchChange = viewModel::setSearchQuery,
-                        onShowInactiveChange = viewModel::setShowInactive,
-                        modifier = Modifier
-                            .weight(0.42f)
-                            .fillMaxHeight(),
-                    )
-                    VerticalDivider()
-                    Column(
-                        modifier = Modifier
-                            .weight(0.58f)
-                            .fillMaxHeight()
-                            .padding(BendeySpacing.md),
-                    ) {
-                        if (state.formOpen) {
-                            ContactFormPane(
-                                form = state.form,
-                                loading = state.actionLoading,
-                                consulting = state.consulting,
-                                error = state.error,
-                                isEditing = state.editingContactId != null,
-                                onDismiss = viewModel::dismissForm,
-                                onFormChange = viewModel::updateForm,
-                                onConsult = viewModel::consultDocument,
-                                onSave = viewModel::saveContact,
-                            )
-                        } else {
-                            BendeyEmptyState(
-                                title = "Selecciona o crea un cliente",
-                                description = "Edita datos del catálogo sin ocultar la lista de clientes.",
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-            } else {
-                ClientesListPane(
-                    state = state,
-                    onEdit = viewModel::openEdit,
-                    onDelete = viewModel::requestDelete,
-                    onToggle = viewModel::toggleActive,
-                    onSearchChange = viewModel::setSearchQuery,
-                    onShowInactiveChange = viewModel::setShowInactive,
-                    modifier = contentModifier,
-                )
-            }
+            ClientesListPane(
+                state = state,
+                onEdit = viewModel::openEdit,
+                onDelete = viewModel::requestDelete,
+                onToggle = viewModel::toggleActive,
+                onSearchChange = viewModel::setSearchQuery,
+                onShowInactiveChange = viewModel::setShowInactive,
+                modifier = contentModifier,
+            )
         }
 
-    if (state.formOpen && !useTwoPane) {
+    if (state.formOpen) {
         ContactFormDialog(
             form = state.form,
             loading = state.actionLoading,

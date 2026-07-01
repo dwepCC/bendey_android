@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,6 +69,10 @@ import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
 import com.bendey.restaurant.core.ui.components.BendeySelectOption
 import com.bendey.restaurant.core.ui.components.BendeySecondaryButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -101,6 +106,11 @@ fun CheckoutDialog(
 ) {
     if (!open) return
 
+    val profile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val tabletLandscape = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
+    val dialogPadding = PosPolishTokens.dialogPadding(profile, physicalPortrait)
+    val sectionGap = PosPolishTokens.dialogSectionGap(profile, physicalPortrait)
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
     val series = meta?.series.orEmpty()
     val discountNumeric = discountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
@@ -129,26 +139,32 @@ fun CheckoutDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .heightIn(max = 720.dp)
+                .fillMaxWidth(
+                    if (PosPolishTokens.isTabletProfile(profile)) {
+                        PosPolishTokens.dialogWidthFraction(profile, physicalPortrait)
+                    } else {
+                        0.96f
+                    },
+                )
+                .heightIn(max = PosPolishTokens.dialogMaxHeight(profile, physicalPortrait))
                 .border(BendeyCardDefaults.border, BendeyShapeTokens.xl),
             shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             tonalElevation = 0.dp,
             shadowElevation = 6.dp,
         ) {
-            Column(modifier = Modifier.padding(BendeySpacing.lg)) {
+            Column(modifier = Modifier.padding(dialogPadding)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (tabletLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = BendeyColors.OnSurface,
                 )
                 BendeyVerticalScrollColumn(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .padding(top = BendeySpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.md),
+                        .padding(top = if (tabletLandscape) BendeySpacing.sm else BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(sectionGap),
                 ) {
                     if (metaLoading) {
                         Text("Cargando series y métodos…", color = BendeyColors.OnSurfaceVariant)
@@ -158,21 +174,55 @@ fun CheckoutDialog(
                             payableTotal = payableTotal,
                             rawTotal = rawTotal,
                             discountAmount = discountAmount,
+                            tablet = tabletLandscape,
                         )
-                        ContactSelector(
-                            contacts = meta?.contacts.orEmpty(),
-                            selectedId = contactId,
-                            onSelect = onContactChange,
-                        )
-                        DocTypeSelector(
-                            series = series,
-                            selectedDocType = docType,
-                            onSelectDocType = { key ->
-                                firstSeriesForDocTypeKey(series, key)?.let { item ->
-                                    onSeriesChange(item.id, item.docType)
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            val twoColumns = tabletLandscape && maxWidth >= 480.dp
+                            if (twoColumns) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                                ) {
+                                    ContactSelector(
+                                        contacts = meta?.contacts.orEmpty(),
+                                        selectedId = contactId,
+                                        onSelect = onContactChange,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        DocTypeSelector(
+                                            series = series,
+                                            selectedDocType = docType,
+                                            onSelectDocType = { key ->
+                                                firstSeriesForDocTypeKey(series, key)?.let { item ->
+                                                    onSeriesChange(item.id, item.docType)
+                                                }
+                                            },
+                                        )
+                                    }
                                 }
-                            },
-                        )
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(sectionGap),
+                                ) {
+                                    DocTypeSelector(
+                                        series = series,
+                                        selectedDocType = docType,
+                                        onSelectDocType = { key ->
+                                            firstSeriesForDocTypeKey(series, key)?.let { item ->
+                                                onSeriesChange(item.id, item.docType)
+                                            }
+                                        },
+                                    )
+                                    ContactSelector(
+                                        contacts = meta?.contacts.orEmpty(),
+                                        selectedId = contactId,
+                                        onSelect = onContactChange,
+                                    )
+                                }
+                            }
+                        }
                         val seriesOptions = seriesForDocType(series, docType)
                         if (seriesOptions.size > 1) {
                             BendeySearchableSelect(
@@ -204,39 +254,76 @@ fun CheckoutDialog(
                             payableTotal = payableTotal,
                             remaining = remaining,
                             onPaymentsChange = onPaymentsChange,
+                            tablet = tabletLandscape,
                         )
-                        CheckoutPaymentSummary(
-                            currency = currency,
-                            payableTotal = payableTotal,
-                            paidTotal = paidTotal,
-                            remaining = remaining,
-                            change = change,
-                            hasCashPayment = hasCashPayment,
-                        )
+                        if (!tabletLandscape) {
+                            CheckoutPaymentSummary(
+                                currency = currency,
+                                payableTotal = payableTotal,
+                                paidTotal = paidTotal,
+                                remaining = remaining,
+                                change = change,
+                                hasCashPayment = hasCashPayment,
+                            )
+                        } else if (change > 0.009 && hasCashPayment || !paidCoversTotal(paidTotal, payableTotal)) {
+                            CheckoutPaymentSummary(
+                                currency = currency,
+                                payableTotal = payableTotal,
+                                paidTotal = paidTotal,
+                                remaining = remaining,
+                                change = change,
+                                hasCashPayment = hasCashPayment,
+                                compact = true,
+                            )
+                        }
                     }
                     error?.let {
                         Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = BendeySpacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm, Alignment.End),
-                ) {
-                    BendeySecondaryButton(
-                        text = "Cancelar",
-                        onClick = onDismiss,
-                        enabled = !loading,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
-                    BendeyPrimaryButton(
-                        text = if (loading) "Procesando…" else confirmLabel,
-                        onClick = onConfirm,
-                        enabled = canConfirm,
-                        fillWidth = false,
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
+                if (tabletLandscape) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = BendeySpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    ) {
+                        BendeyPrimaryButton(
+                            text = if (loading) "Procesando…" else confirmLabel,
+                            onClick = onConfirm,
+                            enabled = canConfirm,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = BendeySpacing.touchTarget),
+                        )
+                        BendeyTextButton(
+                            text = "Cancelar",
+                            onClick = onDismiss,
+                            enabled = !loading,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = BendeySpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm, Alignment.End),
+                    ) {
+                        BendeySecondaryButton(
+                            text = "Cancelar",
+                            onClick = onDismiss,
+                            enabled = !loading,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                        BendeyPrimaryButton(
+                            text = if (loading) "Procesando…" else confirmLabel,
+                            onClick = onConfirm,
+                            enabled = canConfirm,
+                            fillWidth = false,
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
                 }
             }
         }
@@ -417,6 +504,7 @@ private fun PaymentLinesSection(
     payableTotal: Double,
     remaining: Double,
     onPaymentsChange: (List<CheckoutPaymentDraft>) -> Unit,
+    tablet: Boolean = false,
 ) {
     val defaultMethod = methods.firstOrNull()?.code ?: "cash"
     val methodOptions = if (methods.isEmpty()) {
@@ -425,7 +513,10 @@ private fun PaymentLinesSection(
         methods
     }
 
-    CheckoutFieldLabel("Métodos de pago")
+    CheckoutFieldLabel(
+        title = "Métodos de pago",
+        emphasized = tablet,
+    )
     if (remaining > 0.009 && payments.isNotEmpty()) {
         Row(
             modifier = Modifier
@@ -451,6 +542,7 @@ private fun PaymentLinesSection(
             line = line,
             methods = methodOptions,
             canRemove = payments.size > 1,
+            tablet = tablet,
             onUpdate = { updated ->
                 onPaymentsChange(payments.mapIndexed { i, p -> if (i == index) updated else p })
             },
@@ -483,7 +575,7 @@ private fun PaymentLinesSection(
                 ),
             )
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = if (tablet) Modifier.fillMaxWidth(0.6f) else Modifier.fillMaxWidth(),
     ) {
         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(end = BendeySpacing.xxs))
         Text("Agregar método de pago")
@@ -498,11 +590,12 @@ private fun PaymentLineEditor(
     canRemove: Boolean,
     onUpdate: (CheckoutPaymentDraft) -> Unit,
     onRemove: () -> Unit,
+    tablet: Boolean = false,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clipSection(),
+            .then(if (tablet) Modifier else Modifier.clipSection()),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Row(
@@ -621,27 +714,31 @@ private fun CheckoutHeroTotal(
     payableTotal: Double,
     rawTotal: Double,
     discountAmount: Double,
+    tablet: Boolean = false,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(BendeyShapeTokens.xl)
-            .background(BendeyColors.PrimaryContainer.copy(alpha = 0.45f))
+            .background(BendeyColors.PrimaryContainer.copy(alpha = if (tablet) 0.38f else 0.45f))
             .border(1.dp, BendeyColors.Primary.copy(alpha = 0.15f), BendeyShapeTokens.xl)
-            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
+            .padding(
+                horizontal = if (tablet) BendeySpacing.sm else BendeySpacing.md,
+                vertical = if (tablet) BendeySpacing.xs else BendeySpacing.sm,
+            ),
     ) {
         Text(
-            text = "Total",
+            text = "Total a cobrar",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Medium,
             color = BendeyColors.OnSurfaceVariant,
         )
         Text(
             text = currency.format(payableTotal),
-            style = MaterialTheme.typography.headlineMedium,
+            style = if (tablet) MaterialTheme.typography.headlineLarge else MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = BendeyColors.Primary,
-            modifier = Modifier.padding(top = BendeySpacing.xs),
+            modifier = Modifier.padding(top = BendeySpacing.xxs),
         )
         if (discountAmount > 0) {
             Row(
@@ -673,32 +770,42 @@ private fun CheckoutPaymentSummary(
     remaining: Double,
     change: Double,
     hasCashPayment: Boolean,
+    compact: Boolean = false,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(BendeyShapeTokens.md)
-            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.35f))
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), BendeyShapeTokens.md)
-            .padding(BendeySpacing.sm),
-        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            .then(
+                if (compact) {
+                    Modifier.padding(top = BendeySpacing.xxs)
+                } else {
+                    Modifier
+                        .clip(BendeyShapeTokens.md)
+                        .background(BendeyColors.SurfaceVariant.copy(alpha = 0.35f))
+                        .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), BendeyShapeTokens.md)
+                        .padding(BendeySpacing.sm)
+                },
+            ),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "Monto recibido",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium,
-                color = BendeyColors.OnSurfaceVariant,
-            )
-            Text(
-                currency.format(paidTotal),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+        if (!compact) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Monto recibido",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                Text(
+                    currency.format(paidTotal),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
         if (change > 0.009 && hasCashPayment) {
             Row(
@@ -739,10 +846,11 @@ private fun ContactSelector(
     contacts: List<ContactBrief>,
     selectedId: Int?,
     onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (contacts.isEmpty()) {
         CheckoutFieldLabel("Cliente")
-        Text("Sin clientes", color = BendeyColors.OnSurfaceVariant)
+        Text("Sin clientes", color = BendeyColors.OnSurfaceVariant, modifier = modifier)
         return
     }
     BendeySearchableSelect(
@@ -751,15 +859,15 @@ private fun ContactSelector(
         onSelect = onSelect,
         label = "Cliente",
         placeholder = "Buscar cliente…",
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     )
 }
 
 @Composable
-private fun CheckoutFieldLabel(title: String) {
+private fun CheckoutFieldLabel(title: String, emphasized: Boolean = false) {
     Text(
         title,
-        style = MaterialTheme.typography.labelMedium,
+        style = if (emphasized) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Medium,
         color = BendeyColors.OnSurfaceVariant,
         modifier = Modifier.padding(bottom = BendeySpacing.xxs),

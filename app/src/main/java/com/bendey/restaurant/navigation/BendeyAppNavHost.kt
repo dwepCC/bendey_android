@@ -15,7 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SnackbarHostState
 import com.bendey.restaurant.core.ui.components.BendeySnackbarHost
 import com.bendey.restaurant.core.ui.layout.rememberBendeySnackbarBottomPadding
-import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +42,11 @@ import com.bendey.restaurant.core.navigation.canAccessRoute
 import com.bendey.restaurant.core.navigation.navigateToBottomBarDestination
 import com.bendey.restaurant.core.navigation.navigateToDrawerDestination
 import com.bendey.restaurant.core.navigation.routeRequiredFeature
+import com.bendey.restaurant.core.navigation.showsOperationalTopBar
+import com.bendey.restaurant.core.navigation.toOperationalNavItems
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.bendey.restaurant.core.ui.components.BendeyAppHeader
+import com.bendey.restaurant.core.ui.components.BendeyOperationalTopBar
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySplashScreen
 import com.bendey.restaurant.BuildConfig
@@ -228,28 +232,68 @@ private fun MainShell(
         return
     }
 
-    val isCompactWidth = !rememberIsExpandedWidth()
+    val adaptiveProfile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val showOperationalTopBar = BendeyRoutes.showsOperationalTopBar(
+        currentRoute,
+        adaptiveProfile,
+        physicalPortrait,
+    )
+    val operationalNavItems = remember(visibleBottomBar) {
+        visibleBottomBar.toOperationalNavItems()
+    }
     val snackbarBottomPadding = rememberBendeySnackbarBottomPadding(
         currentRoute = currentRoute,
         showBottomBar = BendeyRoutes.showsBottomBar(currentRoute),
-        isCompactWidth = isCompactWidth,
+        profile = adaptiveProfile,
+        physicalPortrait = physicalPortrait,
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
     BendeyNavigationSuite(
         currentRoute = currentRoute ?: mainStartRoute,
         appVersion = BuildConfig.VERSION_NAME,
+        headerState = headerState,
         showBottomBar = BendeyRoutes.showsBottomBar(currentRoute),
         visibleBottomBarDestinations = visibleBottomBar,
         visibleDrawerDestinations = visibleDrawer,
+        onLogout = { sessionViewModel.logout {} },
         topBar = { toggleDrawer, drawerOpen ->
-            if (BendeyRoutes.showsGlobalHeader(currentRoute)) {
-                BendeyAppHeader(
-                    state = headerState,
-                    isDrawerOpen = drawerOpen,
-                    onMenuClick = toggleDrawer,
-                    onLogout = { sessionViewModel.logout {} },
-                )
+            when {
+                showOperationalTopBar -> {
+                    BendeyOperationalTopBar(
+                        state = headerState,
+                        currentRoute = currentRoute,
+                        operationalDestinations = operationalNavItems,
+                        isDrawerOpen = drawerOpen,
+                        onMenuClick = toggleDrawer,
+                        onOperationalNavigate = { item ->
+                            visibleBottomBar
+                                .firstOrNull { it.route == item.route }
+                                ?.let { destination ->
+                                    if (canAccessRoute(
+                                            destination.route,
+                                            permissions.permissions,
+                                            permissions.employeeType,
+                                        )
+                                    ) {
+                                        mainNavController.navigateToBottomBarDestination(destination.route)
+                                    } else {
+                                        onShowMessage("No tienes permiso para acceder a ${destination.label}")
+                                    }
+                                }
+                        },
+                        onLogout = { sessionViewModel.logout {} },
+                    )
+                }
+                BendeyRoutes.showsGlobalHeader(currentRoute) -> {
+                    BendeyAppHeader(
+                        state = headerState,
+                        isDrawerOpen = drawerOpen,
+                        onMenuClick = toggleDrawer,
+                        onLogout = { sessionViewModel.logout {} },
+                    )
+                }
             }
         },
         onNavigate = { destination ->

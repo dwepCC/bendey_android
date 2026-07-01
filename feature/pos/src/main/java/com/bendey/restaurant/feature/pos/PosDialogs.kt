@@ -54,7 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.ui.layout.BendeyCompactCartBarHeight
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
@@ -67,6 +69,9 @@ import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 import java.text.NumberFormat
 
 @Composable
@@ -137,6 +142,9 @@ fun OrderDetailsDialog(
     onConfirm: () -> Unit,
 ) {
     if (modal == null) return
+    val profile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val useTwoColumns = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
     val title = when (modal) {
         PosOrderDetailsModal.TAKEAWAY -> "Para llevar"
         PosOrderDetailsModal.DELIVERY -> "Delivery"
@@ -152,41 +160,86 @@ fun OrderDetailsDialog(
         onDismiss = onDismiss,
         enableContentScroll = true,
         fullWidth = true,
+        posTabletOptimized = true,
     ) {
-        BendeyTextField(
-            value = details.customerName,
-            onValueChange = { onDetailsChange(details.copy(customerName = it)) },
-            label = if (modal == PosOrderDetailsModal.DELIVERY) "Contacto entrega (nombre)" else "Nombre quien recoge",
-        )
-        BendeyTextField(
-            value = details.customerPhone,
-            onValueChange = { onDetailsChange(details.copy(customerPhone = it)) },
-            label = "Teléfono",
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
-        )
+        if (useTwoColumns) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            ) {
+                BendeyTextField(
+                    value = details.customerName,
+                    onValueChange = { onDetailsChange(details.copy(customerName = it)) },
+                    label = if (modal == PosOrderDetailsModal.DELIVERY) "Contacto entrega" else "Nombre quien recoge",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = details.customerPhone,
+                    onValueChange = { onDetailsChange(details.copy(customerPhone = it)) },
+                    label = "Teléfono",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
+            BendeyTextField(
+                value = details.customerName,
+                onValueChange = { onDetailsChange(details.copy(customerName = it)) },
+                label = if (modal == PosOrderDetailsModal.DELIVERY) "Contacto entrega (nombre)" else "Nombre quien recoge",
+            )
+            BendeyTextField(
+                value = details.customerPhone,
+                onValueChange = { onDetailsChange(details.copy(customerPhone = it)) },
+                label = "Teléfono",
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Phone),
+            )
+        }
         if (modal == PosOrderDetailsModal.DELIVERY) {
             BendeyTextField(
                 value = details.deliveryAddress,
                 onValueChange = { onDetailsChange(details.copy(deliveryAddress = it)) },
                 label = "Dirección *",
             )
-            BendeyTextField(
-                value = details.deliveryReference,
-                onValueChange = { onDetailsChange(details.copy(deliveryReference = it)) },
-                label = "Referencia",
-            )
+            if (useTwoColumns) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                ) {
+                    BendeyTextField(
+                        value = details.deliveryReference,
+                        onValueChange = { onDetailsChange(details.copy(deliveryReference = it)) },
+                        label = "Referencia",
+                        modifier = Modifier.weight(1f),
+                    )
+                    BendeyTextField(
+                        value = details.estimatedMinutes,
+                        onValueChange = { onDetailsChange(details.copy(estimatedMinutes = it.filter { ch -> ch.isDigit() })) },
+                        label = "Tiempo (min)",
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(0.55f),
+                    )
+                }
+            } else {
+                BendeyTextField(
+                    value = details.deliveryReference,
+                    onValueChange = { onDetailsChange(details.copy(deliveryReference = it)) },
+                    label = "Referencia",
+                )
+            }
             DriverDropdown(
                 drivers = drivers,
                 loading = driversLoading,
                 selectedId = details.deliveryDriverId,
                 onSelect = { onDetailsChange(details.copy(deliveryDriverId = it)) },
             )
-            BendeyTextField(
-                value = details.estimatedMinutes,
-                onValueChange = { onDetailsChange(details.copy(estimatedMinutes = it.filter { ch -> ch.isDigit() })) },
-                label = "Tiempo estimado (min)",
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
+            if (!useTwoColumns) {
+                BendeyTextField(
+                    value = details.estimatedMinutes,
+                    onValueChange = { onDetailsChange(details.copy(estimatedMinutes = it.filter { ch -> ch.isDigit() })) },
+                    label = "Tiempo estimado (min)",
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+            }
         }
         BendeyTextField(
             value = details.orderNotes,
@@ -258,6 +311,7 @@ fun PosFloatingActionsBar(
     onOpenPending: () -> Unit,
     onOpenCart: () -> Unit,
     modifier: Modifier = Modifier,
+    chipSize: Dp = BendeyCompactCartBarHeight,
 ) {
     val total = if (payableTotal > 0) payableTotal else cartTotal
     Box(
@@ -271,6 +325,7 @@ fun PosFloatingActionsBar(
             badgeCount = pendingCount,
             label = "Pedidos",
             onClick = onOpenPending,
+            chipSize = chipSize,
             modifier = Modifier.align(Alignment.BottomStart),
         )
         PosFloatingActionChip(
@@ -280,6 +335,7 @@ fun PosFloatingActionsBar(
             label = currency.format(total),
             onClick = onOpenCart,
             emphasized = true,
+            chipSize = chipSize,
             modifier = Modifier.align(Alignment.BottomEnd),
         )
     }
@@ -292,12 +348,13 @@ private fun PosFloatingActionChip(
     badgeCount: Int,
     label: String,
     onClick: () -> Unit,
+    chipSize: Dp,
     modifier: Modifier = Modifier,
     emphasized: Boolean = false,
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.size(76.dp),
+        modifier = modifier.size(chipSize),
         shape = BendeyShapeTokens.lg,
         colors = CardDefaults.cardColors(
             containerColor = if (emphasized) BendeyColors.Primary else BendeyColors.Surface,

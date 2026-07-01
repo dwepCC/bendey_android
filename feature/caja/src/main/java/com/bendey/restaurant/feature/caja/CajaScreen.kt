@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.VerticalDivider
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
@@ -451,7 +451,6 @@ private fun ReportTab(
     context: android.content.Context,
     modifier: Modifier = Modifier,
 ) {
-    val useTwoPane = rememberUseAdaptiveTwoPane()
     val sessions = buildList {
         state.session?.let { add(it.id) }
         addAll(state.historySessions.map { it.id })
@@ -496,50 +495,22 @@ private fun ReportTab(
         }
     }
 
-    if (useTwoPane && sessions.isNotEmpty()) {
-        Row(modifier = modifier.fillMaxSize()) {
-            BendeyLazyColumn(state = rememberLazyListState(),
-                contentPadding = PaddingValues(BendeySpacing.md),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier
-                    .weight(0.32f)
-                    .fillMaxHeight(),
+    Column(modifier = modifier.fillMaxSize().padding(BendeySpacing.md)) {
+        if (sessions.isNotEmpty()) {
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
-                items(sessions.take(10)) { id ->
+                sessions.take(10).forEach { id ->
                     BendeyFilterChip(
                         selected = state.reportSessionId == id,
                         onClick = { viewModel.loadReport(id) },
                         text = "Sesión #$id",
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
-            VerticalDivider()
-            ReportDetailContent(
-                modifier = Modifier
-                    .weight(0.68f)
-                    .fillMaxHeight()
-                    .padding(BendeySpacing.md),
-            )
         }
-    } else {
-        Column(modifier = modifier.fillMaxSize().padding(BendeySpacing.md)) {
-            if (sessions.isNotEmpty()) {
-                BendeyHorizontalScrollRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    sessions.take(10).forEach { id ->
-                        BendeyFilterChip(
-                            selected = state.reportSessionId == id,
-                            onClick = { viewModel.loadReport(id) },
-                            text = "Sesión #$id",
-                        )
-                    }
-                }
-            }
-            ReportDetailContent()
-        }
+        ReportDetailContent()
     }
 }
 

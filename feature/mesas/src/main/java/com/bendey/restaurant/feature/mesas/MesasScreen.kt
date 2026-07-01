@@ -41,6 +41,7 @@ import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,7 +143,8 @@ fun MesasScreen(
         },
     ) { innerModifier ->
         BoxWithConstraints(modifier = innerModifier) {
-            val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
+            val profile = rememberBendeyAdaptiveProfile()
+            val columns = BendeyTabletTokens.tableGridColumns(profile)
             val gridState = rememberLazyGridState()
             BendeyLazyVerticalGrid(
                 columns = GridCells.Fixed(columns),

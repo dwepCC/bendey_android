@@ -137,6 +137,9 @@ data class PosUiState(
     val sending: Boolean = false,
     val savingDraft: Boolean = false,
     val products: List<PosProduct> = emptyList(),
+    val productsTotal: Int = 0,
+    val productsPage: Int = 1,
+    val productsLoadingMore: Boolean = false,
     val categories: List<ProductCategory> = emptyList(),
     val selectedCategoryId: Int? = null,
     val searchQuery: String = "",
@@ -208,6 +211,7 @@ data class PosUiState(
         get() = calcPayableTotal(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
 
     val canCheckout: Boolean get() = canChargeOrders && checkoutRawTotal > 0 && !checkoutSubmitting && !sending
+    val hasMoreProducts: Boolean get() = products.size < productsTotal
 }
 
 private fun roundMoney(value: Double): Double = round(value * 100.0) / 100.0
@@ -336,6 +340,14 @@ class PosViewModel @Inject constructor(
         _uiState.update { it.copy(preparationAreaFilter = areaId) }
         viewModelScope.launch {
             loadProducts(branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id)
+        }
+    }
+
+    fun loadMoreProducts() {
+        val state = _uiState.value
+        if (state.productsLoadingMore || !state.hasMoreProducts) return
+        viewModelScope.launch {
+            loadProducts(branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id, reset = false)
         }
     }
 
@@ -1632,22 +1644,47 @@ class PosViewModel @Inject constructor(
         )
     }
 
-    private suspend fun loadProducts(branchId: Int?) {
-        val query = _uiState.value.searchQuery.trim()
-        val categoryId = _uiState.value.selectedCategoryId
+    private suspend fun loadProducts(branchId: Int?, reset: Boolean = true) {
+        val snapshot = _uiState.value
+        val query = snapshot.searchQuery.trim()
+        val categoryId = snapshot.selectedCategoryId
+        val preparationAreaId = snapshot.preparationAreaFilter
+        if (!reset) {
+            if (snapshot.productsLoadingMore || !snapshot.hasMoreProducts) return
+            _uiState.update { it.copy(productsLoadingMore = true) }
+        }
+        val page = if (reset) 1 else snapshot.productsPage + 1
         when (val result = posRepository.loadProducts(
             query = query,
             categoryId = categoryId,
-            page = 1,
+            page = page,
             branchId = branchId,
             catalogOnly = true,
-            preparationAreaId = _uiState.value.preparationAreaFilter,
+            preparationAreaId = preparationAreaId,
         )) {
-            is AppResult.Success -> _uiState.update {
-                it.copy(loading = false, products = result.data.first, error = null)
+            is AppResult.Success -> {
+                val (newProducts, total) = result.data
+                _uiState.update { current ->
+                    if (
+                        current.searchQuery.trim() != query ||
+                        current.selectedCategoryId != categoryId ||
+                        current.preparationAreaFilter != preparationAreaId
+                    ) {
+                        current.copy(loading = false, productsLoadingMore = false)
+                    } else {
+                        current.copy(
+                            loading = false,
+                            productsLoadingMore = false,
+                            products = if (reset) newProducts else current.products + newProducts,
+                            productsTotal = total,
+                            productsPage = page,
+                            error = null,
+                        )
+                    }
+                }
             }
             is AppResult.Error -> _uiState.update {
-                it.copy(loading = false, error = result.message)
+                it.copy(loading = false, productsLoadingMore = false, error = result.message)
             }
             AppResult.Loading -> Unit
         }

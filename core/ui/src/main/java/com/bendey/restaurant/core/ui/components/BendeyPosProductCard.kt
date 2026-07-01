@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -34,8 +33,15 @@ import coil.compose.AsyncImage
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import java.text.NumberFormat
+
+enum class BendeyPosProductCardVariant {
+    Standard,
+    Workspace,
+}
 
 /** Card catálogo POS — tap en todo el card agrega al carrito. */
 @Composable
@@ -48,13 +54,18 @@ fun BendeyPosProductCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    variant: BendeyPosProductCardVariant = BendeyPosProductCardVariant.Standard,
+    profile: BendeyAdaptiveProfile = BendeyAdaptiveProfile.CompactPortrait,
 ) {
     val resolvedUrl = resolvePublicAssetUrl(assetsBaseUrl, imageUrl).takeIf { it.isNotBlank() }
     val alpha = if (enabled) 1f else 0.5f
+
+    val nameTypography = PosPolishTokens.productNameLineHeight(profile)
+    val placeholderIconSize = if (PosPolishTokens.isTabletProfile(profile)) 34.dp else 28.dp
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.82f)
             .alpha(alpha)
             .border(1.dp, BendeyColors.Outline.copy(alpha = 0.55f), BendeyShapeTokens.lg)
             .clickable(enabled = enabled, onClick = onClick),
@@ -62,12 +73,11 @@ fun BendeyPosProductCard(
         colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Box(
                 modifier = Modifier
-                    .weight(1f, fill = true)
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 72.dp)
+                    .aspectRatio(1.05f)
                     .background(BendeyColors.SurfaceVariant),
             ) {
                 if (resolvedUrl != null) {
@@ -83,7 +93,7 @@ fun BendeyPosProductCard(
                             Icons.Default.Restaurant,
                             contentDescription = null,
                             tint = BendeyColors.OnSurfaceVariant.copy(alpha = 0.35f),
-                            modifier = Modifier.size(28.dp),
+                            modifier = Modifier.size(placeholderIconSize),
                         )
                     }
                 }
@@ -120,18 +130,16 @@ fun BendeyPosProductCard(
                 text = name,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .defaultMinSize(minHeight = 40.dp)
                     .padding(
                         horizontal = BendeySpacing.xs,
-                        vertical = BendeySpacing.xxs,
+                        vertical = if (PosPolishTokens.isTabletProfile(profile)) BendeySpacing.xxs else BendeySpacing.xxs,
                     ),
-                style = MaterialTheme.typography.labelSmall,
+                style = nameTypography,
                 fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                color = BendeyColors.OnSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                lineHeight = MaterialTheme.typography.labelSmall.lineHeight,
-                color = BendeyColors.OnSurface,
             )
         }
     }

@@ -1,7 +1,6 @@
 package com.bendey.restaurant.core.ui.pos
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -19,8 +18,11 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.pos.ManualProductInput
 import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
-import com.bendey.restaurant.core.ui.components.BendeyConfigureFullscreenDialog
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 
 private val MANUAL_IGV_OPTIONS = listOf(
     "10" to "10 - Gravado IGV",
@@ -43,37 +45,63 @@ fun ManualProductDialog(
     if (!open) return
     var form by remember(open) { mutableStateOf(ManualProductInput()) }
     val canConfirm = form.description.trim().isNotBlank() && form.unitPrice.trim().isNotBlank()
+    val profile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val useTwoColumns = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
 
-    BendeyConfigureFullscreenDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = "Producto manual",
-        subtitle = "Ítem sin catálogo (comanda, precuenta y cobro).",
         confirmText = "Agregar al carrito",
+        dismissText = "Cancelar",
         confirmEnabled = canConfirm,
+        enableContentScroll = true,
+        posTabletOptimized = true,
         onConfirm = {
-            if (!canConfirm) return@BendeyConfigureFullscreenDialog
+            if (!canConfirm) return@BendeyFormDialog
             onAdd(form)
             onDismiss()
         },
         onDismiss = onDismiss,
     ) {
+        Text(
+            text = "Ítem sin catálogo (comanda, precuenta y cobro).",
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
         BendeyTextField(
             value = form.description,
             onValueChange = { form = form.copy(description = it) },
             label = "Descripción *",
         )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+        if (useTwoColumns) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.md),
+            ) {
+                BendeyTextField(
+                    value = form.quantity,
+                    onValueChange = { form = form.copy(quantity = it.filter { ch -> ch.isDigit() }.ifBlank { "1" }) },
+                    label = "Cantidad",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = form.unitPrice,
+                    onValueChange = { form = form.copy(unitPrice = it) },
+                    label = "Precio unit. (S/) *",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        } else {
             BendeyTextField(
                 value = form.quantity,
                 onValueChange = { form = form.copy(quantity = it.filter { ch -> ch.isDigit() }.ifBlank { "1" }) },
                 label = "Cantidad",
-                modifier = Modifier.weight(1f),
             )
             BendeyTextField(
                 value = form.unitPrice,
                 onValueChange = { form = form.copy(unitPrice = it) },
                 label = "Precio unit. (S/) *",
-                modifier = Modifier.weight(1f),
             )
         }
         BendeyTextField(

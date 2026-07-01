@@ -91,7 +91,6 @@ import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 import java.text.NumberFormat
 import java.util.Locale
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -104,7 +103,6 @@ fun VentasScreen(
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val useTwoPane = rememberUseAdaptiveTwoPane()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val context = LocalContext.current
     val listState = rememberLazyListState()
@@ -147,131 +145,41 @@ fun VentasScreen(
                         }
                     },
                 )
-                if (!useTwoPane) {
-                    VentasTabRow(
-                        selected = state.tab,
-                        sunatEnabled = state.sunatEnabled,
-                        onSelect = viewModel::selectTab,
-                    )
-                    VentasFiltersSection(
-                        state = state,
-                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                        onSearchChange = viewModel::setSearchQuery,
-                        onDatePreset = viewModel::setDatePreset,
-                        onFromDateChange = viewModel::setFromDate,
-                        onToDateChange = viewModel::setToDate,
-                        onPaymentMethodChange = viewModel::setPaymentMethodFilter,
-                        onBillingStatusChange = viewModel::setBillingStatusFilter,
-                        onExportPdf = { viewModel.exportListPdf(context) },
-                        onExportExcel = { viewModel.exportListExcel(context) },
-                    )
-                    VentasListHintsAndSummary(
-                        state = state,
-                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                        currency = currency,
-                    )
-                }
+                VentasTabRow(
+                    selected = state.tab,
+                    sunatEnabled = state.sunatEnabled,
+                    onSelect = viewModel::selectTab,
+                )
+                VentasFiltersSection(
+                    state = state,
+                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                    onSearchChange = viewModel::setSearchQuery,
+                    onDatePreset = viewModel::setDatePreset,
+                    onFromDateChange = viewModel::setFromDate,
+                    onToDateChange = viewModel::setToDate,
+                    onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                    onBillingStatusChange = viewModel::setBillingStatusFilter,
+                    onExportPdf = { viewModel.exportListPdf(context) },
+                    onExportExcel = { viewModel.exportListExcel(context) },
+                )
+                VentasListHintsAndSummary(
+                    state = state,
+                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                    currency = currency,
+                )
             },
         ) { contentModifier ->
-            if (useTwoPane) {
-                Row(modifier = contentModifier.fillMaxSize()) {
-                    Column(
-                        modifier = Modifier
-                            .weight(0.42f)
-                            .fillMaxHeight(),
-                    ) {
-                        VentasTabRow(
-                            selected = state.tab,
-                            sunatEnabled = state.sunatEnabled,
-                            onSelect = viewModel::selectTab,
-                        )
-                        VentasFiltersSection(
-                            state = state,
-                            paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                            onSearchChange = viewModel::setSearchQuery,
-                            onDatePreset = viewModel::setDatePreset,
-                            onFromDateChange = viewModel::setFromDate,
-                            onToDateChange = viewModel::setToDate,
-                            onPaymentMethodChange = viewModel::setPaymentMethodFilter,
-                            onBillingStatusChange = viewModel::setBillingStatusFilter,
-                            onExportPdf = { viewModel.exportListPdf(context) },
-                            onExportExcel = { viewModel.exportListExcel(context) },
-                        )
-                        VentasListHintsAndSummary(
-                            state = state,
-                            paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                            currency = currency,
-                        )
-                        BendeyFlexibleContentSlot {
-                            VentasSalesList(
-                                state = state,
-                                listState = listState,
-                                currency = currency,
-                                selectedSaleId = state.selectedSaleId,
-                                onSaleClick = viewModel::openSaleDetail,
-                                modifier = it,
-                            )
-                        }
-                    }
-                    VerticalDivider()
-                    Column(
-                        modifier = Modifier
-                            .weight(0.58f)
-                            .fillMaxHeight()
-                            .padding(BendeySpacing.md),
-                    ) {
-                        if (state.selectedSaleId != null) {
-                            BendeyVerticalScrollColumn(
-                                modifier = Modifier.fillMaxSize(),
-                            ) {
-                                SaleDetailContent(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    tab = state.tab,
-                                    sunatEnabled = state.sunatEnabled,
-                                    loading = state.detailLoading,
-                                    detail = state.detail,
-                                    printing = state.detailPrinting,
-                                    billingBusy = state.billingBusy,
-                                    currency = currency,
-                                    error = detailError,
-                                    onReprint = viewModel::reprintSelectedSale,
-                                    onOpenPdf = viewModel::openReceiptModal,
-                                    onVoidCreditNote = viewModel::openVoidCreditNote,
-                                    onCancelNota = viewModel::openCancelNota,
-                                    onEmitElectronic = viewModel::openEmitElectronic,
-                                    onSendSunat = viewModel::sendToSunat,
-                                    onResendSunat = viewModel::resendToSunat,
-                                    onOpenOfficialPdf = { viewModel.openOfficialSunatPdf(context) },
-                                    onViewXmlSent = viewModel::viewXmlSent,
-                                    onViewXmlGenerated = viewModel::viewXmlGenerated,
-                                    onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
-                                    onDownloadXmlGenerated = { viewModel.downloadXmlGenerated(context) },
-                                    onDownloadCdr = { viewModel.downloadCdr(context) },
-                                )
-                            }
-                        } else {
-                            BendeyEmptyState(
-                                title = "Selecciona un comprobante",
-                                description = "El detalle aparecerá aquí para consultar ítems y acciones sin ocultar la lista.",
-                                inline = true,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
-                }
-            } else {
-                VentasSalesList(
-                    state = state,
-                    listState = listState,
-                    currency = currency,
-                    selectedSaleId = state.selectedSaleId,
-                    onSaleClick = viewModel::openSaleDetail,
-                    modifier = contentModifier,
-                )
-            }
+            VentasSalesList(
+                state = state,
+                listState = listState,
+                currency = currency,
+                selectedSaleId = state.selectedSaleId,
+                onSaleClick = viewModel::openSaleDetail,
+                modifier = contentModifier,
+            )
         }
 
-    if (!useTwoPane && state.selectedSaleId != null) {
+    if (state.selectedSaleId != null) {
         BendeyBottomSheet(
             onDismissRequest = viewModel::dismissSaleDetail,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),

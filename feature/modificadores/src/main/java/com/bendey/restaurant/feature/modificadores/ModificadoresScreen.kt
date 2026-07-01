@@ -201,6 +201,7 @@ private fun ModifierGroupFormDialog(
         onDismiss = onDismiss,
         confirmEnabled = !loading,
         loading = loading,
+        enableContentScroll = true,
     ) {
         BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
         BendeySimpleSelect(

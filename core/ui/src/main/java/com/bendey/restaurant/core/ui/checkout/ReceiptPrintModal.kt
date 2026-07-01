@@ -6,12 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -20,6 +23,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,10 +43,12 @@ import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.ui.R
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 import java.text.NumberFormat
 import java.util.Locale
 
-private val ReceiptDocActive = Color(0xFF1E3A8A)
 private val WhatsAppGreen = Color(0xFF25D366)
 
 enum class ReceiptPdfFormatUi(val label: String) {
@@ -65,6 +71,10 @@ fun ReceiptPrintModal(
 ) {
     if (!open) return
 
+    val profile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val tabletLandscape = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
+    val dialogPadding = PosPolishTokens.dialogPadding(profile, physicalPortrait)
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
 
     val paidTotal = remember(printData, total) {
@@ -83,193 +93,140 @@ fun ReceiptPrintModal(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
+                .fillMaxWidth(
+                    if (PosPolishTokens.isTabletProfile(profile)) {
+                        PosPolishTokens.dialogWidthFraction(profile, physicalPortrait)
+                    } else {
+                        0.94f
+                    },
+                )
                 .wrapContentHeight()
-                .heightIn(max = 520.dp)
+                .heightIn(max = PosPolishTokens.receiptModalMaxHeight(profile, physicalPortrait))
                 .border(BendeyCardDefaults.border, BendeyShapeTokens.xl),
             shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             shadowElevation = 6.dp,
         ) {
             Column(modifier = Modifier.wrapContentHeight()) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    IconButton(
-                        onClick = onDismiss,
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = dialogPadding, end = BendeySpacing.xs, top = BendeySpacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(BendeySpacing.xs),
+                            .size(if (tabletLandscape) 40.dp else 36.dp)
+                            .background(BendeyColors.PrimaryContainer, BendeyShapeTokens.md),
+                        contentAlignment = Alignment.Center,
                     ) {
+                        Icon(
+                            Icons.Default.Receipt,
+                            contentDescription = null,
+                            tint = BendeyColors.Primary,
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = BendeySpacing.sm),
+                    ) {
+                        Text(
+                            "Venta registrada",
+                            style = if (tabletLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            saleNumber,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
                 }
-                Column(
-                    modifier = Modifier
-                        .wrapContentHeight()
-                        .padding(
-                            start = BendeySpacing.md,
-                            end = BendeySpacing.md,
-                            top = 0.dp,
-                            bottom = BendeySpacing.xs,
-                        ),
-                ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                            modifier = Modifier
-                                .padding(end = 36.dp, top = BendeySpacing.xs),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(BendeyColors.PrimaryContainer, BendeyShapeTokens.md),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    Icons.Default.Receipt,
-                                    contentDescription = null,
-                                    tint = BendeyColors.Primary,
-                                )
-                            }
-                            Column {
-                                Text(
-                                    "Venta registrada",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    saleNumber,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = BendeyColors.OnSurfaceVariant,
-                                )
-                            }
-                        }
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = BendeySpacing.sm)
-                                .background(
-                                    BendeyColors.PrimaryContainer.copy(alpha = 0.35f),
-                                    BendeyShapeTokens.lg,
-                                )
-                                .border(
-                                    1.dp,
-                                    BendeyColors.Primary.copy(alpha = 0.2f),
-                                    BendeyShapeTokens.lg,
-                                )
-                                .padding(BendeySpacing.sm),
-                        ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = dialogPadding),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(BendeyShapeTokens.lg)
+                            .background(BendeyColors.PrimaryContainer.copy(alpha = 0.32f))
+                            .border(1.dp, BendeyColors.Primary.copy(alpha = 0.18f), BendeyShapeTokens.lg)
+                            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
                             Text(
-                                "Resumen de pago",
+                                "Total",
                                 style = MaterialTheme.typography.labelMedium,
+                                color = BendeyColors.OnSurfaceVariant,
+                            )
+                            Text(
+                                currency.format(total),
+                                style = if (tabletLandscape) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = BendeyColors.Primary,
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                "Pagado",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                            )
+                            Text(
+                                currency.format(paidTotal),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = BendeySpacing.xs),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text("Total", fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    currency.format(total),
-                                    fontWeight = FontWeight.Bold,
-                                    color = BendeyColors.Primary,
-                                )
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = BendeySpacing.xxs),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text("Pagado", color = BendeyColors.OnSurfaceVariant)
-                                Text(currency.format(paidTotal), fontWeight = FontWeight.SemiBold)
-                            }
-                            if (change > 0.009) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp)
-                                        .background(BendeyColors.WarningContainer, BendeyShapeTokens.xs)
-                                        .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text("Vuelto", fontWeight = FontWeight.Bold, color = BendeyColors.OnWarning)
-                                    Text(
-                                        currency.format(change),
-                                        fontWeight = FontWeight.Bold,
-                                        color = BendeyColors.OnWarning,
-                                    )
-                                }
-                            }
-                        }
-
-                        Text(
-                            "Acciones",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = BendeySpacing.md, bottom = BendeySpacing.xs),
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-                        ) {
-                            if (hasPrinter) {
-                                ReceiptActionButton(
-                                    label = "Reimprimir",
-                                    icon = {
-                                        if (busyAction == "print") {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                strokeWidth = 2.dp,
-                                            )
-                                        } else {
-                                            Icon(
-                                                Icons.Default.Print,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp),
-                                            )
-                                        }
-                                    },
-                                    containerColor = BendeyColors.SurfaceVariant,
-                                    contentColor = BendeyColors.OnSurface,
-                                    enabled = busyAction == null && printData != null,
-                                    onClick = onPrint,
-                                    modifier = Modifier.weight(1f),
-                                )
-                            }
-                            ReceiptActionButton(
-                                label = "WhatsApp",
-                                icon = {
-                                    if (busyAction == "share") {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                            color = BendeyColors.OnPrimary,
-                                        )
-                                    } else {
-                                        Icon(
-                                            painter = painterResource(R.drawable.ic_whatsapp),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                            tint = BendeyColors.OnPrimary,
-                                        )
-                                    }
-                                },
-                                containerColor = WhatsAppGreen,
-                                contentColor = BendeyColors.OnPrimary,
-                                enabled = busyAction == null && printData != null,
-                                onClick = onShareWhatsApp,
-                            modifier = Modifier.weight(1f),
-                        )
                         }
                     }
+                    if (change > 0.009) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = BendeySpacing.xxs)
+                                .clip(BendeyShapeTokens.sm)
+                                .background(BendeyColors.WarningContainer)
+                                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Vuelto", fontWeight = FontWeight.Bold, color = BendeyColors.OnWarning)
+                            Text(
+                                currency.format(change),
+                                fontWeight = FontWeight.Bold,
+                                color = BendeyColors.OnWarning,
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = BendeySpacing.sm),
+                    color = BendeyColors.Outline.copy(alpha = 0.25f),
+                )
+
+                ReceiptPostSaleActions(
+                    hasPrinter = hasPrinter,
+                    busyAction = busyAction,
+                    printData = printData,
+                    onPrint = onPrint,
+                    onShareWhatsApp = onShareWhatsApp,
+                    modifier = Modifier.padding(
+                        horizontal = dialogPadding,
+                        vertical = BendeySpacing.sm,
+                    ),
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(BendeyColors.SurfaceVariant.copy(alpha = 0.5f))
-                        .padding(BendeySpacing.sm),
+                        .padding(horizontal = dialogPadding, vertical = BendeySpacing.sm),
                 ) {
                     Box(
                         modifier = Modifier
@@ -277,13 +234,14 @@ fun ReceiptPrintModal(
                             .clip(BendeyShapeTokens.md)
                             .background(BendeyColors.Primary)
                             .clickable(onClick = onDismiss)
-                            .padding(vertical = BendeySpacing.sm),
+                            .padding(vertical = if (tabletLandscape) BendeySpacing.sm else BendeySpacing.sm),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "Cerrar",
+                            "Continuar",
                             color = BendeyColors.OnPrimary,
                             fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelLarge,
                         )
                     }
                 }
@@ -292,8 +250,72 @@ fun ReceiptPrintModal(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReceiptActionButton(
+private fun ReceiptPostSaleActions(
+    hasPrinter: Boolean,
+    busyAction: String?,
+    printData: SalePrintData?,
+    onPrint: () -> Unit,
+    onShareWhatsApp: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            "Acciones opcionales",
+            style = MaterialTheme.typography.labelMedium,
+            color = BendeyColors.OnSurfaceVariant,
+            modifier = Modifier.padding(bottom = BendeySpacing.xs),
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            if (hasPrinter) {
+                ReceiptActionChip(
+                    label = "Reimprimir",
+                    icon = {
+                        if (busyAction == "print") {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
+                    },
+                    containerColor = BendeyColors.SurfaceVariant,
+                    contentColor = BendeyColors.OnSurface,
+                    enabled = busyAction == null && printData != null,
+                    onClick = onPrint,
+                )
+            }
+            ReceiptActionChip(
+                label = "WhatsApp",
+                icon = {
+                    if (busyAction == "share") {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = BendeyColors.OnPrimary,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_whatsapp),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = BendeyColors.OnPrimary,
+                        )
+                    }
+                },
+                containerColor = WhatsAppGreen,
+                contentColor = BendeyColors.OnPrimary,
+                enabled = busyAction == null && printData != null,
+                onClick = onShareWhatsApp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceiptActionChip(
     label: String,
     icon: (@Composable () -> Unit)?,
     containerColor: Color,
@@ -304,11 +326,12 @@ private fun ReceiptActionButton(
 ) {
     Row(
         modifier = modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
+            .heightIn(min = 44.dp)
             .clip(BendeyShapeTokens.md)
             .background(containerColor.copy(alpha = if (enabled) 1f else 0.5f))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = BendeySpacing.sm, horizontal = BendeySpacing.sm),
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {

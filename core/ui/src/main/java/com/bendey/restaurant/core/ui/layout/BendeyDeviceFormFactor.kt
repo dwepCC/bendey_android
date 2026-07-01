@@ -5,12 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.window.core.layout.WindowSizeClass
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveInfo
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 
 /**
  * Detección teléfono vs tablet.
  *
  * - Activity / orientación: [smallestScreenWidthDp] ≥ 600 ([Android large screens](https://developer.android.com/develop/ui/compose/layouts/adaptive)).
- * - Layout Compose: [WindowSizeClass] vía [currentWindowAdaptiveInfo].
+ * - Layout Compose: [BendeyAdaptiveProfile] vía [rememberBendeyAdaptiveInfo].
  */
 @Stable
 object BendeyDeviceFormFactor {
@@ -29,19 +31,23 @@ fun rememberIsTabletDevice(): Boolean {
     return BendeyDeviceFormFactor.isTablet(smallestWidth)
 }
 
-/** Ancho distinto de Compact — API [currentWindowAdaptiveInfo] (Material 3 Adaptive). */
+/**
+ * Ancho distinto de Compact — derivado de [BendeyAdaptiveProfile].
+ * Teléfonos siempre false (perfiles Compact*).
+ */
 @Composable
 fun rememberIsExpandedWidth(): Boolean {
-    return rememberWindowSizeClass()
-        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    val profile = rememberBendeyAdaptiveProfile()
+    return !profile.isCompact
 }
 
 /**
- * List-detail / two-pane manual: solo tablet física.
- * Evita panel vacío en teléfono apaisado (ancho MEDIUM pero smallestWidth &lt; 600).
+ * List-detail / two-pane deshabilitado: gestión sidebar usa una columna + modales.
+ *
+ * @see com.bendey.restaurant.core.ui.layout.adaptive.rememberPosWorkspaceMode para POS/Mesas.
  */
 @Composable
-fun rememberUseAdaptiveTwoPane(): Boolean = rememberIsTabletDevice()
+fun rememberUseAdaptiveTwoPane(): Boolean = false
 
 /** Clase de tamaño de ventana actual (Material 3 Adaptive). */
 @Composable

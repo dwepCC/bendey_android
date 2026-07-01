@@ -38,7 +38,6 @@ import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
-import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -55,9 +54,8 @@ fun CombosScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val listState = rememberLazyListState()
-    val isExpanded = rememberIsExpandedWidth()
     val listContentPadding = rememberBendeyLazyListContentPadding(
-        includeBottomBar = !isExpanded,
+        includeBottomBar = true,
         horizontal = BendeySpacing.md,
         top = BendeySpacing.md,
     )

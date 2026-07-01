@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyChipDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -31,7 +32,7 @@ import com.bendey.restaurant.core.domain.pos.canIncrease
 import com.bendey.restaurant.core.domain.pos.formatSlotQuantityStatus
 import com.bendey.restaurant.core.domain.pos.selectionPickQuantity
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
-import com.bendey.restaurant.core.ui.components.BendeyConfigureFullscreenDialog
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import java.text.NumberFormat
 
 @Composable
@@ -39,11 +40,12 @@ fun PosCatalogTabRow(
     selected: PosCatalogTab,
     onSelect: (PosCatalogTab) -> Unit,
     modifier: Modifier = Modifier,
+    horizontalPadding: Dp = 12.dp,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 0.dp),
+            .padding(horizontal = horizontalPadding, vertical = 0.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         PosCatalogTab.entries.forEach { tab ->
@@ -79,11 +81,16 @@ fun ProductConfigureDialog(
     val unitPrice = calcUnitPriceWithModifiers(product.salePrice, selected)
     val activePresentations = presentations.filter { it.active && it.name.isNotBlank() }
 
-    BendeyConfigureFullscreenDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = product.name,
+        confirmText = "Agregar",
+        dismissText = "Cancelar",
         loading = loading,
+        loadingMessage = "Cargando opciones…",
         confirmEnabled = !loading,
+        enableContentScroll = true,
+        posTabletOptimized = true,
         footerSummary = currency.format(unitPrice),
         validationError = validationError,
         onConfirm = onConfirm,
@@ -167,13 +174,17 @@ fun ComboConfigureDialog(
     }
     val displayPrice = resolvedPrice ?: combo.basePrice
 
-    BendeyConfigureFullscreenDialog(
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = combo.name,
         subtitle = combo.description?.takeIf { it.isNotBlank() },
+        confirmText = "Agregar",
+        dismissText = "Cancelar",
         loading = loading,
         loadingMessage = "Cargando combo…",
         confirmEnabled = !loading,
+        enableContentScroll = true,
+        posTabletOptimized = true,
         footerSummary = currency.format(displayPrice),
         validationError = validationError,
         onConfirm = onConfirm,

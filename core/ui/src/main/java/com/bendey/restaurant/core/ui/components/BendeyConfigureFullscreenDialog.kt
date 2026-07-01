@@ -111,6 +111,7 @@ fun BendeyConfigureFullscreenDialog(
                             vertical = BendeySpacing.xs,
                         ),
                         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                        showScrollHints = false,
                     ) {
                         content()
                     }

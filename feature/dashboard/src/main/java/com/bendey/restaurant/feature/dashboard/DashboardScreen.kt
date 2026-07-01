@@ -71,8 +71,8 @@ import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
-import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
@@ -94,12 +94,13 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val isExpanded = rememberIsExpandedWidth()
+    val adaptiveProfile = rememberBendeyAdaptiveProfile()
+    val isExpanded = !adaptiveProfile.isCompact
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val dash = state.dashboard
     val listState = rememberLazyListState()
     val contentPadding = rememberBendeyLazyListContentPadding(
-        includeBottomBar = !isExpanded,
+        includeBottomBar = true,
         extraBottom = -BendeySpacing.sm,
     )
 

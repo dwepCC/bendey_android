@@ -74,7 +74,6 @@ import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -89,7 +88,6 @@ fun ProductosScreen(
     viewModel: ProductosViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val useTwoPane = rememberUseAdaptiveTwoPane()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
     BendeySnackMessage(
@@ -151,78 +149,19 @@ fun ProductosScreen(
             },
         ) { contentModifier ->
             when (state.tab) {
-                ProductosTab.PRODUCTOS -> {
-                    if (useTwoPane) {
-                        Row(modifier = contentModifier.fillMaxSize()) {
-                            ProductsTabContent(
-                                state = state,
-                                currency = currency,
-                                assetsBaseUrl = viewModel.tenantBaseUrl,
-                                error = state.error?.takeIf { !state.productFormOpen },
-                                selectedProductId = if (state.productFormOpen) state.editingProductId else null,
-                                onSearch = viewModel::setSearchQuery,
-                                onCategoryFilter = viewModel::setCategoryFilter,
-                                onBranchFilter = viewModel::setBranchFilter,
-                                onEdit = viewModel::openEditProduct,
-                                onDelete = viewModel::requestDeleteProduct,
-                                onLoadMore = viewModel::loadMoreProducts,
-                                modifier = Modifier
-                                    .weight(0.42f)
-                                    .fillMaxHeight(),
-                            )
-                            VerticalDivider()
-                            Column(
-                                modifier = Modifier
-                                    .weight(0.58f)
-                                    .fillMaxHeight()
-                                    .padding(BendeySpacing.md),
-                            ) {
-                                if (state.productFormOpen) {
-                                    ProductFormPane(
-                                        form = state.productForm,
-                                        categories = state.categories,
-                                        preparationAreas = state.preparationAreas,
-                                        modifierGroups = state.modifierGroups,
-                                        tenantBaseUrl = viewModel.tenantBaseUrl,
-                                        showMoreOptions = state.showMoreOptions,
-                                        presentationsOpen = state.presentationsOpen,
-                                        loading = state.actionLoading,
-                                        error = state.error,
-                                        isEditing = state.editingProductId != null,
-                                        onDismiss = viewModel::dismissProductForm,
-                                        onFormChange = viewModel::updateProductForm,
-                                        onToggleMore = viewModel::toggleMoreOptions,
-                                        onTogglePresentations = viewModel::togglePresentationsSheet,
-                                        onDismissPresentations = viewModel::dismissPresentationsSheet,
-                                        onToggleModifierGroup = viewModel::toggleModifierGroup,
-                                        onImagePicked = viewModel::setPendingImage,
-                                        onSave = viewModel::saveProduct,
-                                    )
-                                } else {
-                                    BendeyEmptyState(
-                                        title = "Selecciona o crea un producto",
-                                        description = "Edita el catálogo sin ocultar la lista de productos.",
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        ProductsTabContent(
-                            state = state,
-                            currency = currency,
-                            assetsBaseUrl = viewModel.tenantBaseUrl,
-                            error = state.error?.takeIf { !state.productFormOpen },
-                            onSearch = viewModel::setSearchQuery,
-                            onCategoryFilter = viewModel::setCategoryFilter,
-                            onBranchFilter = viewModel::setBranchFilter,
-                            onEdit = viewModel::openEditProduct,
-                            onDelete = viewModel::requestDeleteProduct,
-                            onLoadMore = viewModel::loadMoreProducts,
-                            modifier = contentModifier,
-                        )
-                    }
-                }
+                ProductosTab.PRODUCTOS -> ProductsTabContent(
+                    state = state,
+                    currency = currency,
+                    assetsBaseUrl = viewModel.tenantBaseUrl,
+                    error = state.error?.takeIf { !state.productFormOpen },
+                    onSearch = viewModel::setSearchQuery,
+                    onCategoryFilter = viewModel::setCategoryFilter,
+                    onBranchFilter = viewModel::setBranchFilter,
+                    onEdit = viewModel::openEditProduct,
+                    onDelete = viewModel::requestDeleteProduct,
+                    onLoadMore = viewModel::loadMoreProducts,
+                    modifier = contentModifier,
+                )
                 ProductosTab.CATEGORIAS -> CategoriesTabContent(
                     categories = state.categories,
                     loading = state.loading,
@@ -234,7 +173,7 @@ fun ProductosScreen(
             }
         }
 
-    if (state.productFormOpen && !useTwoPane) {
+    if (state.productFormOpen) {
         ProductFormDialog(
             form = state.productForm,
             categories = state.categories,

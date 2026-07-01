@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.layout.size
@@ -43,12 +43,25 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
-import com.bendey.restaurant.core.ui.layout.BendeyAdaptiveSplitLayout
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.BendeyCatalogOverlayLayout
 import com.bendey.restaurant.core.ui.layout.BendeyCompactCartBarHeight
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyPosWorkspaceMode
+import com.bendey.restaurant.core.ui.layout.adaptive.AdaptivePos
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPosWorkspaceMode
+import com.bendey.restaurant.core.ui.layout.adaptive.toPosWorkspaceMode
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosCartHeaderActions
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosOrderTypeOption
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosOrderTypeStrip
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosCartPanel
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosCatalogWorkspace
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosPortraitMobileLayout
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosWorkspace
+import com.bendey.restaurant.core.ui.components.BendeyPosProductCardVariant
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -114,8 +127,12 @@ fun PosScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
-    val useTwoPane = rememberUseAdaptiveTwoPane()
-    val isExpanded = useTwoPane
+    val profile = rememberBendeyAdaptiveProfile()
+    val workspaceMode = rememberPosWorkspaceMode()
+    val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||
+        workspaceMode == BendeyPosWorkspaceMode.Expanded
+    val usesMobileCartSheet = workspaceMode == BendeyPosWorkspaceMode.Compact ||
+        workspaceMode == BendeyPosWorkspaceMode.MediumPortrait
     var showCartSheet by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
     var barcodeScanOn by remember { mutableStateOf(false) }
@@ -145,95 +162,76 @@ fun PosScreen(
             .fillMaxSize()
             .background(BendeyColors.Background),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-        OrderTypeRow(
-            selected = state.orderType,
-            onSelect = { type ->
-                viewModel.setOrderType(type)
-                if (type != PosOrderType.QUICK_SALE) viewModel.openOrderDetailsModal()
-            },
-            compact = isExpanded,
-        )
-        if (isExpanded) {
-            PosPendingOrdersBar(
-                count = state.pendingOrdersCount,
-                orderCode = state.orderCode,
-                showEditDetails = state.isRestaurantOrder,
-                onOpenPending = viewModel::openPendingOrdersSheet,
-                onEditDetails = viewModel::openOrderDetailsModal,
-            )
-        }
-        if (isExpanded && (state.checkoutRawTotal > 0 || state.activeSessionId != null)) {
-            PosSessionBar(
-                orderCode = state.orderCode,
-                sessionTotal = state.sessionTotal,
-                cartTotal = state.cartTotal,
-                currency = currency,
-                checkoutLoading = state.checkoutSubmitting,
-                onCheckout = onCheckout,
-                canCheckout = state.canCheckout,
-            )
-        }
-        if (isExpanded) {
-            BendeyFlexibleContentSlot { inner ->
-                BendeyAdaptiveSplitLayout(
-                    modifier = inner,
-                    primaryWeight = 0.62f,
-                    secondaryWeight = 0.38f,
-                    primary = { catalogModifier ->
-                        CatalogPane(
-                            state = state,
-                            currency = currency,
-                            assetsBaseUrl = viewModel.assetsBaseUrl,
-                            sidebarCategories = true,
-                            onSearch = viewModel::setSearchQuery,
-                            onCategory = viewModel::selectCategory,
-                            onPreparationArea = viewModel::setPreparationAreaFilter,
-                            onAdd = viewModel::onProductClick,
-                            onComboClick = viewModel::onComboClick,
-                            onCatalogTab = viewModel::setCatalogTab,
-                            barcodeScanEnabled = barcodeScanOn,
-                            onBarcodeScanChange = { active ->
-                                barcodeScanOn = active
-                                showScanner = active
+        BendeyPosWorkspace(
+            profile = profile,
+            workspaceMode = workspaceMode,
+            compactContent = {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    OrderTypeRow(
+                        selected = state.orderType,
+                        onSelect = { type ->
+                            viewModel.setOrderType(type)
+                            if (type != PosOrderType.QUICK_SALE) viewModel.openOrderDetailsModal()
+                        },
+                        compact = false,
+                    )
+                    BendeyFlexibleContentSlot { inner ->
+                        BendeyCatalogOverlayLayout(
+                            modifier = inner,
+                            includeBottomBar = true,
+                            compactBarHeight = BendeyCompactCartBarHeight,
+                            bannerMessage = overlayError,
+                            onBannerDismiss = viewModel::dismissError,
+                            catalog = { catalogModifier, gridBottomPadding ->
+                                CatalogPane(
+                                    state = state,
+                                    currency = currency,
+                                    assetsBaseUrl = viewModel.assetsBaseUrl,
+                                    onSearch = viewModel::setSearchQuery,
+                                    onCategory = viewModel::selectCategory,
+                                    onPreparationArea = viewModel::setPreparationAreaFilter,
+                                    onAdd = viewModel::onProductClick,
+                                    onComboClick = viewModel::onComboClick,
+                                    onCatalogTab = viewModel::setCatalogTab,
+                                    onLoadMoreProducts = viewModel::loadMoreProducts,
+                                    barcodeScanEnabled = barcodeScanOn,
+                                    onBarcodeScanChange = { active ->
+                                        barcodeScanOn = active
+                                        showScanner = active
+                                    },
+                                    posStyle = true,
+                                    catalogBottomPadding = gridBottomPadding,
+                                    modifier = catalogModifier,
+                                )
                             },
-                            posStyle = true,
-                            catalogBottomPadding = 12.dp,
-                            modifier = catalogModifier,
+                            compactBar = { barModifier ->
+                                PosFloatingActionsBar(
+                                    pendingCount = state.pendingOrdersCount,
+                                    cartCount = state.cartCount,
+                                    payableTotal = state.checkoutRawTotal,
+                                    cartTotal = state.cartTotal,
+                                    currency = currency,
+                                    onOpenPending = viewModel::openPendingOrdersSheet,
+                                    onOpenCart = { showCartSheet = true },
+                                    modifier = barModifier,
+                                )
+                            },
+                        )
+                    }
+                }
+            },
+            portraitMobileContent = {
+                BendeyPosPortraitMobileLayout(
+                    orderTypeContent = {
+                        OrderTypeRow(
+                            selected = state.orderType,
+                            onSelect = { type ->
+                                viewModel.setOrderType(type)
+                                if (type != PosOrderType.QUICK_SALE) viewModel.openOrderDetailsModal()
+                            },
+                            compact = false,
                         )
                     },
-                    secondary = { cartModifier ->
-                        CartPane(
-                            state = state,
-                            currency = currency,
-                            onIncrement = viewModel::incrementCartLine,
-                            onDecrement = viewModel::decrementLine,
-                            onRemove = viewModel::removeLine,
-                            onClearCart = viewModel::clearCart,
-                            onSend = viewModel::sendComanda,
-                            onCheckout = onCheckout,
-                            onManualProduct = { showManualProduct = true },
-                            onSaveDraft = viewModel::saveDraftOrder,
-                            onReprint = viewModel::reprintComanda,
-                            onReprintAll = viewModel::reprintAllComandas,
-                            onVoidComanda = viewModel::openVoidComanda,
-                            onEditComandaNotes = viewModel::openComandaNoteEditor,
-                            onPrintPrecuenta = viewModel::printPrecuenta,
-                            onCartLineNotesChange = { line, notes -> viewModel.updateCartLineNotes(line.key, notes) },
-                            onCartLineUnitPriceChange = { line, price -> viewModel.updateCartLineUnitPrice(line.key, price) },
-                            canCheckout = state.canCheckout,
-                            canAnularComanda = state.canAnularComanda,
-                            modifier = cartModifier.background(BendeyColors.SurfaceVariant),
-                        )
-                    },
-                )
-            }
-        } else {
-            BendeyFlexibleContentSlot { inner ->
-                BendeyCatalogOverlayLayout(
-                    modifier = inner,
-                    includeBottomBar = true,
-                    compactBarHeight = BendeyCompactCartBarHeight,
                     bannerMessage = overlayError,
                     onBannerDismiss = viewModel::dismissError,
                     catalog = { catalogModifier, gridBottomPadding ->
@@ -247,17 +245,19 @@ fun PosScreen(
                             onAdd = viewModel::onProductClick,
                             onComboClick = viewModel::onComboClick,
                             onCatalogTab = viewModel::setCatalogTab,
+                            onLoadMoreProducts = viewModel::loadMoreProducts,
                             barcodeScanEnabled = barcodeScanOn,
                             onBarcodeScanChange = { active ->
                                 barcodeScanOn = active
                                 showScanner = active
                             },
                             posStyle = true,
+                            profile = profile,
                             catalogBottomPadding = gridBottomPadding,
                             modifier = catalogModifier,
                         )
                     },
-                    compactBar = { barModifier ->
+                    floatingBar = { barModifier ->
                         PosFloatingActionsBar(
                             pendingCount = state.pendingOrdersCount,
                             cartCount = state.cartCount,
@@ -266,14 +266,70 @@ fun PosScreen(
                             currency = currency,
                             onOpenPending = viewModel::openPendingOrdersSheet,
                             onOpenCart = { showCartSheet = true },
+                            chipSize = AdaptivePos.portraitFloatingActionChipSize(),
                             modifier = barModifier,
                         )
                     },
                 )
-            }
-        }
-        }
-        if (isExpanded) {
+            },
+            catalog = { catalogModifier, gridBottomPadding ->
+                CatalogPane(
+                    state = state,
+                    currency = currency,
+                    assetsBaseUrl = viewModel.assetsBaseUrl,
+                    onSearch = viewModel::setSearchQuery,
+                    onCategory = viewModel::selectCategory,
+                    onPreparationArea = viewModel::setPreparationAreaFilter,
+                    onAdd = viewModel::onProductClick,
+                    onComboClick = viewModel::onComboClick,
+                    onCatalogTab = viewModel::setCatalogTab,
+                    onLoadMoreProducts = viewModel::loadMoreProducts,
+                    onOrderType = { type ->
+                        viewModel.setOrderType(type)
+                        if (type != PosOrderType.QUICK_SALE) viewModel.openOrderDetailsModal()
+                    },
+                    barcodeScanEnabled = barcodeScanOn,
+                    onBarcodeScanChange = { active ->
+                        barcodeScanOn = active
+                        showScanner = active
+                    },
+                    posStyle = true,
+                    workspaceMode = workspaceMode,
+                    profile = profile,
+                    catalogBottomPadding = gridBottomPadding,
+                    modifier = catalogModifier.fillMaxSize(),
+                )
+            },
+            cartPanel = { cartModifier ->
+                CartPane(
+                    state = state,
+                    currency = currency,
+                    onIncrement = viewModel::incrementCartLine,
+                    onDecrement = viewModel::decrementLine,
+                    onRemove = viewModel::removeLine,
+                    onClearCart = viewModel::clearCart,
+                    onSend = viewModel::sendComanda,
+                    onCheckout = onCheckout,
+                    onManualProduct = { showManualProduct = true },
+                    onSaveDraft = viewModel::saveDraftOrder,
+                    onReprint = viewModel::reprintComanda,
+                    onReprintAll = viewModel::reprintAllComandas,
+                    onVoidComanda = viewModel::openVoidComanda,
+                    onEditComandaNotes = viewModel::openComandaNoteEditor,
+                    onPrintPrecuenta = viewModel::printPrecuenta,
+                    onCartLineNotesChange = { line, notes -> viewModel.updateCartLineNotes(line.key, notes) },
+                    onCartLineUnitPriceChange = { line, price -> viewModel.updateCartLineUnitPrice(line.key, price) },
+                    canCheckout = state.canCheckout,
+                    canAnularComanda = state.canAnularComanda,
+                    useWorkspacePanel = true,
+                    profile = profile,
+                    onOpenPending = viewModel::openPendingOrdersSheet,
+                    onEditDetails = viewModel::openOrderDetailsModal,
+                    modifier = cartModifier,
+                )
+            },
+        )
+        if (isLandscapeWorkspace) {
             BendeyOverlayBanner(
                 message = overlayError,
                 onDismiss = viewModel::dismissError,
@@ -288,7 +344,11 @@ fun PosScreen(
         }
     }
 
-    if (!isExpanded && showCartSheet) {
+    if (usesMobileCartSheet && showCartSheet) {
+        val sheetHeightFraction = when (workspaceMode) {
+            BendeyPosWorkspaceMode.MediumPortrait -> AdaptivePos.portraitCartSheetHeightFraction()
+            else -> 0.92f
+        }
         BendeyBottomSheet(
             onDismissRequest = { showCartSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -321,7 +381,7 @@ fun PosScreen(
                 canAnularComanda = state.canAnularComanda,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.92f),
+                    .fillMaxHeight(sheetHeightFraction),
             )
         }
     }
@@ -502,38 +562,19 @@ fun PosScreen(
 }
 
 @Composable
-private fun PosSessionBar(
-    orderCode: String?,
-    sessionTotal: Double,
-    cartTotal: Double,
-    currency: NumberFormat,
-    checkoutLoading: Boolean,
-    onCheckout: () -> Unit,
-    canCheckout: Boolean,
+private fun PosWorkspaceOrderTypeStrip(
+    selected: PosOrderType,
+    onSelect: (PosOrderType) -> Unit,
+    profile: BendeyAdaptiveProfile,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(BendeyColors.PrimaryContainer)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text(orderCode ?: "Venta activa", style = MaterialTheme.typography.labelMedium)
-            Text(
-                currency.format(sessionTotal + cartTotal),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = BendeyColors.Primary,
-            )
-        }
-        BendeyPrimaryButton(
-            text = if (checkoutLoading) "Cobrando…" else "Cobrar",
-            onClick = onCheckout,
-            enabled = canCheckout && !checkoutLoading,
-        )
-    }
+    BendeyPosOrderTypeStrip(
+        selectedLabel = selected.label,
+        options = PosOrderType.entries.map { BendeyPosOrderTypeOption(it.label) },
+        onSelect = { label ->
+            PosOrderType.entries.find { it.label == label }?.let(onSelect)
+        },
+        profile = profile,
+    )
 }
 
 @Composable
@@ -585,83 +626,229 @@ private fun CatalogPane(
     onComboClick: (PosComboItem) -> Unit,
     onCatalogTab: (PosCatalogTab) -> Unit,
     modifier: Modifier = Modifier,
+    onLoadMoreProducts: () -> Unit = {},
     sidebarCategories: Boolean = false,
     posStyle: Boolean = false,
+    workspaceMode: BendeyPosWorkspaceMode? = null,
+    profile: BendeyAdaptiveProfile = rememberBendeyAdaptiveProfile(),
+    onOrderType: ((PosOrderType) -> Unit)? = null,
     barcodeScanEnabled: Boolean = false,
     onBarcodeScanChange: ((Boolean) -> Unit)? = null,
     catalogBottomPadding: Dp = 12.dp,
 ) {
+    val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||
+        workspaceMode == BendeyPosWorkspaceMode.Expanded
+    val gap = AdaptivePos.catalogGridGap(profile)
+
     Column(modifier = modifier.fillMaxSize()) {
-        PosCatalogTabRow(selected = state.catalogTab, onSelect = onCatalogTab)
-        if (state.catalogTab == PosCatalogTab.PRODUCTS && state.preparationAreas.isNotEmpty()) {
-            BendeyHorizontalScrollRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                BendeyFilterChip(
-                    selected = state.preparationAreaFilter == null,
-                    onClick = { onPreparationArea(null) },
-                    text = "Todas",
-                    variant = BendeyFilterChipVariant.Pos,
-                )
-                state.preparationAreas.forEach { area ->
+        if (!isLandscapeWorkspace) {
+            PosCatalogTabRow(selected = state.catalogTab, onSelect = onCatalogTab)
+            if (state.catalogTab == PosCatalogTab.PRODUCTS && state.preparationAreas.isNotEmpty()) {
+                BendeyHorizontalScrollRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    showEdgeFade = true,
+                ) {
                     BendeyFilterChip(
-                        selected = state.preparationAreaFilter == area.id,
-                        onClick = { onPreparationArea(area.id) },
-                        text = area.name,
+                        selected = state.preparationAreaFilter == null,
+                        onClick = { onPreparationArea(null) },
+                        text = "Todas",
                         variant = BendeyFilterChipVariant.Pos,
                     )
+                    state.preparationAreas.forEach { area ->
+                        BendeyFilterChip(
+                            selected = state.preparationAreaFilter == area.id,
+                            onClick = { onPreparationArea(area.id) },
+                            text = area.name,
+                            variant = BendeyFilterChipVariant.Pos,
+                        )
+                    }
                 }
             }
         }
-        BendeyFlexibleContentSlot {
+        BendeyFlexibleContentSlot { slotModifier ->
             when (state.catalogTab) {
-                PosCatalogTab.PRODUCTS -> BendeyPosCatalogPane(
-                    searchQuery = state.searchQuery,
-                    onSearchChange = onSearch,
-                    categories = state.categories,
-                    selectedCategoryId = state.selectedCategoryId,
-                    onCategorySelect = onCategory,
-                    products = state.products,
-                    currency = currency,
-                    assetsBaseUrl = assetsBaseUrl,
-                    onProductClick = onAdd,
-                    modifier = it,
-                    sidebarCategories = sidebarCategories,
-                    compactCards = !posStyle,
-                    posCatalogStyle = posStyle,
-                    barcodeScanEnabled = barcodeScanEnabled,
-                    onBarcodeScanChange = onBarcodeScanChange,
-                    gridBottomPadding = catalogBottomPadding,
-                )
+                PosCatalogTab.PRODUCTS -> {
+                    if (isLandscapeWorkspace) {
+                        BendeyPosCatalogWorkspace(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = onSearch,
+                            categories = state.categories,
+                            selectedCategoryId = state.selectedCategoryId,
+                            onCategorySelect = onCategory,
+                            products = state.products,
+                            currency = currency,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onProductClick = onAdd,
+                            profile = profile,
+                            workspaceMode = workspaceMode!!,
+                            modifier = slotModifier,
+                            catalogTab = state.catalogTab,
+                            onCatalogTab = onCatalogTab,
+                            orderTypeStrip = if (onOrderType != null) {
+                                {
+                                    PosWorkspaceOrderTypeStrip(
+                                        selected = state.orderType,
+                                        onSelect = onOrderType,
+                                        profile = profile,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            onBarcodeScan = if (onBarcodeScanChange != null) {
+                                { onBarcodeScanChange(true) }
+                            } else {
+                                null
+                            },
+                            hasMoreProducts = state.hasMoreProducts,
+                            productsLoadingMore = state.productsLoadingMore,
+                            onLoadMoreProducts = onLoadMoreProducts,
+                            gridBottomPadding = catalogBottomPadding,
+                        )
+                    } else {
+                        BendeyPosCatalogPane(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = onSearch,
+                            categories = state.categories,
+                            selectedCategoryId = state.selectedCategoryId,
+                            onCategorySelect = onCategory,
+                            products = state.products,
+                            currency = currency,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onProductClick = onAdd,
+                            modifier = slotModifier,
+                            hasMoreProducts = state.hasMoreProducts,
+                            productsLoadingMore = state.productsLoadingMore,
+                            onLoadMoreProducts = onLoadMoreProducts,
+                            sidebarCategories = sidebarCategories,
+                            compactCards = !posStyle,
+                            posCatalogStyle = posStyle,
+                            barcodeScanEnabled = barcodeScanEnabled,
+                            onBarcodeScanChange = onBarcodeScanChange,
+                            gridBottomPadding = catalogBottomPadding,
+                        )
+                    }
+                }
                 PosCatalogTab.COMBOS -> {
                     val term = state.searchQuery.trim().lowercase()
-                    val filtered = if (term.isBlank()) state.combos else {
+                    val filtered = if (term.isBlank()) {
+                        state.combos
+                    } else {
                         state.combos.filter {
                             it.name.lowercase().contains(term) ||
                                 it.description.orEmpty().lowercase().contains(term)
                         }
                     }
-                    BoxWithConstraints(modifier = it) {
-                        val columns = BendeyTabletTokens.posProductGridColumns(maxWidth)
-                        BendeyLazyVerticalGrid(
-                            columns = GridCells.Fixed(columns),
-                            modifier = Modifier.fillMaxSize(),
-                            state = rememberLazyGridState(),
-                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = catalogBottomPadding),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            items(filtered, key = { it.id }) { combo ->
-                                BendeyPosProductCard(
-                                    name = combo.name,
-                                    price = combo.basePrice,
-                                    currency = currency,
-                                    imageUrl = combo.imageUrl,
-                                    assetsBaseUrl = assetsBaseUrl,
-                                    onClick = { onComboClick(combo) },
-                                )
+                    if (isLandscapeWorkspace) {
+                        BendeyPosCatalogWorkspace(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = onSearch,
+                            categories = emptyList(),
+                            selectedCategoryId = null,
+                            onCategorySelect = {},
+                            products = emptyList(),
+                            currency = currency,
+                            assetsBaseUrl = assetsBaseUrl,
+                            onProductClick = {},
+                            profile = profile,
+                            workspaceMode = workspaceMode!!,
+                            modifier = slotModifier,
+                            catalogTab = state.catalogTab,
+                            onCatalogTab = onCatalogTab,
+                            orderTypeStrip = if (onOrderType != null) {
+                                {
+                                    PosWorkspaceOrderTypeStrip(
+                                        selected = state.orderType,
+                                        onSelect = onOrderType,
+                                        profile = profile,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
+                            onBarcodeScan = if (onBarcodeScanChange != null) {
+                                { onBarcodeScanChange(true) }
+                            } else {
+                                null
+                            },
+                            gridBottomPadding = catalogBottomPadding,
+                            catalogBody = { bodyModifier ->
+                                BoxWithConstraints(modifier = bodyModifier.fillMaxSize()) {
+                                    val columns = AdaptivePos.productGridColumns(profile, maxWidth.value.toInt())
+                                    BendeyLazyVerticalGrid(
+                                        columns = GridCells.Fixed(columns),
+                                        modifier = Modifier.fillMaxSize(),
+                                        state = rememberLazyGridState(),
+                                        showScrollHints = false,
+                                        contentPadding = PaddingValues(
+                                            top = BendeySpacing.xxs,
+                                            bottom = catalogBottomPadding,
+                                        ),
+                                        horizontalArrangement = Arrangement.spacedBy(gap),
+                                        verticalArrangement = Arrangement.spacedBy(gap),
+                                    ) {
+                                        items(filtered, key = { it.id }) { combo ->
+                                            BendeyPosProductCard(
+                                                name = combo.name,
+                                                price = combo.basePrice,
+                                                currency = currency,
+                                                imageUrl = combo.imageUrl,
+                                                assetsBaseUrl = assetsBaseUrl,
+                                                onClick = { onComboClick(combo) },
+                                                variant = BendeyPosProductCardVariant.Workspace,
+                                                profile = profile,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        BoxWithConstraints(modifier = slotModifier) {
+                            val isTabletMobileCatalog = workspaceMode == BendeyPosWorkspaceMode.MediumPortrait ||
+                                (workspaceMode == null && PosPolishTokens.isTabletProfile(profile))
+                            val horizontalPad = if (isTabletMobileCatalog) {
+                                AdaptivePos.portraitMobileCatalogHorizontalPadding()
+                            } else {
+                                12.dp
+                            }
+                            val gridGap = if (isTabletMobileCatalog) AdaptivePos.portraitMobileGridGap() else 6.dp
+                            val columns = when {
+                                isTabletMobileCatalog ->
+                                    AdaptivePos.portraitMobileProductGridColumns(maxWidth.value.toInt())
+                                profile.isCompact ->
+                                    AdaptivePos.compactPosProductGridColumns(profile)
+                                else ->
+                                    BendeyTabletTokens.posProductGridColumns(profile, maxWidth)
+                            }
+                            BendeyLazyVerticalGrid(
+                                columns = GridCells.Fixed(columns),
+                                modifier = Modifier.fillMaxSize(),
+                                state = rememberLazyGridState(),
+                                showScrollHints = false,
+                                contentPadding = PaddingValues(
+                                    start = horizontalPad,
+                                    end = horizontalPad,
+                                    top = 2.dp,
+                                    bottom = catalogBottomPadding,
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(gridGap),
+                                verticalArrangement = Arrangement.spacedBy(gridGap),
+                            ) {
+                                items(filtered, key = { it.id }) { combo ->
+                                    BendeyPosProductCard(
+                                        name = combo.name,
+                                        price = combo.basePrice,
+                                        currency = currency,
+                                        imageUrl = combo.imageUrl,
+                                        assetsBaseUrl = assetsBaseUrl,
+                                        onClick = { onComboClick(combo) },
+                                        variant = BendeyPosProductCardVariant.Standard,
+                                        profile = profile,
+                                    )
+                                }
                             }
                         }
                     }
@@ -693,6 +880,10 @@ private fun CartPane(
     canCheckout: Boolean,
     canAnularComanda: Boolean,
     modifier: Modifier = Modifier,
+    useWorkspacePanel: Boolean = false,
+    profile: BendeyAdaptiveProfile = BendeyAdaptiveProfile.CompactPortrait,
+    onOpenPending: () -> Unit = {},
+    onEditDetails: () -> Unit = {},
 ) {
     var notesLine by remember { mutableStateOf<PosCartLine?>(null) }
     var notesDraft by remember { mutableStateOf("") }
@@ -722,90 +913,184 @@ private fun CartPane(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        if (state.hasSentComandas) {
-            PosSentOrdersSection(
-                orders = state.sessionOrders.filter { it.comandas.isNotEmpty() },
-                reprintingOrderId = state.reprintingOrderId,
-                reprintingAll = state.reprintingAll,
-                onReprint = onReprint,
-                onReprintAll = onReprintAll,
-                onVoidComanda = onVoidComanda,
-                onEditComandaNotes = onEditComandaNotes,
-                canAnularComanda = canAnularComanda,
-            )
+    val cartTitle = buildString {
+        append("Carrito (${state.cartCount})")
+        state.orderCode?.let { append(" · $it") }
+    }
+    val cartTotal = if (state.sessionTotal > 0) state.sessionTotal + state.cartTotal else state.cartTotal
+    val cartSubtitle = buildString {
+        if (state.pendingOrdersCount > 0) {
+            append("${state.pendingOrdersCount} pedidos pendientes")
         }
-        BendeyPosCartPane(
-            title = buildString {
-                append("Carrito (${state.cartCount})")
-                state.orderCode?.let { append(" · $it") }
-            },
-            lines = state.cart,
-            total = if (state.sessionTotal > 0) state.sessionTotal + state.cartTotal else state.cartTotal,
-            currency = currency,
-            sending = state.sending,
-            onIncrement = onIncrement,
-            onDecrement = onDecrement,
-            onClearCart = onClearCart,
-            canClearCart = state.canClearCart,
-            editablePrice = state.cart.isNotEmpty(),
-            showLineNotes = state.isRestaurantOrder && state.cart.isNotEmpty(),
-            onLineNotesClick = { line ->
-                notesLine = line
-                notesDraft = line.notes
-            },
-            onLineUnitPriceChange = onCartLineUnitPriceChange,
-            modifier = Modifier.weight(1f),
-            primaryAction = {
-                val actions = buildList {
-                    add(
-                        BendeyCartAction(
-                            text = "Producto manual",
-                            onClick = onManualProduct,
-                            style = BendeyCartActionStyle.SecondaryFilled,
-                        ),
-                    )
-                    if (state.isRestaurantOrder) {
-                        add(
-                            BendeyCartAction(
-                                text = if (state.sending) "Enviando…" else "Enviar comanda",
-                                onClick = onSend,
-                                enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
-                                style = BendeyCartActionStyle.FilledTonal,
-                            ),
-                        )
-                        add(
-                            BendeyCartAction(
-                                text = if (state.savingDraft) "Guardando…" else "Guardar borrador",
-                                onClick = onSaveDraft,
-                                enabled = !state.sending && !state.savingDraft,
-                                style = BendeyCartActionStyle.NeutralFilled,
-                            ),
-                        )
-                        add(
-                            BendeyCartAction(
-                                text = if (state.printingPrecuenta) "Precuenta…" else "Precuenta",
-                                onClick = onPrintPrecuenta,
-                                enabled = !state.sending && !state.savingDraft && !state.printingPrecuenta,
-                                style = BendeyCartActionStyle.LowEmphasisFilled,
+    }.ifBlank { null }
+
+    val cartBody: @Composable () -> Unit = {
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (state.hasSentComandas) {
+                PosSentOrdersSection(
+                    orders = state.sessionOrders.filter { it.comandas.isNotEmpty() },
+                    reprintingOrderId = state.reprintingOrderId,
+                    reprintingAll = state.reprintingAll,
+                    onReprint = onReprint,
+                    onReprintAll = onReprintAll,
+                    onVoidComanda = onVoidComanda,
+                    onEditComandaNotes = onEditComandaNotes,
+                    canAnularComanda = canAnularComanda,
+                )
+            }
+            BendeyPosCartPane(
+                title = cartTitle,
+                lines = state.cart,
+                total = cartTotal,
+                currency = currency,
+                sending = state.sending,
+                onIncrement = onIncrement,
+                onDecrement = onDecrement,
+                onClearCart = onClearCart,
+                canClearCart = state.canClearCart,
+                editablePrice = state.cart.isNotEmpty(),
+                showLineNotes = state.isRestaurantOrder && state.cart.isNotEmpty(),
+                onLineNotesClick = { line ->
+                    notesLine = line
+                    notesDraft = line.notes
+                },
+                onLineUnitPriceChange = onCartLineUnitPriceChange,
+                modifier = Modifier.weight(1f),
+                showHeader = !useWorkspacePanel,
+                showTotal = !useWorkspacePanel,
+                lineSpacing = if (useWorkspacePanel) AdaptivePos.cartLineGap(profile) else BendeySpacing.xxs,
+                workspaceLines = useWorkspacePanel,
+                lineStepperSize = if (useWorkspacePanel) AdaptivePos.cartLineStepperSize(profile) else 40.dp,
+                lineInnerPadding = if (useWorkspacePanel) AdaptivePos.cartLinePadding(profile) else BendeySpacing.sm,
+                primaryAction = if (!useWorkspacePanel) {
+                    {
+                        BendeyCartActionGrid(
+                            actions = buildCartActions(
+                                state = state,
+                                onManualProduct = onManualProduct,
+                                onSend = onSend,
+                                onSaveDraft = onSaveDraft,
+                                onPrintPrecuenta = onPrintPrecuenta,
                             ),
                         )
                     }
-                }
-                BendeyCartActionGrid(actions = actions)
+                } else {
+                    null
+                },
+                secondaryAction = if (!useWorkspacePanel && canCheckout) {
+                    {
+                        BendeyPrimaryButton(
+                            text = checkoutLabel(state),
+                            onClick = onCheckout,
+                            enabled = !state.sending && !state.checkoutSubmitting && !state.savingDraft,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                } else {
+                    null
+                },
+            )
+        }
+    }
+
+    if (useWorkspacePanel) {
+        BendeyPosCartPanel(
+            title = cartTitle,
+            subtitle = cartSubtitle,
+            total = cartTotal,
+            currency = currency,
+            profile = profile,
+            modifier = modifier,
+            headerActions = {
+                BendeyPosCartHeaderActions(
+                    pendingCount = state.pendingOrdersCount,
+                    showEditDetails = state.isRestaurantOrder,
+                    onOpenPending = onOpenPending,
+                    onEditDetails = onEditDetails,
+                    canClearCart = state.canClearCart,
+                    onClearCart = onClearCart,
+                )
             },
-            secondaryAction = if (canCheckout) {
+            content = cartBody,
+            footerActions = {
+                BendeyCartActionGrid(
+                    actions = buildCartActions(
+                        state = state,
+                        onManualProduct = onManualProduct,
+                        onSend = onSend,
+                        onSaveDraft = onSaveDraft,
+                        onPrintPrecuenta = onPrintPrecuenta,
+                    ),
+                    horizontalSpacing = AdaptivePos.cartActionGridSpacing(profile),
+                    verticalSpacing = AdaptivePos.cartActionGridSpacing(profile),
+                )
+            },
+            checkoutAction = if (canCheckout) {
                 {
                     BendeyPrimaryButton(
-                        text = if (state.checkoutSubmitting) "Cobrando…" else if (state.isDirectSale) "Cobrar venta" else "Cobrar",
+                        text = checkoutLabel(state),
                         onClick = onCheckout,
                         enabled = !state.sending && !state.checkoutSubmitting && !state.savingDraft,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = BendeySpacing.touchTarget),
                     )
                 }
             } else {
                 null
             },
+        )
+    } else {
+        Column(modifier = modifier.fillMaxSize()) {
+            cartBody()
+        }
+    }
+}
+
+private fun checkoutLabel(state: PosUiState): String = when {
+    state.checkoutSubmitting -> "Cobrando…"
+    state.isDirectSale -> "Cobrar venta"
+    else -> "Cobrar"
+}
+
+private fun buildCartActions(
+    state: PosUiState,
+    onManualProduct: () -> Unit,
+    onSend: () -> Unit,
+    onSaveDraft: () -> Unit,
+    onPrintPrecuenta: () -> Unit,
+): List<BendeyCartAction> = buildList {
+    add(
+        BendeyCartAction(
+            text = "Producto manual",
+            onClick = onManualProduct,
+            style = BendeyCartActionStyle.SecondaryFilled,
+        ),
+    )
+    if (state.isRestaurantOrder) {
+        add(
+            BendeyCartAction(
+                text = if (state.sending) "Enviando…" else "Enviar comanda",
+                onClick = onSend,
+                enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
+                style = BendeyCartActionStyle.FilledTonal,
+            ),
+        )
+        add(
+            BendeyCartAction(
+                text = if (state.savingDraft) "Guardando…" else "Guardar borrador",
+                onClick = onSaveDraft,
+                enabled = !state.sending && !state.savingDraft,
+                style = BendeyCartActionStyle.NeutralFilled,
+            ),
+        )
+        add(
+            BendeyCartAction(
+                text = if (state.printingPrecuenta) "Precuenta…" else "Precuenta",
+                onClick = onPrintPrecuenta,
+                enabled = !state.sending && !state.savingDraft && !state.printingPrecuenta,
+                style = BendeyCartActionStyle.LowEmphasisFilled,
+            ),
         )
     }
 }

@@ -60,6 +60,7 @@ import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -150,7 +151,8 @@ fun MesasAdminScreen(
             val tables = state.paginatedTables
             if (state.viewMode == MesasAdminViewMode.GRID) {
                 BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val columns = BendeyTabletTokens.tableGridColumns(maxWidth)
+                    val profile = rememberBendeyAdaptiveProfile()
+                    val columns = BendeyTabletTokens.tableGridColumns(profile)
                     BendeyLazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier.fillMaxSize(),

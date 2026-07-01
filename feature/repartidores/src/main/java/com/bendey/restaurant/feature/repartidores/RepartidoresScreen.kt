@@ -52,7 +52,6 @@ import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +61,6 @@ fun RepartidoresScreen(
     viewModel: RepartidoresViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val useTwoPane = rememberUseAdaptiveTwoPane()
 
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -100,72 +98,20 @@ fun RepartidoresScreen(
             }
             state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
-                RepartidoresTabKind.DRIVERS -> {
-                    if (useTwoPane) {
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                        ) {
-                            BendeyLazyColumn(state = rememberLazyListState(),
-                                contentPadding = PaddingValues(BendeySpacing.md),
-                                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                                modifier = Modifier
-                                    .weight(0.42f)
-                                    .fillMaxHeight(),
-                            ) {
-                                items(state.drivers, key = { it.id }) { driver ->
-                                    DriverRow(
-                                        driver = driver,
-                                        selected = state.driverFormOpen && state.editingDriverId == driver.id,
-                                        onEdit = { viewModel.openEditDriver(driver.id) },
-                                        onDelete = { viewModel.requestDeleteDriver(driver.id) },
-                                    )
-                                }
-                            }
-                            VerticalDivider()
-                            Column(
-                                modifier = Modifier
-                                    .weight(0.58f)
-                                    .fillMaxHeight()
-                                    .padding(BendeySpacing.md),
-                            ) {
-                                if (state.driverFormOpen) {
-                                    DriverFormPane(
-                                        form = state.driverForm,
-                                        loading = state.actionLoading,
-                                        error = state.error,
-                                        isEditing = state.editingDriverId != null,
-                                        companies = state.companies,
-                                        onDismiss = viewModel::dismissDriverForm,
-                                        onFormChange = viewModel::updateDriverForm,
-                                        onSave = viewModel::saveDriver,
-                                    )
-                                } else {
-                                    BendeyEmptyState(
-                                        title = "Selecciona o crea un repartidor",
-                                        description = "Consulta y edita datos sin ocultar la lista.",
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        BendeyLazyColumn(state = rememberLazyListState(),
-                            contentPadding = PaddingValues(BendeySpacing.md),
-                            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                        ) {
-                            items(state.drivers, key = { it.id }) { driver ->
-                                DriverRow(
-                                    driver = driver,
-                                    onEdit = { viewModel.openEditDriver(driver.id) },
-                                    onDelete = { viewModel.requestDeleteDriver(driver.id) },
-                                )
-                            }
-                        }
+                RepartidoresTabKind.DRIVERS -> BendeyLazyColumn(
+                    state = rememberLazyListState(),
+                    contentPadding = PaddingValues(BendeySpacing.md),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                ) {
+                    items(state.drivers, key = { it.id }) { driver ->
+                        DriverRow(
+                            driver = driver,
+                            onEdit = { viewModel.openEditDriver(driver.id) },
+                            onDelete = { viewModel.requestDeleteDriver(driver.id) },
+                        )
                     }
                 }
                 RepartidoresTabKind.COMPANIES -> BendeyLazyColumn(state = rememberLazyListState(),
@@ -183,7 +129,7 @@ fun RepartidoresScreen(
         }
     }
 
-    if (state.driverFormOpen && (!useTwoPane || state.tab != RepartidoresTabKind.DRIVERS)) {
+    if (state.driverFormOpen) {
         DriverFormDialog(state.driverForm, state.actionLoading, state.error, state.editingDriverId != null, state.companies, viewModel::dismissDriverForm, viewModel::updateDriverForm, viewModel::saveDriver)
     }
     if (state.companyFormOpen) {

@@ -59,6 +59,7 @@ import com.bendey.restaurant.core.domain.pos.setOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleExtraSelection
 import com.bendey.restaurant.core.domain.pos.setSlotOptionQuantity
 import com.bendey.restaurant.core.domain.pos.toggleSlotOption
+import com.bendey.restaurant.core.domain.pos.updateCartLineNotes
 import com.bendey.restaurant.core.domain.pos.validateModifierSelection
 import com.bendey.restaurant.core.domain.pos.validateSlotSelections
 import com.bendey.restaurant.core.domain.products.ProductsRepository
@@ -93,6 +94,9 @@ data class MesaUiState(
     val printingPrecuenta: Boolean = false,
     val session: TableSessionDetail? = null,
     val products: List<PosProduct> = emptyList(),
+    val productsTotal: Int = 0,
+    val productsPage: Int = 1,
+    val productsLoadingMore: Boolean = false,
     val categories: List<ProductCategory> = emptyList(),
     val selectedCategoryId: Int? = null,
     val searchQuery: String = "",
@@ -123,6 +127,9 @@ data class MesaUiState(
     val voidReason: String = "",
     val voidPin: String = "",
     val voidSubmitting: Boolean = false,
+    val comandaNoteTarget: SessionComandaSummary? = null,
+    val comandaNoteText: String = "",
+    val comandaNoteSubmitting: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
     val canChargeOrders: Boolean = false,
@@ -148,6 +155,7 @@ data class MesaUiState(
     val canClearCart: Boolean get() = cart.isNotEmpty() && !hasSentComandas
     val canCloseMesa: Boolean get() =
         canChargeOrders && sessionTotal <= 0 && cart.isEmpty() && !checkoutSubmitting && !sending
+    val hasMoreProducts: Boolean get() = products.size < productsTotal
 }
 
 private fun roundMoney(value: Double): Double = round(value * 100.0) / 100.0
@@ -232,6 +240,12 @@ class MesaViewModel @Inject constructor(
     fun selectCategory(categoryId: Int?) {
         _uiState.update { it.copy(selectedCategoryId = categoryId) }
         viewModelScope.launch { loadProducts() }
+    }
+
+    fun loadMoreProducts() {
+        val state = _uiState.value
+        if (state.productsLoadingMore || !state.hasMoreProducts) return
+        viewModelScope.launch { loadProducts(reset = false) }
     }
 
     fun setCatalogTab(tab: PosCatalogTab) {
@@ -587,6 +601,10 @@ class MesaViewModel @Inject constructor(
         _uiState.update { it.copy(cart = emptyList(), snackMessage = "Carrito vaciado") }
     }
 
+    fun updateCartLineNotes(cartKey: String, notes: String) {
+        _uiState.update { it.copy(cart = updateCartLineNotes(it.cart, cartKey, notes)) }
+    }
+
     fun openVoidComanda(comanda: SessionComandaSummary) {
         if (!_uiState.value.canAnularComanda) return
         _uiState.update {
@@ -633,6 +651,45 @@ class MesaViewModel @Inject constructor(
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(voidSubmitting = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openComandaNoteEditor(comanda: SessionComandaSummary) {
+        _uiState.update {
+            it.copy(comandaNoteTarget = comanda, comandaNoteText = comanda.notes.orEmpty(), error = null)
+        }
+    }
+
+    fun dismissComandaNoteEditor() {
+        if (_uiState.value.comandaNoteSubmitting) return
+        _uiState.update { it.copy(comandaNoteTarget = null, comandaNoteText = "") }
+    }
+
+    fun setComandaNoteText(text: String) {
+        _uiState.update { it.copy(comandaNoteText = text) }
+    }
+
+    fun confirmComandaNote() {
+        val comanda = _uiState.value.comandaNoteTarget ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(comandaNoteSubmitting = true, error = null) }
+            when (val result = posRepository.updateComandaNotes(comanda.id, _uiState.value.comandaNoteText)) {
+                is AppResult.Success -> {
+                    loadSession()
+                    _uiState.update {
+                        it.copy(
+                            comandaNoteSubmitting = false,
+                            comandaNoteTarget = null,
+                            comandaNoteText = "",
+                            snackMessage = "Notas actualizadas",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(comandaNoteSubmitting = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
             }
@@ -1102,19 +1159,41 @@ class MesaViewModel @Inject constructor(
         loadProducts()
     }
 
-    private suspend fun loadProducts() {
+    private suspend fun loadProducts(reset: Boolean = true) {
+        val snapshot = _uiState.value
         val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
-        val query = _uiState.value.searchQuery.trim()
-        val categoryId = _uiState.value.selectedCategoryId
+        val query = snapshot.searchQuery.trim()
+        val categoryId = snapshot.selectedCategoryId
+        if (!reset) {
+            if (snapshot.productsLoadingMore || !snapshot.hasMoreProducts) return
+            _uiState.update { it.copy(productsLoadingMore = true) }
+        }
+        val page = if (reset) 1 else snapshot.productsPage + 1
         when (val result = posRepository.loadProducts(
             query = query,
             categoryId = categoryId,
-            page = 1,
+            page = page,
             branchId = branchId,
             catalogOnly = true,
         )) {
-            is AppResult.Success -> _uiState.update { it.copy(products = result.data.first) }
-            is AppResult.Error -> _uiState.update { it.copy(error = result.message) }
+            is AppResult.Success -> {
+                val (newProducts, total) = result.data
+                _uiState.update { current ->
+                    if (current.searchQuery.trim() != query || current.selectedCategoryId != categoryId) {
+                        current.copy(productsLoadingMore = false)
+                    } else {
+                        current.copy(
+                            productsLoadingMore = false,
+                            products = if (reset) newProducts else current.products + newProducts,
+                            productsTotal = total,
+                            productsPage = page,
+                        )
+                    }
+                }
+            }
+            is AppResult.Error -> _uiState.update {
+                it.copy(productsLoadingMore = false, error = result.message)
+            }
             AppResult.Loading -> Unit
         }
     }

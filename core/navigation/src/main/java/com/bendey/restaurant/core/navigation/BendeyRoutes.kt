@@ -56,4 +56,11 @@ object BendeyRoutes {
     }
 
     fun isMesaDetail(route: String?): Boolean = route?.startsWith("mesa/") == true
+
+    /** Rutas de operación diaria (barra operativa / sin rail en tablet). */
+    fun isOperationalRoute(route: String?): Boolean {
+        if (route == null) return false
+        if (isMesaDetail(route)) return true
+        return route in bottomBarRoutes
+    }
 }

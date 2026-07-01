@@ -55,7 +55,7 @@ import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
+import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +66,6 @@ fun ConfiguracionScreen(
     viewModel: ConfiguracionViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val useTwoPane = rememberUseAdaptiveTwoPane()
 
     PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = { viewModel.refresh(forceNetwork = true) }, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -82,77 +81,41 @@ fun ConfiguracionScreen(
                     )
                 },
             )
-            if (useTwoPane) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .padding(vertical = BendeySpacing.sm, horizontal = BendeySpacing.xs),
-                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
-                    ) {
-                        ConfigTab.entries.forEach { tab ->
-                            BendeyFilterChip(
-                                selected = state.tab == tab,
-                                onClick = { viewModel.setTab(tab) },
-                                text = tab.label,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                    VerticalDivider()
-                    Column(Modifier.weight(1f)) {
-                        state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
-                        ConfigTabContent(state, viewModel, onOpenPrinting, useTwoPane)
-                    }
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    horizontal = BendeySpacing.sm,
+                    vertical = BendeySpacing.xxs,
+                ),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            ) {
+                ConfigTab.entries.forEach { tab ->
+                    BendeyFilterChip(
+                        selected = state.tab == tab,
+                        onClick = { viewModel.setTab(tab) },
+                        text = tab.label,
+                    )
                 }
-            } else {
-                BendeyHorizontalScrollRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(
-                        horizontal = BendeySpacing.sm,
-                        vertical = BendeySpacing.xxs,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    ConfigTab.entries.forEach { tab ->
-                        BendeyFilterChip(
-                            selected = state.tab == tab,
-                            onClick = { viewModel.setTab(tab) },
-                            text = tab.label,
-                        )
-                    }
-                }
-                state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
-                ConfigTabContent(
-                    state = state,
-                    viewModel = viewModel,
-                    onOpenPrinting = onOpenPrinting,
-                    useTwoPane = useTwoPane,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                )
             }
+            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
+            ConfigTabContent(
+                state = state,
+                viewModel = viewModel,
+                onOpenPrinting = onOpenPrinting,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            )
         }
     }
 
     if (state.configFormOpen) ConfigFormDialog(state, viewModel)
     if (state.sunatFormOpen) SunatFormDialog(state, viewModel)
     if (state.pinDialogOpen) PinDialog(state, viewModel)
-    if (!useTwoPane || state.tab != ConfigTab.OPERACION) {
-        StaffCreateDialog(state, viewModel)
-        StaffEditDialog(state, viewModel)
-    }
-    if (state.branchFormOpen && (!useTwoPane || state.tab != ConfigTab.BRANCHES)) {
-        BranchFormDialog(state, viewModel)
-    }
-    if (state.seriesFormOpen && (!useTwoPane || state.tab != ConfigTab.SERIES)) {
-        SeriesFormDialog(state, viewModel)
-    }
+    StaffCreateDialog(state, viewModel)
+    StaffEditDialog(state, viewModel)
+    if (state.branchFormOpen) BranchFormDialog(state, viewModel)
+    if (state.seriesFormOpen) SeriesFormDialog(state, viewModel)
     state.deleteBranchId?.let {
         BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDeleteBranch,
@@ -182,14 +145,13 @@ private fun ConfigTabContent(
     state: ConfiguracionUiState,
     viewModel: ConfiguracionViewModel,
     onOpenPrinting: () -> Unit,
-    useTwoPane: Boolean,
     modifier: Modifier = Modifier,
 ) {
     when (state.tab) {
         ConfigTab.GENERAL -> GeneralTab(state, onOpenPrinting, viewModel, modifier)
-        ConfigTab.OPERACION -> OperacionTab(state, viewModel, useTwoPane, modifier)
-        ConfigTab.BRANCHES -> BranchesTab(state, viewModel, useTwoPane, modifier)
-        ConfigTab.SERIES -> SeriesTab(state, viewModel, useTwoPane, modifier)
+        ConfigTab.OPERACION -> OperacionTab(state, viewModel, modifier)
+        ConfigTab.BRANCHES -> BranchesTab(state, viewModel, modifier)
+        ConfigTab.SERIES -> SeriesTab(state, viewModel, modifier)
     }
 }
 
@@ -245,73 +207,22 @@ private fun GeneralTab(
 private fun BranchesTab(
     state: ConfiguracionUiState,
     viewModel: ConfiguracionViewModel,
-    useTwoPane: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (useTwoPane) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = BendeySpacing.xs),
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(0.42f)
-                    .fillMaxHeight(),
-            ) {
-                Row(Modifier.fillMaxWidth().padding(BendeySpacing.md), horizontalArrangement = Arrangement.End) {
-                    if (state.canManageRestaurantSettings) {
-                        BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
-                    }
-                }
-                BendeyLazyColumn(state = rememberLazyListState(),
-                    contentPadding = PaddingValues(horizontal = BendeySpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    items(state.branches, key = { it.id }) { branch ->
-                        BranchCard(
-                            branch = branch,
-                            viewModel = viewModel,
-                            canManage = state.canManageRestaurantSettings,
-                            selected = state.branchFormOpen && state.branchForm.id == branch.id,
-                        )
-                    }
-                }
-            }
-            VerticalDivider()
-            Column(
-                modifier = Modifier
-                    .weight(0.58f)
-                    .fillMaxHeight()
-                    .padding(BendeySpacing.md),
-            ) {
-                if (state.branchFormOpen) {
-                    BranchFormPane(state, viewModel)
-                } else {
-                    com.bendey.restaurant.core.ui.components.BendeyEmptyState(
-                        title = "Selecciona o crea una sucursal",
-                        description = "Edita datos sin ocultar la lista de sucursales.",
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(BendeySpacing.md), horizontalArrangement = Arrangement.End) {
+            if (state.canManageRestaurantSettings) {
+                BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
             }
         }
-    } else {
-        Column(modifier = modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(BendeySpacing.md), horizontalArrangement = Arrangement.End) {
-                if (state.canManageRestaurantSettings) {
-                    BendeyPrimaryButton("Nueva sucursal", viewModel::openCreateBranch, fillWidth = false)
-                }
-            }
-            BendeyLazyColumn(state = rememberLazyListState(),
-                contentPadding = PaddingValues(horizontal = BendeySpacing.md),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            ) {
-                items(state.branches, key = { it.id }) { branch ->
-                    BranchCard(branch, viewModel, state.canManageRestaurantSettings)
-                }
+        BendeyLazyColumn(
+            state = rememberLazyListState(),
+            contentPadding = PaddingValues(horizontal = BendeySpacing.md),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            items(state.branches, key = { it.id }) { branch ->
+                BranchCard(branch, viewModel, state.canManageRestaurantSettings)
             }
         }
     }
@@ -322,10 +233,9 @@ private fun BranchCard(
     branch: BranchItem,
     viewModel: ConfiguracionViewModel,
     canManage: Boolean,
-    selected: Boolean = false,
 ) {
     BendeyCard(
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+        containerColor = BendeyColors.Surface,
         contentPadding = PaddingValues(BendeySpacing.cardPadding),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -363,111 +273,43 @@ private fun BranchCard(
 private fun SeriesTab(
     state: ConfiguracionUiState,
     viewModel: ConfiguracionViewModel,
-    useTwoPane: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (useTwoPane) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = BendeySpacing.xs),
+    Column(modifier = modifier.fillMaxSize()) {
+        BendeyHorizontalScrollRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(
+                horizontal = BendeySpacing.md,
+                vertical = BendeySpacing.xs,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(0.42f)
-                    .fillMaxHeight(),
-            ) {
-                BendeyHorizontalScrollRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(
-                        horizontal = BendeySpacing.md,
-                        vertical = BendeySpacing.xs,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    state.branches.forEach { branch ->
-                        BendeyFilterChip(
-                            selected = state.selectedBranchId == branch.id,
-                            onClick = { viewModel.selectBranch(branch.id) },
-                            label = { Text(branch.name) },
-                        )
-                    }
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md), horizontalArrangement = Arrangement.End) {
-                    if (state.canManageRestaurantSettings) {
-                        BendeyPrimaryButton(
-                            "Nueva serie",
-                            viewModel::openCreateSeries,
-                            fillWidth = false,
-                            enabled = state.selectedBranchId != null,
-                        )
-                    }
-                }
-                BendeyLazyColumn(state = rememberLazyListState(),
-                    contentPadding = PaddingValues(BendeySpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    items(state.series, key = { it.id }) { series ->
-                        SeriesCard(
-                            series = series,
-                            viewModel = viewModel,
-                            canManage = state.canManageRestaurantSettings,
-                            sunatEnabled = state.sunat?.sunatEnabled == true,
-                            selected = state.seriesFormOpen && state.seriesForm.id == series.id,
-                        )
-                    }
-                }
-            }
-            VerticalDivider()
-            Column(
-                modifier = Modifier
-                    .weight(0.58f)
-                    .fillMaxHeight()
-                    .padding(BendeySpacing.md),
-            ) {
-                if (state.seriesFormOpen) {
-                    SeriesFormPane(state, viewModel)
-                } else {
-                    com.bendey.restaurant.core.ui.components.BendeyEmptyState(
-                        title = "Selecciona o crea una serie",
-                        description = "Configura series de comprobantes sin ocultar la lista.",
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+            state.branches.forEach { branch ->
+                BendeyFilterChip(
+                    selected = state.selectedBranchId == branch.id,
+                    onClick = { viewModel.selectBranch(branch.id) },
+                    label = { Text(branch.name) },
+                )
             }
         }
-    } else {
-        Column(modifier = modifier.fillMaxSize()) {
-            BendeyHorizontalScrollRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(
-                    horizontal = BendeySpacing.md,
-                    vertical = BendeySpacing.xs,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-            ) {
-                state.branches.forEach { branch ->
-                    BendeyFilterChip(
-                        selected = state.selectedBranchId == branch.id,
-                        onClick = { viewModel.selectBranch(branch.id) },
-                        label = { Text(branch.name) },
-                    )
-                }
+        Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md), horizontalArrangement = Arrangement.End) {
+            if (state.canManageRestaurantSettings) {
+                BendeyPrimaryButton(
+                    "Nueva serie",
+                    viewModel::openCreateSeries,
+                    fillWidth = false,
+                    enabled = state.selectedBranchId != null,
+                )
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md), horizontalArrangement = Arrangement.End) {
-                if (state.canManageRestaurantSettings) {
-                    BendeyPrimaryButton("Nueva serie", viewModel::openCreateSeries, fillWidth = false, enabled = state.selectedBranchId != null)
-                }
-            }
-            BendeyLazyColumn(state = rememberLazyListState(),
-                contentPadding = PaddingValues(BendeySpacing.md),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            ) {
-                items(state.series, key = { it.id }) { series ->
-                    SeriesCard(series, viewModel, state.canManageRestaurantSettings, state.sunat?.sunatEnabled == true)
-                }
+        }
+        BendeyLazyColumn(
+            state = rememberLazyListState(),
+            contentPadding = PaddingValues(BendeySpacing.md),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        ) {
+            items(state.series, key = { it.id }) { series ->
+                SeriesCard(series, viewModel, state.canManageRestaurantSettings, state.sunat?.sunatEnabled == true)
             }
         }
     }
@@ -479,10 +321,9 @@ private fun SeriesCard(
     viewModel: ConfiguracionViewModel,
     canManage: Boolean,
     sunatEnabled: Boolean,
-    selected: Boolean = false,
 ) {
     BendeyCard(
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+        containerColor = BendeyColors.Surface,
         contentPadding = PaddingValues(BendeySpacing.cardPadding),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -591,40 +432,6 @@ private fun SeriesCard(
     }
 }
 
-@Composable private fun BranchFormPane(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    Column(Modifier.fillMaxSize()) {
-        Text(
-            if (state.branchForm.id == null) "Nueva sucursal" else "Editar sucursal",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = BendeySpacing.sm),
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-        ) {
-            BranchFormFields(state, viewModel)
-        }
-        HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.sm))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
-            BendeyTextButton(
-                text = "Cancelar",
-                onClick = viewModel::dismissBranchForm,
-                enabled = !state.actionLoading,
-                modifier = Modifier.weight(1f),
-            )
-            BendeyPrimaryButton(
-                text = if (state.actionLoading) "Guardando…" else "Guardar",
-                onClick = viewModel::saveBranch,
-                enabled = !state.actionLoading,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
 @Composable private fun BranchFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissBranchForm,
@@ -634,6 +441,7 @@ private fun SeriesCard(
         onDismiss = viewModel::dismissBranchForm,
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
+        enableContentScroll = true,
     ) {
         BranchFormFields(state, viewModel)
     }
@@ -669,40 +477,6 @@ private fun SeriesCard(
     }
 }
 
-@Composable private fun SeriesFormPane(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
-    Column(Modifier.fillMaxSize()) {
-        Text(
-            if (state.seriesForm.id == null) "Nueva serie" else "Editar serie",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = BendeySpacing.sm),
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-        ) {
-            SeriesFormFields(state, viewModel)
-        }
-        HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.sm))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
-            BendeyTextButton(
-                text = "Cancelar",
-                onClick = viewModel::dismissSeriesForm,
-                enabled = !state.actionLoading,
-                modifier = Modifier.weight(1f),
-            )
-            BendeyPrimaryButton(
-                text = if (state.actionLoading) "Guardando…" else "Guardar",
-                onClick = viewModel::saveSeries,
-                enabled = !state.actionLoading,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
 @Composable private fun SeriesFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissSeriesForm,
@@ -712,6 +486,7 @@ private fun SeriesCard(
         onDismiss = viewModel::dismissSeriesForm,
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
+        enableContentScroll = true,
     ) {
         SeriesFormFields(state, viewModel)
     }

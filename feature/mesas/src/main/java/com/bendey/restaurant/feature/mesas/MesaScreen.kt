@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
@@ -42,10 +43,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import com.bendey.restaurant.core.ui.layout.BendeyAdaptiveSplitLayout
 import com.bendey.restaurant.core.ui.layout.BendeyCatalogOverlayLayout
-import com.bendey.restaurant.core.ui.layout.BendeyCompactMesaBarHeight
+import com.bendey.restaurant.core.ui.layout.rememberCompactMesaBarHeight
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
-import com.bendey.restaurant.core.ui.layout.rememberUseAdaptiveTwoPane
+import com.bendey.restaurant.core.ui.layout.adaptive.AdaptivePos
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyPosWorkspaceMode
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPosWorkspaceMode
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
+import com.bendey.restaurant.core.ui.pos.workspace.BendeyPosCatalogWorkspace
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,6 +74,7 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
+import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
@@ -84,13 +92,17 @@ import com.bendey.restaurant.core.ui.components.BendeyPosProductCard
 import com.bendey.restaurant.core.ui.pos.ComboConfigureDialog
 import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
 import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyCartAction
 import com.bendey.restaurant.core.ui.components.BendeyCartActionGrid
 import com.bendey.restaurant.core.ui.components.BendeyCartActionStyle
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeySessionOrderCard
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
+import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import com.bendey.restaurant.core.ui.pos.ManualProductDialog
 import com.bendey.restaurant.core.navigation.CashCheckoutGate
@@ -112,8 +124,12 @@ fun MesaScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
-    val useTwoPane = rememberUseAdaptiveTwoPane()
-    val isExpanded = useTwoPane
+    val profile = rememberBendeyAdaptiveProfile()
+    val workspaceMode = rememberPosWorkspaceMode()
+    val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||
+        workspaceMode == BendeyPosWorkspaceMode.Expanded
+    val usesMobileCartSheet = workspaceMode == BendeyPosWorkspaceMode.Compact ||
+        workspaceMode == BendeyPosWorkspaceMode.MediumPortrait
     var showCartSheet by remember { mutableStateOf(false) }
     var showOrdersSheet by remember { mutableStateOf(false) }
     var showManualProduct by remember { mutableStateOf(false) }
@@ -124,8 +140,9 @@ fun MesaScreen(
     }
     val orders = state.session?.orders.orEmpty()
     val overlayError = state.error?.takeIf {
-        !state.checkoutOpen && state.voidComanda == null
+        !state.checkoutOpen && state.voidComanda == null && state.comandaNoteTarget == null
     }
+    val compactMesaBarHeight = rememberCompactMesaBarHeight(workspaceMode)
 
     LaunchedEffect(state.snackMessage) {
         if (state.snackMessage != null) {
@@ -135,7 +152,11 @@ fun MesaScreen(
 
     val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(BendeyColors.Background),
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
         BendeyScreenToolbar(
             title = state.session?.tableName ?: "Mesa",
@@ -169,8 +190,9 @@ fun MesaScreen(
             onCloseMesa = { viewModel.closeMesa(onBack) },
             printing = state.printingPrecuenta,
             checkoutLoading = state.checkoutSubmitting,
+            landscapeTablet = isLandscapeWorkspace,
         )
-        if (isExpanded) {
+        if (isLandscapeWorkspace) {
             BendeyFlexibleContentSlot { inner ->
                 BendeyAdaptiveSplitLayout(
                     modifier = inner,
@@ -179,7 +201,8 @@ fun MesaScreen(
                             state = state,
                             currency = currency,
                             viewModel = viewModel,
-                            sidebarCategories = true,
+                            workspaceMode = workspaceMode,
+                            profile = profile,
                             gridBottomPadding = 12.dp,
                             modifier = catalogModifier,
                         )
@@ -215,7 +238,8 @@ fun MesaScreen(
                 BendeyCatalogOverlayLayout(
                     modifier = inner,
                     includeBottomBar = false,
-                    compactBarHeight = BendeyCompactMesaBarHeight,
+                    compactBarHeight = compactMesaBarHeight,
+                    extraCatalogScrollPadding = BendeySpacing.sm,
                     bannerMessage = overlayError,
                     onBannerDismiss = viewModel::dismissError,
                     catalog = { catalogModifier, gridBottomPadding ->
@@ -223,6 +247,8 @@ fun MesaScreen(
                             state = state,
                             currency = currency,
                             viewModel = viewModel,
+                            workspaceMode = workspaceMode,
+                            profile = profile,
                             gridBottomPadding = gridBottomPadding,
                             modifier = catalogModifier,
                         )
@@ -236,6 +262,7 @@ fun MesaScreen(
                             sending = state.sending,
                             onOpenCart = { showCartSheet = true },
                             onSend = viewModel::sendComanda,
+                            workspaceMode = workspaceMode,
                             modifier = barModifier,
                         )
                     },
@@ -243,7 +270,7 @@ fun MesaScreen(
             }
         }
         }
-        if (isExpanded) {
+        if (isLandscapeWorkspace) {
             BendeyOverlayBanner(
                 message = overlayError,
                 onDismiss = viewModel::dismissError,
@@ -351,7 +378,7 @@ fun MesaScreen(
         )
     }
 
-    if (!isExpanded && showCartSheet) {
+    if (usesMobileCartSheet && showCartSheet) {
         BendeyBottomSheet(
             onDismissRequest = { showCartSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -359,7 +386,13 @@ fun MesaScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.92f)
+                    .fillMaxHeight(
+                        when (workspaceMode) {
+                            BendeyPosWorkspaceMode.MediumPortrait ->
+                                AdaptivePos.portraitCartSheetHeightFraction()
+                            else -> 0.92f
+                        },
+                    )
                     .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
             ) {
                 if (orders.isNotEmpty()) {
@@ -400,6 +433,7 @@ fun MesaScreen(
                 onReprint = viewModel::reprintComanda,
                 onReprintAll = viewModel::reprintAllComandas,
                 onVoidComanda = viewModel::openVoidComanda,
+                onEditComandaNotes = viewModel::openComandaNoteEditor,
                 canAnularComanda = state.canAnularComanda,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -430,6 +464,32 @@ fun MesaScreen(
         onDismiss = { showManualProduct = false },
         onAdd = viewModel::addManualProduct,
     )
+
+    state.comandaNoteTarget?.let {
+        BendeyAlertDialog(
+            onDismissRequest = viewModel::dismissComandaNoteEditor,
+            title = { Text("Notas de comanda") },
+            text = {
+                BendeyTextField(
+                    value = state.comandaNoteText,
+                    onValueChange = viewModel::setComandaNoteText,
+                    label = "Notas para cocina",
+                    singleLine = false,
+                )
+            },
+            confirmButton = {
+                BendeyPrimaryButton(
+                    text = if (state.comandaNoteSubmitting) "Guardando…" else "Guardar",
+                    onClick = viewModel::confirmComandaNote,
+                    enabled = !state.comandaNoteSubmitting,
+                    fillWidth = false,
+                )
+            },
+            dismissButton = {
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissComandaNoteEditor)
+            },
+        )
+    }
 }
 
 private fun buildSessionSubtitle(floor: String?, orderCode: String?, guests: Int?): String {
@@ -452,12 +512,16 @@ private fun SessionSummaryBar(
     onCloseMesa: () -> Unit,
     printing: Boolean,
     checkoutLoading: Boolean,
+    landscapeTablet: Boolean = false,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(BendeyColors.PrimaryContainer)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(
+                horizontal = BendeySpacing.md,
+                vertical = 6.dp,
+            ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -476,13 +540,17 @@ private fun SessionSummaryBar(
                 onClick = onCloseMesa,
                 enabled = !closingMesa,
                 fillWidth = false,
-                modifier = Modifier.heightIn(min = 32.dp),
+                modifier = Modifier.heightIn(min = if (landscapeTablet) 40.dp else 32.dp),
             )
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 OutlinedButton(
                     onClick = onPrintPrecuenta,
                     enabled = !printing && total > 0,
+                    modifier = if (landscapeTablet) Modifier.heightIn(min = 40.dp) else Modifier,
                 ) {
                     Icon(Icons.Default.Print, contentDescription = null)
                     Text(if (printing) "Imprimiendo…" else "Precuenta")
@@ -492,6 +560,8 @@ private fun SessionSummaryBar(
                         text = if (checkoutLoading) "Cobrando…" else "Cobrar",
                         onClick = onCheckout,
                         enabled = total > 0 && !checkoutLoading && !printing,
+                        fillWidth = false,
+                        modifier = if (landscapeTablet) Modifier.heightIn(min = 40.dp) else Modifier,
                     )
                 }
             }
@@ -505,29 +575,63 @@ private fun CatalogSection(
     currency: NumberFormat,
     viewModel: MesaViewModel,
     modifier: Modifier = Modifier,
-    sidebarCategories: Boolean = false,
+    workspaceMode: BendeyPosWorkspaceMode? = null,
+    profile: BendeyAdaptiveProfile = rememberBendeyAdaptiveProfile(),
     gridBottomPadding: Dp = 12.dp,
 ) {
+    val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||
+        workspaceMode == BendeyPosWorkspaceMode.Expanded
+
     Column(modifier = modifier.fillMaxSize()) {
-        PosCatalogTabRow(selected = state.catalogTab, onSelect = viewModel::setCatalogTab)
+        if (!isLandscapeWorkspace) {
+            PosCatalogTabRow(selected = state.catalogTab, onSelect = viewModel::setCatalogTab)
+        }
         BendeyFlexibleContentSlot {
             when (state.catalogTab) {
-                PosCatalogTab.PRODUCTS -> BendeyPosCatalogPane(
-                    searchQuery = state.searchQuery,
-                    onSearchChange = viewModel::setSearchQuery,
-                    categories = state.categories,
-                    selectedCategoryId = state.selectedCategoryId,
-                    onCategorySelect = viewModel::selectCategory,
-                    products = state.products,
-                    currency = currency,
-                    assetsBaseUrl = viewModel.assetsBaseUrl,
-                    onProductClick = viewModel::onProductClick,
-                    modifier = it,
-                    sidebarCategories = sidebarCategories,
-                    posCatalogStyle = true,
-                    gridBottomPadding = gridBottomPadding,
-                    searchPlaceholder = "Buscar producto…",
-                )
+                PosCatalogTab.PRODUCTS -> {
+                    if (isLandscapeWorkspace && workspaceMode != null) {
+                        BendeyPosCatalogWorkspace(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = viewModel::setSearchQuery,
+                            categories = state.categories,
+                            selectedCategoryId = state.selectedCategoryId,
+                            onCategorySelect = viewModel::selectCategory,
+                            products = state.products,
+                            currency = currency,
+                            assetsBaseUrl = viewModel.assetsBaseUrl,
+                            onProductClick = viewModel::onProductClick,
+                            profile = profile,
+                            workspaceMode = workspaceMode,
+                            modifier = it,
+                            catalogTab = state.catalogTab,
+                            onCatalogTab = viewModel::setCatalogTab,
+                            hasMoreProducts = state.hasMoreProducts,
+                            productsLoadingMore = state.productsLoadingMore,
+                            onLoadMoreProducts = viewModel::loadMoreProducts,
+                            gridBottomPadding = gridBottomPadding,
+                        )
+                    } else {
+                        BendeyPosCatalogPane(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = viewModel::setSearchQuery,
+                            categories = state.categories,
+                            selectedCategoryId = state.selectedCategoryId,
+                            onCategorySelect = viewModel::selectCategory,
+                            products = state.products,
+                            currency = currency,
+                            assetsBaseUrl = viewModel.assetsBaseUrl,
+                            onProductClick = viewModel::onProductClick,
+                            modifier = it,
+                            hasMoreProducts = state.hasMoreProducts,
+                            productsLoadingMore = state.productsLoadingMore,
+                            onLoadMoreProducts = viewModel::loadMoreProducts,
+                            sidebarCategories = false,
+                            posCatalogStyle = true,
+                            gridBottomPadding = gridBottomPadding,
+                            searchPlaceholder = "Buscar producto…",
+                        )
+                    }
+                }
                 PosCatalogTab.COMBOS -> {
                     val term = state.searchQuery.trim().lowercase()
                     val filtered = if (term.isBlank()) state.combos else {
@@ -537,14 +641,39 @@ private fun CatalogSection(
                         }
                     }
                     BoxWithConstraints(modifier = it) {
-                        val columns = BendeyTabletTokens.posProductGridColumns(maxWidth)
+                        val isTabletMobileCatalog = workspaceMode == BendeyPosWorkspaceMode.MediumPortrait ||
+                            (workspaceMode == null && PosPolishTokens.isTabletProfile(profile))
+                        val columns = when {
+                            isTabletMobileCatalog ->
+                                AdaptivePos.portraitMobileProductGridColumns(maxWidth.value.toInt())
+                            else ->
+                                BendeyTabletTokens.posProductGridColumns(profile, maxWidth)
+                        }
                         BendeyLazyVerticalGrid(
                             columns = GridCells.Fixed(columns),
                             modifier = Modifier.fillMaxSize(),
                             state = rememberLazyGridState(),
-                            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            showScrollHints = false,
+                            contentPadding = PaddingValues(
+                                start = if (isTabletMobileCatalog) {
+                                    AdaptivePos.portraitMobileCatalogHorizontalPadding()
+                                } else {
+                                    12.dp
+                                },
+                                end = if (isTabletMobileCatalog) {
+                                    AdaptivePos.portraitMobileCatalogHorizontalPadding()
+                                } else {
+                                    12.dp
+                                },
+                                top = 2.dp,
+                                bottom = gridBottomPadding,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(
+                                if (isTabletMobileCatalog) AdaptivePos.portraitMobileGridGap() else 6.dp,
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(
+                                if (isTabletMobileCatalog) AdaptivePos.portraitMobileGridGap() else 6.dp,
+                            ),
                         ) {
                             items(filtered, key = { it.id }) { combo ->
                                 BendeyPosProductCard(
@@ -554,6 +683,7 @@ private fun CatalogSection(
                                     imageUrl = combo.imageUrl,
                                     assetsBaseUrl = viewModel.assetsBaseUrl,
                                     onClick = { viewModel.onComboClick(combo) },
+                                    profile = profile,
                                 )
                             }
                         }
@@ -623,6 +753,35 @@ private fun CartSection(
     onSend: (() -> Unit)? = null,
     onManualProduct: (() -> Unit)? = null,
 ) {
+    var notesLine by remember { mutableStateOf<PosCartLine?>(null) }
+    var notesDraft by remember { mutableStateOf("") }
+
+    notesLine?.let { line ->
+        BendeyFormDialog(
+            onDismissRequest = { notesLine = null },
+            title = "Notas para comanda",
+            confirmText = "Guardar",
+            onConfirm = {
+                viewModel.updateCartLineNotes(line.key, notesDraft.trim())
+                notesLine = null
+            },
+            onDismiss = { notesLine = null },
+            enableContentScroll = true,
+        ) {
+            Text(
+                text = line.product.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            BendeyTextField(
+                value = notesDraft,
+                onValueChange = { notesDraft = it },
+                label = "Notas de cocina",
+                singleLine = false,
+            )
+        }
+    }
+
     BendeyPosCartPane(
         title = "Nuevo pedido (${state.cartCount})",
         lines = state.cart,
@@ -633,6 +792,11 @@ private fun CartSection(
         onDecrement = viewModel::decrementLine,
         onClearCart = viewModel::clearCart,
         canClearCart = state.canClearCart,
+        showLineNotes = state.cart.isNotEmpty(),
+        onLineNotesClick = { line ->
+            notesLine = line
+            notesDraft = line.notes
+        },
         modifier = modifier,
         primaryAction = {
             BendeyCartActionGrid(
@@ -663,6 +827,7 @@ private fun OrdersSection(
     onReprint: (SessionOrderSummary) -> Unit,
     onReprintAll: () -> Unit,
     onVoidComanda: (SessionComandaSummary) -> Unit,
+    onEditComandaNotes: (SessionComandaSummary) -> Unit = {},
     canAnularComanda: Boolean = false,
     modifier: Modifier = Modifier,
     expanded: Boolean = false,
@@ -739,6 +904,17 @@ private fun OrdersSection(
                     reprintEnabled = reprintingOrderId != order.id && !reprintingAll,
                     onReprint = { onReprint(order) },
                     comandaActions = { comanda ->
+                        BendeyIconButton(
+                            onClick = { onEditComandaNotes(comanda) },
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Editar notas",
+                                tint = BendeyColors.Primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                         if (canAnularComanda) {
                             BendeyIconButton(
                                 onClick = { onVoidComanda(comanda) },
@@ -769,24 +945,39 @@ private fun CompactMesaBar(
     onOpenCart: () -> Unit,
     onSend: () -> Unit,
     modifier: Modifier = Modifier,
+    workspaceMode: BendeyPosWorkspaceMode = BendeyPosWorkspaceMode.Compact,
 ) {
+    val useTabletPortraitBar = workspaceMode == BendeyPosWorkspaceMode.MediumPortrait
+    val barPadding = if (useTabletPortraitBar) BendeySpacing.sm else 12.dp
+    val sendButtonWidth = if (useTabletPortraitBar) 0.36f else 0.4f
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(BendeyColors.Surface)
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = barPadding, vertical = if (useTabletPortraitBar) BendeySpacing.sm else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f).clickable(onClick = onOpenCart)) {
-            Text("$cartCount en carrito · Mesa ${currency.format(sessionTotal)}")
-            Text(currency.format(cartTotal), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
+            Text(
+                "$cartCount en carrito · Mesa ${currency.format(sessionTotal)}",
+                style = if (useTabletPortraitBar) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                currency.format(cartTotal),
+                fontWeight = FontWeight.Bold,
+                color = BendeyColors.Primary,
+                style = if (useTabletPortraitBar) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
+            )
         }
         BendeyPrimaryButton(
             text = if (sending) "…" else "Comanda",
             onClick = onSend,
             enabled = cartCount > 0 && !sending,
-            modifier = Modifier.fillMaxWidth(0.4f),
+            modifier = Modifier
+                .fillMaxWidth(sendButtonWidth)
+                .heightIn(min = if (useTabletPortraitBar) 48.dp else 40.dp),
         )
     }
 }

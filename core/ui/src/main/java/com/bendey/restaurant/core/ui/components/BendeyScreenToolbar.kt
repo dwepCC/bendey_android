@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChipVariant
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +55,10 @@ import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.BendeyTabletTokens
+import com.bendey.restaurant.core.ui.layout.adaptive.AdaptivePos
+import com.bendey.restaurant.core.ui.pos.PosPolishTokens
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import java.text.NumberFormat
 
 @Composable
@@ -95,6 +102,9 @@ fun BendeyPosCatalogPane(
     assetsBaseUrl: String?,
     onProductClick: (PosProduct) -> Unit,
     modifier: Modifier = Modifier,
+    hasMoreProducts: Boolean = false,
+    productsLoadingMore: Boolean = false,
+    onLoadMoreProducts: (() -> Unit)? = null,
     sidebarCategories: Boolean = false,
     compactCards: Boolean = true,
     posCatalogStyle: Boolean = false,
@@ -134,6 +144,9 @@ fun BendeyPosCatalogPane(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
+                hasMoreProducts = hasMoreProducts,
+                productsLoadingMore = productsLoadingMore,
+                onLoadMoreProducts = onLoadMoreProducts,
                 compactCards = compactCards,
                 posCatalogStyle = posCatalogStyle,
                 barcodeScanEnabled = barcodeScanEnabled,
@@ -154,6 +167,9 @@ fun BendeyPosCatalogPane(
             assetsBaseUrl = assetsBaseUrl,
             onProductClick = onProductClick,
             modifier = modifier,
+            hasMoreProducts = hasMoreProducts,
+            productsLoadingMore = productsLoadingMore,
+            onLoadMoreProducts = onLoadMoreProducts,
             compactCards = compactCards,
             posCatalogStyle = posCatalogStyle,
             barcodeScanEnabled = barcodeScanEnabled,
@@ -173,6 +189,9 @@ private fun CatalogGridBody(
     assetsBaseUrl: String?,
     onProductClick: (PosProduct) -> Unit,
     modifier: Modifier = Modifier,
+    hasMoreProducts: Boolean = false,
+    productsLoadingMore: Boolean = false,
+    onLoadMoreProducts: (() -> Unit)? = null,
     categories: List<ProductCategory> = emptyList(),
     selectedCategoryId: Int? = null,
     onCategorySelect: ((Int?) -> Unit)? = null,
@@ -183,6 +202,17 @@ private fun CatalogGridBody(
     gridBottomPadding: Dp = 12.dp,
     searchPlaceholder: String = "Buscar producto…",
 ) {
+    val profile = rememberBendeyAdaptiveProfile()
+    val isTabletMobileCatalog = PosPolishTokens.isTabletProfile(profile)
+    val horizontalPad = if (isTabletMobileCatalog) {
+        AdaptivePos.portraitMobileCatalogHorizontalPadding()
+    } else {
+        12.dp
+    }
+    val categoryGap = if (isTabletMobileCatalog) AdaptivePos.portraitMobileCategoryChipGap() else 4.dp
+    val gridGap = if (isTabletMobileCatalog) AdaptivePos.portraitMobileGridGap() else 6.dp
+    val searchHeight = if (isTabletMobileCatalog) AdaptivePos.portraitMobileSearchHeight() else 38.dp
+
     Column(modifier = modifier.fillMaxSize()) {
         PosCompactSearchField(
             value = searchQuery,
@@ -190,15 +220,19 @@ private fun CatalogGridBody(
             placeholder = searchPlaceholder,
             barcodeScanEnabled = barcodeScanEnabled,
             onBarcodeScanChange = onBarcodeScanChange,
+            fieldHeight = searchHeight,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 2.dp),
+                .padding(horizontal = horizontalPad, vertical = 2.dp),
         )
         if (categories.isNotEmpty() && onCategorySelect != null) {
             BendeyHorizontalScrollRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                contentPadding = PaddingValues(horizontal = if (isTabletMobileCatalog) BendeySpacing.sm else 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(categoryGap),
+                showEdgeFade = true,
             ) {
                 PosCategoryChip(selectedCategoryId == null, "Todos") { onCategorySelect(null) }
                 categories.forEach { category ->
@@ -209,20 +243,39 @@ private fun CatalogGridBody(
             }
         }
         val gridState = rememberLazyGridState()
+        if (onLoadMoreProducts != null) {
+            BendeyLazyGridLoadMoreEffect(
+                gridState = gridState,
+                hasMore = hasMoreProducts,
+                loadingMore = productsLoadingMore,
+                onLoadMore = onLoadMoreProducts,
+            )
+        }
         BendeyFlexibleContentSlot {
             BoxWithConstraints(modifier = it) {
-                val columns = if (posCatalogStyle) {
-                    BendeyTabletTokens.posProductGridColumns(maxWidth)
-                } else {
-                    BendeyTabletTokens.productGridColumns(maxWidth)
+                val columns = when {
+                    profile.isCompact && posCatalogStyle ->
+                        AdaptivePos.compactPosProductGridColumns(profile)
+                    isTabletMobileCatalog && posCatalogStyle ->
+                        AdaptivePos.portraitMobileProductGridColumns(maxWidth.value.toInt())
+                    posCatalogStyle ->
+                        BendeyTabletTokens.posProductGridColumns(profile, maxWidth)
+                    else ->
+                        BendeyTabletTokens.productGridColumns(profile, maxWidth)
                 }
                 BendeyLazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     modifier = Modifier.fillMaxSize(),
                     state = gridState,
-                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 2.dp, bottom = gridBottomPadding),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    showScrollHints = false,
+                    contentPadding = PaddingValues(
+                        start = horizontalPad,
+                        end = horizontalPad,
+                        top = 2.dp,
+                        bottom = gridBottomPadding,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(gridGap),
+                    verticalArrangement = Arrangement.spacedBy(gridGap),
                 ) {
                     items(products, key = { it.id }) { product ->
                         if (posCatalogStyle) {
@@ -234,6 +287,7 @@ private fun CatalogGridBody(
                                 assetsBaseUrl = assetsBaseUrl,
                                 onClick = { onProductClick(product) },
                                 enabled = product.availableForSale,
+                                profile = profile,
                             )
                         } else {
                             BendeyProductCard(
@@ -249,6 +303,18 @@ private fun CatalogGridBody(
                             )
                         }
                     }
+                    if (productsLoadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -261,11 +327,12 @@ private fun PosCompactSearchField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "Buscar producto…",
+    fieldHeight: Dp = 38.dp,
     barcodeScanEnabled: Boolean = false,
     onBarcodeScanChange: ((Boolean) -> Unit)? = null,
 ) {
     Row(
-        modifier = modifier.height(38.dp),
+        modifier = modifier.height(fieldHeight),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -273,12 +340,13 @@ private fun PosCompactSearchField(
             value = value,
             onValueChange = onValueChange,
             placeholder = placeholder,
+            fieldHeight = fieldHeight,
             modifier = Modifier.weight(1f),
         )
         if (onBarcodeScanChange != null) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(fieldHeight)
                     .clip(BendeyShapeTokens.sm)
                     .background(BendeyColors.Primary)
                     .clickable { onBarcodeScanChange(true) },
@@ -288,7 +356,7 @@ private fun PosCompactSearchField(
                     Icons.Default.QrCodeScanner,
                     contentDescription = "Escanear código",
                     tint = BendeyColors.OnPrimary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(if (fieldHeight >= 44.dp) 22.dp else 20.dp),
                 )
             }
         }
@@ -301,6 +369,7 @@ private fun BendeyCompactSearchInput(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    fieldHeight: Dp = 38.dp,
 ) {
     BasicTextField(
         value = value,
@@ -311,7 +380,7 @@ private fun BendeyCompactSearchInput(
         keyboardActions = KeyboardActions(onSearch = {}),
         modifier = modifier
             .fillMaxWidth()
-            .height(38.dp),
+            .height(fieldHeight),
         decorationBox = { innerTextField ->
             Row(
                 modifier = Modifier

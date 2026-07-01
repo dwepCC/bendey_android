@@ -54,6 +54,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.PosCartLine
+import com.bendey.restaurant.core.ui.layout.adaptive.AdaptivePos
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -76,14 +77,21 @@ fun BendeyPosCartPane(
     onLineUnitPriceChange: ((PosCartLine, String) -> Unit)? = null,
     primaryAction: (@Composable () -> Unit)? = null,
     secondaryAction: (@Composable () -> Unit)? = null,
+    showHeader: Boolean = true,
+    showTotal: Boolean = true,
+    lineSpacing: Dp = BendeySpacing.xxs,
+    workspaceLines: Boolean = false,
+    lineStepperSize: Dp = 40.dp,
+    lineInnerPadding: Dp = BendeySpacing.sm,
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(BendeyColors.Surface)
-            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
+            .background(if (showHeader) BendeyColors.Surface else Color.Transparent)
+            .padding(horizontal = if (showHeader) BendeySpacing.sm else 0.dp, vertical = if (showHeader) BendeySpacing.sm else 0.dp),
     ) {
-        Row(
+        if (showHeader) {
+            Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
@@ -121,10 +129,13 @@ fun BendeyPosCartPane(
                 }
             }
         }
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = BendeySpacing.sm),
-            color = BendeyColors.Outline.copy(alpha = 0.35f),
-        )
+        }
+        if (showHeader) {
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = BendeySpacing.sm),
+                color = BendeyColors.Outline.copy(alpha = 0.35f),
+            )
+        }
         if (lines.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -151,7 +162,7 @@ fun BendeyPosCartPane(
             BendeyLazyColumn(
                 modifier = Modifier.weight(1f),
                 state = listState,
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                verticalArrangement = Arrangement.spacedBy(lineSpacing),
             ) {
                 items(lines, key = { it.key }) { line ->
                     BendeyCartLineCard(
@@ -163,6 +174,9 @@ fun BendeyPosCartPane(
                         onUnitPriceChange = onLineUnitPriceChange?.let { cb -> { price -> cb(line, price) } },
                         onIncrement = { onIncrement(line) },
                         onDecrement = { onDecrement(line.key) },
+                        workspaceStyle = workspaceLines,
+                        stepperSize = lineStepperSize,
+                        lineInnerPadding = lineInnerPadding,
                     )
                 }
             }
@@ -170,36 +184,45 @@ fun BendeyPosCartPane(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = BendeySpacing.sm)
-                .clip(BendeyShapeTokens.xl)
-                .background(BendeyColors.PrimaryContainer.copy(alpha = 0.4f))
-                .border(1.dp, BendeyColors.Primary.copy(alpha = 0.12f), BendeyShapeTokens.xl)
-                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
+                .padding(top = if (showTotal) BendeySpacing.sm else 0.dp)
+                .then(
+                    if (showTotal) {
+                        Modifier
+                            .clip(BendeyShapeTokens.xl)
+                            .background(BendeyColors.PrimaryContainer.copy(alpha = 0.4f))
+                            .border(1.dp, BendeyColors.Primary.copy(alpha = 0.12f), BendeyShapeTokens.xl)
+                            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm)
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
-            Text(
-                text = "Total",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium,
-                color = BendeyColors.OnSurfaceVariant,
-            )
-            Text(
-                currency.format(total),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = BendeyColors.Primary,
-                modifier = Modifier.padding(top = BendeySpacing.xxs),
-            )
-        }
-        primaryAction?.let { action ->
-            Column(
-                modifier = Modifier.padding(top = BendeySpacing.sm),
-                verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-            ) {
-                action()
+            if (showTotal) {
+                Text(
+                    text = "Total",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                Text(
+                    currency.format(total),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = BendeyColors.Primary,
+                    modifier = Modifier.padding(top = BendeySpacing.xxs),
+                )
             }
-        }
-        secondaryAction?.let { action ->
-            Box(modifier = Modifier.padding(top = BendeySpacing.sm)) { action() }
+            primaryAction?.let { action ->
+                Column(
+                    modifier = Modifier.padding(top = if (showTotal) BendeySpacing.sm else 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                ) {
+                    action()
+                }
+            }
+            secondaryAction?.let { action ->
+                Box(modifier = Modifier.padding(top = BendeySpacing.sm)) { action() }
+            }
         }
     }
 }
@@ -214,19 +237,25 @@ private fun BendeyCartLineCard(
     onUnitPriceChange: ((String) -> Unit)? = null,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
+    workspaceStyle: Boolean = false,
+    stepperSize: Dp = 40.dp,
+    lineInnerPadding: Dp = BendeySpacing.sm,
 ) {
     Card(
         shape = BendeyShapeTokens.lg,
-        colors = BendeyCardDefaults.variantColors(),
-        elevation = BendeyCardDefaults.elevation(),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.4f), BendeyShapeTokens.lg),
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.35f), BendeyShapeTokens.lg),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
+                .padding(
+                    horizontal = lineInnerPadding,
+                    vertical = if (workspaceStyle) lineInnerPadding else BendeySpacing.xs,
+                ),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
         ) {
             Row(
@@ -279,6 +308,7 @@ private fun BendeyCartLineCard(
                     quantity = line.quantity,
                     onIncrement = onIncrement,
                     onDecrement = onDecrement,
+                    buttonSize = stepperSize,
                 )
             }
             Row(
@@ -404,12 +434,13 @@ private fun CartQuantityStepper(
     quantity: Int,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
+    buttonSize: Dp = 40.dp,
 ) {
     BendeyQuantityStepper(
         quantity = quantity,
         onDecrease = onDecrement,
         onIncrease = onIncrement,
-        buttonSize = 40.dp,
+        buttonSize = buttonSize,
         compact = true,
         dense = true,
     )

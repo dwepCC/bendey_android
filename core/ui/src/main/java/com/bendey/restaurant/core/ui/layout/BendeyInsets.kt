@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.layout.adaptive.AdaptivePos
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveNavigationPolicy
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 
 /**
  * Helpers de insets siguiendo
@@ -105,13 +110,15 @@ fun rememberBendeyFloatingActionsBottomOffset(includeBottomBar: Boolean): Dp {
 fun rememberBendeyCatalogScrollBottomPadding(
     includeBottomBar: Boolean,
     compactBarHeight: Dp,
+    extraScrollPadding: Dp = 0.dp,
 ): Dp {
     val navBar = rememberNavigationBarInset()
-    return if (includeBottomBar) {
+    val base = if (includeBottomBar) {
         compactBarHeight + rememberBendeyFloatingActionsBottomOffset(includeBottomBar = true)
     } else {
         compactBarHeight + navBar
     }
+    return base + extraScrollPadding
 }
 
 /**
@@ -122,10 +129,17 @@ fun rememberBendeyCatalogScrollBottomPadding(
  */
 @Composable
 fun rememberBendeyBottomBarScrollPadding(includeBottomBar: Boolean = true): Dp {
+    val profile = rememberBendeyAdaptiveProfile()
+    val physicalPortrait = rememberPhysicalPortrait()
+    val effectiveInclude = includeBottomBar && BendeyAdaptiveNavigationPolicy.shouldIncludeBottomBarScrollPadding(
+        profile = profile,
+        showBottomBarForRoute = true,
+        physicalPortrait = physicalPortrait,
+    )
     val navigationBarPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
-    return if (includeBottomBar) {
+    return if (effectiveInclude) {
         BendeyBottomBarInset + navigationBarPadding + BendeySpacing.md
     } else {
         navigationBarPadding + BendeySpacing.sm
@@ -159,15 +173,29 @@ fun rememberBendeyLazyListContentPadding(
 fun rememberBendeySnackbarBottomPadding(
     currentRoute: String?,
     showBottomBar: Boolean,
-    isCompactWidth: Boolean,
+    profile: BendeyAdaptiveProfile,
+    physicalPortrait: Boolean,
 ): Dp {
     val navigationBarPadding = WindowInsets.navigationBars
         .asPaddingValues()
         .calculateBottomPadding()
-    val bottomBarPadding = if (showBottomBar && isCompactWidth) BendeyBottomBarInset else 0.dp
-    val catalogOverlayPadding = if (isCompactWidth) {
+    val usesMobileChrome = BendeyAdaptiveNavigationPolicy.usesMobileNavigationChrome(
+        profile = profile,
+        physicalPortrait = physicalPortrait,
+    )
+    val includeBottomBar = BendeyAdaptiveNavigationPolicy
+        .shouldIncludeBottomBarScrollPadding(profile, showBottomBar, physicalPortrait)
+    val bottomBarPadding = if (includeBottomBar) BendeyBottomBarInset else 0.dp
+    val catalogOverlayPadding = if (usesMobileChrome) {
         when {
-            currentRoute == "pos" -> BendeyCompactCartBarHeight + 4.dp
+            currentRoute == "pos" -> {
+                val chipHeight = if (profile.isCompact) {
+                    BendeyCompactCartBarHeight
+                } else {
+                    AdaptivePos.portraitFloatingActionChipSize()
+                }
+                chipHeight + 4.dp
+            }
             currentRoute?.startsWith("mesa/") == true -> BendeyCompactMesaBarHeight + 4.dp
             else -> 0.dp
         }
