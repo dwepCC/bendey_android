@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
@@ -47,6 +49,23 @@ class PrinterPreferencesStore @Inject constructor(
             writeSlot(prefs, PrinterSlot.PRECUENTA, settings.precuenta)
             writeSlot(prefs, PrinterSlot.DOCUMENTOS, settings.documentos)
             prefs[Keys.COMANDAS_BY_AREA] = encodeComandasByArea(settings.comandasByArea)
+            prefs[Keys.DELIVERY_MODE] = when (settings.deliveryMode) {
+                PrintDeliveryMode.SERVER -> "server"
+                PrintDeliveryMode.LOCAL -> "local"
+            }
+            prefs[Keys.PRINT_SERVER_JSON] = settings.printServer?.let { encodePrintServer(it) }.orEmpty()
+        }
+    }
+
+    suspend fun saveDeliveryMode(mode: PrintDeliveryMode, server: PrintServerSelection? = null) {
+        dataStore.edit { prefs ->
+            prefs[Keys.DELIVERY_MODE] = when (mode) {
+                PrintDeliveryMode.SERVER -> "server"
+                PrintDeliveryMode.LOCAL -> "local"
+            }
+            if (server != null) {
+                prefs[Keys.PRINT_SERVER_JSON] = encodePrintServer(server)
+            }
         }
     }
 
@@ -99,6 +118,11 @@ class PrinterPreferencesStore @Inject constructor(
                 "mediano" -> ComandaTextSize.MEDIANO
                 else -> ComandaTextSize.DEFAULT
             },
+            deliveryMode = when (this[Keys.DELIVERY_MODE]) {
+                "server" -> PrintDeliveryMode.SERVER
+                else -> PrintDeliveryMode.LOCAL
+            },
+            printServer = decodePrintServer(this[Keys.PRINT_SERVER_JSON]),
         )
     }
 
@@ -160,6 +184,59 @@ class PrinterPreferencesStore @Inject constructor(
         val AUTO_PRINT_DOCS = booleanPreferencesKey("auto_print_documents")
         val COMANDAS_BY_AREA = stringPreferencesKey("comandas_by_area_json")
         val COMANDA_TEXT_SIZE = stringPreferencesKey("comanda_text_size")
+        val DELIVERY_MODE = stringPreferencesKey("print_delivery_mode")
+        val PRINT_SERVER_JSON = stringPreferencesKey("print_server_json")
+    }
+}
+
+@Serializable
+private data class StoredPrintServer(
+    val serverId: String = "",
+    val displayName: String = "",
+    val host: String = "",
+    val port: Int = 19_280,
+    val tenant: String = "",
+    val branchName: String = "",
+    val branchId: Int = 0,
+    val hostname: String = "",
+    val appVersion: String = "",
+    val manualHost: String = "",
+)
+
+private fun encodePrintServer(server: PrintServerSelection): String =
+    Json.encodeToString(
+        StoredPrintServer(
+            serverId = server.serverId,
+            displayName = server.displayName,
+            host = server.host,
+            port = server.port,
+            tenant = server.tenant,
+            branchName = server.branchName,
+            branchId = server.branchId,
+            hostname = server.hostname,
+            appVersion = server.appVersion,
+            manualHost = server.manualHost,
+        ),
+    )
+
+private fun decodePrintServer(json: String?): PrintServerSelection? {
+    if (json.isNullOrBlank()) return null
+    return try {
+        val stored = Json.decodeFromString<StoredPrintServer>(json)
+        PrintServerSelection(
+            serverId = stored.serverId,
+            displayName = stored.displayName,
+            host = stored.host,
+            port = stored.port,
+            tenant = stored.tenant,
+            branchName = stored.branchName,
+            branchId = stored.branchId,
+            hostname = stored.hostname,
+            appVersion = stored.appVersion,
+            manualHost = stored.manualHost,
+        )
+    } catch (_: Exception) {
+        null
     }
 }
 

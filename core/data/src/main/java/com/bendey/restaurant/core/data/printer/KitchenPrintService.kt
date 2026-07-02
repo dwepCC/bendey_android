@@ -5,6 +5,10 @@ import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
 import com.bendey.restaurant.core.data.kitchen.comandasToRoutingLines
 import com.bendey.restaurant.core.data.kitchen.groupLinesByPreparationArea
 import com.bendey.restaurant.core.data.kitchen.toPrintItem
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
+import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
 import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
@@ -22,6 +26,8 @@ import javax.inject.Singleton
 class KitchenPrintService @Inject constructor(
     private val printerRepository: PrinterRepository,
     private val printerPreferencesStore: PrinterPreferencesStore,
+    private val printServerClient: PrintServerClient,
+    private val printServerConnectionManager: PrintServerConnectionManager,
 ) {
     /** null = sin impresora / auto-print off; true = OK; false = error de impresión. */
     suspend fun printComandaRound(
@@ -33,7 +39,7 @@ class KitchenPrintService @Inject constructor(
         if (comandas.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
         if (!settings.autoPrintComandas) return null
-        if (settings.comandas.toTarget() == null) return null
+        if (!settings.isComandaPrintReady()) return null
         return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
     }
 
@@ -46,7 +52,7 @@ class KitchenPrintService @Inject constructor(
     ): Boolean? {
         if (comandas.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
-        if (settings.comandas.toTarget() == null) return null
+        if (!settings.isComandaPrintReady()) return null
         return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
     }
 
@@ -57,7 +63,7 @@ class KitchenPrintService @Inject constructor(
     ): Boolean? {
         if (orders.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
-        if (settings.comandas.toTarget() == null) return null
+        if (!settings.isComandaPrintReady()) return null
         var anySuccess = false
         var anyError = false
         for ((orderNumber, comandas) in orders) {
@@ -80,6 +86,22 @@ class KitchenPrintService @Inject constructor(
         waiterName: String?,
         comandas: List<ComandaLine>,
     ): Boolean {
+        if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
+            val server = printServerConnectionManager.resolveServer(settings) ?: return false
+            return when (
+                printServerClient.printComandaRound(
+                    server = server,
+                    tableName = tableName,
+                    orderNumber = orderNumber,
+                    waiterName = waiterName,
+                    comandas = comandas,
+                )
+            ) {
+                RemotePrintResult.Success -> true
+                is RemotePrintResult.Error -> false
+            }
+        }
+
         val baseName = tableName ?: "Mostrador"
         val groups = groupLinesByPreparationArea(comandasToRoutingLines(comandas))
         var printed = 0
@@ -118,6 +140,13 @@ class KitchenPrintService @Inject constructor(
     suspend fun printPrecuenta(precuenta: PrecuentaData): Boolean? {
         if (precuenta.lines.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
+        if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
+            val server = printServerConnectionManager.resolveServer(settings) ?: return null
+            return when (printServerClient.printPrecuenta(server, precuenta)) {
+                RemotePrintResult.Success -> true
+                is RemotePrintResult.Error -> false
+            }
+        }
         val target = settings.targetFor(PrinterSlot.PRECUENTA)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
             ?: return null

@@ -101,10 +101,7 @@ fun BendeyNavigationDrawerContent(
             HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
             Spacer(modifier = Modifier.height(BendeySpacing.sm))
 
-            BendeyDrawerSystemSection(
-                appVersion = appVersion,
-                onLogout = onLogout,
-            )
+            BendeyDrawerSystemSection(onLogout = onLogout)
         }
     }
 }
@@ -174,31 +171,8 @@ private fun BendeyDrawerHeader(
 
 @Composable
 private fun BendeyDrawerSystemSection(
-    appVersion: String,
     onLogout: () -> Unit,
 ) {
-    Text(
-        text = "Sistema",
-        style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.SemiBold,
-        color = BendeyColors.OnSurfaceVariant,
-        modifier = Modifier.padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
-    )
-    Text(
-        text = "Bendey Resto — plataforma operativa para restaurantes.",
-        style = MaterialTheme.typography.bodySmall,
-        color = BendeyColors.OnSurfaceVariant,
-        modifier = Modifier.padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
-    )
-    if (appVersion.isNotBlank()) {
-        Text(
-            text = "Versión $appVersion",
-            style = MaterialTheme.typography.labelSmall,
-            color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(horizontal = BendeySpacing.xs),
-        )
-    }
-    Spacer(modifier = Modifier.height(BendeySpacing.sm))
     Surface(
         modifier = Modifier
             .fillMaxWidth()

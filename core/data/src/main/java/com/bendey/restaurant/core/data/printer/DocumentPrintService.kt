@@ -1,5 +1,9 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
+import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.data.receipt.ReceiptLogoLoader
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
@@ -18,12 +22,21 @@ class DocumentPrintService @Inject constructor(
     private val printerRepository: PrinterRepository,
     private val printerPreferencesStore: PrinterPreferencesStore,
     private val logoLoader: ReceiptLogoLoader,
+    private val printServerClient: PrintServerClient,
+    private val printServerConnectionManager: PrintServerConnectionManager,
 ) {
     /** null = sin impresora / auto-print off; true = OK; false = error. */
     suspend fun printSaleDocument(data: SalePrintData?, force: Boolean = false): Boolean? {
         if (data == null) return null
         val settings = printerPreferencesStore.settings.first()
         if (!force && !settings.autoPrintDocuments) return null
+        if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
+            val server = printServerConnectionManager.resolveServer(settings) ?: return null
+            return when (printServerClient.printDocument(server, data)) {
+                RemotePrintResult.Success -> true
+                is RemotePrintResult.Error -> false
+            }
+        }
         val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
             ?: return null
@@ -36,8 +49,7 @@ class DocumentPrintService @Inject constructor(
 
     suspend fun hasConfiguredPrinter(): Boolean {
         val settings = printerPreferencesStore.settings.first()
-        return settings.targetFor(PrinterSlot.DOCUMENTOS) != null ||
-            settings.targetFor(PrinterSlot.COMANDAS) != null
+        return settings.isDocumentPrintReady()
     }
 
     private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm): ByteArray? {

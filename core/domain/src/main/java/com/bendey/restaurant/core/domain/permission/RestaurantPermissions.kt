@@ -10,6 +10,7 @@ object RestaurantPermissions {
     const val PERM_MESA = "t.o"
     const val PERM_ORDERS_CREATE = "o.c"
     const val PERM_COMANDAS = "k.v"
+    const val PERM_KITCHEN_UPDATE = "k.u"
     const val PERM_ORDERS_CHARGE = "o.ch"
     const val PERM_PRODUCTOS = "g.p"
     const val PERM_REPARTIDORES = "d.v"
@@ -137,7 +138,15 @@ object RestaurantPermissions {
         hasPermission(permissions, PERM_ORDERS_CHARGE)
 
     fun canAnularComanda(permissions: List<String>): Boolean =
-        isRestaurantAdmin(permissions)
+        isRestaurantAdmin(permissions) ||
+            hasPermission(permissions, PERM_ORDERS_CHARGE) ||
+            hasPermission(permissions, PERM_POS)
+
+    /** Cambiar estados de comandas en cocina (pendiente → preparación → lista → entregada). */
+    fun canManageKitchenComandas(permissions: List<String>): Boolean =
+        isRestaurantAdmin(permissions) ||
+            hasPermission(permissions, PERM_KITCHEN_UPDATE) ||
+            hasPermission(permissions, PERM_POS)
 
     fun canAssignTableStaff(permissions: List<String>): Boolean =
         isRestaurantAdmin(permissions)

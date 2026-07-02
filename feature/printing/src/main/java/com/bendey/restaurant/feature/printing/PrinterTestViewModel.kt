@@ -6,6 +6,15 @@ import com.bendey.restaurant.core.data.printer.PrinterPreferencesStore
 import com.bendey.restaurant.core.data.printer.PrinterSettings
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
+import com.bendey.restaurant.core.data.printer.printserver.DiscoveredPrintServer
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerDiscovery
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
+import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
+import com.bendey.restaurant.core.data.printer.printserver.manualPrintServerSelection
+import com.bendey.restaurant.core.data.printer.printserver.withManualEndpoint
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
@@ -44,6 +53,12 @@ data class PrinterTestUiState(
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
+    val deliveryMode: PrintDeliveryMode = PrintDeliveryMode.LOCAL,
+    val selectedPrintServer: PrintServerSelection? = null,
+    val manualServerHost: String = "",
+    val discoveredServers: List<DiscoveredPrintServer> = emptyList(),
+    val scanningServers: Boolean = false,
+    val showAdvancedServerHost: Boolean = false,
     val comandasByArea: Map<String, PrinterSlotConfig> = emptyMap(),
     val preparationAreas: List<PreparationAreaItem> = emptyList(),
     val editingAreaKey: String? = null,
@@ -58,6 +73,9 @@ class PrinterTestViewModel @Inject constructor(
     private val printerRepository: PrinterRepository,
     private val printerPreferencesStore: PrinterPreferencesStore,
     private val preparationAreasRepository: PreparationAreasRepository,
+    private val printServerDiscovery: PrintServerDiscovery,
+    private val printServerClient: PrintServerClient,
+    private val printServerConnectionManager: PrintServerConnectionManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PrinterTestUiState())
@@ -69,6 +87,13 @@ class PrinterTestViewModel @Inject constructor(
         refreshPairedDevices()
         viewModelScope.launch {
             cachedSettings = printerPreferencesStore.settings.first()
+            _uiState.update {
+                it.copy(
+                    deliveryMode = cachedSettings.deliveryMode,
+                    selectedPrintServer = cachedSettings.printServer,
+                    manualServerHost = cachedSettings.printServer?.manualHost.orEmpty(),
+                )
+            }
             applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
             when (val result = preparationAreasRepository.listPreparationAreas(activeOnly = true)) {
                 is com.bendey.restaurant.core.domain.model.AppResult.Success ->
@@ -133,6 +158,8 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
+                    deliveryMode = state.deliveryMode,
+                    printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
                 ),
             )
         }
@@ -150,6 +177,155 @@ class PrinterTestViewModel @Inject constructor(
 
     fun setAutoPrintDocuments(enabled: Boolean) {
         _uiState.update { it.copy(autoPrintDocuments = enabled) }
+    }
+
+    fun setDeliveryMode(mode: PrintDeliveryMode) {
+        _uiState.update { it.copy(deliveryMode = mode, error = null) }
+        cachedSettings = cachedSettings.copy(deliveryMode = mode)
+        if (mode == PrintDeliveryMode.SERVER) {
+            persistManualServerSelection(_uiState.value.manualServerHost)
+        }
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun toggleAdvancedServerHost() {
+        _uiState.update { it.copy(showAdvancedServerHost = !it.showAdvancedServerHost) }
+    }
+
+    fun setManualServerHost(host: String) {
+        _uiState.update { it.copy(manualServerHost = host) }
+        persistManualServerSelection(host)
+    }
+
+    private fun persistManualServerSelection(rawHost: String) {
+        val trimmed = rawHost.trim()
+        if (trimmed.isBlank()) return
+
+        val fromManual = manualPrintServerSelection(trimmed)
+        val current = _uiState.value.selectedPrintServer
+        val updated = when {
+            fromManual != null && current != null ->
+                current.copy(
+                    host = fromManual.host,
+                    manualHost = fromManual.host,
+                    port = fromManual.port,
+                )
+            fromManual != null -> fromManual
+            current != null -> current.withManualEndpoint(trimmed) ?: return
+            else -> return
+        }
+
+        cachedSettings = cachedSettings.copy(
+            deliveryMode = PrintDeliveryMode.SERVER,
+            printServer = updated,
+        )
+        _uiState.update {
+            it.copy(
+                deliveryMode = PrintDeliveryMode.SERVER,
+                selectedPrintServer = updated,
+                manualServerHost = updated.manualHost,
+            )
+        }
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    private fun effectivePrintServer(): PrintServerSelection? {
+        val state = _uiState.value
+        val manual = state.manualServerHost.trim()
+        if (manual.isNotBlank()) {
+            manualPrintServerSelection(manual)?.let { return it }
+            state.selectedPrintServer?.withManualEndpoint(manual)?.let { return it }
+        }
+        return state.selectedPrintServer?.takeIf { it.isReady() }
+            ?: cachedSettings.printServer?.takeIf { it.isReady() }
+    }
+
+    fun scanPrintServers() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    scanningServers = true,
+                    error = null,
+                    statusMessage = "Buscando servidor (mDNS + escaneo LAN)…",
+                )
+            }
+            val found = printServerDiscovery.discover()
+            _uiState.update {
+                it.copy(
+                    scanningServers = false,
+                    discoveredServers = found,
+                    statusMessage = when {
+                        found.isNotEmpty() ->
+                            "${found.size} servidor(es) encontrado(s) — seleccione uno"
+                        else ->
+                            "No se encontró el servidor. Use IP manual con la misma IP que abre en Chrome."
+                    },
+                )
+            }
+        }
+    }
+
+    fun selectPrintServer(server: DiscoveredPrintServer) {
+        val selection = PrintServerSelection(
+            serverId = server.serverId,
+            displayName = server.displayName,
+            host = server.host,
+            port = server.port,
+            tenant = server.tenant,
+            branchName = server.branchName,
+            branchId = server.branchId,
+            hostname = server.hostname,
+            appVersion = server.appVersion,
+            manualHost = _uiState.value.manualServerHost.trim(),
+        )
+        cachedSettings = cachedSettings.copy(
+            deliveryMode = PrintDeliveryMode.SERVER,
+            printServer = selection,
+        )
+        _uiState.update {
+            it.copy(
+                deliveryMode = PrintDeliveryMode.SERVER,
+                selectedPrintServer = selection,
+                statusMessage = "Servidor seleccionado: ${selection.displayName}",
+            )
+        }
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun printServerTest() {
+        viewModelScope.launch {
+            persistManualServerSelection(_uiState.value.manualServerHost)
+            val server = effectivePrintServer()
+            if (server == null || !server.isReady()) {
+                _uiState.update {
+                    it.copy(error = "Ingrese la IP del servidor (solo IP, ej. 192.168.1.20) o seleccione uno de la lista")
+                }
+                return@launch
+            }
+            _uiState.update { it.copy(loading = true, error = null) }
+            if (!printServerConnectionManager.ping(server)) {
+                _uiState.update {
+                    it.copy(
+                        loading = false,
+                        error = "No responde en http://${server.resolvedHost()}:${server.port}/v1/health",
+                    )
+                }
+                return@launch
+            }
+            cachedSettings = cachedSettings.copy(
+                deliveryMode = PrintDeliveryMode.SERVER,
+                printServer = server,
+            )
+            printerPreferencesStore.save(cachedSettings)
+            when (val result = printServerClient.printTest(server, "comandas")) {
+                RemotePrintResult.Success -> _uiState.update {
+                    it.copy(loading = false, statusMessage = "Prueba enviada al servidor")
+                }
+                is RemotePrintResult.Error -> _uiState.update {
+                    it.copy(loading = false, error = result.message)
+                }
+            }
+        }
     }
 
     fun refreshPairedDevices() {
@@ -226,6 +402,37 @@ class PrinterTestViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null, statusMessage = null) }
             persistAll()
+            if (cachedSettings.deliveryMode == PrintDeliveryMode.SERVER) {
+                persistManualServerSelection(_uiState.value.manualServerHost)
+                val server = effectivePrintServer()
+                    ?: run {
+                        _uiState.update { it.copy(loading = false, error = "Configure la IP del servidor de impresión") }
+                        return@launch
+                    }
+                cachedSettings = cachedSettings.copy(printServer = server)
+                val testKind = when (kind) {
+                    SampleKind.COMANDA -> "comandas"
+                    SampleKind.PRECUENTA -> "precuenta"
+                    SampleKind.DOCUMENTO -> "documentos"
+                }
+                val remoteResult = printServerClient.printTest(server, testKind)
+                when (remoteResult) {
+                    RemotePrintResult.Success -> _uiState.update {
+                        it.copy(
+                            loading = false,
+                            statusMessage = when (kind) {
+                                SampleKind.COMANDA -> "Comanda enviada al servidor"
+                                SampleKind.PRECUENTA -> "Precuenta enviada al servidor"
+                                SampleKind.DOCUMENTO -> "Documento enviado al servidor"
+                            },
+                        )
+                    }
+                    is RemotePrintResult.Error -> _uiState.update { state ->
+                        state.copy(loading = false, error = remoteResult.message)
+                    }
+                }
+                return@launch
+            }
             val target = buildTarget()
             val result = when (kind) {
                 SampleKind.COMANDA -> printerRepository.printComanda(
@@ -347,6 +554,8 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
+                    deliveryMode = state.deliveryMode,
+                    printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
                 ),
             )
         }

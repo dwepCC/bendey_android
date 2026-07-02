@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
@@ -49,6 +51,8 @@ data class PrinterSettings(
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
+    val deliveryMode: PrintDeliveryMode = PrintDeliveryMode.LOCAL,
+    val printServer: PrintServerSelection? = null,
 ) {
     fun targetFor(slot: PrinterSlot): PrinterTarget? = when (slot) {
         PrinterSlot.COMANDAS -> comandas.toTarget()
@@ -83,6 +87,17 @@ data class PrinterSettings(
             updated[key] = config
         }
         return copy(comandasByArea = updated)
+    }
+
+    fun isComandaPrintReady(): Boolean = when (deliveryMode) {
+        PrintDeliveryMode.SERVER -> printServer?.isReady() == true
+        PrintDeliveryMode.LOCAL -> comandas.toTarget() != null
+    }
+
+    fun isDocumentPrintReady(): Boolean = when (deliveryMode) {
+        PrintDeliveryMode.SERVER -> printServer?.isReady() == true
+        PrintDeliveryMode.LOCAL ->
+            targetFor(PrinterSlot.DOCUMENTOS) != null || targetFor(PrinterSlot.COMANDAS) != null
     }
 }
 

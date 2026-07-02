@@ -56,6 +56,7 @@ data class CocinaUiState(
     val voidSubmitting: Boolean = false,
     val error: String? = null,
     val canAnularComanda: Boolean = false,
+    val canManageKitchenComandas: Boolean = false,
 ) {
     val availableAreas: List<String> get() = collectPreparationAreas(items)
     val availableTables: List<String> get() = collectTableNames(items)
@@ -100,7 +101,10 @@ class CocinaViewModel @Inject constructor(
             sessionStore.userSessionFlow.collect { session ->
                 val perms = session?.restaurantPermissions.orEmpty()
                 _uiState.update {
-                    it.copy(canAnularComanda = RestaurantPermissions.canAnularComanda(perms))
+                    it.copy(
+                        canAnularComanda = RestaurantPermissions.canAnularComanda(perms),
+                        canManageKitchenComandas = RestaurantPermissions.canManageKitchenComandas(perms),
+                    )
                 }
             }
         }
@@ -154,6 +158,7 @@ class CocinaViewModel @Inject constructor(
     }
 
     fun advanceItem(item: KitchenItem) {
+        if (!_uiState.value.canManageKitchenComandas) return
         val next = ComandaStatus.next(item.status.backendValue) ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(updatingId = item.id, error = null) }
@@ -171,6 +176,7 @@ class CocinaViewModel @Inject constructor(
     }
 
     fun markRoundReady(items: List<KitchenItem>) {
+        if (!_uiState.value.canManageKitchenComandas) return
         val pending = items.filter {
             it.status == ComandaStatus.PENDIENTE || it.status == ComandaStatus.PREPARACION
         }

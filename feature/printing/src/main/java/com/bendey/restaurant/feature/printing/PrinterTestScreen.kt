@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
+import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -78,6 +79,10 @@ fun PrinterTestScreen(
     ) { _ ->
         viewModel.refreshPairedDevices()
     }
+
+    val nearbyWifiLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { _ -> viewModel.scanPrintServers() }
 
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -167,6 +172,28 @@ fun PrinterTestScreen(
                 }
             }
 
+            PrintServerModeCard(
+                deliveryMode = state.deliveryMode,
+                onDeliveryMode = viewModel::setDeliveryMode,
+                scanning = state.scanningServers,
+                discoveredServers = state.discoveredServers,
+                selectedServer = state.selectedPrintServer,
+                manualHost = state.manualServerHost,
+                showAdvanced = state.showAdvancedServerHost,
+                onScan = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        nearbyWifiLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+                    } else {
+                        viewModel.scanPrintServers()
+                    }
+                },
+                onSelectServer = viewModel::selectPrintServer,
+                onManualHost = viewModel::setManualServerHost,
+                onToggleAdvanced = viewModel::toggleAdvancedServerHost,
+                onTestServer = viewModel::printServerTest,
+            )
+
+            if (state.deliveryMode == PrintDeliveryMode.LOCAL) {
             PrinterConfigCard(
                 title = when {
                     state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null ->
@@ -229,6 +256,28 @@ fun PrinterTestScreen(
                 }
             }
 
+            if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
+                ComandaAreasCard(
+                    expanded = areasExpanded,
+                    onToggleExpanded = { areasExpanded = !areasExpanded },
+                    preparationAreas = state.preparationAreas,
+                    comandasByArea = state.comandasByArea,
+                    defaultConfig = state.let {
+                        PrinterSlotConfig(
+                            connectionType = it.connectionType,
+                            bluetoothAddress = it.bluetoothAddress,
+                            tcpHost = it.tcpHost,
+                            tcpPort = it.tcpPort.toIntOrNull() ?: 9100,
+                            paperWidth = it.paperWidth,
+                        )
+                    },
+                    onConfigureArea = viewModel::editComandaArea,
+                    onClearArea = viewModel::clearComandaArea,
+                    onTestArea = viewModel::printComandaAreaSample,
+                )
+            }
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -255,27 +304,6 @@ fun PrinterTestScreen(
                         )
                     }
                 }
-            }
-
-            if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
-                ComandaAreasCard(
-                    expanded = areasExpanded,
-                    onToggleExpanded = { areasExpanded = !areasExpanded },
-                    preparationAreas = state.preparationAreas,
-                    comandasByArea = state.comandasByArea,
-                    defaultConfig = state.let {
-                        PrinterSlotConfig(
-                            connectionType = it.connectionType,
-                            bluetoothAddress = it.bluetoothAddress,
-                            tcpHost = it.tcpHost,
-                            tcpPort = it.tcpPort.toIntOrNull() ?: 9100,
-                            paperWidth = it.paperWidth,
-                        )
-                    },
-                    onConfigureArea = viewModel::editComandaArea,
-                    onClearArea = viewModel::clearComandaArea,
-                    onTestArea = viewModel::printComandaAreaSample,
-                )
             }
 
             Card(
@@ -597,6 +625,117 @@ private fun CompactTestButton(
 ) {
     OutlinedButton(onClick = onClick, modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+private fun PrintServerModeCard(
+    deliveryMode: PrintDeliveryMode,
+    onDeliveryMode: (PrintDeliveryMode) -> Unit,
+    scanning: Boolean,
+    discoveredServers: List<com.bendey.restaurant.core.data.printer.printserver.DiscoveredPrintServer>,
+    selectedServer: com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection?,
+    manualHost: String,
+    showAdvanced: Boolean,
+    onScan: () -> Unit,
+    onSelectServer: (com.bendey.restaurant.core.data.printer.printserver.DiscoveredPrintServer) -> Unit,
+    onManualHost: (String) -> Unit,
+    onToggleAdvanced: () -> Unit,
+    onTestServer: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+        shape = BendeyShapeTokens.lg,
+        colors = BendeyCardDefaults.colors(),
+        elevation = BendeyCardDefaults.elevation(),
+    ) {
+        Column(
+            Modifier.padding(BendeySpacing.sm),
+            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            Text("Modo de impresión", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                FilterChip(
+                    selected = deliveryMode == PrintDeliveryMode.LOCAL,
+                    onClick = { onDeliveryMode(PrintDeliveryMode.LOCAL) },
+                    label = { Text("Local", style = MaterialTheme.typography.labelMedium) },
+                )
+                FilterChip(
+                    selected = deliveryMode == PrintDeliveryMode.SERVER,
+                    onClick = { onDeliveryMode(PrintDeliveryMode.SERVER) },
+                    label = { Text("Servidor de impresión", style = MaterialTheme.typography.labelMedium) },
+                )
+            }
+
+            if (deliveryMode == PrintDeliveryMode.SERVER) {
+                Text(
+                    "Las tablets envían trabajos a la PC Windows configurada en la red. La configuración local se conserva al volver al modo local.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedButton(onClick = onScan, enabled = !scanning, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (scanning) "Buscando en la red…" else "Buscar servidores en la red")
+                }
+                Text(
+                    "Si no aparece, use IP manual (misma IP que funciona en Chrome). El escaneo puede tardar ~15 s.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                selectedServer?.let { server ->
+                    Text(
+                        "Servidor seleccionado: ${server.displayName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        "${server.branchName.ifBlank { "Sucursal" }} · ${server.resolvedHost()}:${server.port}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                discoveredServers.forEach { server ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelectServer(server) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selectedServer?.serverId == server.serverId) {
+                                BendeyColors.PrimaryContainer.copy(alpha = 0.45f)
+                            } else {
+                                BendeyColors.Surface
+                            },
+                        ),
+                    ) {
+                        Column(Modifier.padding(BendeySpacing.sm)) {
+                            Text(server.displayName, fontWeight = FontWeight.SemiBold)
+                            Text(server.branchName.ifBlank { "Sucursal" }, style = MaterialTheme.typography.bodySmall)
+                            Text("${server.host} · ${server.latencyMs} ms", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                TextButton(onClick = onToggleAdvanced) {
+                    Text(if (showAdvanced) "Ocultar IP manual" else "IP manual (avanzado)")
+                }
+                if (showAdvanced) {
+                    BendeyTextField(
+                        value = manualHost,
+                        onValueChange = onManualHost,
+                        label = "Host / IP manual",
+                        placeholder = "192.168.1.20",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "Solo la IP (ej. 192.168.1.20). Puerto por defecto: 19280.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                OutlinedButton(onClick = onTestServer, modifier = Modifier.fillMaxWidth()) {
+                    Text("Probar servidor")
+                }
+            }
+        }
     }
 }
 
