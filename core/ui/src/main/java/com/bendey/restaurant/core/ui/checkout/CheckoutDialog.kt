@@ -96,6 +96,7 @@ fun CheckoutDialog(
     contactId: Int?,
     error: String?,
     confirmLabel: String = "Confirmar cobro",
+    extraBeforePayments: @Composable () -> Unit = {},
     onDismiss: () -> Unit,
     onSeriesChange: (Int, String) -> Unit,
     onContactChange: (Int) -> Unit,
@@ -248,6 +249,7 @@ fun CheckoutDialog(
                             onDiscountModeChange = onDiscountModeChange,
                             onDiscountValueChange = onDiscountValueChange,
                         )
+                        extraBeforePayments()
                         PaymentLinesSection(
                             methods = meta?.paymentMethods.orEmpty(),
                             payments = payments,

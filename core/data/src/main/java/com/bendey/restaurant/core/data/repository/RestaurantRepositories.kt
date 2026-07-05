@@ -38,6 +38,7 @@ import com.bendey.restaurant.core.network.api.DeliveryApi
 import com.bendey.restaurant.core.network.dto.CancelComandaRequestDto
 import com.bendey.restaurant.core.network.dto.CancelSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OpenOrderSummaryDto
+import com.bendey.restaurant.core.network.dto.MoveTableRequestDto
 import com.bendey.restaurant.core.network.dto.OpenSessionRequestDto
 import com.bendey.restaurant.core.network.dto.OperationalStatusDto
 import com.bendey.restaurant.core.network.dto.OrderItemInputDto
@@ -229,6 +230,13 @@ class MesasRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.create<RestaurantApi>().closeSession(sessionId)
     }
 
+    override suspend fun moveSessionTable(sessionId: Int, targetTableId: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().moveSessionTable(
+            sessionId = sessionId,
+            body = MoveTableRequestDto(targetTableId = targetTableId),
+        )
+    }
+
     override suspend fun createFloor(name: String, sortOrder: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().createFloor(
             FloorUpsertRequestDto(name = name, sortOrder = sortOrder),
@@ -367,6 +375,7 @@ private fun RestaurantTableDto.toDomain() = RestaurantTable(
     name = name,
     capacity = capacity,
     status = TableStatus.fromBackend(status),
+    active = active,
     sessionId = sessionId,
     totalAmount = totalAmount,
     waiterName = waiterName,
@@ -472,6 +481,10 @@ private fun SessionOrderDto.toDomain() = SessionOrderSummary(
             modifiersJson = comanda.modifiersJson,
             preparationArea = comanda.preparationArea,
             comboSnapshotJson = comanda.comboSnapshotJson,
+            igvAffectationType = comanda.igvAffectationType,
+            priceIncludesIgv = comanda.priceIncludesIgv,
+            cancelledAt = comanda.cancelledAt,
+            billedSaleId = comanda.billedSaleId,
         )
     },
 )

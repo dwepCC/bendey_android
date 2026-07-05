@@ -29,8 +29,11 @@ import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChipVariant
 import com.bendey.restaurant.core.designsystem.components.BendeyTableCard
 import com.bendey.restaurant.core.designsystem.components.BendeyTableStatsRow
+import com.bendey.restaurant.core.designsystem.components.TableCardMenuAction
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
+import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
@@ -182,6 +185,11 @@ fun MesasScreen(
                         BendeyTableCard(
                             table = table,
                             onClick = { viewModel.onTableClick(table) },
+                            menuActions = buildMoveMenuActions(
+                                canMoveTable = state.canMoveTable,
+                                table = table,
+                                onMove = { viewModel.openMoveDialog(table) },
+                            ),
                         )
                     }
                 }
@@ -237,6 +245,36 @@ fun MesasScreen(
             )
         }
     }
+
+    state.moveSource?.let { sourceTable ->
+        MoveTableDialog(
+            sourceTable = sourceTable,
+            freeTables = state.freeTablesForMove,
+            loadingFree = state.loadingFreeForMove,
+            selectedTargetId = state.moveTargetId,
+            submitting = state.movingTable,
+            onSelectTarget = viewModel::selectMoveTarget,
+            onDismiss = viewModel::dismissMoveDialog,
+            onConfirm = viewModel::confirmMoveTable,
+        )
+    }
+}
+
+private fun buildMoveMenuActions(
+    canMoveTable: Boolean,
+    table: RestaurantTable,
+    onMove: () -> Unit,
+): List<TableCardMenuAction> {
+    if (!canMoveTable) return emptyList()
+    val occupied = table.status == TableStatus.OCUPADA || table.status == TableStatus.EN_CONSUMO
+    if (!occupied || table.sessionId == null) return emptyList()
+    return listOf(
+        TableCardMenuAction(
+            id = "move",
+            label = "Mover mesa",
+            onClick = onMove,
+        ),
+    )
 }
 
 @Composable

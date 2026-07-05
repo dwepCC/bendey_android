@@ -23,7 +23,7 @@ import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentDraft
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
 import com.bendey.restaurant.core.domain.billing.calcPayableTotal
-import com.bendey.restaurant.core.domain.billing.paidCoversTotal
+import com.bendey.restaurant.core.domain.billing.partitionComandasFromSession
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.pos.ComboConfigureState
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
@@ -40,6 +40,7 @@ import com.bendey.restaurant.core.domain.billing.findPaymentMethodRecord
 import com.bendey.restaurant.core.domain.billing.isElectronicBillingSunatCode
 import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
 import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
+import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.pos.comboComponentModifiersList
 import com.bendey.restaurant.core.domain.pos.loadComboComponentMetadata
@@ -1244,6 +1245,18 @@ class PosViewModel @Inject constructor(
                     _uiState.update { it.copy(checkoutSubmitting = false) }
                     return@launch
                 }
+                val sessionSnapshot = when (val sessionResult = mesasRepository.getSession(sessionId)) {
+                    is AppResult.Success -> sessionResult.data
+                    else -> {
+                        _uiState.update { it.copy(checkoutSubmitting = false, error = "No se pudo cargar la sesión") }
+                        return@launch
+                    }
+                }
+                val comandaIds = partitionComandasFromSession(sessionSnapshot).pending.map { it.comanda.id }
+                if (comandaIds.isEmpty()) {
+                    _uiState.update { it.copy(checkoutSubmitting = false, error = "No hay comandas para cobrar") }
+                    return@launch
+                }
                 billingRepository.billSession(
                     sessionId = sessionId,
                     input = BillSessionInput(
@@ -1252,6 +1265,7 @@ class PosViewModel @Inject constructor(
                         contactId = contactId,
                         cashSessionId = cashSessionId,
                         closeSession = true,
+                        comandaIds = comandaIds,
                         discountAmount = discountAmount,
                         payments = paymentLines,
                     ),

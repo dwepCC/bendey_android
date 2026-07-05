@@ -11,6 +11,7 @@ data class BillSessionRequestDto(
     @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("cash_session_id") val cashSessionId: Int? = null,
     @SerialName("close_session") val closeSession: Boolean = true,
+    @SerialName("comanda_ids") val comandaIds: List<Int>,
     @SerialName("discount_amount") val discountAmount: Double? = null,
     val payments: List<BillPaymentDto>,
 )
@@ -203,6 +204,7 @@ data class VoidCreditNoteResponseDto(
 data class IssueElectronicRequestDto(
     @SerialName("series_id") val seriesId: Int,
     @SerialName("issue_date") val issueDate: String? = null,
+    @SerialName("contact_id") val contactId: Int? = null,
 )
 
 @Serializable
@@ -244,6 +246,8 @@ data class SaleDto(
     @SerialName("sunat_code") val sunatCode: String? = null,
     @SerialName("converted_to") val convertedTo: String? = null,
     @SerialName("electronic_issue_sale_id") val electronicIssueSaleId: Int? = null,
+    @SerialName("branch_id") val branchId: Int? = null,
+    @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("payment_method") val paymentMethod: String? = null,
 )

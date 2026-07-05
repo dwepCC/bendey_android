@@ -204,6 +204,11 @@ data class ComandaDto(
     val status: String = "pendiente",
     @SerialName("preparation_area") val preparationArea: String? = null,
     @SerialName("combo_snapshot_json") val comboSnapshotJson: String? = null,
+    @SerialName("igv_affectation_type") val igvAffectationType: String? = null,
+    @SerialName("price_includes_igv") val priceIncludesIgv: Boolean? = null,
+    @SerialName("cancelled_at") val cancelledAt: String? = null,
+    @SerialName("billed_sale_id") val billedSaleId: Int? = null,
+    @SerialName("billed_at") val billedAt: String? = null,
 )
 
 @Serializable
@@ -256,8 +261,14 @@ data class UpdateComandaNotesRequestDto(
 )
 
 @Serializable
+data class MoveTableRequestDto(
+    @SerialName("target_table_id") val targetTableId: Int,
+)
+
+@Serializable
 data class SuccessResponseDto(
     val success: Boolean = true,
+    val message: String? = null,
 )
 
 @Serializable

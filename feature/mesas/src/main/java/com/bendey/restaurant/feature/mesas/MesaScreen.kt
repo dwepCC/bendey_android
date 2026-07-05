@@ -78,6 +78,10 @@ import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
+import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.billing.isComandaBillable
+import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
+import com.bendey.restaurant.core.ui.checkout.CheckoutSplitBillControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
@@ -336,12 +340,31 @@ fun MesaScreen(
         rawTotal = state.checkoutRawTotal,
         discountMode = state.checkoutDiscountMode,
         discountValue = state.checkoutDiscountValue,
-        allowDiscount = state.allowCheckoutDiscount,
+        allowDiscount = state.allowDiscountInCheckout,
         payments = state.checkoutPayments,
         seriesId = state.checkoutSeriesId,
         docType = state.checkoutDocType,
         contactId = state.checkoutContactId,
         error = if (state.checkoutOpen) state.error else null,
+        extraBeforePayments = {
+            val taxRate = resolveTaxRatePercent(state.checkoutMeta?.taxRate)
+            val taxConfig = TaxConfig(
+                taxRate = taxRate,
+                igvRegime = state.checkoutMeta?.igvRegime ?: "standard",
+                taxBenefitZone = state.checkoutMeta?.taxBenefitZone ?: false,
+            )
+            CheckoutSplitBillControl(
+                enabled = state.splitBillEnabled,
+                onEnabledChange = viewModel::setSplitBillEnabled,
+                showOption = state.showSplitBillOption,
+                pending = state.pendingComandaRows,
+                billed = state.billedComandaRows,
+                selectedIds = state.selectedComandaIds,
+                onSelectionChange = viewModel::setSelectedComandaIds,
+                taxRatePercent = taxRate,
+                taxConfig = taxConfig,
+            )
+        },
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,
@@ -372,8 +395,9 @@ fun MesaScreen(
                 )
             },
             onDismiss = {
+                val closesSession = state.checkoutSessionClosed
                 viewModel.dismissCheckoutSuccess()
-                onCheckoutSuccess()
+                if (closesSession) onCheckoutSuccess()
             },
         )
     }
@@ -589,47 +613,52 @@ private fun CatalogSection(
         BendeyFlexibleContentSlot {
             when (state.catalogTab) {
                 PosCatalogTab.PRODUCTS -> {
-                    if (isLandscapeWorkspace && workspaceMode != null) {
-                        BendeyPosCatalogWorkspace(
-                            searchQuery = state.searchQuery,
-                            onSearchChange = viewModel::setSearchQuery,
-                            categories = state.categories,
-                            selectedCategoryId = state.selectedCategoryId,
-                            onCategorySelect = viewModel::selectCategory,
-                            products = state.products,
-                            currency = currency,
-                            assetsBaseUrl = viewModel.assetsBaseUrl,
-                            onProductClick = viewModel::onProductClick,
-                            profile = profile,
-                            workspaceMode = workspaceMode,
-                            modifier = it,
-                            catalogTab = state.catalogTab,
-                            onCatalogTab = viewModel::setCatalogTab,
-                            hasMoreProducts = state.hasMoreProducts,
-                            productsLoadingMore = state.productsLoadingMore,
-                            onLoadMoreProducts = viewModel::loadMoreProducts,
-                            gridBottomPadding = gridBottomPadding,
-                        )
-                    } else {
-                        BendeyPosCatalogPane(
-                            searchQuery = state.searchQuery,
-                            onSearchChange = viewModel::setSearchQuery,
-                            categories = state.categories,
-                            selectedCategoryId = state.selectedCategoryId,
-                            onCategorySelect = viewModel::selectCategory,
-                            products = state.products,
-                            currency = currency,
-                            assetsBaseUrl = viewModel.assetsBaseUrl,
-                            onProductClick = viewModel::onProductClick,
-                            modifier = it,
-                            hasMoreProducts = state.hasMoreProducts,
-                            productsLoadingMore = state.productsLoadingMore,
-                            onLoadMoreProducts = viewModel::loadMoreProducts,
-                            sidebarCategories = false,
-                            posCatalogStyle = true,
-                            gridBottomPadding = gridBottomPadding,
-                            searchPlaceholder = "Buscar producto…",
-                        )
+                    when (workspaceMode) {
+                        BendeyPosWorkspaceMode.MediumLandscape,
+                        BendeyPosWorkspaceMode.Expanded,
+                        -> {
+                            BendeyPosCatalogWorkspace(
+                                searchQuery = state.searchQuery,
+                                onSearchChange = viewModel::setSearchQuery,
+                                categories = state.categories,
+                                selectedCategoryId = state.selectedCategoryId,
+                                onCategorySelect = viewModel::selectCategory,
+                                products = state.products,
+                                currency = currency,
+                                assetsBaseUrl = viewModel.assetsBaseUrl,
+                                onProductClick = viewModel::onProductClick,
+                                profile = profile,
+                                workspaceMode = workspaceMode,
+                                modifier = it,
+                                catalogTab = state.catalogTab,
+                                onCatalogTab = viewModel::setCatalogTab,
+                                hasMoreProducts = state.hasMoreProducts,
+                                productsLoadingMore = state.productsLoadingMore,
+                                onLoadMoreProducts = viewModel::loadMoreProducts,
+                                gridBottomPadding = gridBottomPadding,
+                            )
+                        }
+                        else -> {
+                            BendeyPosCatalogPane(
+                                searchQuery = state.searchQuery,
+                                onSearchChange = viewModel::setSearchQuery,
+                                categories = state.categories,
+                                selectedCategoryId = state.selectedCategoryId,
+                                onCategorySelect = viewModel::selectCategory,
+                                products = state.products,
+                                currency = currency,
+                                assetsBaseUrl = viewModel.assetsBaseUrl,
+                                onProductClick = viewModel::onProductClick,
+                                modifier = it,
+                                hasMoreProducts = state.hasMoreProducts,
+                                productsLoadingMore = state.productsLoadingMore,
+                                onLoadMoreProducts = viewModel::loadMoreProducts,
+                                sidebarCategories = false,
+                                posCatalogStyle = true,
+                                gridBottomPadding = gridBottomPadding,
+                                searchPlaceholder = "Buscar producto…",
+                            )
+                        }
                     }
                 }
                 PosCatalogTab.COMBOS -> {
@@ -915,7 +944,7 @@ private fun OrdersSection(
                                 modifier = Modifier.size(18.dp),
                             )
                         }
-                        if (canAnularComanda) {
+                        if (canAnularComanda && comanda.isComandaBillable()) {
                             BendeyIconButton(
                                 onClick = { onVoidComanda(comanda) },
                                 modifier = Modifier.size(32.dp),

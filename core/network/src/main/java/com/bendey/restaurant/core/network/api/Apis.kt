@@ -22,6 +22,7 @@ import com.bendey.restaurant.core.network.dto.FloorUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.TableUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.KitchenComandaDto
 import com.bendey.restaurant.core.network.dto.ListResponseDto
+import com.bendey.restaurant.core.network.dto.MoveTableRequestDto
 import com.bendey.restaurant.core.network.dto.LoginResponseDto
 import com.bendey.restaurant.core.network.dto.CancelComandaRequestDto
 import com.bendey.restaurant.core.network.dto.CancelSessionRequestDto
@@ -189,6 +190,12 @@ interface RestaurantApi {
     @POST("/api/restaurant/sessions/{sessionId}/close")
     suspend fun closeSession(
         @Path("sessionId") sessionId: Int,
+    ): SuccessResponseDto
+
+    @POST("/api/restaurant/sessions/{sessionId}/move-table")
+    suspend fun moveSessionTable(
+        @Path("sessionId") sessionId: Int,
+        @Body body: MoveTableRequestDto,
     ): SuccessResponseDto
 
     @PATCH("/api/restaurant/comandas/{comandaId}/notes")

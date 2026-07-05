@@ -39,6 +39,7 @@ interface MesasRepository {
     suspend fun getSession(sessionId: Int): AppResult<TableSessionDetail>
     suspend fun getPrecuenta(sessionId: Int): AppResult<PrecuentaData>
     suspend fun closeSession(sessionId: Int): AppResult<Unit>
+    suspend fun moveSessionTable(sessionId: Int, targetTableId: Int): AppResult<Unit>
     suspend fun createFloor(name: String, sortOrder: Int): AppResult<Unit>
     suspend fun updateFloor(id: Int, name: String, sortOrder: Int): AppResult<Unit>
     suspend fun deleteFloor(id: Int): AppResult<Unit>

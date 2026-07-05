@@ -76,15 +76,17 @@ class BillingRepositoryImpl @Inject constructor(
                     active = it.active,
                 )
             }
-        val sunatEnabled = tenantRetrofitProvider.create<SettingsApi>()
+        val sunat = tenantRetrofitProvider.create<SettingsApi>()
             .getSunatConfig()
-            .sunatEnabled
         CheckoutMeta(
             series = series,
             contacts = contacts,
             paymentMethods = paymentMethods,
             bankAccounts = bankAccounts,
-            sunatEnabled = sunatEnabled,
+            sunatEnabled = sunat.sunatEnabled,
+            taxRate = sunat.taxRate,
+            igvRegime = sunat.igvRegime.ifBlank { "standard" },
+            taxBenefitZone = sunat.taxBenefitZone,
         ).also { operationalDataCache.setCheckoutMeta(branchId, it) }
     }
 
@@ -100,6 +102,7 @@ class BillingRepositoryImpl @Inject constructor(
                 contactId = input.contactId,
                 cashSessionId = input.cashSessionId,
                 closeSession = input.closeSession,
+                comandaIds = input.comandaIds,
                 discountAmount = input.discountAmount?.takeIf { it > 0 },
                 payments = input.payments.map {
                     BillPaymentDto(

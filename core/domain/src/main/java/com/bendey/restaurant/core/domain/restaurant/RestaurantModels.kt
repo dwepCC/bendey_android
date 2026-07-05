@@ -48,6 +48,7 @@ data class RestaurantTable(
     val name: String,
     val capacity: Int,
     val status: TableStatus,
+    val active: Boolean = true,
     val sessionId: Int?,
     val totalAmount: Double?,
     val waiterName: String?,
@@ -151,6 +152,10 @@ data class SessionComandaSummary(
     val modifiersJson: String? = null,
     val preparationArea: String? = null,
     val comboSnapshotJson: String? = null,
+    val igvAffectationType: String? = null,
+    val priceIncludesIgv: Boolean? = null,
+    val cancelledAt: String? = null,
+    val billedSaleId: Int? = null,
 )
 
 fun SessionComandaSummary.toComandaLine() = ComandaLine(

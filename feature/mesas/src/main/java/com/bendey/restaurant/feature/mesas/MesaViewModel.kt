@@ -21,6 +21,11 @@ import com.bendey.restaurant.core.domain.billing.BillingRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutDiscountMode
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentDraft
+import com.bendey.restaurant.core.domain.billing.ComandaCheckoutRow
+import com.bendey.restaurant.core.domain.billing.partitionComandasFromSession
+import com.bendey.restaurant.core.domain.billing.sumComandasPayableTotal
+import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
 import com.bendey.restaurant.core.domain.billing.calcPayableTotal
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
@@ -117,7 +122,10 @@ data class MesaUiState(
     val checkoutDiscountValue: String = "0",
     val allowCheckoutDiscount: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
+    val checkoutSessionClosed: Boolean = true,
     val checkoutPrintNote: String? = null,
+    val selectedComandaIds: List<Int> = emptyList(),
+    val splitBillEnabled: Boolean = false,
     val receiptHasPrinter: Boolean = false,
     val receiptBusy: String? = null,
     val reprintingOrderId: Int? = null,
@@ -139,7 +147,44 @@ data class MesaUiState(
     val cartTotal: Double get() = cart.sumOf { it.lineTotal }
     val cartCount: Int get() = cart.sumOf { it.quantity }
     val sessionTotal: Double get() = session?.totalAmount ?: 0.0
-    val checkoutRawTotal: Double get() = roundMoney(sessionTotal + cartTotal)
+
+    private val partitionedComandas get() = partitionComandasFromSession(session)
+    val pendingComandaRows: List<ComandaCheckoutRow> get() = partitionedComandas.pending
+    val billedComandaRows: List<ComandaCheckoutRow> get() = partitionedComandas.billed
+
+    val checkoutComandasTotal: Double
+        get() {
+            val selected = pendingComandaRows
+                .filter { selectedComandaIds.contains(it.comanda.id) }
+                .map { it.comanda }
+            val taxRate = resolveTaxRatePercent(checkoutMeta?.taxRate)
+            val taxConfig = TaxConfig(
+                taxRate = taxRate,
+                igvRegime = checkoutMeta?.igvRegime ?: "standard",
+                taxBenefitZone = checkoutMeta?.taxBenefitZone ?: false,
+            )
+            return sumComandasPayableTotal(selected, taxRate, taxConfig)
+        }
+
+    val checkoutRawTotal: Double
+        get() = if (splitBillEnabled) {
+            roundMoney(cartTotal + checkoutComandasTotal)
+        } else {
+            roundMoney(sessionTotal + cartTotal)
+        }
+
+    val isFullPendingSelection: Boolean
+        get() {
+            val pending = pendingComandaRows
+            if (pending.isEmpty()) return true
+            return pending.all { selectedComandaIds.contains(it.comanda.id) } &&
+                selectedComandaIds.size == pending.size
+        }
+
+    val allowDiscountInCheckout: Boolean
+        get() = if (splitBillEnabled) allowCheckoutDiscount && isFullPendingSelection else allowCheckoutDiscount
+
+    val showSplitBillOption: Boolean get() = pendingComandaRows.isNotEmpty()
 
     private val discountNumeric: Double
         get() = checkoutDiscountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
@@ -763,7 +808,7 @@ class MesaViewModel @Inject constructor(
 
     fun openCheckout() {
         val state = _uiState.value
-        if (state.checkoutRawTotal <= 0) {
+        if (state.cart.isEmpty() && state.pendingComandaRows.isEmpty()) {
             _uiState.update { it.copy(error = "No hay monto por cobrar") }
             return
         }
@@ -773,17 +818,20 @@ class MesaViewModel @Inject constructor(
                 session?.restaurantPermissions.orEmpty(),
                 session?.user?.employeeType,
             )
+            val initialTotal = roundMoney(state.sessionTotal + state.cartTotal)
             val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty())
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
                     allowCheckoutDiscount = allowDiscount,
                     checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
-                    checkoutDiscountValue = if (allowDiscount) "0" else "0",
+                    checkoutDiscountValue = "0",
+                    splitBillEnabled = false,
+                    selectedComandaIds = emptyList(),
                     checkoutPayments = listOf(
                         CheckoutPaymentDraft(
                             method = method,
-                            amount = formatAmount(it.checkoutPayableTotal),
+                            amount = formatAmount(initialTotal),
                         ),
                     ),
                     error = null,
@@ -821,12 +869,43 @@ class MesaViewModel @Inject constructor(
         _uiState.update { it.copy(checkoutPayments = payments) }
     }
 
+    fun setSelectedComandaIds(ids: List<Int>) {
+        _uiState.update { state ->
+            val next = state.copy(selectedComandaIds = ids)
+            val withDiscount = if (next.splitBillEnabled && !next.allowDiscountInCheckout) {
+                next.copy(checkoutDiscountValue = "0")
+            } else {
+                next
+            }
+            syncSinglePaymentAmount(withDiscount)
+        }
+    }
+
+    fun setSplitBillEnabled(enabled: Boolean) {
+        _uiState.update { state ->
+            val next = state.copy(
+                splitBillEnabled = enabled,
+                selectedComandaIds = if (enabled) {
+                    state.pendingComandaRows.map { it.comanda.id }
+                } else {
+                    emptyList()
+                },
+                checkoutDiscountValue = if (enabled) state.checkoutDiscountValue else "0",
+            )
+            syncSinglePaymentAmount(next)
+        }
+    }
+
     fun confirmCheckout() {
         val state = _uiState.value
         val seriesId = state.checkoutSeriesId
         val contactId = state.checkoutContactId
         val payable = state.checkoutPayableTotal
         val paymentLines = parseCheckoutPayments(state.checkoutPayments)
+        if (state.splitBillEnabled && state.selectedComandaIds.isEmpty() && state.cart.isEmpty()) {
+            _uiState.update { it.copy(error = "Selecciona al menos una comanda para cobrar") }
+            return
+        }
         if (seriesId == null) {
             _uiState.update { it.copy(error = "Selecciona una serie") }
             return
@@ -846,12 +925,14 @@ class MesaViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutSubmitting = true, error = null) }
+            var orderComandaIds = emptyList<Int>()
             if (state.cart.isNotEmpty()) {
-                val sent = sendCartItems(state)
-                if (!sent) {
+                val newIds = sendCartItems(state)
+                if (newIds == null) {
                     _uiState.update { it.copy(checkoutSubmitting = false) }
                     return@launch
                 }
+                orderComandaIds = newIds
             }
             val methods = state.checkoutMeta?.paymentMethods.orEmpty()
             val needsCashSession = requiresOpenCashSessionForCheckout(
@@ -874,7 +955,19 @@ class MesaViewModel @Inject constructor(
                 }
                 return@launch
             }
-            val discountAmount = if (state.allowCheckoutDiscount && state.checkoutDiscountAmount > 0) {
+            val sessionSnapshot = _uiState.value.session
+            val pendingIds = partitionComandasFromSession(sessionSnapshot).pending.map { it.comanda.id }
+            val idsToBill = if (state.splitBillEnabled) {
+                (state.selectedComandaIds + orderComandaIds).distinct()
+            } else {
+                pendingIds
+            }
+            val closeSession = if (state.splitBillEnabled) {
+                pendingIds.isNotEmpty() && pendingIds.all { idsToBill.contains(it) }
+            } else {
+                true
+            }
+            val discountAmount = if (state.allowDiscountInCheckout && state.checkoutDiscountAmount > 0) {
                 roundSunat(state.checkoutDiscountAmount)
             } else {
                 null
@@ -887,13 +980,15 @@ class MesaViewModel @Inject constructor(
                         docType = state.checkoutDocType,
                         contactId = contactId,
                         cashSessionId = cashSessionId,
-                        closeSession = true,
+                        closeSession = closeSession,
+                        comandaIds = idsToBill,
                         discountAmount = discountAmount,
                         payments = paymentLines,
                     ),
                 )
             ) {
                 is AppResult.Success -> {
+                    loadSession()
                     val printNote = documentPrintNote(documentPrintService.printSaleDocument(result.data.printData))
                     val hasPrinter = documentPrintService.hasConfiguredPrinter()
                     _uiState.update {
@@ -901,14 +996,34 @@ class MesaViewModel @Inject constructor(
                             checkoutSubmitting = false,
                             checkoutOpen = false,
                             checkoutSuccess = result.data,
+                            checkoutSessionClosed = closeSession,
                             checkoutPrintNote = printNote,
                             receiptHasPrinter = hasPrinter,
                             cart = emptyList(),
+                            splitBillEnabled = false,
+                            selectedComandaIds = emptyList(),
+                            snackMessage = if (closeSession) {
+                                "Venta generada. Mesa cerrada."
+                            } else {
+                                "Cobro parcial registrado"
+                            },
                         )
                     }
                 }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(checkoutSubmitting = false, error = result.message)
+                is AppResult.Error -> {
+                    loadSession()
+                    val pending = if (state.splitBillEnabled) {
+                        partitionComandasFromSession(_uiState.value.session).pending.map { it.comanda.id }
+                    } else {
+                        emptyList()
+                    }
+                    _uiState.update {
+                        it.copy(
+                            checkoutSubmitting = false,
+                            error = result.message,
+                            selectedComandaIds = pending,
+                        )
+                    }
                 }
                 AppResult.Loading -> Unit
             }
@@ -1115,7 +1230,7 @@ class MesaViewModel @Inject constructor(
         )
     }
 
-    private suspend fun sendCartItems(state: MesaUiState): Boolean {
+    private suspend fun sendCartItems(state: MesaUiState): List<Int>? {
         val items = state.cart.map { it.toOrderItemInput() }
         return when (val result = posRepository.addOrder(sessionId, items)) {
             is AppResult.Success -> {
@@ -1130,13 +1245,13 @@ class MesaViewModel @Inject constructor(
                 )
                 loadSession()
                 _uiState.update { it.copy(cart = emptyList()) }
-                true
+                order.comandas.map { it.id }
             }
             is AppResult.Error -> {
                 _uiState.update { it.copy(error = result.message, sending = false) }
-                false
+                null
             }
-            AppResult.Loading -> false
+            AppResult.Loading -> null
         }.also {
             _uiState.update { state -> state.copy(sending = false) }
         }

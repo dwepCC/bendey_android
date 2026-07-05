@@ -58,7 +58,13 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.saleStatusAccentColor
+import com.bendey.restaurant.core.domain.billing.ContactBrief
 import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
+import com.bendey.restaurant.core.domain.billing.exceedsSunatMaxMontoSinRuc
+import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
+import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
+import com.bendey.restaurant.core.domain.billing.isFacturaDocType
+import com.bendey.restaurant.core.ui.components.BendeySelectOption
 import com.bendey.restaurant.core.domain.sales.BILLING_FILTER_STATUSES
 import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SaleListSummary
@@ -230,16 +236,33 @@ fun VentasScreen(
     }
 
     if (state.emitDialogOpen) {
+        val emitMeta = state.emitCheckoutMeta ?: state.checkoutMeta
+        val emitContacts = emitMeta?.contacts.orEmpty()
+        val selectedEmitContact = state.emitContactId?.let { id -> emitContacts.firstOrNull { it.id == id } }
+        val sunatLimitWarning = if (
+            state.emitDocKind == "03" &&
+            selectedEmitContact != null &&
+            exceedsSunatMaxMontoSinRuc(state.detail?.total ?: 0.0, selectedEmitContact, state.emitDocKind)
+        ) {
+            sunatMaxMontoSinRucMessage(state.detail?.total ?: 0.0)
+        } else {
+            null
+        }
         EmitElectronicDialog(
             docKind = state.emitDocKind,
             seriesId = state.emitSeriesId,
             issueDate = state.emitIssueDate,
             series = state.filteredEmitSeries,
+            contacts = emitContacts,
+            contactId = state.emitContactId,
+            metaLoading = state.emitMetaLoading,
+            sunatLimitWarning = sunatLimitWarning,
             loading = state.emitSubmitting,
             error = state.error,
             onDocKindChange = viewModel::setEmitDocKind,
             onSeriesChange = viewModel::setEmitSeriesId,
             onIssueDateChange = viewModel::setEmitIssueDate,
+            onContactChange = viewModel::setEmitContactId,
             onDismiss = viewModel::dismissEmitDialog,
             onConfirm = viewModel::confirmEmitElectronic,
         )
@@ -863,11 +886,16 @@ private fun EmitElectronicDialog(
     seriesId: Int?,
     issueDate: String,
     series: List<com.bendey.restaurant.core.domain.billing.DocumentSeries>,
+    contacts: List<ContactBrief>,
+    contactId: Int?,
+    metaLoading: Boolean,
+    sunatLimitWarning: String?,
     loading: Boolean,
     error: String?,
     onDocKindChange: (String) -> Unit,
     onSeriesChange: (Int) -> Unit,
     onIssueDateChange: (String) -> Unit,
+    onContactChange: (Int?) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -875,6 +903,12 @@ private fun EmitElectronicDialog(
     var seriesExpanded by remember { mutableStateOf(false) }
     val kindLabel = if (docKind == "01") "Factura (01)" else "Boleta (03)"
     val seriesLabel = series.firstOrNull { it.id == seriesId }?.displayLabel ?: "Seleccionar serie"
+    val requiresRuc = isFacturaDocType(if (docKind == "01") "FACTURA" else "BOLETA", docKind)
+    val clientOptions = if (requiresRuc) {
+        contacts.filter { it.docType.trim() == "6" || it.docType.equals("ruc", ignoreCase = true) }
+    } else {
+        contacts
+    }
 
     AlertDialog(
         onDismissRequest = { if (!loading) onDismiss() },
@@ -882,10 +916,32 @@ private fun EmitElectronicDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Genera boleta o factura desde esta nota de venta.",
+                    "Genera boleta o factura desde esta nota de venta. Puede cambiar el cliente antes de emitir.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BendeyColors.OnSurfaceVariant,
                 )
+                if (metaLoading) {
+                    Text("Cargando series y clientes…", style = MaterialTheme.typography.bodySmall)
+                } else {
+                    BendeySearchableSelect(
+                        options = clientOptions.map { BendeySelectOption(it.id, it.displayLabel) },
+                        selectedId = contactId,
+                        onSelect = { onContactChange(it) },
+                        label = if (requiresRuc) "Cliente (RUC obligatorio)" else "Cliente",
+                        placeholder = if (requiresRuc) "Seleccione cliente con RUC" else "Seleccione cliente",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (requiresRuc && clientOptions.isEmpty()) {
+                        Text(
+                            "La factura requiere un cliente con RUC registrado.",
+                            color = BendeyColors.Warning,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                sunatLimitWarning?.let {
+                    Text(it, color = BendeyColors.Warning, style = MaterialTheme.typography.bodySmall)
+                }
                 ExposedDropdownMenuBox(
                     expanded = kindExpanded,
                     onExpandedChange = { kindExpanded = it },
@@ -960,7 +1016,7 @@ private fun EmitElectronicDialog(
             BendeyPrimaryButton(
                 text = if (loading) "Generando…" else "Emitir",
                 onClick = onConfirm,
-                enabled = !loading && seriesId != null,
+                enabled = !loading && !metaLoading && seriesId != null,
             )
         },
         dismissButton = {

@@ -12,10 +12,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +43,12 @@ import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import java.text.NumberFormat
 import java.util.Locale
 
+data class TableCardMenuAction(
+    val id: String,
+    val label: String,
+    val onClick: () -> Unit,
+)
+
 /** Tarjeta operativa — barra lateral de estado + meta con contraste suave. */
 @Composable
 fun BendeyTableCard(
@@ -40,14 +56,19 @@ fun BendeyTableCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = table.isClickable,
+    menuActions: List<TableCardMenuAction> = emptyList(),
 ) {
     val accent = table.status.accentColor()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .height(168.dp)
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                enabled = enabled && !menuExpanded,
+                onClick = onClick,
+            ),
         shape = BendeyShapeTokens.lg,
         color = BendeyColors.Surface,
         border = BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f)),
@@ -73,7 +94,20 @@ fun BendeyTableCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     StatusDot(color = accent)
-                    BendeyStatusChip(label = table.status.label, accentColor = accent)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                    ) {
+                        BendeyStatusChip(label = table.status.label, accentColor = accent)
+                        if (menuActions.isNotEmpty()) {
+                            TableCardOverflowMenu(
+                                tableName = table.name,
+                                actions = menuActions,
+                                expanded = menuExpanded,
+                                onExpandedChange = { menuExpanded = it },
+                            )
+                        }
+                    }
                 }
                 Text(
                     text = table.name,
@@ -88,6 +122,47 @@ fun BendeyTableCard(
                     table = table,
                     accent = accent,
                     currency = currency,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TableCardOverflowMenu(
+    tableName: String,
+    actions: List<TableCardMenuAction>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(BendeyShapeTokens.sm)
+            .background(
+                if (expanded) BendeyColors.PrimaryContainer.copy(alpha = 0.98f)
+                else BendeyColors.PrimaryContainer.copy(alpha = 0.88f),
+            ),
+    ) {
+        IconButton(
+            onClick = { onExpandedChange(true) },
+            modifier = Modifier
+                .width(32.dp)
+                .height(32.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Acciones $tableName",
+                tint = BendeyColors.Primary,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label) },
+                    onClick = {
+                        onExpandedChange(false)
+                        action.onClick()
+                    },
                 )
             }
         }

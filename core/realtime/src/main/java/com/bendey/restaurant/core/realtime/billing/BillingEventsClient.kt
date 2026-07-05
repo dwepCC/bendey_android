@@ -12,8 +12,6 @@ import okhttp3.Request
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,13 +30,15 @@ class BillingEventsClient @Inject constructor(
         disconnect()
         val token = sessionProvider.token()?.trim().orEmpty()
         val base = sessionProvider.tenantApiBaseUrl()?.trim()?.trimEnd('/').orEmpty()
-        if (token.isBlank() || base.isBlank()) return
+        val slug = sessionProvider.tenantSlug()?.trim().orEmpty()
+        val url = buildBillingEventsUrl(base, token, slug) ?: return
 
-        val encoded = URLEncoder.encode(token, StandardCharsets.UTF_8)
-        val url = "$base/api/billing/events?access_token=$encoded"
-        val request = Request.Builder().url(url).get().build()
+        val requestBuilder = Request.Builder().url(url).get()
+        if (slug.isNotBlank()) {
+            requestBuilder.header("X-Tenant-Slug", slug)
+        }
         eventSource = EventSources.createFactory(okHttpClient).newEventSource(
-            request,
+            requestBuilder.build(),
             object : EventSourceListener() {
                 override fun onEvent(
                     eventSource: EventSource,

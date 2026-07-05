@@ -69,6 +69,24 @@ fun checkoutContactIsValid(
     return true
 }
 
+/** Monto máximo SUNAT para boleta con cliente doc. tipo 0 (paridad backend). */
+const val SUNAT_MAX_MONTO_CLIENTE_SIN_RUC = 700.0
+
+fun exceedsSunatMaxMontoSinRuc(
+    total: Double,
+    contact: ContactBrief?,
+    sunatCode: String?,
+): Boolean {
+    val code = sunatCode?.trim().orEmpty()
+    if (code != "03" && code != "00") return false
+    if (contact == null || contact.docType.trim() != "0") return false
+    return total > SUNAT_MAX_MONTO_CLIENTE_SIN_RUC
+}
+
+fun sunatMaxMontoSinRucMessage(total: Double): String =
+    "Con cliente sin RUC (doc. tipo 0) el monto máximo permitido es S/ ${SUNAT_MAX_MONTO_CLIENTE_SIN_RUC.toInt()} " +
+        "para boleta. Total actual: S/ ${"%.2f".format(total)}"
+
 fun normalizePaymentMethodCodeForLookup(code: String): String =
     when (code.trim().lowercase()) {
         "efectivo" -> "cash"

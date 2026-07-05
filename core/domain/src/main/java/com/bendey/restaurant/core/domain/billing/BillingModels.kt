@@ -56,6 +56,9 @@ data class CheckoutMeta(
     val paymentMethods: List<PaymentMethodOption>,
     val bankAccounts: List<BankAccountBrief> = emptyList(),
     val sunatEnabled: Boolean = false,
+    val taxRate: Double = DEFAULT_TAX_RATE_PERCENT,
+    val igvRegime: String = "standard",
+    val taxBenefitZone: Boolean = false,
 )
 
 data class BillSessionInput(
@@ -64,6 +67,7 @@ data class BillSessionInput(
     val contactId: Int?,
     val cashSessionId: Int?,
     val closeSession: Boolean = true,
+    val comandaIds: List<Int>,
     val discountAmount: Double? = null,
     val payments: List<CheckoutPaymentLine>,
 )

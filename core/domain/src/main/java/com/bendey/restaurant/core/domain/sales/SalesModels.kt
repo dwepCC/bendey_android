@@ -17,6 +17,8 @@ data class SaleSummary(
     val sunatCode: String? = null,
     val convertedTo: String? = null,
     val electronicIssueSaleId: Int? = null,
+    val branchId: Int? = null,
+    val contactId: Int? = null,
 ) {
     val displayNumber: String get() = formatSaleDocumentNumber(number)
 }
@@ -73,6 +75,8 @@ data class SaleDetail(
     val sunatCode: String? = null,
     val convertedTo: String? = null,
     val electronicIssueSaleId: Int? = null,
+    val branchId: Int? = null,
+    val contactId: Int? = null,
     val contact: SaleContactBrief? = null,
     val items: List<SaleDetailLine>,
     val payments: List<SaleDetailPayment>,
@@ -129,6 +133,7 @@ interface SalesRepository {
         saleId: Int,
         seriesId: Int,
         issueDate: String?,
+        contactId: Int? = null,
     ): AppResult<IssueElectronicResult>
 }
 

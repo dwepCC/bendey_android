@@ -47,8 +47,14 @@ data class MesasUiState(
     val snackMessage: String? = null,
     val openSessionTarget: Int? = null,
     val canAssignStaff: Boolean = false,
+    val canMoveTable: Boolean = false,
     val currentUserName: String = "",
     val currentUserStaffId: Int? = null,
+    val moveSource: RestaurantTable? = null,
+    val moveTargetId: Int? = null,
+    val freeTablesForMove: List<RestaurantTable> = emptyList(),
+    val loadingFreeForMove: Boolean = false,
+    val movingTable: Boolean = false,
 ) {
     private val sortedTables: List<RestaurantTable>
         get() = sortRestaurantTables(tables, floors)
@@ -101,6 +107,7 @@ class MesasViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         canAssignStaff = canAssign,
+                        canMoveTable = RestaurantPermissions.hasPermission(perms, RestaurantPermissions.PERM_MESA),
                         currentUserName = session?.user?.name.orEmpty(),
                         currentUserStaffId = session?.user?.staffId,
                     )
@@ -247,6 +254,94 @@ class MesasViewModel @Inject constructor(
 
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
+    }
+
+    fun openMoveDialog(table: RestaurantTable) {
+        _uiState.update {
+            it.copy(
+                moveSource = table,
+                moveTargetId = null,
+                freeTablesForMove = emptyList(),
+                loadingFreeForMove = true,
+            )
+        }
+        viewModelScope.launch {
+            when (val result = mesasRepository.loadTables(floorId = null)) {
+                is AppResult.Success -> {
+                    val free = sortRestaurantTables(
+                        result.data.filter { candidate ->
+                            candidate.status == TableStatus.LIBRE &&
+                                candidate.active &&
+                                candidate.id != table.id
+                        },
+                        _uiState.value.floors,
+                    )
+                    _uiState.update {
+                        it.copy(freeTablesForMove = free, loadingFreeForMove = false)
+                    }
+                }
+                is AppResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            loadingFreeForMove = false,
+                            freeTablesForMove = emptyList(),
+                            snackMessage = result.message ?: "No se pudieron cargar mesas libres",
+                        )
+                    }
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissMoveDialog() {
+        if (_uiState.value.movingTable) return
+        _uiState.update {
+            it.copy(
+                moveSource = null,
+                moveTargetId = null,
+                freeTablesForMove = emptyList(),
+                loadingFreeForMove = false,
+            )
+        }
+    }
+
+    fun selectMoveTarget(targetTableId: Int) {
+        _uiState.update { it.copy(moveTargetId = targetTableId) }
+    }
+
+    fun confirmMoveTable() {
+        val state = _uiState.value
+        val source = state.moveSource ?: return
+        val sessionId = source.sessionId ?: return
+        val targetId = state.moveTargetId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(movingTable = true) }
+            when (val result = mesasRepository.moveSessionTable(sessionId, targetId)) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            movingTable = false,
+                            moveSource = null,
+                            moveTargetId = null,
+                            freeTablesForMove = emptyList(),
+                            loadingFreeForMove = false,
+                            snackMessage = "Mesa movida correctamente",
+                        )
+                    }
+                    refresh()
+                }
+                is AppResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            movingTable = false,
+                            snackMessage = result.message ?: "Error al mover mesa",
+                        )
+                    }
+                }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     companion object {

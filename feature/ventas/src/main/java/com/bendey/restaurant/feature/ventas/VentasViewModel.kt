@@ -12,6 +12,12 @@ import com.bendey.restaurant.core.domain.billing.BillingDocumentKind
 import com.bendey.restaurant.core.domain.billing.BillingRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
+import com.bendey.restaurant.core.domain.billing.checkoutContactIsValid
+import com.bendey.restaurant.core.domain.billing.exceedsSunatMaxMontoSinRuc
+import com.bendey.restaurant.core.domain.billing.filterRestaurantCheckoutSeries
+import com.bendey.restaurant.core.domain.billing.isFacturaDocType
+import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
+import com.bendey.restaurant.core.data.repository.pickVariosContactId
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.SaleDetail
@@ -82,6 +88,9 @@ data class VentasUiState(
     val emitSeriesId: Int? = null,
     val emitIssueDate: String = todayPeru(),
     val emitSubmitting: Boolean = false,
+    val emitContactId: Int? = null,
+    val emitCheckoutMeta: CheckoutMeta? = null,
+    val emitMetaLoading: Boolean = false,
     val receiptModalOpen: Boolean = false,
     val receiptPrintData: SalePrintData? = null,
     val receiptSaleNumber: String = "",
@@ -101,9 +110,15 @@ data class VentasUiState(
     val hasMore: Boolean get() = sales.size < total
 
     val electronicSeries: List<DocumentSeries>
-        get() = checkoutMeta?.series.orEmpty().filter {
-            val code = it.sunatCode?.trim().orEmpty()
-            code == "01" || code == "03"
+        get() {
+            val meta = emitCheckoutMeta ?: checkoutMeta
+            return filterRestaurantCheckoutSeries(
+                meta?.series.orEmpty(),
+                sunatEnabled = meta?.sunatEnabled ?: sunatEnabled,
+            ).filter {
+                val code = it.sunatCode?.trim().orEmpty()
+                code == "01" || code == "03"
+            }
         }
 
     val filteredEmitSeries: List<DocumentSeries>
@@ -462,22 +477,67 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(snackMessage = "Esta nota no puede convertirse a comprobante") }
             return
         }
-        val defaultSeries = _uiState.value.electronicSeries.firstOrNull { it.sunatCode?.trim() == "03" }
-            ?: _uiState.value.electronicSeries.firstOrNull()
         _uiState.update {
             it.copy(
                 emitDialogOpen = true,
-                emitDocKind = defaultSeries?.sunatCode?.trim() ?: "03",
-                emitSeriesId = defaultSeries?.id,
+                emitDocKind = "03",
+                emitSeriesId = null,
                 emitIssueDate = todayPeru(),
+                emitContactId = null,
+                emitCheckoutMeta = null,
+                emitMetaLoading = true,
                 error = null,
             )
+        }
+        viewModelScope.launch {
+            val branchId = detail.branchId
+                ?: sessionStore.userSessionFlow.first()?.activeBranch?.id
+            val meta = if (branchId != null) {
+                when (val result = billingRepository.loadCheckoutMeta(branchId)) {
+                    is AppResult.Success -> result.data
+                    else -> _uiState.value.checkoutMeta
+                }
+            } else {
+                _uiState.value.checkoutMeta
+            }
+            val contacts = meta?.contacts.orEmpty()
+            val initialContactId = detail.contact?.id?.takeIf { it > 0 }
+                ?: detail.contactId?.takeIf { it > 0 }
+                ?: pickVariosContactId(contacts)
+            val feSeries = filterRestaurantCheckoutSeries(
+                meta?.series.orEmpty(),
+                sunatEnabled = meta?.sunatEnabled ?: _uiState.value.sunatEnabled,
+            ).filter {
+                val code = it.sunatCode?.trim().orEmpty()
+                code == "01" || code == "03"
+            }
+            val defaultSeries = feSeries.firstOrNull { it.sunatCode?.trim() == "03" } ?: feSeries.firstOrNull()
+            _uiState.update {
+                it.copy(
+                    emitCheckoutMeta = meta,
+                    emitMetaLoading = false,
+                    emitDocKind = defaultSeries?.sunatCode?.trim()?.takeIf { c -> c == "01" || c == "03" } ?: "03",
+                    emitSeriesId = defaultSeries?.id,
+                    emitContactId = initialContactId,
+                )
+            }
         }
     }
 
     fun dismissEmitDialog() {
         if (_uiState.value.emitSubmitting) return
-        _uiState.update { it.copy(emitDialogOpen = false, error = null) }
+        _uiState.update {
+            it.copy(
+                emitDialogOpen = false,
+                emitCheckoutMeta = null,
+                emitMetaLoading = false,
+                error = null,
+            )
+        }
+    }
+
+    fun setEmitContactId(contactId: Int?) {
+        _uiState.update { it.copy(emitContactId = contactId) }
     }
 
     fun setEmitDocKind(kind: String) {
@@ -506,8 +566,33 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Seleccione una serie") }
             return
         }
-        if (state.emitDocKind == "01" && detail.contact?.hasValidRuc() != true) {
-            _uiState.update { it.copy(error = "Para factura el cliente debe tener RUC (11 dígitos)") }
+        val meta = state.emitCheckoutMeta ?: state.checkoutMeta
+        val contacts = meta?.contacts.orEmpty()
+        val selectedContact = state.emitContactId?.let { id -> contacts.firstOrNull { it.id == id } }
+            ?: detail.contact?.let { brief ->
+                com.bendey.restaurant.core.domain.billing.ContactBrief(
+                    id = brief.id ?: 0,
+                    docType = brief.docType.orEmpty(),
+                    docNumber = brief.docNumber.orEmpty(),
+                    businessName = brief.businessName.orEmpty(),
+                    active = true,
+                )
+            }
+        val emitDocType = if (state.emitDocKind == "01") "FACTURA" else "BOLETA"
+        if (selectedContact == null || !checkoutContactIsValid(selectedContact, emitDocType, state.emitDocKind)) {
+            _uiState.update {
+                it.copy(
+                    error = if (isFacturaDocType(emitDocType, state.emitDocKind)) {
+                        "La factura requiere un cliente con RUC (11 dígitos)"
+                    } else {
+                        "Seleccione un cliente"
+                    },
+                )
+            }
+            return
+        }
+        if (exceedsSunatMaxMontoSinRuc(detail.total, selectedContact, state.emitDocKind)) {
+            _uiState.update { it.copy(error = sunatMaxMontoSinRucMessage(detail.total)) }
             return
         }
         viewModelScope.launch {
@@ -517,6 +602,7 @@ class VentasViewModel @Inject constructor(
                     saleId = detail.id,
                     seriesId = seriesId,
                     issueDate = state.emitIssueDate,
+                    contactId = state.emitContactId?.takeIf { it > 0 },
                 )
             ) {
                 is AppResult.Success -> {
@@ -524,13 +610,14 @@ class VentasViewModel @Inject constructor(
                         it.copy(
                             emitSubmitting = false,
                             emitDialogOpen = false,
+                            emitCheckoutMeta = null,
                             selectedSaleId = null,
                             detail = null,
                             snackMessage = result.data.message
-                                ?: "Comprobante generado · envíelo a SUNAT desde Facturación",
+                                ?: "Comprobante generado · revise el envío a SUNAT en Facturación",
                         )
                     }
-                    refresh()
+                    selectTab(VentasTab.FACTURACION)
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(emitSubmitting = false, error = result.message)

@@ -94,12 +94,14 @@ class SalesRepositoryImpl @Inject constructor(
         saleId: Int,
         seriesId: Int,
         issueDate: String?,
+        contactId: Int?,
     ): AppResult<IssueElectronicResult> = apiCall {
         val response = tenantRetrofitProvider.create<SalesApi>().issueElectronicFromNota(
             saleId = saleId,
             body = IssueElectronicRequestDto(
                 seriesId = seriesId,
                 issueDate = issueDate?.trim()?.takeIf { it.isNotEmpty() },
+                contactId = contactId?.takeIf { it > 0 },
             ),
         )
         val sale = response.sale ?: error("Comprobante no generado")
@@ -153,6 +155,8 @@ private fun SaleDto.toDomain() = SaleSummary(
     sunatCode = sunatCode,
     convertedTo = convertedTo,
     electronicIssueSaleId = electronicIssueSaleId,
+    branchId = branchId,
+    contactId = contactId,
 )
 
 private fun formatSaleNumber(series: String, number: String): String {
@@ -188,6 +192,8 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         sunatCode = saleDto.sunatCode,
         convertedTo = saleDto.convertedTo,
         electronicIssueSaleId = saleDto.electronicIssueSaleId,
+        branchId = saleDto.branchId,
+        contactId = saleDto.contactId,
         contact = contact?.toDomain(),
         items = items.map {
             SaleDetailLine(
