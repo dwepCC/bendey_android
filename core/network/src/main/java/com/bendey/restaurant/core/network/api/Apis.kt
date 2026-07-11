@@ -257,6 +257,8 @@ interface ProductsApi {
         @Query("category_id") categoryId: Int? = null,
         @Query("preparation_area_id") preparationAreaId: Int? = null,
         @Query("branch_id") branchId: Int? = null,
+        @Query("report") report: Boolean? = null,
+        @Query("stock_less_than") stockLessThan: Double? = null,
     ): ProductListResponseDto
 
     @GET("/api/products/{id}")

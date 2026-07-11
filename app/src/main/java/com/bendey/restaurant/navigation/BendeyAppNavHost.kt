@@ -64,6 +64,7 @@ import com.bendey.restaurant.feature.configuracion.navigation.configuracionGraph
 import com.bendey.restaurant.feature.areaspreparacion.navigation.areasPreparacionGraph
 import com.bendey.restaurant.feature.modificadores.navigation.modificadoresGraph
 import com.bendey.restaurant.feature.productos.navigation.productosGraph
+import com.bendey.restaurant.feature.productos.navigation.reportesGraph
 import com.bendey.restaurant.feature.repartidores.navigation.repartidoresGraph
 import com.bendey.restaurant.feature.ventas.navigation.ventasGraph
 
@@ -344,6 +345,7 @@ private fun MainShell(
             cocinaGraph(onShowMessage = onShowMessage)
             cajaGraph(onShowMessage = onShowMessage)
             ventasGraph(onShowMessage = onShowMessage)
+            reportesGraph(onShowMessage = onShowMessage)
             productosGraph(
                 onOpenModificadores = {
                     mainNavController.navigate(BendeyRoutes.MODIFICADORES) { launchSingleTop = true }

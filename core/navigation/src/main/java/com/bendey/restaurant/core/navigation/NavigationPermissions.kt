@@ -17,6 +17,7 @@ fun TopLevelDestination.requiredFeature(): RestaurantFeature = when (this) {
 fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
     BendeyDrawerDestination.CAJA -> RestaurantFeature.CAJA
     BendeyDrawerDestination.VENTAS -> RestaurantFeature.VENTAS
+    BendeyDrawerDestination.REPORTES -> RestaurantFeature.REPORTES
     BendeyDrawerDestination.MESAS_ADMIN -> RestaurantFeature.MESAS
     BendeyDrawerDestination.PRODUCTOS -> RestaurantFeature.PRODUCTOS
     BendeyDrawerDestination.CLIENTES -> RestaurantFeature.CLIENTES
@@ -35,6 +36,7 @@ fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
     route == BendeyRoutes.COCINA -> RestaurantFeature.COMANDAS
     route == BendeyRoutes.CAJA -> RestaurantFeature.CAJA
     route == BendeyRoutes.VENTAS -> RestaurantFeature.VENTAS
+    route == BendeyRoutes.REPORTES -> RestaurantFeature.REPORTES
     route == BendeyRoutes.PRODUCTOS -> RestaurantFeature.PRODUCTOS
     route == BendeyRoutes.MODIFICADORES -> RestaurantFeature.MODIFICADORES
     route == BendeyRoutes.AREAS_PREPARACION -> RestaurantFeature.MODIFICADORES

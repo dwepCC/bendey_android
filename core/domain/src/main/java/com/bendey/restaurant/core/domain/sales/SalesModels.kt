@@ -14,6 +14,7 @@ data class SaleSummary(
     val status: String,
     val billingStatus: String?,
     val paymentMethod: String?,
+    val payments: List<SalePaymentLine> = emptyList(),
     val sunatCode: String? = null,
     val convertedTo: String? = null,
     val electronicIssueSaleId: Int? = null,
@@ -104,6 +105,32 @@ data class SalesListPage(
     val summary: SaleListSummary = SaleListSummary(),
 )
 
+data class SalesByProductRow(
+    val productId: Int,
+    val productCode: String,
+    val productName: String,
+    val categoryName: String,
+    val unit: String,
+    val quantitySold: Double,
+    val totalAmount: Double,
+    val linesCount: Int,
+    val salesCount: Int,
+    val avgLineAmount: Double,
+)
+
+data class SalesByProductSummary(
+    val totalAmount: Double = 0.0,
+    val totalQuantity: Double = 0.0,
+    val lineItems: Int = 0,
+    val distinctSales: Int = 0,
+    val productsCount: Int = 0,
+)
+
+data class SalesByProductPage(
+    val rows: List<SalesByProductRow>,
+    val summary: SalesByProductSummary,
+)
+
 interface SalesRepository {
     suspend fun listSales(
         from: String?,
@@ -135,6 +162,13 @@ interface SalesRepository {
         issueDate: String?,
         contactId: Int? = null,
     ): AppResult<IssueElectronicResult>
+
+    suspend fun listSalesByProduct(
+        from: String?,
+        to: String?,
+        branchId: Int? = null,
+        categoryId: Int? = null,
+    ): AppResult<SalesByProductPage>
 }
 
 fun formatSaleDocumentNumber(number: String): String {

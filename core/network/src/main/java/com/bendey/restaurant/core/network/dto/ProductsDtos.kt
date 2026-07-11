@@ -21,6 +21,9 @@ data class ProductDto(
     @SerialName("has_modifiers") val hasModifiers: Boolean = false,
     @SerialName("has_variants") val hasVariants: Boolean = false,
     @SerialName("manage_stock") val manageStock: Boolean = false,
+    @SerialName("min_stock") val minStock: Double = 0.0,
+    @SerialName("stock_total") val stockTotal: Double? = null,
+    @SerialName("stock_by_branch") val stockByBranch: List<ProductReportBranchStockDto>? = null,
     val active: Boolean = true,
     @SerialName("available_for_sale") val availableForSale: Boolean = true,
     @SerialName("igv_affectation_type") val igvAffectationType: String? = null,
@@ -73,6 +76,7 @@ data class CreateProductRequestDto(
     @SerialName("igv_affectation_type") val igvAffectationType: String = "10",
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean = true,
     @SerialName("manage_stock") val manageStock: Boolean = false,
+    @SerialName("min_stock") val minStock: Double = 0.0,
     @SerialName("initial_stock") val initialStock: Double? = null,
     @SerialName("has_modifiers") val hasModifiers: Boolean = false,
     @SerialName("has_variants") val hasVariants: Boolean = false,
@@ -94,6 +98,7 @@ data class UpdateProductRequestDto(
     @SerialName("igv_affectation_type") val igvAffectationType: String? = null,
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean? = null,
     @SerialName("manage_stock") val manageStock: Boolean? = null,
+    @SerialName("min_stock") val minStock: Double? = null,
     @SerialName("available_for_sale") val availableForSale: Boolean? = null,
     @SerialName("is_restaurant") val isRestaurant: Boolean? = null,
     @SerialName("has_modifiers") val hasModifiers: Boolean? = null,
@@ -111,4 +116,27 @@ data class CategoryUpsertRequestDto(
 @Serializable
 data class StockSummaryResponseDto(
     val data: Map<String, Double> = emptyMap(),
+)
+
+@Serializable
+data class ProductReportBranchStockDto(
+    @SerialName("branch_id") val branchId: Int = 0,
+    @SerialName("branch_name") val branchName: String = "",
+    val quantity: Double = 0.0,
+)
+
+@Serializable
+data class ProductReportDto(
+    val id: Int,
+    val code: String = "",
+    val name: String,
+    val unit: String = "NIU",
+    @SerialName("sale_price") val salePrice: Double = 0.0,
+    @SerialName("purchase_price") val purchasePrice: Double? = null,
+    @SerialName("category_name") val categoryName: String? = null,
+    @SerialName("manage_stock") val manageStock: Boolean = false,
+    @SerialName("min_stock") val minStock: Double = 0.0,
+    @SerialName("stock_total") val stockTotal: Double = 0.0,
+    @SerialName("stock_by_branch") val stockByBranch: List<ProductReportBranchStockDto> = emptyList(),
+    val active: Boolean = true,
 )

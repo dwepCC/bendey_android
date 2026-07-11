@@ -8,7 +8,11 @@ import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SaleDetailLine
 import com.bendey.restaurant.core.domain.sales.SaleDetailPayment
 import com.bendey.restaurant.core.domain.sales.SaleListSummary
+import com.bendey.restaurant.core.domain.sales.SalePaymentLine
 import com.bendey.restaurant.core.domain.sales.SalePaymentTotal
+import com.bendey.restaurant.core.domain.sales.SalesByProductPage
+import com.bendey.restaurant.core.domain.sales.SalesByProductRow
+import com.bendey.restaurant.core.domain.sales.SalesByProductSummary
 import com.bendey.restaurant.core.domain.sales.SalesListPage
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.SalesRepository
@@ -112,6 +116,45 @@ class SalesRepositoryImpl @Inject constructor(
             message = "Comprobante generado: ${sale.docType} ${formatSaleNumber(sale.series, sale.number)}",
         )
     }
+
+    override suspend fun listSalesByProduct(
+        from: String?,
+        to: String?,
+        branchId: Int?,
+        categoryId: Int?,
+    ): AppResult<SalesByProductPage> = apiCall {
+        val response = tenantRetrofitProvider.create<SalesApi>().listSalesByProduct(
+            from = from,
+            to = to,
+            branchId = branchId,
+            categoryId = categoryId,
+        )
+        SalesByProductPage(
+            rows = response.data.map {
+                SalesByProductRow(
+                    productId = it.productId,
+                    productCode = it.productCode,
+                    productName = it.productName,
+                    categoryName = it.categoryName,
+                    unit = it.unit,
+                    quantitySold = it.quantitySold,
+                    totalAmount = it.totalAmount,
+                    linesCount = it.linesCount,
+                    salesCount = it.salesCount,
+                    avgLineAmount = it.avgLineAmount,
+                )
+            },
+            summary = response.summary?.let {
+                SalesByProductSummary(
+                    totalAmount = it.totalAmount,
+                    totalQuantity = it.totalQuantity,
+                    lineItems = it.lineItems,
+                    distinctSales = it.distinctSales,
+                    productsCount = it.productsCount,
+                )
+            } ?: SalesByProductSummary(),
+        )
+    }
 }
 
 private data class ListFilters(
@@ -152,6 +195,7 @@ private fun SaleDto.toDomain() = SaleSummary(
     status = status,
     billingStatus = billingStatus,
     paymentMethod = paymentMethod,
+    payments = payments.map { SalePaymentLine(method = it.method, amount = it.amount) },
     sunatCode = sunatCode,
     convertedTo = convertedTo,
     electronicIssueSaleId = electronicIssueSaleId,

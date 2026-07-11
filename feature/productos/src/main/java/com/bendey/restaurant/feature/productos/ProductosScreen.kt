@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.UploadFile
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
@@ -159,6 +160,7 @@ fun ProductosScreen(
                     onBranchFilter = viewModel::setBranchFilter,
                     onEdit = viewModel::openEditProduct,
                     onDelete = viewModel::requestDeleteProduct,
+                    onAdjustStock = viewModel::openStockAdjustment,
                     onLoadMore = viewModel::loadMoreProducts,
                     modifier = contentModifier,
                 )
@@ -238,6 +240,18 @@ fun ProductosScreen(
             onConfirm = viewModel::confirmDeleteCategory,
         )
     }
+
+    state.stockAdjustment?.let { adjustment ->
+        StockAdjustmentDialog(
+            form = adjustment,
+            branches = state.branches,
+            loading = state.adjustmentLoading,
+            error = state.error?.takeIf { state.stockAdjustment != null },
+            onDismiss = viewModel::dismissStockAdjustment,
+            onFormChange = viewModel::updateStockAdjustment,
+            onConfirm = viewModel::confirmStockAdjustment,
+        )
+    }
 }
 
 @Composable
@@ -275,6 +289,7 @@ private fun ProductsTabContent(
     onBranchFilter: (Int?) -> Unit,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
+    onAdjustStock: (ProductItem) -> Unit,
     onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -353,6 +368,7 @@ private fun ProductsTabContent(
                             selected = product.id == selectedProductId,
                             onEdit = { onEdit(product.id) },
                             onDelete = { onDelete(product.id) },
+                            onAdjustStock = { onAdjustStock(product) },
                         )
                     }
                     if (state.hasMore) {
@@ -380,6 +396,7 @@ private fun ProductRow(
     selected: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onAdjustStock: () -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
     BendeyCard(
@@ -433,9 +450,20 @@ private fun ProductRow(
                         val stockLabel = stockQty?.let { qty ->
                             if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
                         } ?: "Stock"
-                        BendeyStatusChip(label = stockLabel, accentColor = BendeyColors.Info)
+                        val lowStock = stockQty != null && product.minStock > 0 && stockQty < product.minStock
+                        BendeyStatusChip(
+                            label = stockLabel,
+                            accentColor = if (lowStock) BendeyColors.Warning else BendeyColors.Info,
+                        )
                     }
                 }
+            }
+            if (product.manageStock) {
+                BendeyIconButton(
+                    onClick = onAdjustStock,
+                    icon = Icons.Default.Inventory,
+                    contentDescription = "Ajuste de stock",
+                )
             }
             BendeyIconButton(
                 onClick = onEdit,
@@ -668,14 +696,29 @@ private fun ProductFormFields(
         BendeyCheckboxRow(
             label = "Controlar stock",
             checked = form.manageStock,
-            onCheckedChange = { checked -> onFormChange { it.copy(manageStock = checked) } },
+            onCheckedChange = { checked ->
+                onFormChange {
+                    it.copy(
+                        manageStock = checked,
+                        minStock = if (checked) it.minStock.ifBlank { "0" } else "0",
+                        initialStock = if (checked) it.initialStock else "",
+                    )
+                }
+            },
         )
-        if (form.manageStock && !isEditing) {
+        if (form.manageStock) {
             BendeyTextField(
-                value = form.initialStock,
-                onValueChange = { value -> onFormChange { it.copy(initialStock = value) } },
-                label = "Stock inicial",
+                value = form.minStock,
+                onValueChange = { value -> onFormChange { it.copy(minStock = value) } },
+                label = "Stock mínimo",
             )
+            if (!isEditing) {
+                BendeyTextField(
+                    value = form.initialStock,
+                    onValueChange = { value -> onFormChange { it.copy(initialStock = value) } },
+                    label = "Stock inicial",
+                )
+            }
         }
         ProductImageSection(form, tenantBaseUrl, onImagePicked)
         BendeySectionTitle(text = "Presentaciones / variantes")

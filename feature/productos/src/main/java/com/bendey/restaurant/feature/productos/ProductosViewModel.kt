@@ -11,6 +11,8 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImportRepository
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.inventory.InventoryRepository
+import com.bendey.restaurant.core.domain.inventory.InventoryAdjustmentInput
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
@@ -70,6 +72,8 @@ data class ProductosUiState(
     val importValidation: BulkImportValidationResult? = null,
     val importProgress: BulkImportProgress? = null,
     val importLoading: Boolean = false,
+    val stockAdjustment: StockAdjustmentForm? = null,
+    val adjustmentLoading: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
 ) {
@@ -80,6 +84,7 @@ data class ProductosUiState(
 @HiltViewModel
 class ProductosViewModel @Inject constructor(
     private val productsRepository: ProductsRepository,
+    private val inventoryRepository: InventoryRepository,
     private val modifiersRepository: ModifiersRepository,
     private val preparationAreasRepository: PreparationAreasRepository,
     private val productImportRepository: ProductImportRepository,
@@ -425,6 +430,97 @@ class ProductosViewModel @Inject constructor(
                     refreshProducts()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openStockAdjustment(product: ProductItem) {
+        val defaultBranch = _uiState.value.branches.firstOrNull()?.id
+            ?: _uiState.value.branchFilterId
+        _uiState.update {
+            it.copy(
+                stockAdjustment = StockAdjustmentForm(
+                    productId = product.id,
+                    productName = product.name,
+                    branchId = defaultBranch,
+                ),
+                error = null,
+            )
+        }
+    }
+
+    fun dismissStockAdjustment() {
+        _uiState.update { it.copy(stockAdjustment = null, adjustmentLoading = false) }
+    }
+
+    fun updateStockAdjustment(transform: (StockAdjustmentForm) -> StockAdjustmentForm) {
+        _uiState.update { state ->
+            val current = state.stockAdjustment ?: return@update state
+            state.copy(stockAdjustment = transform(current))
+        }
+    }
+
+    fun confirmStockAdjustment() {
+        val adjustment = _uiState.value.stockAdjustment ?: return
+        val branchId = adjustment.branchId
+        if (branchId == null || branchId <= 0) {
+            _uiState.update { it.copy(error = "Selecciona una sucursal") }
+            return
+        }
+        val qty = adjustment.quantity.replace(",", ".").toDoubleOrNull()
+        if (qty == null || qty <= 0) {
+            _uiState.update { it.copy(error = "La cantidad debe ser mayor a 0") }
+            return
+        }
+        if (adjustment.notes.trim().isEmpty()) {
+            _uiState.update { it.copy(error = "Indica el motivo del ajuste") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(adjustmentLoading = true, error = null) }
+            if (!adjustment.isIncrease) {
+                when (val stockResult = inventoryRepository.getStock(adjustment.productId, branchId)) {
+                    is AppResult.Success -> {
+                        if (qty > stockResult.data) {
+                            _uiState.update {
+                                it.copy(
+                                    adjustmentLoading = false,
+                                    error = "Stock insuficiente. Disponible: ${stockResult.data}",
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                    is AppResult.Error -> {
+                        _uiState.update { it.copy(adjustmentLoading = false, error = stockResult.message) }
+                        return@launch
+                    }
+                    AppResult.Loading -> return@launch
+                }
+            }
+            when (
+                val result = inventoryRepository.recordAdjustment(
+                    InventoryAdjustmentInput(
+                        productId = adjustment.productId,
+                        branchId = branchId,
+                        type = if (adjustment.isIncrease) "in" else "out",
+                        quantity = qty,
+                        notes = adjustment.notes.trim(),
+                    ),
+                )
+            ) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            adjustmentLoading = false,
+                            stockAdjustment = null,
+                            snackMessage = "Ajuste registrado en kardex",
+                        )
+                    }
+                    refreshProducts()
+                }
+                is AppResult.Error -> _uiState.update { it.copy(adjustmentLoading = false, error = result.message) }
                 AppResult.Loading -> Unit
             }
         }

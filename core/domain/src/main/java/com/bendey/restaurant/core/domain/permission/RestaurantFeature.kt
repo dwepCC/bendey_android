@@ -17,4 +17,5 @@ enum class RestaurantFeature {
     DASHBOARD,
     CONFIGURACION,
     IMPRESORAS,
+    REPORTES,
 }

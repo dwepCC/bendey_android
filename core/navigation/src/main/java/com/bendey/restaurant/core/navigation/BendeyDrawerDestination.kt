@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.DeliveryDining
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -27,6 +28,7 @@ enum class BendeyDrawerDestination(
 ) {
     CAJA(BendeyRoutes.CAJA, "Caja", Icons.Default.Wallet, BendeyDrawerGroup.OPERATION),
     VENTAS(BendeyRoutes.VENTAS, "Ventas", Icons.Default.ShoppingCart, BendeyDrawerGroup.OPERATION),
+    REPORTES(BendeyRoutes.REPORTES, "Reportes", Icons.Default.Assessment, BendeyDrawerGroup.OPERATION),
     PRODUCTOS(BendeyRoutes.PRODUCTOS, "Productos", Icons.Default.Inventory2, BendeyDrawerGroup.CATALOG),
     CLIENTES(BendeyRoutes.CLIENTES, "Clientes", Icons.Default.People, BendeyDrawerGroup.CATALOG),
     REPARTIDORES(BendeyRoutes.REPARTIDORES, "Repartidores", Icons.Default.DeliveryDining, BendeyDrawerGroup.CATALOG),

@@ -89,6 +89,7 @@ import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
+import com.bendey.restaurant.core.ui.components.SalesPaymentSummaryRow
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
@@ -485,7 +486,7 @@ private fun VentasListHintsAndSummary(
     } else if (state.tab != VentasTab.CREDITOS && state.listSummary.paymentTotals.isNotEmpty()) {
         SalesPaymentSummaryRow(
             summary = state.listSummary,
-            paymentMethods = paymentMethods,
+            paymentMethodNames = paymentMethods.associate { it.code.lowercase() to it.name },
             currency = currency,
         )
     }
@@ -1025,70 +1026,6 @@ private fun EmitElectronicDialog(
             }
         },
     )
-}
-
-@Composable
-private fun SalesPaymentSummaryRow(
-    summary: SaleListSummary,
-    paymentMethods: List<PaymentMethodOption>,
-    currency: NumberFormat,
-) {
-    fun methodLabel(code: String): String =
-        paymentMethods.find { it.code == code }?.name ?: code.replace('_', ' ')
-
-    BendeyHorizontalScrollRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(
-            horizontal = BendeySpacing.md,
-            vertical = BendeySpacing.xs,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-    ) {
-        BendeyCard(
-            containerColor = BendeyColors.PrimaryContainer,
-            contentPadding = PaddingValues(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
-        ) {
-                Text("Total", style = MaterialTheme.typography.labelMedium, color = BendeyColors.Primary)
-                Text(
-                    currency.format(summary.sumActive.takeIf { it > 0 } ?: summary.sumTotal),
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = BendeyColors.Primary,
-                )
-                if (summary.countActive > 0) {
-                    Text(
-                        "${summary.countActive} comprobantes",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = BendeyColors.OnSurfaceVariant,
-                    )
-                }
-        }
-        summary.paymentTotals.forEach { pt ->
-            BendeyManagementCard {
-                Column {
-                    Text(
-                        methodLabel(pt.method),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = BendeyColors.OnSurfaceVariant,
-                        maxLines = 1,
-                    )
-                    Text(
-                        currency.format(pt.total),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = BendeyColors.OnSurface,
-                    )
-                    if (pt.count > 0) {
-                        Text(
-                            "${pt.count} ventas",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = BendeyColors.OnSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

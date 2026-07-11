@@ -250,6 +250,7 @@ data class SaleDto(
     @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("payment_method") val paymentMethod: String? = null,
+    val payments: List<SalePaymentDto> = emptyList(),
 )
 
 @Serializable
@@ -299,4 +300,33 @@ data class SaleDetailResponseDto(
     val payments: List<SalePaymentDto> = emptyList(),
     @SerialName("print_data") val printData: PrintDataDto? = null,
     val contact: SaleContactDto? = null,
+)
+
+@Serializable
+data class SalesByProductRowDto(
+    @SerialName("product_id") val productId: Int = 0,
+    @SerialName("product_code") val productCode: String = "",
+    @SerialName("product_name") val productName: String = "",
+    @SerialName("category_name") val categoryName: String = "",
+    val unit: String = "",
+    @SerialName("quantity_sold") val quantitySold: Double = 0.0,
+    @SerialName("total_amount") val totalAmount: Double = 0.0,
+    @SerialName("lines_count") val linesCount: Int = 0,
+    @SerialName("sales_count") val salesCount: Int = 0,
+    @SerialName("avg_line_amount") val avgLineAmount: Double = 0.0,
+)
+
+@Serializable
+data class SalesByProductSummaryDto(
+    @SerialName("total_amount") val totalAmount: Double = 0.0,
+    @SerialName("total_quantity") val totalQuantity: Double = 0.0,
+    @SerialName("line_items") val lineItems: Int = 0,
+    @SerialName("distinct_sales") val distinctSales: Int = 0,
+    @SerialName("products_count") val productsCount: Int = 0,
+)
+
+@Serializable
+data class SalesByProductResponseDto(
+    val data: List<SalesByProductRowDto> = emptyList(),
+    val summary: SalesByProductSummaryDto? = null,
 )

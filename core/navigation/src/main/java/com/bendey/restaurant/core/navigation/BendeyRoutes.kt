@@ -24,6 +24,7 @@ object BendeyRoutes {
     const val COMBOS = "combos"
     const val CONFIGURACION = "configuracion"
     const val REPARTIDORES = "repartidores"
+    const val REPORTES = "reportes"
     const val PRINTING_TEST = "printing_test"
 
     fun pin(station: String): String = "pin/$station"
@@ -38,7 +39,7 @@ object BendeyRoutes {
     private val bottomBarRoutes = setOf(DASHBOARD, POS, MESAS, COCINA)
 
     private val managementRoutes = setOf(
-        CAJA, VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES,
+        CAJA, VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES, REPORTES,
         MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN,
     )
 

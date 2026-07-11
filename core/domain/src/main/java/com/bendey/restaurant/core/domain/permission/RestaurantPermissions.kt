@@ -27,6 +27,10 @@ object RestaurantPermissions {
         return when (feature) {
             RestaurantFeature.VENTAS ->
                 hasPermission(permissions, PERM_ORDERS_CHARGE) || hasPermission(permissions, PERM_CAJA)
+            RestaurantFeature.REPORTES ->
+                hasPermission(permissions, PERM_PRODUCTOS) ||
+                    hasPermission(permissions, PERM_ORDERS_CHARGE) ||
+                    hasPermission(permissions, PERM_CAJA)
             RestaurantFeature.DASHBOARD ->
                 hasPermission(permissions, PERM_CAJA) || hasPermission(permissions, PERM_ADMIN)
             RestaurantFeature.CONFIGURACION ->
@@ -47,6 +51,7 @@ object RestaurantPermissions {
         RestaurantFeature.VENTAS -> PERM_ORDERS_CHARGE
         RestaurantFeature.CAJA, RestaurantFeature.DASHBOARD -> PERM_CAJA
         RestaurantFeature.REPARTIDORES -> PERM_REPARTIDORES
+        RestaurantFeature.REPORTES -> PERM_PRODUCTOS
         RestaurantFeature.CONFIGURACION, RestaurantFeature.IMPRESORAS -> PERM_ADMIN
     }
 

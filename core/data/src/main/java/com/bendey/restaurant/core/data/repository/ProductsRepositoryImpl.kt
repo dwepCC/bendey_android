@@ -15,6 +15,8 @@ import com.bendey.restaurant.core.domain.products.IgvAffectation
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductListQuery
+import com.bendey.restaurant.core.domain.products.ProductReportItem
+import com.bendey.restaurant.core.domain.products.ProductReportQuery
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.products.ProductDetail
 import com.bendey.restaurant.core.domain.products.generateProductCode
@@ -119,6 +121,20 @@ class ProductsRepositoryImpl @Inject constructor(
             .mapKeys { (key, _) -> key.toIntOrNull() ?: 0 }
             .filterKeys { it > 0 }
     }
+
+    override suspend fun listProductReport(query: ProductReportQuery): AppResult<Pair<List<ProductReportItem>, Int>> =
+        apiCall {
+            val response = api.listProducts(
+                query = query.query,
+                page = query.page,
+                perPage = query.perPage,
+                categoryId = query.categoryId,
+                branchId = query.branchId,
+                report = true,
+                stockLessThan = query.stockLessThan,
+            )
+            response.data.map { it.toReportDomain() } to (response.total ?: response.data.size)
+        }
 
     override suspend fun searchForComboEditor(query: String, page: Int): AppResult<Pair<List<ProductItem>, Int>> =
         listProducts(
@@ -264,6 +280,7 @@ private fun ProductDto.toDomain() = ProductItem(
     preparationArea = preparationArea?.toDomain(),
     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
     manageStock = manageStock,
+    minStock = minStock,
     hasModifiers = hasModifiers,
     hasVariants = hasVariants,
     availableForSale = availableForSale,
@@ -306,11 +323,33 @@ private fun ProductPresentation.toDto() = ProductPresentationDto(
     active = active,
 )
 
+private fun ProductDto.toReportDomain() = ProductReportItem(
+    id = id,
+    code = code,
+    name = name,
+    unit = unit,
+    salePrice = salePrice,
+    purchasePrice = purchasePrice,
+    categoryName = categoryName?.takeIf { it.isNotBlank() },
+    manageStock = manageStock,
+    minStock = minStock,
+    stockTotal = stockTotal ?: 0.0,
+    stockByBranch = (stockByBranch ?: emptyList()).map {
+        com.bendey.restaurant.core.domain.products.ProductReportBranchStock(
+            branchId = it.branchId,
+            branchName = it.branchName,
+            quantity = it.quantity,
+        )
+    },
+    active = active,
+)
+
 private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
     val salePrice = salePrice.replace(",", ".").toDoubleOrNull()
         ?: throw IllegalArgumentException("Precio de venta inválido")
     val purchase = purchasePrice.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: 0.0
     val initial = initialStock.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 }
+    val min = minStock.replace(",", ".").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
     val activePresentations = presentations.filter { it.name.trim().isNotEmpty() }
     return CreateProductRequestDto(
         name = name.trim(),
@@ -323,6 +362,7 @@ private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = manageStock,
+        minStock = if (manageStock) min else 0.0,
         initialStock = if (manageStock) initial else null,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),
         hasVariants = hasVariants || activePresentations.isNotEmpty(),
@@ -334,6 +374,7 @@ private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
 
 private fun ProductFormInput.toUpdateDto(): UpdateProductRequestDto {
     val activePresentations = presentations.filter { it.name.trim().isNotEmpty() }
+    val min = minStock.replace(",", ".").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
     return UpdateProductRequestDto(
         name = name.trim(),
         code = code.trim().ifBlank { null },
@@ -345,6 +386,7 @@ private fun ProductFormInput.toUpdateDto(): UpdateProductRequestDto {
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = manageStock,
+        minStock = if (manageStock) min else 0.0,
         availableForSale = availableForSale,
         isRestaurant = true,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),

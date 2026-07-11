@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.network.api
 
+import com.bendey.restaurant.core.network.dto.SalesByProductResponseDto
 import com.bendey.restaurant.core.network.dto.SalesListResponseDto
 import com.bendey.restaurant.core.network.dto.SaleDetailResponseDto
 import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
@@ -43,4 +44,12 @@ interface SalesApi {
         @Path("saleId") saleId: Int,
         @Body body: IssueElectronicRequestDto,
     ): IssueElectronicResponseDto
+
+    @GET("/api/sales/by-product")
+    suspend fun listSalesByProduct(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+        @Query("branch_id") branchId: Int? = null,
+        @Query("category_id") categoryId: Int? = null,
+    ): SalesByProductResponseDto
 }

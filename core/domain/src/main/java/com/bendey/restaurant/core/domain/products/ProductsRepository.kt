@@ -17,6 +17,8 @@ interface ProductsRepository {
     suspend fun searchForComboEditor(query: String, page: Int = 1): AppResult<Pair<List<ProductItem>, Int>>
     suspend fun getStockSummary(productIds: List<Int>): AppResult<Map<Int, Double>>
 
+    suspend fun listProductReport(query: ProductReportQuery): AppResult<Pair<List<ProductReportItem>, Int>>
+
     /** Resuelve nombres por ID usando hints locales, caché en memoria y GET /products/{id} en paralelo. */
     suspend fun resolveProductNames(
         productIds: Collection<Int>,

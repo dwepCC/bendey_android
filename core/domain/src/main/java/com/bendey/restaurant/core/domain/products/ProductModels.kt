@@ -46,6 +46,7 @@ data class ProductItem(
     val preparationArea: PreparationAreaItem?,
     val imageUrl: String?,
     val manageStock: Boolean,
+    val minStock: Double,
     val hasModifiers: Boolean,
     val hasVariants: Boolean,
     val availableForSale: Boolean,
@@ -66,6 +67,7 @@ data class ProductFormInput(
     val priceIncludesIgv: Boolean = true,
     val availableForSale: Boolean = true,
     val manageStock: Boolean = false,
+    val minStock: String = "0",
     val initialStock: String = "",
     val hasModifiers: Boolean = false,
     val hasVariants: Boolean = false,
@@ -97,6 +99,36 @@ data class ProductListQuery(
     val perPage: Int = 25,
 )
 
+data class ProductReportBranchStock(
+    val branchId: Int,
+    val branchName: String,
+    val quantity: Double,
+)
+
+data class ProductReportItem(
+    val id: Int,
+    val code: String,
+    val name: String,
+    val unit: String,
+    val salePrice: Double,
+    val purchasePrice: Double?,
+    val categoryName: String?,
+    val manageStock: Boolean,
+    val minStock: Double,
+    val stockTotal: Double,
+    val stockByBranch: List<ProductReportBranchStock>,
+    val active: Boolean,
+)
+
+data class ProductReportQuery(
+    val query: String = "",
+    val categoryId: Int? = null,
+    val branchId: Int? = null,
+    val stockLessThan: Double? = null,
+    val page: Int = 1,
+    val perPage: Int = 25,
+)
+
 fun generateProductCode(): String {
     val raw = "${System.currentTimeMillis()}${(0..999999).random().toString().padStart(6, '0')}"
     val base12 = raw.filter { it.isDigit() }.takeLast(12).padStart(12, '0').take(12)
@@ -124,6 +156,7 @@ fun ProductItem.toFormInput(
     priceIncludesIgv = priceIncludesIgv,
     availableForSale = availableForSale,
     manageStock = manageStock,
+    minStock = if (manageStock) formatProductAmount(minStock) else "0",
     hasModifiers = hasModifiers,
     hasVariants = hasVariants,
     modifierGroupIds = modifierGroupIds,
