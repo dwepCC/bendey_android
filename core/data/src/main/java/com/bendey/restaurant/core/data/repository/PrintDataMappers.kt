@@ -41,6 +41,7 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         legendText = legendText,
         qrData = qrData.takeIf { it.isNotBlank() },
         sunatHash = sunatHash?.takeIf { it.isNotBlank() },
+        showsBendeyBranding = showsBendeyBranding != false,
     )
 }
 

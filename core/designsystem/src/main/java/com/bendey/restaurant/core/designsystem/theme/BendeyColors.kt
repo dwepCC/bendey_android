@@ -55,6 +55,7 @@ object BendeyColors {
     val TableOcupada = Color(0xFFF97316)
     val TableReservada = Color(0xFFF9A825)
     val TableEnConsumo = Color(0xFF0288D1)
+    val TableBrowsing = Color(0xFF6366F1)
 
     // Cocina KDS
     val KitchenPendiente = Color(0xFFF9A825)

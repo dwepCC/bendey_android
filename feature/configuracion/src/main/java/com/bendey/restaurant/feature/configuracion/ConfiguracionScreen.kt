@@ -45,9 +45,11 @@ import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyOutlinedButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
@@ -62,6 +64,7 @@ import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 fun ConfiguracionScreen(
     onBack: () -> Unit = {},
     onOpenPrinting: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ConfiguracionViewModel = hiltViewModel(),
 ) {
@@ -102,6 +105,7 @@ fun ConfiguracionScreen(
                 state = state,
                 viewModel = viewModel,
                 onOpenPrinting = onOpenPrinting,
+                onNavigateToSubscription = onNavigateToSubscription,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -145,13 +149,15 @@ private fun ConfigTabContent(
     state: ConfiguracionUiState,
     viewModel: ConfiguracionViewModel,
     onOpenPrinting: () -> Unit,
+    onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state.tab) {
         ConfigTab.GENERAL -> GeneralTab(state, onOpenPrinting, viewModel, modifier)
         ConfigTab.OPERACION -> OperacionTab(state, viewModel, modifier)
         ConfigTab.BRANCHES -> BranchesTab(state, viewModel, modifier)
-        ConfigTab.SERIES -> SeriesTab(state, viewModel, modifier)
+        ConfigTab.SERIES -> SeriesTab(state, viewModel, onNavigateToSubscription, modifier)
+        ConfigTab.MENU_DIGITAL -> MenuDigitalTab(modifier = modifier)
     }
 }
 
@@ -164,7 +170,7 @@ private fun GeneralTab(
 ) {
     BendeyLazyColumn(state = rememberLazyListState(),
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(BendeySpacing.md),
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
         item {
@@ -217,7 +223,7 @@ private fun BranchesTab(
         }
         BendeyLazyColumn(
             state = rememberLazyListState(),
-            contentPadding = PaddingValues(horizontal = BendeySpacing.md),
+            contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = 0.dp),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
@@ -273,9 +279,35 @@ private fun BranchCard(
 private fun SeriesTab(
     state: ConfiguracionUiState,
     viewModel: ConfiguracionViewModel,
+    onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
+        if (!state.billingModuleEnabled) {
+            BendeyCard(
+                containerColor = BendeyColors.SurfaceVariant,
+                contentPadding = PaddingValues(BendeySpacing.cardPadding),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Tu plan no incluye facturación electrónica",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            "Solo puedes crear/editar series de nota de venta.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                    }
+                    BendeyOutlinedButton(text = "Ver planes", onClick = onNavigateToSubscription)
+                }
+            }
+        }
         BendeyHorizontalScrollRow(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(
@@ -304,7 +336,7 @@ private fun SeriesTab(
         }
         BendeyLazyColumn(
             state = rememberLazyListState(),
-            contentPadding = PaddingValues(BendeySpacing.md),
+            contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
@@ -366,6 +398,25 @@ private fun SeriesCard(
     ) {
         BendeyTextField(state.configForm.tradeName, { v -> viewModel.updateConfigForm { it.copy(tradeName = v) } }, "Nombre comercial")
         BendeyTextField(state.configForm.address, { v -> viewModel.updateConfigForm { it.copy(address = v) } }, "Dirección", singleLine = false)
+        // Ubigeo en cascada: Departamento → Provincia → Distrito
+        BendeySimpleSelect(
+            options = state.ubigeoRegiones.map { BendeyOption(it.id, it.nombre) },
+            selectedValue = state.ubigeoRegionId,
+            onSelect = { v -> viewModel.onUbigeoRegion(v) },
+            label = "Departamento",
+        )
+        BendeySimpleSelect(
+            options = state.ubigeoProvincias.map { BendeyOption(it.id, it.nombre) },
+            selectedValue = state.ubigeoProvinciaId,
+            onSelect = { v -> viewModel.onUbigeoProvincia(v) },
+            label = "Provincia",
+        )
+        BendeySimpleSelect(
+            options = state.ubigeoDistritos.map { BendeyOption(it.id, it.nombre) },
+            selectedValue = state.configForm.ubigeo,
+            onSelect = { v -> viewModel.onUbigeoDistrito(v) },
+            label = "Distrito",
+        )
         BendeyTextField(state.configForm.phone, { v -> viewModel.updateConfigForm { it.copy(phone = v) } }, "Teléfono")
         BendeyTextField(state.configForm.email, { v -> viewModel.updateConfigForm { it.copy(email = v) } }, "Email")
     }
@@ -449,10 +500,14 @@ private fun SeriesCard(
 
 @Composable private fun SeriesFormFields(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     val form = state.seriesForm
-    val sunatEnabled = state.sunat?.sunatEnabled == true
+    val billingModuleEnabled = state.billingModuleEnabled
     val fieldsLocked = form.locked && form.id != null
-    if (!sunatEnabled) {
-        Text("Sin FE: solo series SUNAT 00", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+    if (!billingModuleEnabled) {
+        Text(
+            "Tu plan no incluye facturación electrónica: solo series de nota de venta (código SUNAT 00)",
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
     }
     BendeyTextField(form.docType, { v -> viewModel.updateSeriesForm { it.copy(docType = v) } }, "Tipo documento", enabled = !fieldsLocked)
     BendeyTextField(form.series, { v -> viewModel.updateSeriesForm { it.copy(series = v) } }, "Serie *", enabled = !fieldsLocked)
@@ -460,7 +515,7 @@ private fun SeriesCard(
         form.sunatCode,
         { v -> viewModel.updateSeriesForm { it.copy(sunatCode = v) } },
         "Código SUNAT",
-        enabled = !fieldsLocked && sunatEnabled,
+        enabled = !fieldsLocked && billingModuleEnabled,
     )
     if (form.id != null) {
         BendeyTextField(

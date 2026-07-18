@@ -11,19 +11,19 @@ data class ArqueoDenomination(
 enum class ArqueoKind { BILL, COIN }
 
 val ARQUEO_DENOMINATIONS: List<ArqueoDenomination> = listOf(
-    ArqueoDenomination("200", "Billete S/ 200", ArqueoKind.BILL),
-    ArqueoDenomination("100", "Billete S/ 100", ArqueoKind.BILL),
-    ArqueoDenomination("50", "Billete S/ 50", ArqueoKind.BILL),
-    ArqueoDenomination("20", "Billete S/ 20", ArqueoKind.BILL),
-    ArqueoDenomination("10", "Billete S/ 10", ArqueoKind.BILL),
-    ArqueoDenomination("5", "Moneda S/ 5", ArqueoKind.COIN),
-    ArqueoDenomination("2", "Moneda S/ 2", ArqueoKind.COIN),
-    ArqueoDenomination("1", "Moneda S/ 1", ArqueoKind.COIN),
-    ArqueoDenomination("0.5", "Moneda S/ 0.50", ArqueoKind.COIN),
-    ArqueoDenomination("0.2", "Moneda S/ 0.20", ArqueoKind.COIN),
-    ArqueoDenomination("0.1", "Moneda S/ 0.10", ArqueoKind.COIN),
-    ArqueoDenomination("0.05", "Moneda S/ 0.05", ArqueoKind.COIN),
-    ArqueoDenomination("0.01", "Moneda S/ 0.01", ArqueoKind.COIN),
+    ArqueoDenomination("200", "Billete 200", ArqueoKind.BILL),
+    ArqueoDenomination("100", "Billete 100", ArqueoKind.BILL),
+    ArqueoDenomination("50", "Billete 50", ArqueoKind.BILL),
+    ArqueoDenomination("20", "Billete 20", ArqueoKind.BILL),
+    ArqueoDenomination("10", "Billete 10", ArqueoKind.BILL),
+    ArqueoDenomination("5", "Moneda 5", ArqueoKind.COIN),
+    ArqueoDenomination("2", "Moneda 2", ArqueoKind.COIN),
+    ArqueoDenomination("1", "Moneda 1", ArqueoKind.COIN),
+    ArqueoDenomination("0.5", "Moneda 0.50", ArqueoKind.COIN),
+    ArqueoDenomination("0.2", "Moneda 0.20", ArqueoKind.COIN),
+    ArqueoDenomination("0.1", "Moneda 0.10", ArqueoKind.COIN),
+    ArqueoDenomination("0.05", "Moneda 0.05", ArqueoKind.COIN),
+    ArqueoDenomination("0.01", "Moneda 0.01", ArqueoKind.COIN),
 )
 
 fun emptyArqueo(): Map<String, Int> =

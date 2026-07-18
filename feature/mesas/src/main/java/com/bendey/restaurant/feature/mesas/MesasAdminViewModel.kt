@@ -2,12 +2,15 @@ package com.bendey.restaurant.feature.mesas
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.domain.digitalmenu.DigitalMenuRepository
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.Floor
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import com.bendey.restaurant.core.domain.restaurant.sortRestaurantTables
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +51,13 @@ data class MesasAdminUiState(
     val floorsSheetOpen: Boolean = false,
     val viewMode: MesasAdminViewMode = MesasAdminViewMode.GRID,
     val page: Int = 0,
+    val canManageDigitalMenu: Boolean = false,
+    val qrTableId: Int? = null,
+    val qrTableName: String? = null,
+    val qrMenuUrl: String = "",
+    val qrPngBase64: String? = null,
+    val qrLoading: Boolean = false,
+    val qrRotating: Boolean = false,
 ) {
     companion object { const val PAGE_SIZE = 12 }
 
@@ -77,12 +87,22 @@ data class MesasAdminUiState(
 @HiltViewModel
 class MesasAdminViewModel @Inject constructor(
     private val mesasRepository: MesasRepository,
+    private val digitalMenuRepository: DigitalMenuRepository,
+    private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MesasAdminUiState())
     val uiState: StateFlow<MesasAdminUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.collect { user ->
+                val perms = user?.restaurantPermissions.orEmpty()
+                _uiState.update {
+                    it.copy(canManageDigitalMenu = RestaurantPermissions.canManageRestaurantSettings(perms))
+                }
+            }
+        }
         refresh()
     }
 
@@ -314,5 +334,77 @@ class MesasAdminViewModel @Inject constructor(
         table.sessionId != null -> "Tiene un pedido abierto. Ciérralo antes de eliminar."
         table.status != TableStatus.LIBRE -> "La mesa está ${table.status.label.lowercase()}."
         else -> null
+    }
+
+    fun openTableMenuQr(table: RestaurantTable) {
+        _uiState.update {
+            it.copy(
+                qrTableId = table.id,
+                qrTableName = table.name,
+                qrMenuUrl = "",
+                qrPngBase64 = null,
+                qrLoading = true,
+                qrRotating = false,
+                error = null,
+            )
+        }
+        viewModelScope.launch {
+            when (val result = digitalMenuRepository.getTableMenuQr(table.id, includePng = true)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        qrLoading = false,
+                        qrMenuUrl = result.data.menuUrl,
+                        qrPngBase64 = result.data.qrPngBase64,
+                    )
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(qrLoading = false, qrTableId = null, qrTableName = null, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissTableMenuQr() {
+        _uiState.update {
+            it.copy(
+                qrTableId = null,
+                qrTableName = null,
+                qrMenuUrl = "",
+                qrPngBase64 = null,
+                qrLoading = false,
+                qrRotating = false,
+            )
+        }
+    }
+
+    fun rotateTableMenuQr() {
+        val tableId = _uiState.value.qrTableId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(qrRotating = true, error = null) }
+            when (val result = digitalMenuRepository.rotateTableMenuToken(tableId)) {
+                is AppResult.Success -> {
+                    val reload = digitalMenuRepository.getTableMenuQr(tableId, includePng = true)
+                    if (reload is AppResult.Success) {
+                        _uiState.update {
+                            it.copy(
+                                qrRotating = false,
+                                qrMenuUrl = reload.data.menuUrl,
+                                qrPngBase64 = reload.data.qrPngBase64,
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                qrRotating = false,
+                                qrMenuUrl = result.data.menuUrl,
+                            )
+                        }
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(qrRotating = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 }

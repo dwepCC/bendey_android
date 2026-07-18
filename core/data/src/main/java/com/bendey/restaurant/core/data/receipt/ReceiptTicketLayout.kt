@@ -97,6 +97,7 @@ internal object ReceiptTicketLayout {
 
         left("")
         center("Gracias por su preferencia")
+        if (data.showsBendeyBranding) center("Hecho con Bendey")
         left("")
         return lines
     }

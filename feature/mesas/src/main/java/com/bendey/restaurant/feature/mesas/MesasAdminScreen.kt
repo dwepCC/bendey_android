@@ -171,9 +171,11 @@ fun MesasAdminScreen(
                                 table = table,
                                 floorName = state.floors.firstOrNull { it.id == table.floorId }?.name ?: table.floorName,
                                 deleteBlocked = viewModel.tableDeleteBlockedReason(table),
+                                canManageDigitalMenu = state.canManageDigitalMenu,
                                 onEdit = { viewModel.openEditTable(table) },
                                 onDelete = { viewModel.requestDeleteTable(table.id) },
                                 onOpenSession = table.sessionId?.let { { onOpenSession(it) } },
+                                onShowMenuQr = { viewModel.openTableMenuQr(table) },
                             )
                         }
                     }
@@ -195,9 +197,11 @@ fun MesasAdminScreen(
                             table = table,
                             floorName = state.floors.firstOrNull { it.id == table.floorId }?.name ?: table.floorName,
                             deleteBlocked = viewModel.tableDeleteBlockedReason(table),
+                            canManageDigitalMenu = state.canManageDigitalMenu,
                             onEdit = { viewModel.openEditTable(table) },
                             onDelete = { viewModel.requestDeleteTable(table.id) },
                             onOpenSession = table.sessionId?.let { { onOpenSession(it) } },
+                            onShowMenuQr = { viewModel.openTableMenuQr(table) },
                         )
                     }
                 }
@@ -374,6 +378,17 @@ fun MesasAdminScreen(
             },
         )
     }
+
+    TableMenuQrDialog(
+        tableName = state.qrTableName,
+        menuUrl = state.qrMenuUrl,
+        qrPngBase64 = state.qrPngBase64,
+        loading = state.qrLoading,
+        rotating = state.qrRotating,
+        canManage = state.canManageDigitalMenu,
+        onDismiss = viewModel::dismissTableMenuQr,
+        onRotate = viewModel::rotateTableMenuQr,
+    )
 }
 
 @Composable
@@ -381,9 +396,11 @@ private fun AdminTableCard(
     table: RestaurantTable,
     floorName: String?,
     deleteBlocked: String?,
+    canManageDigitalMenu: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onOpenSession: (() -> Unit)?,
+    onShowMenuQr: () -> Unit,
 ) {
     BendeyManagementCard {
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
@@ -394,7 +411,15 @@ private fun AdminTableCard(
                         Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     }
                 }
-                TableContextMenu(table, deleteBlocked, onEdit, onDelete, onOpenSession)
+                TableContextMenu(
+                    table,
+                    deleteBlocked,
+                    canManageDigitalMenu,
+                    onEdit,
+                    onDelete,
+                    onOpenSession,
+                    onShowMenuQr,
+                )
             }
             Text("Cap. ${table.capacity}", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
             BendeyStatusChip(table.status.label, statusColor(table.status))
@@ -410,9 +435,11 @@ private fun AdminTableListRow(
     table: RestaurantTable,
     floorName: String?,
     deleteBlocked: String?,
+    canManageDigitalMenu: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onOpenSession: (() -> Unit)?,
+    onShowMenuQr: () -> Unit,
 ) {
     BendeyManagementCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -424,7 +451,15 @@ private fun AdminTableListRow(
                     color = BendeyColors.OnSurfaceVariant,
                 )
             }
-            TableContextMenu(table, deleteBlocked, onEdit, onDelete, onOpenSession)
+            TableContextMenu(
+                table,
+                deleteBlocked,
+                canManageDigitalMenu,
+                onEdit,
+                onDelete,
+                onOpenSession,
+                onShowMenuQr,
+            )
         }
     }
 }
@@ -433,9 +468,11 @@ private fun AdminTableListRow(
 private fun TableContextMenu(
     table: RestaurantTable,
     deleteBlocked: String?,
+    canManageDigitalMenu: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onOpenSession: (() -> Unit)?,
+    onShowMenuQr: () -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     BendeyIconButton(
@@ -447,6 +484,12 @@ private fun TableContextMenu(
         DropdownMenuItem(text = { Text("Editar") }, onClick = { open = false; onEdit() })
         onOpenSession?.let { go ->
             DropdownMenuItem(text = { Text("Ir a mesa") }, onClick = { open = false; go() })
+        }
+        if (canManageDigitalMenu) {
+            DropdownMenuItem(
+                text = { Text("QR menú digital") },
+                onClick = { open = false; onShowMenuQr() },
+            )
         }
         DropdownMenuItem(
             text = { Text("Eliminar") },

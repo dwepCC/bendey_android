@@ -46,6 +46,20 @@ fun filterRestaurantCheckoutSeries(
     true
 }
 
+/**
+ * Series bloqueadas por plan: boleta/factura visibles con SUNAT configurado, pero el plan
+ * del tenant no incluye el módulo `billing`. Se muestran atenuadas con candado en vez de
+ * ocultarse, y seleccionarlas navega a la pantalla de suscripción.
+ */
+fun lockedCheckoutSeries(
+    allSeries: List<DocumentSeries>,
+    billingModuleEnabled: Boolean,
+): List<DocumentSeries> {
+    if (billingModuleEnabled) return emptyList()
+    return filterRestaurantCheckoutSeries(allSeries, sunatEnabled = true)
+        .filter { effectiveSunatCode(it) != "00" }
+}
+
 fun isRucContact(contact: ContactBrief): Boolean {
     val dt = contact.docType.trim()
     return dt == "6" || dt.equals("ruc", ignoreCase = true)

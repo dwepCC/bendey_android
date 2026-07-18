@@ -33,8 +33,10 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.ComboItem
+import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyQuickImageThumb
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
@@ -98,7 +100,14 @@ fun CombosScreen(
                 verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 items(state.combos, key = { it.id }) { combo ->
-                    ComboRow(combo, currency, { viewModel.openEdit(combo.id) }, { viewModel.requestDelete(combo.id) })
+                    ComboRow(
+                        combo = combo,
+                        currency = currency,
+                        tenantBaseUrl = viewModel.tenantBaseUrl,
+                        onEdit = { viewModel.openEdit(combo.id) },
+                        onDelete = { viewModel.requestDelete(combo.id) },
+                        onImagePicked = { bytes, mime -> viewModel.uploadQuickComboImage(combo.id, bytes, mime) },
+                    )
                 }
             }
         }
@@ -116,9 +125,11 @@ fun CombosScreen(
         error = state.error,
         isEditing = state.editingId != null,
         activePicker = state.activePicker,
+        tenantBaseUrl = viewModel.tenantBaseUrl,
         onDismiss = viewModel::dismissForm,
         onTabChange = viewModel::setEditorTab,
         onFormChange = viewModel::updateForm,
+        onImagePicked = viewModel::setPendingImage,
         onProductSearchChange = viewModel::setProductSearchQuery,
         onOpenPicker = viewModel::openProductPicker,
         onClosePicker = viewModel::closeProductPicker,
@@ -139,9 +150,22 @@ fun CombosScreen(
 }
 
 @Composable
-private fun ComboRow(combo: ComboItem, currency: NumberFormat, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun ComboRow(
+    combo: ComboItem,
+    currency: NumberFormat,
+    tenantBaseUrl: String?,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onImagePicked: suspend (ByteArray, String) -> Unit,
+) {
     BendeyManagementCard {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            BendeyQuickImageThumb(
+                imageUrl = resolvePublicAssetUrl(tenantBaseUrl, combo.imageUrl).takeIf { it.isNotBlank() },
+                contentDescription = combo.name,
+                onImagePicked = onImagePicked,
+                modifier = Modifier.padding(end = BendeySpacing.sm),
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(combo.name, fontWeight = FontWeight.SemiBold)
                 Text(combo.comboType.label, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)

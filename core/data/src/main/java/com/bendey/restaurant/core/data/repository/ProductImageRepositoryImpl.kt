@@ -2,11 +2,14 @@ package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.network.dto.ApiErrorDto
 import com.bendey.restaurant.core.network.dto.ProductImageUploadResponseDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import com.bendey.restaurant.core.network.BuildConfig
 import com.bendey.restaurant.core.network.serialization.ApiJson
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -32,12 +35,26 @@ class ProductImageRepositoryImpl @Inject constructor(
         productId: Int,
         bytes: ByteArray,
         mimeType: String,
-    ): AppResult<String> {
-        return try {
+    ): AppResult<String> = uploadImage("products", productId, "product", bytes, mimeType)
+
+    override suspend fun uploadComboImage(
+        comboId: Int,
+        bytes: ByteArray,
+        mimeType: String,
+    ): AppResult<String> = uploadImage("combos", comboId, "combo", bytes, mimeType)
+
+    private suspend fun uploadImage(
+        resource: String,
+        id: Int,
+        filePrefix: String,
+        bytes: ByteArray,
+        mimeType: String,
+    ): AppResult<String> = withContext(Dispatchers.IO) {
+        try {
             val baseUrl = sessionProvider.tenantApiBaseUrl()?.trim()?.trimEnd('/')
-                ?: return AppResult.Error("Tenant API URL no configurada")
+                ?: return@withContext AppResult.Error("Tenant API URL no configurada")
             val normalizedBase = baseUrl.removeSuffix("/api")
-            val url = "$normalizedBase/api/products/$productId/image"
+            val url = "$normalizedBase/api/$resource/$id/image"
             val extension = when {
                 mimeType.contains("png") -> "png"
                 mimeType.contains("webp") -> "webp"
@@ -47,7 +64,7 @@ class ProductImageRepositoryImpl @Inject constructor(
                 .setType(MultipartBody.FORM)
                 .addFormDataPart(
                     "image",
-                    "product.$extension",
+                    "$filePrefix.$extension",
                     bytes.toRequestBody(mimeType.toMediaType()),
                 )
                 .build()
@@ -55,13 +72,18 @@ class ProductImageRepositoryImpl @Inject constructor(
                 .url(url)
                 .post(body)
             sessionProvider.token()?.let { requestBuilder.header("Authorization", "Bearer $it") }
+            // execute() es bloqueante — por eso toda la función corre en Dispatchers.IO
+            // (si no, Android lanza NetworkOnMainThreadException, que no trae mensaje).
             val response = client.newCall(requestBuilder.build()).execute()
             val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                val mapped = NetworkErrorMapper.map(
-                    IllegalStateException(responseBody.ifBlank { "Error al subir imagen" }),
-                )
-                return AppResult.Error(mapped.message ?: "Error al subir imagen", mapped)
+                // Respuesta cruda de OkHttp (no pasa por Retrofit/HttpException), así que
+                // NetworkErrorMapper.map() no sabe parsear el JSON de error — se hace aquí.
+                val parsedMessage = runCatching {
+                    ApiJson.decodeFromString(ApiErrorDto.serializer(), responseBody).error
+                }.getOrNull()?.takeIf { it.isNotBlank() }
+                val message = parsedMessage ?: responseBody.ifBlank { "Error al subir imagen (${response.code})" }
+                return@withContext AppResult.Error(message, IllegalStateException(message))
             }
             val parsed = ApiJson.decodeFromString(ProductImageUploadResponseDto.serializer(), responseBody)
             AppResult.Success(parsed.imageUrl)

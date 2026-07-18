@@ -7,6 +7,7 @@ import com.bendey.restaurant.core.network.dto.ComboResolveResponseDto
 import com.bendey.restaurant.core.network.dto.ComboUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
+import com.bendey.restaurant.core.network.dto.UbiItemDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryDriverDto
@@ -145,6 +146,15 @@ interface SettingsApi {
 
     @PUT("/api/company/config")
     suspend fun updateCompanyConfig(@Body body: CompanyConfigDto): CompanyConfigResponseDto
+
+    @GET("/api/ubigeo/regiones")
+    suspend fun getUbigeoRegiones(): ListResponseDto<UbiItemDto>
+
+    @GET("/api/ubigeo/provincias")
+    suspend fun getUbigeoProvincias(@Query("region_id") regionId: String): ListResponseDto<UbiItemDto>
+
+    @GET("/api/ubigeo/distritos")
+    suspend fun getUbigeoDistritos(@Query("provincia_id") provinciaId: String): ListResponseDto<UbiItemDto>
 
     @GET("/api/company/sunat")
     suspend fun getSunatConfig(): SunatConfigDto

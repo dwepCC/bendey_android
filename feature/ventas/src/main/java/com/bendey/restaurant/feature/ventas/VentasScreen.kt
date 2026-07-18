@@ -84,14 +84,20 @@ import com.bendey.restaurant.core.domain.sales.convertedToLabel
 import com.bendey.restaurant.core.domain.sales.isConverted
 import com.bendey.restaurant.core.domain.sales.notaVentaListStatusLabel
 import com.bendey.restaurant.core.domain.sales.saleStatusDisplayLabel
+import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.SalesPaymentSummaryRow
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import com.bendey.restaurant.core.domain.contacts.ContactDocType
+import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
@@ -107,6 +113,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun VentasScreen(
     modifier: Modifier = Modifier,
     onShowMessage: (String) -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -168,6 +175,7 @@ fun VentasScreen(
                     onBillingStatusChange = viewModel::setBillingStatusFilter,
                     onExportPdf = { viewModel.exportListPdf(context) },
                     onExportExcel = { viewModel.exportListExcel(context) },
+                    onLockedExportClick = onNavigateToSubscription,
                 )
                 VentasListHintsAndSummary(
                     state = state,
@@ -264,8 +272,22 @@ fun VentasScreen(
             onSeriesChange = viewModel::setEmitSeriesId,
             onIssueDateChange = viewModel::setEmitIssueDate,
             onContactChange = viewModel::setEmitContactId,
+            onAddClient = viewModel::openEmitClientForm,
             onDismiss = viewModel::dismissEmitDialog,
             onConfirm = viewModel::confirmEmitElectronic,
+        )
+    }
+
+    if (state.emitClientFormOpen) {
+        EmitClientQuickAddDialog(
+            form = state.emitClientForm,
+            consulting = state.emitClientConsulting,
+            saving = state.emitClientSaving,
+            error = state.emitClientError,
+            onFormChange = viewModel::updateEmitClientForm,
+            onConsult = viewModel::consultEmitClientDoc,
+            onDismiss = viewModel::dismissEmitClientForm,
+            onSave = viewModel::saveEmitClient,
         )
     }
 
@@ -348,6 +370,7 @@ private fun VentasFiltersSection(
     onBillingStatusChange: (String) -> Unit,
     onExportPdf: () -> Unit,
     onExportExcel: () -> Unit,
+    onLockedExportClick: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -408,22 +431,13 @@ private fun VentasFiltersSection(
             )
         }
         if (state.canFetchList) {
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                OutlinedButton(
-                    onClick = onExportPdf,
-                    enabled = state.exportBusy == null,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (state.exportBusy == "pdf") "Exportando PDF…" else "Exportar PDF")
-                }
-                OutlinedButton(
-                    onClick = onExportExcel,
-                    enabled = state.exportBusy == null,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (state.exportBusy == "excel") "Exportando Excel…" else "Exportar Excel")
-                }
-            }
+            BendeyExportActionsRow(
+                allowsExport = state.allowsReportExport,
+                exportBusy = state.exportBusy,
+                onExportPdf = onExportPdf,
+                onExportExcel = onExportExcel,
+                onLockedClick = onLockedExportClick,
+            )
         }
     }
 }
@@ -897,6 +911,7 @@ private fun EmitElectronicDialog(
     onSeriesChange: (Int) -> Unit,
     onIssueDateChange: (String) -> Unit,
     onContactChange: (Int?) -> Unit,
+    onAddClient: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -938,6 +953,9 @@ private fun EmitElectronicDialog(
                             color = BendeyColors.Warning,
                             style = MaterialTheme.typography.bodySmall,
                         )
+                    }
+                    TextButton(onClick = onAddClient, enabled = !loading) {
+                        Text("+ Registrar nuevo cliente")
                     }
                 }
                 sunatLimitWarning?.let {
@@ -1026,6 +1044,67 @@ private fun EmitElectronicDialog(
             }
         },
     )
+}
+
+/** Alta rápida de cliente sin salir del diálogo de conversión (mismo flujo que el POS). */
+@Composable
+private fun EmitClientQuickAddDialog(
+    form: ContactFormInput,
+    consulting: Boolean,
+    saving: Boolean,
+    error: String?,
+    onFormChange: ((ContactFormInput) -> ContactFormInput) -> Unit,
+    onConsult: () -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+) {
+    BendeyFormDialog(
+        onDismissRequest = onDismiss,
+        title = "Registrar cliente",
+        confirmText = if (saving) "Registrando…" else "Registrar",
+        confirmEnabled = !saving && !consulting && form.businessName.isNotBlank() && form.docNumber.isNotBlank(),
+        onConfirm = onSave,
+        onDismiss = onDismiss,
+    ) {
+        BendeySimpleSelect(
+            options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },
+            selectedValue = form.docType.name,
+            onSelect = { value ->
+                val docType = ContactDocType.entries.firstOrNull { it.name == value } ?: ContactDocType.RUC
+                onFormChange { it.copy(docType = docType) }
+            },
+            label = "Tipo de documento",
+        )
+        BendeyTextField(
+            value = form.docNumber,
+            onValueChange = { v -> onFormChange { it.copy(docNumber = v) } },
+            label = "N° documento *",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (ContactDocType.supportsConsulta(form.docType.code)) {
+            BendeyPrimaryButton(
+                text = if (consulting) "Validando…" else "Validar",
+                onClick = onConsult,
+                enabled = !consulting && !saving,
+                loading = consulting,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        BendeyTextField(
+            value = form.businessName,
+            onValueChange = { v -> onFormChange { it.copy(businessName = v) } },
+            label = "Nombre / Razón social *",
+        )
+        BendeyTextField(
+            value = form.address,
+            onValueChange = { v -> onFormChange { it.copy(address = v) } },
+            label = "Dirección",
+            singleLine = false,
+        )
+        error?.let {
+            Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+        }
+    }
 }
 
 @Composable

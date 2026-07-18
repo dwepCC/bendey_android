@@ -13,6 +13,9 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.sortRestaurantTables
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
+import com.bendey.restaurant.core.realtime.store.FloorsStore
+import com.bendey.restaurant.core.realtime.store.TablesStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -93,12 +96,27 @@ class MesasViewModel @Inject constructor(
     private val mesasRepository: MesasRepository,
     private val settingsRepository: SettingsRepository,
     private val sessionStore: UserSessionStore,
+    private val restaurantHydrators: RestaurantHydrators,
+    private val floorsStore: FloorsStore,
+    private val tablesStore: TablesStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MesasUiState())
     val uiState: StateFlow<MesasUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            floorsStore.state.collect { snapshot ->
+                val floors = snapshot.ids.mapNotNull { snapshot.entities[it] }
+                _uiState.update { it.copy(floors = floors) }
+            }
+        }
+        viewModelScope.launch {
+            tablesStore.state.collect { snapshot ->
+                val tables = snapshot.ids.mapNotNull { snapshot.entities[it] }
+                _uiState.update { it.copy(tables = tables) }
+            }
+        }
         refresh()
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { session ->
@@ -144,24 +162,18 @@ class MesasViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
-            when (val floorsResult = mesasRepository.loadFloors()) {
+            when (val floorsResult = restaurantHydrators.hydrateFloors()) {
                 is AppResult.Error -> {
                     _uiState.update { it.copy(loading = false, error = floorsResult.message) }
                     return@launch
                 }
-                is AppResult.Success -> _uiState.update { it.copy(floors = floorsResult.data) }
-                AppResult.Loading -> Unit
+                else -> Unit
             }
-            when (val tablesResult = mesasRepository.loadTables(floorId = null)) {
-                is AppResult.Success -> {
-                    _uiState.update {
-                        it.copy(loading = false, tables = tablesResult.data)
-                    }
-                }
+            when (val tablesResult = restaurantHydrators.hydrateTables(floorId = null)) {
                 is AppResult.Error -> _uiState.update {
                     it.copy(loading = false, error = tablesResult.message)
                 }
-                AppResult.Loading -> Unit
+                else -> _uiState.update { it.copy(loading = false) }
             }
             if (_uiState.value.canAssignStaff) {
                 loadStaffOptions(canAssign = true)

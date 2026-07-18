@@ -81,6 +81,9 @@ import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.TableSessionDetail
 import com.bendey.restaurant.core.domain.restaurant.toComandaLine
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.UiPresence
+import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
+import com.bendey.restaurant.core.realtime.store.SessionsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -221,6 +224,8 @@ class MesaViewModel @Inject constructor(
     private val productsRepository: ProductsRepository,
     private val modifiersRepository: ModifiersRepository,
     private val combosRepository: CombosRepository,
+    private val restaurantHydrators: RestaurantHydrators,
+    private val sessionsStore: SessionsStore,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -232,6 +237,7 @@ class MesaViewModel @Inject constructor(
     val uiState: StateFlow<MesaUiState> = _uiState.asStateFlow()
 
     init {
+        UiPresence.trackSession(sessionId, true)
         refreshAll()
         warmCheckoutMeta()
         viewModelScope.launch {
@@ -247,6 +253,19 @@ class MesaViewModel @Inject constructor(
                 }
             }
         }
+        // Refleja patches WS aplicados a esta sesión en sessionsStore (restaurant.session.updated, etc.)
+        // sin esperar al próximo loadSession() explícito — paridad con useMesaSession (Tauri).
+        viewModelScope.launch {
+            sessionsStore.state.collect { snapshot ->
+                val patched = snapshot.entities[sessionId.toString()] ?: return@collect
+                _uiState.update { if (it.session != patched) it.copy(session = patched) else it }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        UiPresence.trackSession(sessionId, false)
+        super.onCleared()
     }
 
     private fun warmCheckoutMeta() {
@@ -1258,10 +1277,13 @@ class MesaViewModel @Inject constructor(
     }
 
     private suspend fun loadSession() {
-        when (val result = mesasRepository.getSession(sessionId)) {
-            is AppResult.Success -> _uiState.update { it.copy(session = result.data) }
-            is AppResult.Error -> _uiState.update { it.copy(error = result.message) }
-            AppResult.Loading -> Unit
+        // Vía RestaurantHydrators (único módulo HTTP de Recovery) — también hidrata sessionsStore
+        // compartido, de modo que otras pantallas/handlers WS vean el mismo estado.
+        val detail = restaurantHydrators.hydrateSession(sessionId)
+        if (detail != null) {
+            _uiState.update { it.copy(session = detail) }
+        } else {
+            _uiState.update { it.copy(error = "No se pudo cargar la sesión") }
         }
     }
 

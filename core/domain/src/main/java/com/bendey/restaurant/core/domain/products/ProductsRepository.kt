@@ -9,6 +9,8 @@ interface ProductsRepository {
     suspend fun createProduct(input: ProductFormInput): AppResult<ProductItem>
     suspend fun updateProduct(id: Int, input: ProductFormInput): AppResult<ProductItem>
     suspend fun deleteProduct(id: Int): AppResult<Unit>
+    /** Activa/desactiva un producto sin eliminarlo. */
+    suspend fun toggleProduct(id: Int): AppResult<Unit>
 
     suspend fun listCategories(): AppResult<List<CategoryItem>>
     suspend fun createCategory(name: String, description: String = ""): AppResult<CategoryItem>

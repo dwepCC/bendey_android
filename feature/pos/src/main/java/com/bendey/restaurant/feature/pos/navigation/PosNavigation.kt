@@ -10,11 +10,13 @@ import com.bendey.restaurant.feature.pos.PosScreen
 fun NavGraphBuilder.posGraph(
     cashCheckoutGate: CashCheckoutGate = CashCheckoutGateNoOp,
     onShowMessage: (String) -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
 ) {
     composable(BendeyRoutes.POS) {
         PosScreen(
             cashCheckoutGate = cashCheckoutGate,
             onShowMessage = onShowMessage,
+            onNavigateToSubscription = onNavigateToSubscription,
         )
     }
 }

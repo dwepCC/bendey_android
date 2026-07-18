@@ -4,11 +4,13 @@ import androidx.compose.ui.graphics.Color
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 
-fun TableStatus.accentColor(): Color = when (this) {
-    TableStatus.LIBRE -> BendeyColors.TableLibre
-    TableStatus.OCUPADA -> BendeyColors.TableOcupada
-    TableStatus.RESERVADA -> BendeyColors.TableReservada
-    TableStatus.EN_CONSUMO -> BendeyColors.TableEnConsumo
+fun TableStatus.accentColor(browsingOnly: Boolean = false): Color = when {
+    this == TableStatus.LIBRE && browsingOnly -> BendeyColors.TableBrowsing
+    this == TableStatus.LIBRE -> BendeyColors.TableLibre
+    this == TableStatus.OCUPADA -> BendeyColors.TableOcupada
+    this == TableStatus.RESERVADA -> BendeyColors.TableReservada
+    this == TableStatus.EN_CONSUMO -> BendeyColors.TableEnConsumo
+    else -> BendeyColors.TableLibre
 }
 
 fun ComandaStatus.accentColor(): Color = when (this) {

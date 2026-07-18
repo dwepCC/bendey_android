@@ -380,6 +380,7 @@ private fun RestaurantTableDto.toDomain() = RestaurantTable(
     totalAmount = totalAmount,
     waiterName = waiterName,
     guests = guests,
+    browsingOnly = browsingOnly,
 )
 
 private fun KitchenComandaDto.toDomain() = KitchenItem(

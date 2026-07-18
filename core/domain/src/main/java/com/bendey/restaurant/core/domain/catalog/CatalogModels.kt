@@ -115,6 +115,7 @@ data class ComboItem(
     val slotsCount: Int = 0,
     val validFrom: String? = null,
     val validTo: String? = null,
+    val imageUrl: String? = null,
 )
 
 data class ComboFormInput(
@@ -128,6 +129,11 @@ data class ComboFormInput(
     val fixedItems: List<ComboFixedItem> = emptyList(),
     val slots: List<ComboSlot> = emptyList(),
     val branchSettings: List<ComboBranchSetting> = emptyList(),
+    /** Solo lectura — no se envía en el payload de crear/actualizar. Se cambia vía el endpoint
+     * dedicado de subida de imagen (ver ProductImageRepository.uploadComboImage). */
+    val imageUrl: String? = null,
+    val pendingImageBytes: ByteArray? = null,
+    val pendingImageMimeType: String? = null,
 )
 
 data class DeliveryCompany(
@@ -165,6 +171,7 @@ data class CompanyConfig(
     val tradeName: String,
     val ruc: String,
     val address: String,
+    val ubigeo: String = "",
     val phone: String,
     val email: String,
     val currency: String,
@@ -175,8 +182,15 @@ data class CompanyConfigFormInput(
     val businessName: String = "",
     val tradeName: String = "",
     val address: String = "",
+    val ubigeo: String = "",
     val phone: String = "",
     val email: String = "",
+)
+
+/** Ítem de ubigeo (región/provincia/distrito): id INEI de 6 dígitos + nombre. */
+data class UbiItem(
+    val id: String,
+    val nombre: String,
 )
 
 data class SunatConfig(

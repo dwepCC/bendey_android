@@ -85,6 +85,7 @@ import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
+import com.bendey.restaurant.core.domain.billing.lockedCheckoutSeries
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
@@ -124,6 +125,7 @@ fun PosScreen(
     viewModel: PosViewModel = hiltViewModel(),
     cashCheckoutGate: CashCheckoutGate = CashCheckoutGateNoOp,
     onShowMessage: (String) -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
@@ -452,6 +454,10 @@ fun PosScreen(
         docType = state.checkoutDocType,
         contactId = state.checkoutContactId,
         error = if (state.checkoutOpen) state.error else null,
+        lockedSeries = remember(state.checkoutMeta, state.billingModuleEnabled) {
+            lockedCheckoutSeries(state.checkoutMeta?.series.orEmpty(), state.billingModuleEnabled)
+        },
+        onLockedDocTypeSelect = onNavigateToSubscription,
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,

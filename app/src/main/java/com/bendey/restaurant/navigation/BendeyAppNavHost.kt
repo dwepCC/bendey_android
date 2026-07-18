@@ -66,6 +66,7 @@ import com.bendey.restaurant.feature.modificadores.navigation.modificadoresGraph
 import com.bendey.restaurant.feature.productos.navigation.productosGraph
 import com.bendey.restaurant.feature.productos.navigation.reportesGraph
 import com.bendey.restaurant.feature.repartidores.navigation.repartidoresGraph
+import com.bendey.restaurant.feature.subscription.navigation.subscriptionGraph
 import com.bendey.restaurant.feature.ventas.navigation.ventasGraph
 
 @Composable
@@ -331,11 +332,17 @@ private fun MainShell(
                         mainNavController.navigateToDrawerDestination(BendeyRoutes.VENTAS)
                     }
                 },
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
             )
             printingGraph(onBack = { mainNavController.popBackStack() })
             posGraph(
                 cashCheckoutGate = cashCheckoutGate,
                 onShowMessage = onShowMessage,
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
             )
             mesasGraph(
                 navController = mainNavController,
@@ -343,9 +350,24 @@ private fun MainShell(
                 onShowMessage = onShowMessage,
             )
             cocinaGraph(onShowMessage = onShowMessage)
-            cajaGraph(onShowMessage = onShowMessage)
-            ventasGraph(onShowMessage = onShowMessage)
-            reportesGraph(onShowMessage = onShowMessage)
+            cajaGraph(
+                onShowMessage = onShowMessage,
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
+            )
+            ventasGraph(
+                onShowMessage = onShowMessage,
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
+            )
+            reportesGraph(
+                onShowMessage = onShowMessage,
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
+            )
             productosGraph(
                 onOpenModificadores = {
                     mainNavController.navigate(BendeyRoutes.MODIFICADORES) { launchSingleTop = true }
@@ -397,9 +419,16 @@ private fun MainShell(
             configuracionGraph(
                 onBack = { mainNavController.popBackStack() },
                 onOpenPrinting = { mainNavController.navigate(BendeyRoutes.PRINTING_TEST) },
+                onNavigateToSubscription = {
+                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                },
             )
             repartidoresGraph(onBack = { mainNavController.popBackStack() })
             clientesGraph(onShowMessage = onShowMessage)
+            subscriptionGraph(
+                onBack = { mainNavController.popBackStack() },
+                onShowMessage = onShowMessage,
+            )
         }
     }
     BendeySnackbarHost(

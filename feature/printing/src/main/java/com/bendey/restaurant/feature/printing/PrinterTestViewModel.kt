@@ -26,6 +26,7 @@ import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
+import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaItem
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaPrintInput
@@ -51,6 +52,8 @@ data class PrinterTestUiState(
     val tcpPort: String = "9100",
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
+    val comandaGroupCombos: Boolean = false,
+    val documentLogoSize: LogoSize = LogoSize.MEDIUM,
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
     val deliveryMode: PrintDeliveryMode = PrintDeliveryMode.LOCAL,
@@ -92,6 +95,7 @@ class PrinterTestViewModel @Inject constructor(
                     deliveryMode = cachedSettings.deliveryMode,
                     selectedPrintServer = cachedSettings.printServer,
                     manualServerHost = cachedSettings.printServer?.manualHost.orEmpty(),
+                    documentLogoSize = cachedSettings.documentLogoSize,
                 )
             }
             applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
@@ -158,6 +162,8 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
+                    comandaGroupCombos = state.comandaGroupCombos,
+                    documentLogoSize = state.documentLogoSize,
                     deliveryMode = state.deliveryMode,
                     printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
                 ),
@@ -168,6 +174,18 @@ class PrinterTestViewModel @Inject constructor(
     fun setComandaTextSize(size: ComandaTextSize) {
         _uiState.update { it.copy(comandaTextSize = size) }
         cachedSettings = cachedSettings.copy(comandaTextSize = size)
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun setComandaGroupCombos(enabled: Boolean) {
+        _uiState.update { it.copy(comandaGroupCombos = enabled) }
+        cachedSettings = cachedSettings.copy(comandaGroupCombos = enabled)
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun setDocumentLogoSize(size: LogoSize) {
+        _uiState.update { it.copy(documentLogoSize = size) }
+        cachedSettings = cachedSettings.copy(documentLogoSize = size)
         viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
     }
 
@@ -554,6 +572,8 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
+                    comandaGroupCombos = state.comandaGroupCombos,
+                    documentLogoSize = state.documentLogoSize,
                     deliveryMode = state.deliveryMode,
                     printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
                 ),
@@ -577,6 +597,7 @@ class PrinterTestViewModel @Inject constructor(
                 tcpPort = config.tcpPort.toString(),
                 paperWidth = config.paperWidth,
                 comandaTextSize = settings.comandaTextSize,
+                comandaGroupCombos = settings.comandaGroupCombos,
                 autoPrintComandas = settings.autoPrintComandas,
                 autoPrintDocuments = settings.autoPrintDocuments,
                 comandasByArea = settings.comandasByArea,

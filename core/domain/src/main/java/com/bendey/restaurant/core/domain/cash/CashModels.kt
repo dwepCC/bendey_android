@@ -83,6 +83,7 @@ data class CashMovement(
     val reference: String,
     val amount: Double,
     val notes: String?,
+    val titular: String?,
     val createdAt: String?,
 )
 
@@ -93,6 +94,8 @@ data class AddCashMovementInput(
     val reference: String = "",
     val notes: String = "",
     val paymentMethod: String = "cash",
+    /** A nombre de quién es el ingreso/egreso manual. */
+    val titular: String = "",
 )
 
 data class CashPaymentMethod(

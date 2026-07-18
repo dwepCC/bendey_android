@@ -3,6 +3,7 @@ package com.bendey.restaurant.feature.caja
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.VerticalDivider
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
-import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
+import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
@@ -73,6 +75,7 @@ import java.util.Locale
 fun CajaScreen(
     modifier: Modifier = Modifier,
     onShowMessage: (String) -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     viewModel: CajaViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -129,10 +132,10 @@ fun CajaScreen(
                 SessionTab(state, currency, viewModel, contentModifier)
             }
             state.tab == CajaTab.MOVEMENTS -> {
-                MovementsTab(state, currency, viewModel, context, contentModifier)
+                MovementsTab(state, currency, viewModel, context, onNavigateToSubscription, contentModifier)
             }
             state.tab == CajaTab.REPORT -> {
-                ReportTab(state, currency, viewModel, context, contentModifier)
+                ReportTab(state, currency, viewModel, context, onNavigateToSubscription, contentModifier)
             }
             state.tab == CajaTab.HISTORY -> {
                 HistoryTab(state, currency, viewModel, contentModifier)
@@ -304,7 +307,7 @@ private fun SessionTab(
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
         BendeyLazyColumn(state = rememberLazyListState(),
-            contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+            contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.xs),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.weight(1f),
         ) {
@@ -321,10 +324,11 @@ private fun MovementsTab(
     currency: NumberFormat,
     viewModel: CajaViewModel,
     context: android.content.Context,
+    onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BendeyLazyColumn(state = rememberLazyListState(),
-        contentPadding = PaddingValues(BendeySpacing.md),
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = modifier.fillMaxSize(),
     ) {
@@ -387,12 +391,22 @@ private fun MovementsTab(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 BendeyPrimaryButton("Buscar", viewModel::searchMovementsReport, Modifier.weight(1f))
-                OutlinedButton(
-                    onClick = { viewModel.exportMovementsReport(context) },
-                    enabled = !state.movementsExportBusy,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (state.movementsExportBusy) "Exportando…" else "Exportar Excel")
+                if (state.allowsReportExport) {
+                    OutlinedButton(
+                        onClick = { viewModel.exportMovementsReport(context) },
+                        enabled = !state.movementsExportBusy,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(if (state.movementsExportBusy) "Exportando…" else "Exportar Excel")
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onNavigateToSubscription,
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null)
+                        Text("Excel (Pro)", modifier = Modifier.padding(start = BendeySpacing.xs))
+                    }
                 }
             }
         }
@@ -449,6 +463,7 @@ private fun ReportTab(
     currency: NumberFormat,
     viewModel: CajaViewModel,
     context: android.content.Context,
+    onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sessions = buildList {
@@ -483,11 +498,18 @@ private fun ReportTab(
                             Icon(Icons.Default.Share, contentDescription = null)
                             Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
                         }
-                        OutlinedButton(
-                            onClick = { viewModel.exportSessionReportPdf(context) },
-                            enabled = !state.sessionReportExportBusy,
-                        ) {
-                            Text(if (state.sessionReportExportBusy) "Exportando PDF…" else "Exportar PDF")
+                        if (state.allowsReportExport) {
+                            OutlinedButton(
+                                onClick = { viewModel.exportSessionReportPdf(context) },
+                                enabled = !state.sessionReportExportBusy,
+                            ) {
+                                Text(if (state.sessionReportExportBusy) "Exportando PDF…" else "Exportar PDF")
+                            }
+                        } else {
+                            OutlinedButton(onClick = onNavigateToSubscription) {
+                                Icon(Icons.Default.Lock, contentDescription = null)
+                                Text("PDF (Pro)", modifier = Modifier.padding(start = BendeySpacing.xs))
+                            }
                         }
                     }
                 } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
@@ -599,7 +621,7 @@ private fun HistoryTab(
     modifier: Modifier = Modifier,
 ) {
     BendeyLazyColumn(state = rememberLazyListState(),
-        contentPadding = PaddingValues(BendeySpacing.md),
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = modifier.fillMaxSize(),
     ) {
@@ -661,6 +683,9 @@ private fun MovementCard(movement: CashMovement, currency: NumberFormat) {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(cashMovementCategoryLabel(movement.category), fontWeight = FontWeight.Medium)
+                movement.titular?.takeIf { it.isNotBlank() }?.let {
+                    Text("Titular: $it", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                }
                 movement.reference.takeIf { it.isNotBlank() }?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                 }
@@ -738,6 +763,11 @@ private fun MovementDialog(
                         }
                     }
                 }
+                BendeyTextField(
+                    form.titular,
+                    { v -> onFormChange { it.copy(titular = v) } },
+                    if (form.type == CashMovementType.INCOME) "Titular (a nombre de quién ingresa)" else "Titular (a nombre de quién sale)",
+                )
                 BendeyTextField(form.reference, { v -> onFormChange { it.copy(reference = v) } }, "Referencia")
                 BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas", singleLine = false)
             }
@@ -755,11 +785,13 @@ private fun ConfigTab(
     modifier: Modifier = Modifier,
 ) {
     if (state.configLoading) {
-        CircularProgressIndicator(modifier = modifier.padding(BendeySpacing.lg))
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
         return
     }
     BendeyLazyColumn(state = rememberLazyListState(),
-        contentPadding = PaddingValues(BendeySpacing.md),
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         modifier = modifier.fillMaxSize(),
     ) {
@@ -774,7 +806,7 @@ private fun ConfigTab(
         if (state.bankAccounts.isEmpty()) {
             item { Text("Sin cuentas registradas", color = BendeyColors.OnSurfaceVariant) }
         }
-        items(state.bankAccounts, key = { it.id }) { acc ->
+        items(state.bankAccounts, key = { "bank-account-${it.id}" }) { acc ->
             BankAccountCard(
                 acc,
                 currency,
@@ -794,7 +826,7 @@ private fun ConfigTab(
         if (state.paymentMethods.isEmpty()) {
             item { Text("Sin métodos de pago", color = BendeyColors.OnSurfaceVariant) }
         }
-        items(state.paymentMethods, key = { it.id }) { pm ->
+        items(state.paymentMethods, key = { "payment-method-${it.id}" }) { pm ->
             PaymentMethodCard(
                 pm,
                 state.bankAccounts,

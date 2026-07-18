@@ -58,7 +58,8 @@ fun BendeyTableCard(
     enabled: Boolean = table.isClickable,
     menuActions: List<TableCardMenuAction> = emptyList(),
 ) {
-    val accent = table.status.accentColor()
+    val accent = table.status.accentColor(browsingOnly = table.browsingOnly)
+    val statusLabel = if (table.browsingOnly) "Viendo la carta" else table.status.label
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(
@@ -98,7 +99,7 @@ fun BendeyTableCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                     ) {
-                        BendeyStatusChip(label = table.status.label, accentColor = accent)
+                        BendeyStatusChip(label = statusLabel, accentColor = accent)
                         if (menuActions.isNotEmpty()) {
                             TableCardOverflowMenu(
                                 tableName = table.name,
@@ -180,7 +181,7 @@ private fun TableMetaFooter(
         modifier = Modifier
             .fillMaxWidth()
             .clip(BendeyShapeTokens.sm)
-            .background(accent.copy(alpha = if (occupied) 0.14f else 0.08f))
+            .background(accent.copy(alpha = if (occupied || table.browsingOnly) 0.14f else 0.08f))
             .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -192,6 +193,9 @@ private fun TableMetaFooter(
                 table.totalAmount?.takeIf { it > 0 }?.let { amount ->
                     MetaLine("Total", currency.format(amount), accent, emphasize = true)
                 }
+            }
+            table.browsingOnly -> {
+                MetaLine("Estado", "Cliente en la carta", accent)
             }
             table.status == TableStatus.RESERVADA -> {
                 table.guests?.takeIf { it > 0 }?.let { MetaLine("Comensales", "$it", accent) }
@@ -236,6 +240,7 @@ fun BendeyTableStatsRow(
     ocupada: Int,
     reservada: Int,
     enConsumo: Int,
+    browsing: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -246,6 +251,7 @@ fun BendeyTableStatsRow(
         StatDot("Ocupadas", ocupada, BendeyColors.TableOcupada)
         StatDot("Reservadas", reservada, BendeyColors.TableReservada)
         StatDot("Consum.", enConsumo, BendeyColors.TableEnConsumo)
+        if (browsing > 0) StatDot("Viendo carta", browsing, BendeyColors.TableBrowsing)
     }
 }
 

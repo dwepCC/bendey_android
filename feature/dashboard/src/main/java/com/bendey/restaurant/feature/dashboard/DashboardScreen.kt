@@ -73,6 +73,8 @@ import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
+import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
+import androidx.compose.ui.platform.LocalContext
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
@@ -90,10 +92,12 @@ import kotlin.math.roundToInt
 fun DashboardScreen(
     onOpenMesas: () -> Unit = {},
     onOpenVentas: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val adaptiveProfile = rememberBendeyAdaptiveProfile()
     val isExpanded = !adaptiveProfile.isCompact
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
@@ -151,6 +155,15 @@ fun DashboardScreen(
                         )
                     }
                 }
+            }
+            item {
+                BendeyExportActionsRow(
+                    allowsExport = state.allowsReportExport,
+                    exportBusy = state.exportBusy,
+                    onExportPdf = { viewModel.exportPdf(context) },
+                    onExportExcel = { viewModel.exportExcel(context) },
+                    onLockedClick = onNavigateToSubscription,
+                )
             }
             if (state.tab == DashboardTab.OPERACION) {
             item {

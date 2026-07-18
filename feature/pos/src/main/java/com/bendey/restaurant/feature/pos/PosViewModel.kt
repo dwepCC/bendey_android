@@ -41,6 +41,8 @@ import com.bendey.restaurant.core.domain.billing.isElectronicBillingSunatCode
 import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
 import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
+import com.bendey.restaurant.core.domain.subscription.BILLING_MODULE_KEY
+import com.bendey.restaurant.core.domain.subscription.hasModule
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.pos.comboComponentModifiersList
 import com.bendey.restaurant.core.domain.pos.loadComboComponentMetadata
@@ -93,6 +95,9 @@ import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.toComandaLine
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.UiPresence
+import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
+import com.bendey.restaurant.core.realtime.store.OrdersStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -192,6 +197,7 @@ data class PosUiState(
     val canChargeOrders: Boolean = false,
     val canAnularComanda: Boolean = false,
     val canOperateCash: Boolean = false,
+    val billingModuleEnabled: Boolean = false,
 ) {
     val isDirectSale: Boolean get() = orderType == PosOrderType.QUICK_SALE
     val isRestaurantOrder: Boolean get() = !isDirectSale
@@ -234,6 +240,8 @@ class PosViewModel @Inject constructor(
     private val preparationAreasRepository: PreparationAreasRepository,
     private val combosRepository: CombosRepository,
     private val settingsRepository: SettingsRepository,
+    private val restaurantHydrators: RestaurantHydrators,
+    private val ordersStore: OrdersStore,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -243,9 +251,16 @@ class PosViewModel @Inject constructor(
     val uiState: StateFlow<PosUiState> = _uiState.asStateFlow()
 
     init {
+        UiPresence.posOrders = true
         refreshCatalog()
         warmCheckoutMeta()
         loadPendingOrders()
+        viewModelScope.launch {
+            ordersStore.state.collect { snapshot ->
+                val orders = snapshot.ids.mapNotNull { snapshot.entities[it] }
+                _uiState.update { it.copy(pendingOrders = orders) }
+            }
+        }
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { session ->
                 val perms = session?.restaurantPermissions.orEmpty()
@@ -255,10 +270,16 @@ class PosViewModel @Inject constructor(
                         canChargeOrders = RestaurantPermissions.canChargeOrders(perms),
                         canAnularComanda = RestaurantPermissions.canAnularComanda(perms),
                         canOperateCash = RestaurantPermissions.canChargeCashByRole(employeeType, perms),
+                        billingModuleEnabled = hasModule(session?.modules.orEmpty(), BILLING_MODULE_KEY),
                     )
                 }
             }
         }
+    }
+
+    override fun onCleared() {
+        UiPresence.posOrders = false
+        super.onCleared()
     }
 
     private fun warmCheckoutMeta() {
@@ -298,12 +319,7 @@ class PosViewModel @Inject constructor(
     }
 
     fun loadPendingOrders() {
-        viewModelScope.launch {
-            when (val result = posRepository.listOpenOrders()) {
-                is AppResult.Success -> _uiState.update { it.copy(pendingOrders = result.data) }
-                else -> Unit
-            }
-        }
+        viewModelScope.launch { restaurantHydrators.hydrateOpenOrders() }
     }
 
     fun openPendingOrdersSheet() {

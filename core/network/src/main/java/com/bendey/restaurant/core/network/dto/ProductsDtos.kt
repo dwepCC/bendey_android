@@ -28,6 +28,7 @@ data class ProductDto(
     @SerialName("available_for_sale") val availableForSale: Boolean = true,
     @SerialName("igv_affectation_type") val igvAffectationType: String? = null,
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean? = null,
+    @SerialName("product_type") val productType: String? = null,
 )
 
 @Serializable
@@ -84,6 +85,7 @@ data class CreateProductRequestDto(
     @SerialName("modifier_group_ids") val modifierGroupIds: List<Int> = emptyList(),
     val presentations: List<ProductPresentationDto> = emptyList(),
     @SerialName("available_for_sale") val availableForSale: Boolean = true,
+    @SerialName("product_type") val productType: String = "comercial",
 )
 
 @Serializable
@@ -91,6 +93,7 @@ data class UpdateProductRequestDto(
     val name: String? = null,
     val code: String? = null,
     val description: String? = null,
+    val unit: String? = null,
     @SerialName("sale_price") val salePrice: Double? = null,
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     @SerialName("category_id") val categoryId: Int? = null,
@@ -105,6 +108,7 @@ data class UpdateProductRequestDto(
     @SerialName("has_variants") val hasVariants: Boolean? = null,
     @SerialName("modifier_group_ids") val modifierGroupIds: List<Int>? = null,
     val presentations: List<ProductPresentationDto>? = null,
+    @SerialName("product_type") val productType: String? = null,
 )
 
 @Serializable

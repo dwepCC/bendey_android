@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.combos
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
@@ -51,11 +53,20 @@ import com.bendey.restaurant.core.domain.pos.COMBO_QUANTITY_MODE_HELP
 import com.bendey.restaurant.core.domain.catalog.usesFixed
 import com.bendey.restaurant.core.domain.catalog.usesSlots
 import com.bendey.restaurant.core.domain.products.ProductItem
+import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun ComboEditorSheet(
@@ -70,9 +81,11 @@ fun ComboEditorSheet(
     error: String?,
     isEditing: Boolean,
     activePicker: ComboProductPickerTarget?,
+    tenantBaseUrl: String?,
     onDismiss: () -> Unit,
     onTabChange: (ComboEditorTab) -> Unit,
     onFormChange: ((ComboFormInput) -> ComboFormInput) -> Unit,
+    onImagePicked: (ByteArray, String) -> Unit,
     onProductSearchChange: (String) -> Unit,
     onOpenPicker: (ComboProductPickerTarget) -> Unit,
     onClosePicker: () -> Unit,
@@ -150,7 +163,7 @@ fun ComboEditorSheet(
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                 ) {
                     when (editorTab) {
-                        ComboEditorTab.GENERAL -> GeneralTab(form, onFormChange)
+                        ComboEditorTab.GENERAL -> GeneralTab(form, tenantBaseUrl, onFormChange, onImagePicked)
                         ComboEditorTab.FIXED -> FixedTab(
                             form = form,
                             activePicker = activePicker,
@@ -203,8 +216,11 @@ data class ComboProductPickerTarget(
 @Composable
 private fun GeneralTab(
     form: ComboFormInput,
+    tenantBaseUrl: String?,
     onFormChange: ((ComboFormInput) -> ComboFormInput) -> Unit,
+    onImagePicked: (ByteArray, String) -> Unit,
 ) {
+    ComboImageSection(form, tenantBaseUrl, onImagePicked)
     BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
     BendeyTextField(form.basePrice, { v -> onFormChange { it.copy(basePrice = v) } }, "Precio base *")
     BendeyTextField(
@@ -241,6 +257,52 @@ private fun GeneralTab(
         BendeyTextField(form.validTo, { v -> onFormChange { it.copy(validTo = v) } }, "Vigencia hasta (YYYY-MM-DD)")
     }
 }
+
+@Composable
+private fun ComboImageSection(
+    form: ComboFormInput,
+    tenantBaseUrl: String?,
+    onImagePicked: (ByteArray, String) -> Unit,
+) {
+    val context = LocalContext.current
+    val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            val bytes = readComboImageBytes(context, it) ?: return@let
+            val mime = context.contentResolver.getType(it) ?: "image/jpeg"
+            onImagePicked(bytes, mime)
+        }
+    }
+    val displayUrl = when {
+        form.pendingImageBytes != null -> null
+        !form.imageUrl.isNullOrBlank() -> resolvePublicAssetUrl(tenantBaseUrl, form.imageUrl)
+        else -> null
+    }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+    ) {
+        if (form.pendingImageBytes != null) {
+            Text("Imagen lista para subir", style = MaterialTheme.typography.bodySmall, color = BendeyColors.Primary)
+        } else if (displayUrl != null) {
+            AsyncImage(
+                model = displayUrl,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp).clip(BendeyShapeTokens.xs),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Icon(Icons.Default.Image, contentDescription = null, tint = BendeyColors.OnSurfaceVariant, modifier = Modifier.size(48.dp))
+        }
+        BendeyPrimaryButton("Elegir imagen", { imageLauncher.launch("image/*") })
+    }
+}
+
+private fun readComboImageBytes(context: Context, uri: Uri): ByteArray? = runCatching {
+    context.contentResolver.openInputStream(uri)?.use { input ->
+        ByteArrayOutputStream().apply { input.copyTo(this) }.toByteArray()
+    }
+}.getOrNull()
 
 @Composable
 private fun FixedTab(

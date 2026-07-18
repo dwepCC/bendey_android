@@ -3,6 +3,7 @@ package com.bendey.restaurant.core.data.printer
 import com.bendey.restaurant.core.data.kitchen.PRINT_DEFAULT_AREA_KEY
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
 import com.bendey.restaurant.core.data.kitchen.comandasToRoutingLines
+import com.bendey.restaurant.core.data.kitchen.consolidateComboLinesForPrint
 import com.bendey.restaurant.core.data.kitchen.groupLinesByPreparationArea
 import com.bendey.restaurant.core.data.kitchen.toPrintItem
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
@@ -107,7 +108,12 @@ class KitchenPrintService @Inject constructor(
         var printed = 0
         var hadError = false
         for ((areaKey, areaLines) in groups) {
-            val printableLines = areaLines.filter { !it.isComboHeader }
+            // Ajuste local: agrupar componentes de combos por área (resumen + sumas). Con OFF
+            // (por defecto) se conserva el comportamiento actual: sin resumen, cada combo detallado.
+            val routedLines =
+                if (settings.comandaGroupCombos) consolidateComboLinesForPrint(areaLines) else areaLines
+            val printableLines =
+                if (settings.comandaGroupCombos) routedLines else routedLines.filter { !it.isComboHeader }
             if (printableLines.isEmpty()) continue
             val prepArea = if (areaKey == PRINT_DEFAULT_AREA_KEY) null else areaKey
             val target = settings.targetForComandaArea(prepArea) ?: continue
@@ -179,7 +185,12 @@ class KitchenPrintService @Inject constructor(
         comandas: List<ComandaLine>,
     ): PrintResult {
         val settings = printerPreferencesStore.settings.first()
-        val printableLines = comandasToRoutingLines(comandas).filter { !it.isComboHeader }
+        val allLines = comandasToRoutingLines(comandas)
+        val printableLines = if (settings.comandaGroupCombos) {
+            consolidateComboLinesForPrint(allLines)
+        } else {
+            allLines.filter { !it.isComboHeader }
+        }
         return printerRepository.printComanda(
             target,
             ComandaPrintInput(

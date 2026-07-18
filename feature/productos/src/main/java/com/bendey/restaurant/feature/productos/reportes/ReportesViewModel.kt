@@ -32,6 +32,12 @@ import com.bendey.restaurant.core.domain.inventory.StockMovementQuery
 
 import com.bendey.restaurant.core.domain.model.AppResult
 
+import com.bendey.restaurant.core.domain.production.LowStockInsumo
+
+import com.bendey.restaurant.core.domain.production.PlateMarginRow
+
+import com.bendey.restaurant.core.domain.production.ProductionRepository
+
 import com.bendey.restaurant.core.domain.products.CategoryItem
 
 import com.bendey.restaurant.core.domain.products.ProductReportItem
@@ -47,6 +53,8 @@ import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 
 import com.bendey.restaurant.core.domain.sales.VentasTab
+
+import com.bendey.restaurant.core.domain.session.UserSessionStore
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 
@@ -66,6 +74,10 @@ import kotlinx.coroutines.flow.StateFlow
 
 import kotlinx.coroutines.flow.asStateFlow
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+
+import kotlinx.coroutines.flow.map
+
 import kotlinx.coroutines.flow.update
 
 import kotlinx.coroutines.launch
@@ -77,6 +89,8 @@ data class ReportesUiState(
     val tab: ReportesTab = ReportesTab.KARDEX,
 
     val salesSubTab: SalesReportSubTab = SalesReportSubTab.NOTAS,
+
+    val recetasSubTab: RecetasSubTab = RecetasSubTab.MARGEN,
 
     val loading: Boolean = false,
 
@@ -130,9 +144,15 @@ data class ReportesUiState(
 
     val listSummary: SaleListSummary = SaleListSummary(),
 
+    val plateMarginRows: List<PlateMarginRow> = emptyList(),
+
+    val lowStockInsumos: List<LowStockInsumo> = emptyList(),
+
     val error: String? = null,
 
     val snackMessage: String? = null,
+
+    val allowsReportExport: Boolean = false,
 
 ) {
 
@@ -184,7 +204,11 @@ class ReportesViewModel @Inject constructor(
 
     private val cashRepository: CashRepository,
 
+    private val productionRepository: ProductionRepository,
+
     private val fileShareService: BendeyFileShareService,
+
+    private val sessionStore: UserSessionStore,
 
 ) : ViewModel() {
 
@@ -205,6 +229,18 @@ class ReportesViewModel @Inject constructor(
         loadMeta()
 
         refresh()
+
+        viewModelScope.launch {
+
+            sessionStore.userSessionFlow
+
+                .map { it?.allowsReportExport == true }
+
+                .distinctUntilChanged()
+
+                .collect { allowed -> _uiState.update { it.copy(allowsReportExport = allowed) } }
+
+        }
 
     }
 
@@ -241,6 +277,18 @@ class ReportesViewModel @Inject constructor(
             )
 
         }
+
+        refresh()
+
+    }
+
+
+
+    fun selectRecetasSubTab(subTab: RecetasSubTab) {
+
+        if (_uiState.value.recetasSubTab == subTab) return
+
+        _uiState.update { it.copy(recetasSubTab = subTab, error = null) }
 
         refresh()
 
@@ -376,6 +424,8 @@ class ReportesViewModel @Inject constructor(
 
             ReportesTab.VENTAS -> loadSales(reset = true)
 
+            ReportesTab.RECETAS -> loadRecetas()
+
         }
 
     }
@@ -421,6 +471,8 @@ class ReportesViewModel @Inject constructor(
                 ReportesTab.PRODUCTOS -> exportProducts(context, state, format)
 
                 ReportesTab.VENTAS -> exportSales(context, state, format)
+
+                ReportesTab.RECETAS -> fileShareService.failureFrom(Exception("Este reporte no tiene exportación"))
 
             }
 
@@ -657,6 +709,40 @@ class ReportesViewModel @Inject constructor(
                 is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
 
                 AppResult.Loading -> Unit
+
+            }
+
+        }
+
+    }
+
+
+
+    private fun loadRecetas() {
+
+        viewModelScope.launch {
+
+            val state = _uiState.value
+
+            _uiState.update { it.copy(loading = true, error = null) }
+
+            when (state.recetasSubTab) {
+
+                RecetasSubTab.MARGEN -> when (
+                    val result = productionRepository.plateMargin(state.branchId, state.fromDate, state.toDate)
+                ) {
+                    is AppResult.Success -> _uiState.update { it.copy(loading = false, plateMarginRows = result.data) }
+                    is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+                    AppResult.Loading -> Unit
+                }
+
+                RecetasSubTab.STOCK -> when (
+                    val result = productionRepository.lowStockInsumos(state.branchId)
+                ) {
+                    is AppResult.Success -> _uiState.update { it.copy(loading = false, lowStockInsumos = result.data) }
+                    is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+                    AppResult.Loading -> Unit
+                }
 
             }
 

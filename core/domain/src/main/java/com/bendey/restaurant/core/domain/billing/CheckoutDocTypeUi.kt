@@ -3,6 +3,7 @@ package com.bendey.restaurant.core.domain.billing
 data class CheckoutDocTypeGroup(
     val key: String,
     val label: String,
+    val locked: Boolean = false,
 )
 
 fun normalizeDocTypeKey(docType: String): String =
@@ -45,18 +46,50 @@ fun docTypeSortOrder(docType: String, sunatCode: String? = null): Int {
     }
 }
 
-fun groupCheckoutDocTypes(series: List<DocumentSeries>): List<CheckoutDocTypeGroup> {
-    val byKey = linkedMapOf<String, DocumentSeries>()
-    series.forEach { item ->
+fun groupCheckoutDocTypes(series: List<DocumentSeries>): List<CheckoutDocTypeGroup> =
+    buildDocTypeGroups(unlockedSeries = series, lockedSeries = emptyList())
+
+/**
+ * Igual que [groupCheckoutDocTypes], pero además incluye los tipos de documento presentes
+ * únicamente en [lockedSeries] (p. ej. boleta/factura sin el módulo `billing` en el plan),
+ * marcados con `locked = true` en vez de ocultarlos.
+ */
+fun groupCheckoutDocTypesWithLocked(
+    unlockedSeries: List<DocumentSeries>,
+    lockedSeries: List<DocumentSeries>,
+): List<CheckoutDocTypeGroup> = buildDocTypeGroups(unlockedSeries, lockedSeries)
+
+private data class DocTypeGroupSeed(
+    val key: String,
+    val docType: String,
+    val sunatCode: String?,
+    val locked: Boolean,
+)
+
+private fun buildDocTypeGroups(
+    unlockedSeries: List<DocumentSeries>,
+    lockedSeries: List<DocumentSeries>,
+): List<CheckoutDocTypeGroup> {
+    val byKey = linkedMapOf<String, DocTypeGroupSeed>()
+    unlockedSeries.forEach { item ->
         val key = normalizeDocTypeKey(item.docType)
-        if (!byKey.containsKey(key)) byKey[key] = item
+        if (!byKey.containsKey(key)) {
+            byKey[key] = DocTypeGroupSeed(key, item.docType, item.sunatCode, locked = false)
+        }
+    }
+    lockedSeries.forEach { item ->
+        val key = normalizeDocTypeKey(item.docType)
+        if (!byKey.containsKey(key)) {
+            byKey[key] = DocTypeGroupSeed(key, item.docType, item.sunatCode, locked = true)
+        }
     }
     return byKey.values
         .sortedWith(compareBy({ docTypeSortOrder(it.docType, it.sunatCode) }, { it.docType }))
-        .map { item ->
+        .map { seed ->
             CheckoutDocTypeGroup(
-                key = normalizeDocTypeKey(item.docType),
-                label = docTypeShortLabel(item.docType, item.sunatCode),
+                key = seed.key,
+                label = docTypeShortLabel(seed.docType, seed.sunatCode),
+                locked = seed.locked,
             )
         }
 }

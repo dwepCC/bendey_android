@@ -53,6 +53,8 @@ data class RestaurantTable(
     val totalAmount: Double?,
     val waiterName: String?,
     val guests: Int?,
+    /** Cliente escaneó el QR de la mesa y está viendo la carta, pero aún no pidió nada. */
+    val browsingOnly: Boolean = false,
 ) {
     val isClickable: Boolean
         get() = status == TableStatus.LIBRE ||
@@ -276,6 +278,7 @@ data class TableStats(
     val ocupada: Int,
     val reservada: Int,
     val enConsumo: Int,
+    val browsing: Int = 0,
 )
 
 fun List<RestaurantTable>.toTableStats(): TableStats {
@@ -283,6 +286,7 @@ fun List<RestaurantTable>.toTableStats(): TableStats {
     var ocupada = 0
     var reservada = 0
     var enConsumo = 0
+    var browsing = 0
     forEach { table ->
         when (table.status) {
             TableStatus.LIBRE -> libre++
@@ -290,6 +294,7 @@ fun List<RestaurantTable>.toTableStats(): TableStats {
             TableStatus.RESERVADA -> reservada++
             TableStatus.EN_CONSUMO -> enConsumo++
         }
+        if (table.status == TableStatus.LIBRE && table.browsingOnly) browsing++
     }
-    return TableStats(size, libre, ocupada, reservada, enConsumo)
+    return TableStats(size, libre, ocupada, reservada, enConsumo, browsing)
 }

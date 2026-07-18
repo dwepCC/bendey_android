@@ -24,6 +24,9 @@ fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
     BendeyDrawerDestination.CONFIGURACION -> RestaurantFeature.CONFIGURACION
     BendeyDrawerDestination.REPARTIDORES -> RestaurantFeature.REPARTIDORES
     BendeyDrawerDestination.IMPRESORAS -> RestaurantFeature.IMPRESORAS
+    // Suscripción siempre debe ser accesible, sin importar el permiso: no se restringe por
+    // RestaurantFeature real (ver routeRequiredFeature, que la deja sin mapear = sin gating).
+    BendeyDrawerDestination.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
 }
 
 fun routeRequiredFeature(route: String?): RestaurantFeature? = when {

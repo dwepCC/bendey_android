@@ -17,6 +17,7 @@ import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.products.ProductListQuery
 import com.bendey.restaurant.core.domain.products.ProductReportItem
 import com.bendey.restaurant.core.domain.products.ProductReportQuery
+import com.bendey.restaurant.core.domain.products.ProductType
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.products.ProductDetail
 import com.bendey.restaurant.core.domain.products.generateProductCode
@@ -54,12 +55,15 @@ class ProductsRepositoryImpl @Inject constructor(
     override suspend fun listProducts(query: ProductListQuery): AppResult<Pair<List<ProductItem>, Int>> = apiCall {
         val response = api.listProducts(
             query = query.query,
+            activeOnly = if (query.inactiveOnly) "false" else "true",
+            inactiveOnly = if (query.inactiveOnly) "true" else null,
             catalogOnly = null,
             page = query.page,
             perPage = query.perPage,
             categoryId = query.categoryId,
             preparationAreaId = query.preparationAreaId,
             branchId = query.branchId,
+            productTypeFilter = query.productTypeFilter,
         )
         response.data.map { it.toDomain() } to (response.total ?: response.data.size)
     }
@@ -86,6 +90,11 @@ class ProductsRepositoryImpl @Inject constructor(
     override suspend fun updateProduct(id: Int, input: ProductFormInput): AppResult<ProductItem> = apiCall {
         api.updateProduct(id, input.toUpdateDto())
         api.getProduct(id).data.toDomain()
+    }
+
+    override suspend fun toggleProduct(id: Int): AppResult<Unit> = apiCall {
+        api.toggleProduct(id)
+        Unit
     }
 
     override suspend fun deleteProduct(id: Int): AppResult<Unit> = apiCall {
@@ -287,6 +296,7 @@ private fun ProductDto.toDomain() = ProductItem(
     igvAffectationType = igvAffectationType ?: "10",
     priceIncludesIgv = priceIncludesIgv ?: true,
     active = active,
+    productType = ProductType.fromCode(productType),
 )
 
 private fun PreparationAreaDto.toDomain() = PreparationAreaItem(
@@ -351,47 +361,53 @@ private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
     val initial = initialStock.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 }
     val min = minStock.replace(",", ".").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
     val activePresentations = presentations.filter { it.name.trim().isNotEmpty() }
+    val effectiveManageStock = productType != ProductType.ELABORADO && manageStock
     return CreateProductRequestDto(
         name = name.trim(),
         code = code.trim().ifBlank { generateProductCode() },
         description = description.trim(),
+        unit = unit,
         salePrice = salePrice,
         purchasePrice = purchase,
         categoryId = categoryId,
         preparationAreaId = preparationAreaId,
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
-        manageStock = manageStock,
-        minStock = if (manageStock) min else 0.0,
-        initialStock = if (manageStock) initial else null,
+        manageStock = effectiveManageStock,
+        minStock = if (effectiveManageStock) min else 0.0,
+        initialStock = if (effectiveManageStock) initial else null,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),
         hasVariants = hasVariants || activePresentations.isNotEmpty(),
         modifierGroupIds = modifierGroupIds,
         presentations = activePresentations.map { it.toDto() },
         availableForSale = availableForSale,
+        productType = productType.code,
     )
 }
 
 private fun ProductFormInput.toUpdateDto(): UpdateProductRequestDto {
     val activePresentations = presentations.filter { it.name.trim().isNotEmpty() }
     val min = minStock.replace(",", ".").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+    val effectiveManageStock = productType != ProductType.ELABORADO && manageStock
     return UpdateProductRequestDto(
         name = name.trim(),
         code = code.trim().ifBlank { null },
         description = description.trim(),
+        unit = unit.trim().ifBlank { null },
         salePrice = salePrice.replace(",", ".").toDoubleOrNull(),
         purchasePrice = purchasePrice.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 },
         categoryId = categoryId,
         preparationAreaId = preparationAreaId,
         igvAffectationType = igvAffectation.code,
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
-        manageStock = manageStock,
-        minStock = if (manageStock) min else 0.0,
+        manageStock = effectiveManageStock,
+        minStock = if (effectiveManageStock) min else 0.0,
         availableForSale = availableForSale,
         isRestaurant = true,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),
         hasVariants = hasVariants || activePresentations.isNotEmpty(),
         modifierGroupIds = modifierGroupIds,
         presentations = activePresentations.map { it.toDto() },
+        productType = productType.code,
     )
 }

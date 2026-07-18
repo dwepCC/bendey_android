@@ -26,6 +26,7 @@ object BendeyRoutes {
     const val REPARTIDORES = "repartidores"
     const val REPORTES = "reportes"
     const val PRINTING_TEST = "printing_test"
+    const val SUSCRIPCION = "suscripcion"
 
     fun pin(station: String): String = "pin/$station"
 

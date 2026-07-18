@@ -49,6 +49,9 @@ interface SettingsRepository {
     fun peekTenantSettings(): TenantSettingsSnapshot?
     suspend fun getCompanyConfig(): AppResult<CompanyConfig>
     suspend fun updateCompanyConfig(input: CompanyConfigFormInput): AppResult<CompanyConfig>
+    suspend fun getUbigeoRegiones(): AppResult<List<UbiItem>>
+    suspend fun getUbigeoProvincias(regionId: String): AppResult<List<UbiItem>>
+    suspend fun getUbigeoDistritos(provinciaId: String): AppResult<List<UbiItem>>
     suspend fun getSunatConfig(): AppResult<SunatConfig>
     suspend fun updateSunatConfig(input: SunatConfigFormInput): AppResult<SunatConfig>
     suspend fun listBranches(): AppResult<List<BranchItem>>
@@ -75,4 +78,5 @@ interface ProductImportRepository {
 interface ProductImageRepository {
     fun tenantAssetsBaseUrl(): String?
     suspend fun uploadProductImage(productId: Int, bytes: ByteArray, mimeType: String): AppResult<String>
+    suspend fun uploadComboImage(comboId: Int, bytes: ByteArray, mimeType: String): AppResult<String>
 }

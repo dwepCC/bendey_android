@@ -19,6 +19,10 @@ import com.bendey.restaurant.core.domain.billing.isFacturaDocType
 import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
 import com.bendey.restaurant.core.data.repository.pickVariosContactId
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.contacts.ContactDocType
+import com.bendey.restaurant.core.domain.contacts.ContactFormInput
+import com.bendey.restaurant.core.domain.contacts.ContactsRepository
+import com.bendey.restaurant.core.domain.contacts.sanitizeDocNumber
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SalesRepository
@@ -91,6 +95,12 @@ data class VentasUiState(
     val emitContactId: Int? = null,
     val emitCheckoutMeta: CheckoutMeta? = null,
     val emitMetaLoading: Boolean = false,
+    // Alta rápida de cliente desde el diálogo de conversión (sin salir de la vista).
+    val emitClientFormOpen: Boolean = false,
+    val emitClientForm: ContactFormInput = ContactFormInput(),
+    val emitClientConsulting: Boolean = false,
+    val emitClientSaving: Boolean = false,
+    val emitClientError: String? = null,
     val receiptModalOpen: Boolean = false,
     val receiptPrintData: SalePrintData? = null,
     val receiptSaleNumber: String = "",
@@ -100,6 +110,7 @@ data class VentasUiState(
     val error: String? = null,
     val snackMessage: String? = null,
     val exportBusy: String? = null,
+    val allowsReportExport: Boolean = false,
     val xmlViewOpen: Boolean = false,
     val xmlViewTitle: String = "",
     val xmlViewContent: String = "",
@@ -134,6 +145,7 @@ class VentasViewModel @Inject constructor(
     private val fileShareService: BendeyFileShareService,
     private val billingEventsClient: BillingEventsClient,
     private val sessionStore: UserSessionStore,
+    private val contactsRepository: ContactsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
@@ -144,6 +156,12 @@ class VentasViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             billingEventsClient.events.collect(::applyBillingEvent)
+        }
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .map { it?.allowsReportExport == true }
+                .distinctUntilChanged()
+                .collect { allowed -> _uiState.update { it.copy(allowsReportExport = allowed) } }
         }
         viewModelScope.launch {
             sessionStore.userSessionFlow
@@ -538,6 +556,132 @@ class VentasViewModel @Inject constructor(
 
     fun setEmitContactId(contactId: Int?) {
         _uiState.update { it.copy(emitContactId = contactId) }
+    }
+
+    // ── Alta rápida de cliente dentro del diálogo de conversión ──────────────────────
+    fun openEmitClientForm() {
+        _uiState.update {
+            it.copy(emitClientFormOpen = true, emitClientForm = ContactFormInput(), emitClientError = null)
+        }
+    }
+
+    fun dismissEmitClientForm() {
+        _uiState.update { it.copy(emitClientFormOpen = false, emitClientError = null) }
+    }
+
+    fun updateEmitClientForm(transform: (ContactFormInput) -> ContactFormInput) {
+        _uiState.update { it.copy(emitClientForm = transform(it.emitClientForm)) }
+    }
+
+    fun consultEmitClientDoc() {
+        val form = _uiState.value.emitClientForm
+        if (!ContactDocType.supportsConsulta(form.docType.code)) {
+            _uiState.update { it.copy(emitClientError = "Consulta disponible solo para DNI o RUC") }
+            return
+        }
+        val num = sanitizeDocNumber(form.docType, form.docNumber)
+        viewModelScope.launch {
+            val tenantRuc = sessionStore.tenantFlow.first()?.ruc.orEmpty().filter { it.isDigit() }
+            if (tenantRuc.length != 11) {
+                _uiState.update { it.copy(emitClientError = "No se pudo obtener el RUC de la empresa") }
+                return@launch
+            }
+            when (form.docType) {
+                ContactDocType.RUC -> if (num.length != 11) {
+                    _uiState.update { it.copy(emitClientError = "Ingresa un RUC de 11 dígitos") }
+                    return@launch
+                }
+                ContactDocType.DNI -> if (num.length != 8) {
+                    _uiState.update { it.copy(emitClientError = "Ingresa un DNI de 8 dígitos") }
+                    return@launch
+                }
+                else -> return@launch
+            }
+            _uiState.update { it.copy(emitClientConsulting = true, emitClientError = null) }
+            when (form.docType) {
+                ContactDocType.RUC -> when (val result = contactsRepository.consultRuc(tenantRuc, num)) {
+                    is AppResult.Success -> {
+                        val data = result.data
+                        val razonSocial = data.razonSocial
+                        if (!data.success || razonSocial.isNullOrBlank()) {
+                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el RUC") }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    emitClientConsulting = false,
+                                    emitClientForm = it.emitClientForm.copy(
+                                        docNumber = num,
+                                        businessName = razonSocial,
+                                        address = data.direccion.orEmpty(),
+                                        ubigeo = data.ubigeo?.takeIf { u -> u.length >= 6 }.orEmpty(),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    is AppResult.Error -> _uiState.update { it.copy(emitClientConsulting = false, emitClientError = result.message) }
+                    AppResult.Loading -> Unit
+                }
+                ContactDocType.DNI -> when (val result = contactsRepository.consultDni(tenantRuc, num)) {
+                    is AppResult.Success -> {
+                        val data = result.data
+                        val nombreCompleto = data.nombreCompleto
+                        if (!data.success || nombreCompleto.isNullOrBlank()) {
+                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el DNI") }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    emitClientConsulting = false,
+                                    emitClientForm = it.emitClientForm.copy(docNumber = num, businessName = nombreCompleto),
+                                )
+                            }
+                        }
+                    }
+                    is AppResult.Error -> _uiState.update { it.copy(emitClientConsulting = false, emitClientError = result.message) }
+                    AppResult.Loading -> Unit
+                }
+                else -> _uiState.update { it.copy(emitClientConsulting = false) }
+            }
+        }
+    }
+
+    fun saveEmitClient() {
+        val form = _uiState.value.emitClientForm
+        if (form.businessName.trim().isEmpty() || form.docNumber.trim().isEmpty()) {
+            _uiState.update { it.copy(emitClientError = "Nombre y documento son obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(emitClientSaving = true, emitClientError = null) }
+            val normalized = form.copy(docNumber = sanitizeDocNumber(form.docType, form.docNumber))
+            when (val result = contactsRepository.createCustomer(normalized)) {
+                is AppResult.Success -> {
+                    val createdId = result.data.id
+                    // Recarga la meta para que el cliente nuevo aparezca en el selector, y lo deja elegido.
+                    val branchId = _uiState.value.detail?.branchId
+                        ?: sessionStore.userSessionFlow.first()?.activeBranch?.id
+                    val meta = if (branchId != null) {
+                        when (val m = billingRepository.loadCheckoutMeta(branchId)) {
+                            is AppResult.Success -> m.data
+                            else -> _uiState.value.emitCheckoutMeta
+                        }
+                    } else {
+                        _uiState.value.emitCheckoutMeta
+                    }
+                    _uiState.update {
+                        it.copy(
+                            emitClientSaving = false,
+                            emitClientFormOpen = false,
+                            emitCheckoutMeta = meta ?: it.emitCheckoutMeta,
+                            emitContactId = createdId,
+                            snackMessage = "Cliente registrado",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(emitClientSaving = false, emitClientError = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     fun setEmitDocKind(kind: String) {

@@ -33,6 +33,8 @@ data class UserSession(
     val activeBranch: BranchBrief? = null,
     val canSwitchBranch: Boolean = false,
     val allowedBranches: List<BranchBrief> = emptyList(),
+    val removesBendeyBranding: Boolean = false,
+    val allowsReportExport: Boolean = false,
 )
 
 /** Snapshot de sesión de caja — persistido localmente. */

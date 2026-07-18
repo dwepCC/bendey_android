@@ -3,6 +3,7 @@ package com.bendey.restaurant.core.data.receipt
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.Typeface
+import kotlinx.coroutines.flow.first
 import android.graphics.pdf.PdfDocument
 import com.bendey.restaurant.core.data.export.BendeyExportPaths
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
@@ -26,16 +27,18 @@ class ReceiptPdfService @Inject constructor(
     @ApplicationContext private val context: Context,
     private val fileShareService: BendeyFileShareService,
     private val logoLoader: ReceiptLogoLoader,
+    private val printerPreferencesStore: com.bendey.restaurant.core.data.printer.PrinterPreferencesStore,
 ) {
     private val cacheDir: File
         get() = BendeyExportPaths.receiptsDir(context)
 
-    fun generate(data: SalePrintData, format: ReceiptPdfFormat): File {
+    suspend fun generate(data: SalePrintData, format: ReceiptPdfFormat): File {
+        val logoScale = printerPreferencesStore.settings.first().documentLogoSize.scale
         val suffix = if (format == ReceiptPdfFormat.TICKET) "ticket" else "a4"
         val safeNumber = data.number.replace(Regex("\\s+"), "")
         val file = File(cacheDir, "comprobante-$safeNumber-$suffix.pdf")
         file.outputStream().use { out ->
-            val doc = buildPdf(data, format)
+            val doc = buildPdf(data, format, logoScale)
             doc.writeTo(out)
             doc.close()
         }
@@ -44,7 +47,7 @@ class ReceiptPdfService @Inject constructor(
 
     fun uriFor(file: File) = fileShareService.uriForFile(file)
 
-    private fun buildPdf(data: SalePrintData, format: ReceiptPdfFormat): PdfDocument {
+    private fun buildPdf(data: SalePrintData, format: ReceiptPdfFormat, logoScale: Float = 1f): PdfDocument {
         val pageWidthPt = when (format) {
             ReceiptPdfFormat.TICKET -> (80f / 25.4f * 72f).toInt()
             ReceiptPdfFormat.A4 -> 595
@@ -69,8 +72,9 @@ class ReceiptPdfService @Inject constructor(
         }
         val money = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
-        val logoMaxWidthPt = contentWidth * 0.42f
-        val logoMaxHeightPt = if (format == ReceiptPdfFormat.TICKET) 32f else 48f
+        // El tamaño elegido escala el logo (igual en 58 y 80 mm y en A4).
+        val logoMaxWidthPt = contentWidth * 0.42f * logoScale
+        val logoMaxHeightPt = (if (format == ReceiptPdfFormat.TICKET) 32f else 48f) * logoScale
         val logoMaxWidthPx = (logoMaxWidthPt * (160f / 72f)).toInt().coerceAtLeast(48)
         val logoBitmap = logoLoader.load(data.companyLogoUrl, logoMaxWidthPx)
         val logoHeightPt = logoBitmap?.let { bmp ->

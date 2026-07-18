@@ -7,6 +7,7 @@ import com.bendey.restaurant.core.domain.catalog.BranchFormInput
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.domain.catalog.CompanyConfig
 import com.bendey.restaurant.core.domain.catalog.CompanyConfigFormInput
+import com.bendey.restaurant.core.domain.catalog.UbiItem
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
 import com.bendey.restaurant.core.domain.catalog.RestaurantSettings
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
@@ -19,6 +20,8 @@ import com.bendey.restaurant.core.domain.catalog.SunatConfigFormInput
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.domain.subscription.BILLING_MODULE_KEY
+import com.bendey.restaurant.core.domain.subscription.hasModule
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -34,6 +37,7 @@ enum class ConfigTab(val label: String) {
     OPERACION("Operación"),
     BRANCHES("Sucursales"),
     SERIES("Series"),
+    MENU_DIGITAL("Menú Digital"),
 }
 
 data class ConfiguracionUiState(
@@ -49,6 +53,13 @@ data class ConfiguracionUiState(
     val selectedBranchId: Int? = null,
     val configFormOpen: Boolean = false,
     val configForm: CompanyConfigFormInput = CompanyConfigFormInput(),
+    // Ubigeo en cascada (Departamento → Provincia → Distrito). El distrito seleccionado
+    // es configForm.ubigeo; region/provincia se guardan aparte para la carga en cascada.
+    val ubigeoRegiones: List<UbiItem> = emptyList(),
+    val ubigeoProvincias: List<UbiItem> = emptyList(),
+    val ubigeoDistritos: List<UbiItem> = emptyList(),
+    val ubigeoRegionId: String = "",
+    val ubigeoProvinciaId: String = "",
     val sunatFormOpen: Boolean = false,
     val sunatForm: SunatConfigFormInput = SunatConfigFormInput(),
     val pinDialogOpen: Boolean = false,
@@ -66,6 +77,7 @@ data class ConfiguracionUiState(
     val staffCreateForm: StaffCreateFormInput = StaffCreateFormInput(),
     val staffEditForm: StaffEditFormInput = StaffEditFormInput(),
     val canManageRestaurantSettings: Boolean = false,
+    val billingModuleEnabled: Boolean = false,
     val error: String? = null,
 )
 
@@ -84,7 +96,10 @@ class ConfiguracionViewModel @Inject constructor(
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
                 _uiState.update {
-                    it.copy(canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms))
+                    it.copy(
+                        canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
+                        billingModuleEnabled = hasModule(user?.modules.orEmpty(), BILLING_MODULE_KEY),
+                    )
                 }
             }
         }
@@ -200,18 +215,77 @@ class ConfiguracionViewModel @Inject constructor(
     fun openEditConfig() {
         if (!requireManageSettings()) return
         val config = _uiState.value.config ?: return
+        val code = config.ubigeo.filter { it.isDigit() }
+        val regionId = if (code.length >= 2) code.take(2) + "0000" else ""
+        val provinciaId = if (code.length >= 4) code.take(4) + "00" else ""
         _uiState.update {
             it.copy(
                 configFormOpen = true,
                 configForm = CompanyConfigFormInput(
                     tradeName = config.tradeName,
                     address = config.address,
+                    ubigeo = if (code.length == 6) code else "",
                     phone = config.phone,
                     email = config.email,
                 ),
+                ubigeoRegionId = regionId,
+                ubigeoProvinciaId = provinciaId,
+                ubigeoRegiones = emptyList(),
+                ubigeoProvincias = emptyList(),
+                ubigeoDistritos = emptyList(),
                 error = null,
             )
         }
+        loadUbigeoForEdit(regionId, provinciaId)
+    }
+
+    private fun loadUbigeoForEdit(regionId: String, provinciaId: String) {
+        viewModelScope.launch {
+            val reg = repository.getUbigeoRegiones()
+            if (reg is AppResult.Success) _uiState.update { it.copy(ubigeoRegiones = reg.data) }
+            if (regionId.isNotBlank()) {
+                val prov = repository.getUbigeoProvincias(regionId)
+                if (prov is AppResult.Success) _uiState.update { it.copy(ubigeoProvincias = prov.data) }
+            }
+            if (provinciaId.isNotBlank()) {
+                val dist = repository.getUbigeoDistritos(provinciaId)
+                if (dist is AppResult.Success) _uiState.update { it.copy(ubigeoDistritos = dist.data) }
+            }
+        }
+    }
+
+    fun onUbigeoRegion(regionId: String) {
+        _uiState.update {
+            it.copy(
+                ubigeoRegionId = regionId,
+                ubigeoProvinciaId = "",
+                ubigeoProvincias = emptyList(),
+                ubigeoDistritos = emptyList(),
+                configForm = it.configForm.copy(ubigeo = ""),
+            )
+        }
+        if (regionId.isNotBlank()) viewModelScope.launch {
+            val prov = repository.getUbigeoProvincias(regionId)
+            if (prov is AppResult.Success) _uiState.update { it.copy(ubigeoProvincias = prov.data) }
+        }
+    }
+
+    fun onUbigeoProvincia(provinciaId: String) {
+        _uiState.update {
+            it.copy(
+                ubigeoProvinciaId = provinciaId,
+                ubigeoDistritos = emptyList(),
+                configForm = it.configForm.copy(ubigeo = ""),
+            )
+        }
+        if (provinciaId.isNotBlank()) viewModelScope.launch {
+            val dist = repository.getUbigeoDistritos(provinciaId)
+            if (dist is AppResult.Success) _uiState.update { it.copy(ubigeoDistritos = dist.data) }
+        }
+    }
+
+    fun onUbigeoDistrito(distritoId: String) {
+        _uiState.update { it.copy(configForm = it.configForm.copy(ubigeo = distritoId)) }
     }
 
     fun dismissEditConfig() { _uiState.update { it.copy(configFormOpen = false) } }
@@ -375,13 +449,13 @@ class ConfiguracionViewModel @Inject constructor(
 
     fun openCreateSeries() {
         if (!requireManageSettings()) return
-        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
+        val billingModuleEnabled = _uiState.value.billingModuleEnabled
         _uiState.update {
             it.copy(
                 seriesFormOpen = true,
                 seriesForm = SeriesFormInput(
                     branchId = it.selectedBranchId,
-                    sunatCode = if (sunatEnabled) "00" else "00",
+                    sunatCode = if (billingModuleEnabled) "00" else "00",
                 ),
                 error = null,
             )
@@ -390,10 +464,12 @@ class ConfiguracionViewModel @Inject constructor(
 
     fun openEditSeries(series: DocumentSeries) {
         if (!requireManageSettings()) return
-        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
+        val billingModuleEnabled = _uiState.value.billingModuleEnabled
         val code = series.sunatCode.orEmpty()
-        if (!sunatEnabled && code.isNotBlank() && code != "00") {
-            _uiState.update { it.copy(error = "Solo puede editar series de nota de venta (00) sin facturación electrónica") }
+        if (!billingModuleEnabled && code.isNotBlank() && code != "00") {
+            _uiState.update {
+                it.copy(error = "Tu plan no incluye facturación electrónica: solo puedes editar series de nota de venta")
+            }
             return
         }
         _uiState.update {
@@ -405,7 +481,7 @@ class ConfiguracionViewModel @Inject constructor(
                     docType = series.docType,
                     series = series.series,
                     category = series.category,
-                    sunatCode = if (sunatEnabled) code.ifBlank { "00" } else "00",
+                    sunatCode = if (billingModuleEnabled) code.ifBlank { "00" } else "00",
                     active = series.active,
                     currentNumber = series.currentNumber,
                     locked = series.locked,
@@ -424,10 +500,10 @@ class ConfiguracionViewModel @Inject constructor(
     fun saveSeries() {
         if (!requireManageSettings()) return
         val form = _uiState.value.seriesForm
-        val sunatEnabled = _uiState.value.sunat?.sunatEnabled == true
-        val sunatCode = if (sunatEnabled) form.sunatCode.trim().ifBlank { "00" } else "00"
-        if (!sunatEnabled && sunatCode != "00") {
-            _uiState.update { it.copy(error = "Sin FE solo se permiten series SUNAT 00") }
+        val billingModuleEnabled = _uiState.value.billingModuleEnabled
+        val sunatCode = if (billingModuleEnabled) form.sunatCode.trim().ifBlank { "00" } else "00"
+        if (!billingModuleEnabled && sunatCode != "00") {
+            _uiState.update { it.copy(error = "Tu plan no incluye facturación electrónica: solo se permiten series de nota de venta") }
             return
         }
         if (form.series.isBlank() || form.branchId == null) {

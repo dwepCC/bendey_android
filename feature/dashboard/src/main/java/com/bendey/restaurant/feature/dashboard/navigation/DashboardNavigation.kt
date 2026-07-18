@@ -9,12 +9,14 @@ import com.bendey.restaurant.feature.dashboard.DashboardScreen
 fun NavGraphBuilder.dashboardGraph(
     onOpenMesas: () -> Unit = {},
     onOpenVentas: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
 ) {
     composable(BendeyRoutes.DASHBOARD) {
         BendeyExpressiveScope {
             DashboardScreen(
                 onOpenMesas = onOpenMesas,
                 onOpenVentas = onOpenVentas,
+                onNavigateToSubscription = onNavigateToSubscription,
             )
         }
     }

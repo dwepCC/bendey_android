@@ -5,13 +5,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -73,24 +84,52 @@ private fun ArqueoSection(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(denom.label, style = MaterialTheme.typography.bodySmall)
-                Text("S/ ${denom.value}", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-            }
-            BendeyTextField(
-                value = qty.toString(),
-                onValueChange = { v -> onQtyChange(denom.value, v.filter { it.isDigit() }.toIntOrNull() ?: 0) },
-                label = "Cant.",
-                modifier = Modifier.weight(0.35f),
-            )
+            Text(denom.label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            // Ancho fijo (no weight): con proporciones el campo quedaba tan angosto que
+            // la etiqueta "Cant." se partía en dos líneas y desalineaba todo lo demás.
+            ArqueoQtyField(qty = qty, onCommit = { n -> onQtyChange(denom.value, n) })
             Text(
                 currency.format(subtotal),
-                modifier = Modifier.weight(0.3f).padding(top = 24.dp),
+                modifier = Modifier.weight(0.7f),
+                textAlign = TextAlign.End,
                 fontWeight = FontWeight.Medium,
             )
         }
     }
+}
+
+/**
+ * Campo de cantidad del arqueo. Al enfocar limpia el valor para escribir libremente (sin pelear
+ * con el 0). Al salir: si escribió algo lo guarda; si lo dejó vacío, restaura el valor anterior.
+ */
+@Composable
+private fun ArqueoQtyField(qty: Int, onCommit: (Int) -> Unit) {
+    var text by remember(qty) { mutableStateOf(qty.toString()) }
+    var focused by remember { mutableStateOf(false) }
+    BendeyTextField(
+        value = text,
+        onValueChange = { v -> text = v.filter { it.isDigit() } },
+        label = "Cant.",
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+        fillWidth = false,
+        modifier = Modifier
+            .width(90.dp)
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused && !focused) {
+                    focused = true
+                    text = ""
+                } else if (!focusState.isFocused && focused) {
+                    focused = false
+                    if (text.isBlank()) {
+                        text = qty.toString() // sin cambios → restaura el valor anterior
+                    } else {
+                        onCommit(text.toIntOrNull()?.coerceAtLeast(0) ?: 0)
+                    }
+                }
+            },
+    )
 }
 
 @Composable

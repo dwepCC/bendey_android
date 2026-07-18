@@ -46,6 +46,7 @@ data class RestaurantTableDto(
     @SerialName("customer_name") val customerName: String? = null,
     val guests: Int? = null,
     @SerialName("opened_at") val openedAt: String? = null,
+    @SerialName("browsing_only") val browsingOnly: Boolean = false,
 )
 
 @Serializable

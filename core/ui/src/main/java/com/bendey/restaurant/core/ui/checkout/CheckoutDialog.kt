@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -59,7 +60,7 @@ import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
 import com.bendey.restaurant.core.domain.billing.calcPayableTotal
 import com.bendey.restaurant.core.domain.billing.firstSeriesForDocTypeKey
-import com.bendey.restaurant.core.domain.billing.groupCheckoutDocTypes
+import com.bendey.restaurant.core.domain.billing.groupCheckoutDocTypesWithLocked
 import com.bendey.restaurant.core.domain.billing.normalizeDocTypeKey
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundDisplay
@@ -96,6 +97,8 @@ fun CheckoutDialog(
     contactId: Int?,
     error: String?,
     confirmLabel: String = "Confirmar cobro",
+    lockedSeries: List<DocumentSeries> = emptyList(),
+    onLockedDocTypeSelect: () -> Unit = {},
     extraBeforePayments: @Composable () -> Unit = {},
     onDismiss: () -> Unit,
     onSeriesChange: (Int, String) -> Unit,
@@ -194,6 +197,8 @@ fun CheckoutDialog(
                                         DocTypeSelector(
                                             series = series,
                                             selectedDocType = docType,
+                                            lockedSeries = lockedSeries,
+                                            onLockedDocTypeSelect = onLockedDocTypeSelect,
                                             onSelectDocType = { key ->
                                                 firstSeriesForDocTypeKey(series, key)?.let { item ->
                                                     onSeriesChange(item.id, item.docType)
@@ -337,8 +342,12 @@ private fun DocTypeSelector(
     series: List<DocumentSeries>,
     selectedDocType: String,
     onSelectDocType: (String) -> Unit,
+    lockedSeries: List<DocumentSeries> = emptyList(),
+    onLockedDocTypeSelect: () -> Unit = {},
 ) {
-    val groups = remember(series) { groupCheckoutDocTypes(series) }
+    val groups = remember(series, lockedSeries) {
+        groupCheckoutDocTypesWithLocked(unlockedSeries = series, lockedSeries = lockedSeries)
+    }
     if (groups.isEmpty()) {
         CheckoutFieldLabel("Comprobante")
         Text("Sin series configuradas", color = BendeyColors.OnSurfaceVariant)
@@ -353,28 +362,55 @@ private fun DocTypeSelector(
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
                 row.forEach { group ->
-                    val selected = selectedKey == group.key
+                    val selected = !group.locked && selectedKey == group.key
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(BendeyShapeTokens.sm)
                             .border(
                                 width = 1.dp,
-                                color = if (selected) CheckoutDocActive else BendeyColors.Outline,
+                                color = when {
+                                    group.locked -> BendeyColors.Outline
+                                    selected -> CheckoutDocActive
+                                    else -> BendeyColors.Outline
+                                },
                                 shape = BendeyShapeTokens.sm,
                             )
                             .background(if (selected) CheckoutDocActive else BendeyColors.Surface)
-                            .clickable { onSelectDocType(group.key) }
+                            .clickable {
+                                if (group.locked) onLockedDocTypeSelect() else onSelectDocType(group.key)
+                            }
                             .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.sm),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = group.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = if (selected) BendeyColors.OnPrimary else BendeyColors.OnSurface,
-                            maxLines = 2,
-                        )
+                        if (group.locked) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = BendeyColors.OnSurfaceVariant,
+                                    modifier = Modifier.height(12.dp).width(12.dp),
+                                )
+                                Text(
+                                    text = group.label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = BendeyColors.OnSurfaceVariant,
+                                    maxLines = 2,
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = group.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = if (selected) BendeyColors.OnPrimary else BendeyColors.OnSurface,
+                                maxLines = 2,
+                            )
+                        }
                     }
                 }
                 repeat(3 - row.size) {

@@ -65,6 +65,7 @@ data class PrintDataDto(
     @SerialName("seller_name") val sellerName: String? = null,
     @SerialName("qr_data") val qrData: String = "",
     @SerialName("sunat_hash") val sunatHash: String? = null,
+    @SerialName("shows_bendey_branding") val showsBendeyBranding: Boolean? = null,
 )
 
 @Serializable

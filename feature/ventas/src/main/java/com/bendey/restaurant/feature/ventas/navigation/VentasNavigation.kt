@@ -5,8 +5,11 @@ import androidx.navigation.compose.composable
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.ventas.VentasScreen
 
-fun NavGraphBuilder.ventasGraph(onShowMessage: (String) -> Unit = {}) {
+fun NavGraphBuilder.ventasGraph(
+    onShowMessage: (String) -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
+) {
     composable(BendeyRoutes.VENTAS) {
-        VentasScreen(onShowMessage = onShowMessage)
+        VentasScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription)
     }
 }

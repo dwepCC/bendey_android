@@ -106,6 +106,8 @@ data class LoginResponseDto(
     @SerialName("active_branch") val activeBranch: BranchBriefDto? = null,
     @SerialName("can_switch_branch") val canSwitchBranch: Boolean? = null,
     @SerialName("allowed_branches") val allowedBranches: List<BranchBriefDto>? = null,
+    @SerialName("removes_bendey_branding") val removesBendeyBranding: Boolean? = null,
+    @SerialName("allows_report_export") val allowsReportExport: Boolean? = null,
 )
 
 @Serializable
@@ -134,6 +136,7 @@ data class ApiErrorDto(
     val error: String? = null,
     val code: String? = null,
     val message: String? = null,
+    val module: String? = null,
 )
 
 @Serializable

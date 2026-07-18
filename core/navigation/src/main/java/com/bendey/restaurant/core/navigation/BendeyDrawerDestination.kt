@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.DeliveryDining
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /** Secciones del drawer administrativo Bendey Resto. */
@@ -35,6 +36,7 @@ enum class BendeyDrawerDestination(
     MESAS_ADMIN(BendeyRoutes.MESAS_ADMIN, "Mesas", Icons.Default.Layers, BendeyDrawerGroup.CONFIGURATION),
     IMPRESORAS(BendeyRoutes.PRINTING_TEST, "Impresoras", Icons.Default.Print, BendeyDrawerGroup.CONFIGURATION),
     CONFIGURACION(BendeyRoutes.CONFIGURACION, "Configuración", Icons.Default.Settings, BendeyDrawerGroup.CONFIGURATION),
+    SUSCRIPCION(BendeyRoutes.SUSCRIPCION, "Suscripción", Icons.Default.WorkspacePremium, BendeyDrawerGroup.CONFIGURATION),
     ;
 
     companion object {

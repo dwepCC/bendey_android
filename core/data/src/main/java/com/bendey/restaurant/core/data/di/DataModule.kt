@@ -15,8 +15,11 @@ import com.bendey.restaurant.core.data.repository.PreparationAreasRepositoryImpl
 import com.bendey.restaurant.core.data.repository.PosRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ProductImageRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ProductImportRepositoryImpl
+import com.bendey.restaurant.core.data.repository.ProductionRepositoryImpl
+import com.bendey.restaurant.core.data.repository.SubscriptionRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ProductsRepositoryImpl
 import com.bendey.restaurant.core.data.repository.SalesRepositoryImpl
+import com.bendey.restaurant.core.data.repository.DigitalMenuRepositoryImpl
 import com.bendey.restaurant.core.data.repository.SettingsRepositoryImpl
 import com.bendey.restaurant.core.data.repository.TenantRepositoryImpl
 import com.bendey.restaurant.core.data.session.SessionManager
@@ -31,16 +34,21 @@ import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.catalog.ProductImportRepository
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
+import com.bendey.restaurant.core.domain.digitalmenu.DigitalMenuRepository
 import com.bendey.restaurant.core.domain.contacts.ContactsRepository
 import com.bendey.restaurant.core.domain.dashboard.DashboardRepository
 import com.bendey.restaurant.core.domain.inventory.InventoryRepository
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
+import com.bendey.restaurant.core.domain.production.ProductionRepository
+import com.bendey.restaurant.core.domain.subscription.SubscriptionRepository
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.sales.SalesRepository
+import com.bendey.restaurant.core.data.session.SessionExpiryCoordinator
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
+import com.bendey.restaurant.core.network.session.SessionExpiryReporter
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -54,6 +62,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindNetworkSessionProvider(impl: SessionManager): NetworkSessionProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSessionExpiryReporter(impl: SessionExpiryCoordinator): SessionExpiryReporter
 
     @Binds
     @Singleton
@@ -121,7 +133,19 @@ abstract class DataModule {
 
     @Binds
     @Singleton
+    abstract fun bindProductionRepository(impl: ProductionRepositoryImpl): ProductionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSubscriptionRepository(impl: SubscriptionRepositoryImpl): SubscriptionRepository
+
+    @Binds
+    @Singleton
     abstract fun bindDeliveryRepository(impl: DeliveryRepositoryImpl): DeliveryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDigitalMenuRepository(impl: DigitalMenuRepositoryImpl): DigitalMenuRepository
 
     @Binds
     @Singleton

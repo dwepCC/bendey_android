@@ -10,6 +10,7 @@ import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
 import com.bendey.restaurant.platform.printing.escpos.EscPosLogoRaster
+import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrintResult
 import com.bendey.restaurant.platform.printing.transport.PrinterRepository
@@ -40,7 +41,7 @@ class DocumentPrintService @Inject constructor(
         val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
             ?: return null
-        val logoRaster = loadLogoRaster(data.companyLogoUrl, target.paperWidth)
+        val logoRaster = loadLogoRaster(data.companyLogoUrl, target.paperWidth, settings.documentLogoSize)
         return when (printerRepository.printDocument(target, data.toInput(logoRaster))) {
             is PrintResult.Success -> true
             is PrintResult.Error -> false
@@ -52,11 +53,13 @@ class DocumentPrintService @Inject constructor(
         return settings.isDocumentPrintReady()
     }
 
-    private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm): ByteArray? {
-        val maxLogoPx = when (paperWidth) {
+    private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm, logoSize: LogoSize): ByteArray? {
+        val baseMaxPx = when (paperWidth) {
             PaperWidthMm.W58 -> 360
             PaperWidthMm.W80 -> 520
         }
+        // El tamaño elegido escala el ancho del logo (igual en 58 y 80 mm).
+        val maxLogoPx = (baseMaxPx * logoSize.scale).toInt().coerceAtLeast(48)
         val bitmap = logoLoader.load(logoUrl, maxLogoPx) ?: return null
         return EscPosLogoRaster.encode(bitmap, paperWidth).also {
             if (bitmap.isRecycled.not()) bitmap.recycle()

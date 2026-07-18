@@ -128,6 +128,7 @@ fun MesasScreen(
                 ocupada = state.stats.ocupada,
                 reservada = state.stats.reservada,
                 enConsumo = state.stats.enConsumo,
+                browsing = state.stats.browsing,
                 modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xxs),
             )
             BendeyTextField(

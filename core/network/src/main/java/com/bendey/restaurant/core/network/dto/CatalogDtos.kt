@@ -290,6 +290,12 @@ data class CompanyConfigResponseDto(
 )
 
 @Serializable
+data class UbiItemDto(
+    val id: String = "",
+    val nombre: String = "",
+)
+
+@Serializable
 data class SunatConfigDto(
     @SerialName("sunat_enabled") val sunatEnabled: Boolean = false,
     @SerialName("tax_rate") val taxRate: Double = 18.0,

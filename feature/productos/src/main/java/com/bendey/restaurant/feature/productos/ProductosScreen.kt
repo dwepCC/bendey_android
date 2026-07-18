@@ -11,7 +11,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.clickable
@@ -20,8 +19,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ToggleOff
+import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
@@ -37,12 +42,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,14 +57,16 @@ import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
-import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.ui.components.BendeyQuickImageThumb
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
+import com.bendey.restaurant.core.domain.products.ProductType
 import com.bendey.restaurant.core.domain.products.ProductosTab
+import com.bendey.restaurant.core.domain.products.UnitOfMeasure
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -158,10 +164,14 @@ fun ProductosScreen(
                     onSearch = viewModel::setSearchQuery,
                     onCategoryFilter = viewModel::setCategoryFilter,
                     onBranchFilter = viewModel::setBranchFilter,
+                    onProductTypeFilter = viewModel::setProductTypeFilter,
+                    onShowInactiveChange = viewModel::setShowInactive,
                     onEdit = viewModel::openEditProduct,
                     onDelete = viewModel::requestDeleteProduct,
+                    onToggleActive = viewModel::toggleProductActive,
                     onAdjustStock = viewModel::openStockAdjustment,
                     onLoadMore = viewModel::loadMoreProducts,
+                    onQuickImagePicked = viewModel::uploadQuickProductImage,
                     modifier = contentModifier,
                 )
                 ProductosTab.CATEGORIAS -> CategoriesTabContent(
@@ -187,6 +197,8 @@ fun ProductosScreen(
             loading = state.actionLoading,
             error = state.error,
             isEditing = state.editingProductId != null,
+            editingProductId = state.editingProductId,
+            recipeDraft = state.recipeDraft,
             onDismiss = viewModel::dismissProductForm,
             onFormChange = viewModel::updateProductForm,
             onToggleMore = viewModel::toggleMoreOptions,
@@ -194,6 +206,7 @@ fun ProductosScreen(
             onDismissPresentations = viewModel::dismissPresentationsSheet,
             onToggleModifierGroup = viewModel::toggleModifierGroup,
             onImagePicked = viewModel::setPendingImage,
+            onSaveRecipeDraft = viewModel::setRecipeDraft,
             onSave = viewModel::saveProduct,
         )
     }
@@ -287,10 +300,14 @@ private fun ProductsTabContent(
     onSearch: (String) -> Unit,
     onCategoryFilter: (Int?) -> Unit,
     onBranchFilter: (Int?) -> Unit,
+    onProductTypeFilter: (String) -> Unit,
+    onShowInactiveChange: (Boolean) -> Unit,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
+    onToggleActive: (Int) -> Unit,
     onAdjustStock: (ProductItem) -> Unit,
     onLoadMore: () -> Unit,
+    onQuickImagePicked: suspend (Int, ByteArray, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
@@ -299,24 +316,52 @@ private fun ProductsTabContent(
         error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
-        BendeyTextField(
-            value = state.searchQuery,
-            onValueChange = onSearch,
-            label = "Buscar por nombre o código",
-            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
-        )
         val categoryOptions = remember(state.categories) {
             listOf(BendeySelectOption(-1, "Todas las categorías")) +
                 state.categories.map { BendeySelectOption(it.id, it.name) }
         }
-        BendeySearchableSelect(
-            options = categoryOptions,
-            selectedId = state.categoryFilterId ?: -1,
-            onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
-            label = "Categoría",
-            placeholder = "Buscar categoría…",
-            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            BendeyTextField(
+                value = state.searchQuery,
+                onValueChange = onSearch,
+                label = "Buscar",
+                modifier = Modifier.weight(1.2f),
+            )
+            BendeySearchableSelect(
+                options = categoryOptions,
+                selectedId = state.categoryFilterId ?: -1,
+                onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
+                label = "",
+                placeholder = "Categoría",
+                modifier = Modifier.weight(1f),
+            )
+        }
+        BendeyHorizontalScrollRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            BendeyFilterChip(
+                selected = state.productTypeFilter == "non_insumo",
+                onClick = { onProductTypeFilter("non_insumo") },
+                text = "Productos",
+            )
+            BendeyFilterChip(
+                selected = state.productTypeFilter == "insumo",
+                onClick = { onProductTypeFilter("insumo") },
+                text = "Insumos",
+            )
+            BendeyFilterChip(
+                selected = state.showInactive,
+                onClick = { onShowInactiveChange(!state.showInactive) },
+                text = "Solo inactivos",
+            )
+        }
         if (state.branches.size > 1) {
             BendeyHorizontalScrollRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -368,7 +413,9 @@ private fun ProductsTabContent(
                             selected = product.id == selectedProductId,
                             onEdit = { onEdit(product.id) },
                             onDelete = { onDelete(product.id) },
+                            onToggleActive = { onToggleActive(product.id) },
                             onAdjustStock = { onAdjustStock(product) },
+                            onImagePicked = { bytes, mime -> onQuickImagePicked(product.id, bytes, mime) },
                         )
                     }
                     if (state.hasMore) {
@@ -396,85 +443,151 @@ private fun ProductRow(
     selected: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onToggleActive: () -> Unit,
     onAdjustStock: () -> Unit,
+    onImagePicked: suspend (ByteArray, String) -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
+    var menuExpanded by remember { mutableStateOf(false) }
     BendeyCard(
         containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
         contentPadding = PaddingValues(BendeySpacing.cardPadding),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
-            if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = product.name,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(BendeyShapeTokens.xs),
-                    contentScale = ContentScale.Crop,
+            BendeyQuickImageThumb(
+                imageUrl = imageUrl,
+                contentDescription = product.name,
+                onImagePicked = onImagePicked,
+                size = 60.dp,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    product.name,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyLarge,
                 )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(product.name, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
                     product.code,
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                    product.categoryName?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-                    }
-                    product.preparationArea?.name?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = BendeyColors.OnSurfaceVariant,
-                        )
+                if (product.categoryName != null || product.preparationArea?.name != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                        product.categoryName?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        product.preparationArea?.name?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
                 Text(
                     currency.format(product.salePrice),
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.Primary,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                    if (!product.availableForSale) {
-                        BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
-                    }
-                    if (product.manageStock) {
-                        val stockLabel = stockQty?.let { qty ->
-                            if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
-                        } ?: "Stock"
-                        val lowStock = stockQty != null && product.minStock > 0 && stockQty < product.minStock
-                        BendeyStatusChip(
-                            label = stockLabel,
-                            accentColor = if (lowStock) BendeyColors.Warning else BendeyColors.Info,
-                        )
+                if (!product.active || !product.availableForSale || product.manageStock) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = 2.dp)) {
+                        if (!product.active) {
+                            BendeyStatusChip(label = "Inactivo", accentColor = BendeyColors.Error)
+                        }
+                        if (!product.availableForSale) {
+                            BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
+                        }
+                        if (product.manageStock) {
+                            val stockLabel = stockQty?.let { qty ->
+                                if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
+                            } ?: "Stock"
+                            val lowStock = stockQty != null && product.minStock > 0 && stockQty < product.minStock
+                            BendeyStatusChip(
+                                label = stockLabel,
+                                accentColor = if (lowStock) BendeyColors.Warning else BendeyColors.Info,
+                            )
+                        }
                     }
                 }
             }
-            if (product.manageStock) {
-                BendeyIconButton(
-                    onClick = onAdjustStock,
-                    icon = Icons.Default.Inventory,
-                    contentDescription = "Ajuste de stock",
+            ProductRowOverflowMenu(
+                productName = product.name,
+                showAdjustStock = product.manageStock,
+                isActive = product.active,
+                expanded = menuExpanded,
+                onExpandedChange = { menuExpanded = it },
+                onEdit = onEdit,
+                onAdjustStock = onAdjustStock,
+                onToggleActive = onToggleActive,
+                onDelete = onDelete,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProductRowOverflowMenu(
+    productName: String,
+    showAdjustStock: Boolean,
+    isActive: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+    onAdjustStock: () -> Unit,
+    onToggleActive: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Box {
+        BendeyIconButton(
+            onClick = { onExpandedChange(true) },
+            icon = Icons.Default.MoreVert,
+            contentDescription = "Acciones de $productName",
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            DropdownMenuItem(
+                text = { Text("Editar") },
+                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                onClick = {
+                    onExpandedChange(false)
+                    onEdit()
+                },
+            )
+            if (showAdjustStock) {
+                DropdownMenuItem(
+                    text = { Text("Ajuste de stock") },
+                    leadingIcon = { Icon(Icons.Default.Inventory, contentDescription = null) },
+                    onClick = {
+                        onExpandedChange(false)
+                        onAdjustStock()
+                    },
                 )
             }
-            BendeyIconButton(
-                onClick = onEdit,
-                icon = Icons.Default.Edit,
-                contentDescription = "Editar",
+            DropdownMenuItem(
+                text = { Text(if (isActive) "Desactivar" else "Activar") },
+                leadingIcon = {
+                    Icon(
+                        if (isActive) Icons.Default.ToggleOff else Icons.Default.ToggleOn,
+                        contentDescription = null,
+                    )
+                },
+                onClick = {
+                    onExpandedChange(false)
+                    onToggleActive()
+                },
             )
-            BendeyIconButton(
-                onClick = onDelete,
-                icon = Icons.Default.Delete,
-                contentDescription = "Eliminar",
-                tint = BendeyColors.Error,
+            DropdownMenuItem(
+                text = { Text("Eliminar", color = BendeyColors.Error) },
+                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error) },
+                onClick = {
+                    onExpandedChange(false)
+                    onDelete()
+                },
             )
         }
     }
@@ -558,6 +671,8 @@ private fun ProductFormPane(
     loading: Boolean,
     error: String?,
     isEditing: Boolean,
+    editingProductId: Int?,
+    recipeDraft: RecipeDraft?,
     onDismiss: () -> Unit,
     onFormChange: ((ProductFormInput) -> ProductFormInput) -> Unit,
     onToggleMore: () -> Unit,
@@ -565,6 +680,7 @@ private fun ProductFormPane(
     onDismissPresentations: () -> Unit,
     onToggleModifierGroup: (Int) -> Unit,
     onImagePicked: (ByteArray, String) -> Unit,
+    onSaveRecipeDraft: (RecipeDraft) -> Unit,
     onSave: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -587,6 +703,8 @@ private fun ProductFormPane(
                 showMoreOptions = showMoreOptions,
                 presentationsOpen = presentationsOpen,
                 isEditing = isEditing,
+                editingProductId = editingProductId,
+                recipeDraft = recipeDraft,
                 error = error,
                 onFormChange = onFormChange,
                 onToggleMore = onToggleMore,
@@ -594,6 +712,7 @@ private fun ProductFormPane(
                 onDismissPresentations = onDismissPresentations,
                 onToggleModifierGroup = onToggleModifierGroup,
                 onImagePicked = onImagePicked,
+                onSaveRecipeDraft = onSaveRecipeDraft,
             )
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.sm))
@@ -627,6 +746,8 @@ private fun ProductFormFields(
     showMoreOptions: Boolean,
     presentationsOpen: Boolean,
     isEditing: Boolean,
+    editingProductId: Int?,
+    recipeDraft: RecipeDraft?,
     error: String?,
     onFormChange: ((ProductFormInput) -> ProductFormInput) -> Unit,
     onToggleMore: () -> Unit,
@@ -634,7 +755,9 @@ private fun ProductFormFields(
     onDismissPresentations: () -> Unit,
     onToggleModifierGroup: (Int) -> Unit,
     onImagePicked: (ByteArray, String) -> Unit,
+    onSaveRecipeDraft: (RecipeDraft) -> Unit,
 ) {
+        var recipeEditorOpen by remember { mutableStateOf(false) }
         BendeyTextField(
             value = form.name,
             onValueChange = { value -> onFormChange { it.copy(name = value) } },
@@ -673,6 +796,17 @@ private fun ProductFormFields(
             placeholder = "Buscar área…",
         )
         BendeySimpleSelect(
+            options = UnitOfMeasure.entries.map { BendeyOption(it.code, it.label) },
+            selectedValue = form.unit,
+            onSelect = { code -> onFormChange { it.copy(unit = UnitOfMeasure.fromCode(code).code) } },
+            label = "Unidad de medida",
+        )
+        Text(
+            "Para insumos, es la unidad en la que se controla su stock (kg, litro, unidad…).",
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
+        BendeySimpleSelect(
             options = IgvAffectation.entries.map { BendeyOption(it.code, it.label) },
             selectedValue = form.igvAffectation.code,
             onSelect = { code ->
@@ -681,10 +815,52 @@ private fun ProductFormFields(
             },
             label = "Afectación IGV",
         )
+        BendeySimpleSelect(
+            options = ProductType.entries.map { BendeyOption(it.code, it.label) },
+            selectedValue = form.productType.code,
+            onSelect = { code ->
+                val productType = ProductType.fromCode(code)
+                onFormChange {
+                    it.copy(
+                        productType = productType,
+                        manageStock = if (productType == ProductType.ELABORADO) false else it.manageStock,
+                        availableForSale = if (productType == ProductType.INSUMO) false else it.availableForSale,
+                    )
+                }
+            },
+            label = "Tipo de producto",
+        )
+        if (form.productType == ProductType.ELABORADO) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+                BendeyTextButton(
+                    text = if (recipeDraft != null || editingProductId != null) "Gestionar receta" else "Armar receta",
+                    onClick = { recipeEditorOpen = true },
+                )
+                if (recipeDraft != null) {
+                    Text(
+                        "${recipeDraft.items.size} ingrediente${if (recipeDraft.items.size == 1) "" else "s"} — " +
+                            "se guarda${if (editingProductId != null) "n los cambios" else ""} al pulsar Guardar",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.Warning,
+                    )
+                } else if (editingProductId == null) {
+                    Text(
+                        "Sin receta todavía — se guarda junto con el producto.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+            }
+        }
         BendeyCheckboxRow(
             label = "Visible en carta (POS/mesa)",
             checked = form.availableForSale,
             onCheckedChange = { checked -> onFormChange { it.copy(availableForSale = checked) } },
+        )
+        BendeyCheckboxRow(
+            label = "Visible en menú digital",
+            checked = form.menuChannelEnabled,
+            onCheckedChange = { checked -> onFormChange { it.copy(menuChannelEnabled = checked) } },
         )
         if (IgvAffectation.isGravado(form.igvAffectation.code)) {
             BendeyCheckboxRow(
@@ -694,8 +870,13 @@ private fun ProductFormFields(
             )
         }
         BendeyCheckboxRow(
-            label = "Controlar stock",
-            checked = form.manageStock,
+            label = if (form.productType == ProductType.ELABORADO) {
+                "Controlar stock (los elaborados no controlan stock propio — se descuenta vía receta)"
+            } else {
+                "Controlar stock"
+            },
+            checked = if (form.productType == ProductType.ELABORADO) false else form.manageStock,
+            enabled = form.productType != ProductType.ELABORADO,
             onCheckedChange = { checked ->
                 onFormChange {
                     it.copy(
@@ -706,7 +887,7 @@ private fun ProductFormFields(
                 }
             },
         )
-        if (form.manageStock) {
+        if (form.productType != ProductType.ELABORADO && form.manageStock) {
             BendeyTextField(
                 value = form.minStock,
                 onValueChange = { value -> onFormChange { it.copy(minStock = value) } },
@@ -754,6 +935,15 @@ private fun ProductFormFields(
         error?.let {
             Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
         }
+        if (recipeEditorOpen) {
+            RecipeEditorSheet(
+                productId = editingProductId ?: 0,
+                productName = form.name,
+                initialDraft = recipeDraft,
+                onDismiss = { recipeEditorOpen = false },
+                onSave = onSaveRecipeDraft,
+            )
+        }
 }
 
 @Composable
@@ -768,6 +958,8 @@ private fun ProductFormDialog(
     loading: Boolean,
     error: String?,
     isEditing: Boolean,
+    editingProductId: Int?,
+    recipeDraft: RecipeDraft?,
     onDismiss: () -> Unit,
     onFormChange: ((ProductFormInput) -> ProductFormInput) -> Unit,
     onToggleMore: () -> Unit,
@@ -775,6 +967,7 @@ private fun ProductFormDialog(
     onDismissPresentations: () -> Unit,
     onToggleModifierGroup: (Int) -> Unit,
     onImagePicked: (ByteArray, String) -> Unit,
+    onSaveRecipeDraft: (RecipeDraft) -> Unit,
     onSave: () -> Unit,
 ) {
     BendeyFormDialog(
@@ -796,6 +989,8 @@ private fun ProductFormDialog(
             showMoreOptions = showMoreOptions,
             presentationsOpen = presentationsOpen,
             isEditing = isEditing,
+            editingProductId = editingProductId,
+            recipeDraft = recipeDraft,
             error = error,
             onFormChange = onFormChange,
             onToggleMore = onToggleMore,
@@ -803,6 +998,7 @@ private fun ProductFormDialog(
             onDismissPresentations = onDismissPresentations,
             onToggleModifierGroup = onToggleModifierGroup,
             onImagePicked = onImagePicked,
+            onSaveRecipeDraft = onSaveRecipeDraft,
         )
     }
 }

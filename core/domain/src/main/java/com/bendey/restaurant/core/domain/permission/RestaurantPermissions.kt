@@ -188,4 +188,20 @@ object RestaurantPermissions {
         if (station == PinStation.KITCHEN && hasComandas(permissions)) return "cocina"
         return defaultRoute(permissions, employeeType)
     }
+
+    /** Conexión WS — cualquier permiso operativo restaurante (REALTIME_FRONTEND_ARCHITECTURE). */
+    fun canReceiveRealtimeEvents(permissions: List<String>): Boolean {
+        if (permissions.isEmpty()) return false
+        val realtimePerms = listOf(
+            PERM_ADMIN, PERM_CAJA, PERM_COMANDAS, PERM_POS, PERM_SALAS, PERM_MESA,
+            PERM_PRODUCTOS, PERM_REPARTIDORES, PERM_ORDERS_CHARGE, PERM_ORDERS_CREATE,
+        )
+        return realtimePerms.any { hasPermission(permissions, it) }
+    }
+
+    fun canReceiveNewOrderSound(permissions: List<String>): Boolean =
+        isRestaurantAdmin(permissions) ||
+            hasPermission(permissions, PERM_CAJA) ||
+            hasPermission(permissions, PERM_COMANDAS) ||
+            hasPermission(permissions, PERM_POS)
 }

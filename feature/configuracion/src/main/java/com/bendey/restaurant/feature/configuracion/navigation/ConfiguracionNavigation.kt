@@ -8,8 +8,13 @@ import com.bendey.restaurant.feature.configuracion.ConfiguracionScreen
 fun NavGraphBuilder.configuracionGraph(
     onBack: () -> Unit = {},
     onOpenPrinting: () -> Unit = {},
+    onNavigateToSubscription: () -> Unit = {},
 ) {
     composable(BendeyRoutes.CONFIGURACION) {
-        ConfiguracionScreen(onBack = onBack, onOpenPrinting = onOpenPrinting)
+        ConfiguracionScreen(
+            onBack = onBack,
+            onOpenPrinting = onOpenPrinting,
+            onNavigateToSubscription = onNavigateToSubscription,
+        )
     }
 }

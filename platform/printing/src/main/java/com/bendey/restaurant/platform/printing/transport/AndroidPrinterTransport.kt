@@ -15,7 +15,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.Timer
+import java.util.TimerTask
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,6 +29,29 @@ class AndroidPrinterTransport @Inject constructor(
 
     private val sppUuid: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
     private var bluetoothSocket: BluetoothSocket? = null
+
+    /**
+     * Sockets bloqueantes (TCP/Bluetooth) no exponen timeout de escritura en la API pública de
+     * Android — solo de lectura/conexión. Si la impresora deja de aceptar datos a mitad de un
+     * ticket grande (con logo), `write()` puede bloquear el hilo indefinidamente. Este watchdog
+     * cierra el socket tras [WRITE_TIMEOUT_MS] si la escritura no terminó, lo que fuerza a que
+     * `write()` lance una excepción en vez de colgarse para siempre.
+     */
+    private fun writeWatchdog(onTimeout: () -> Unit): Pair<Timer, AtomicBoolean> {
+        val timedOut = AtomicBoolean(false)
+        val timer = Timer(true).apply {
+            schedule(
+                object : TimerTask() {
+                    override fun run() {
+                        timedOut.set(true)
+                        onTimeout()
+                    }
+                },
+                WRITE_TIMEOUT_MS,
+            )
+        }
+        return timer to timedOut
+    }
 
     private fun adapter(): BluetoothAdapter? {
         val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -108,30 +134,56 @@ class AndroidPrinterTransport @Inject constructor(
         }
 
     private fun printBluetooth(bytes: ByteArray): PrintResult {
+        val socket = bluetoothSocket ?: return PrintResult.Error("Impresora Bluetooth no conectada")
+        if (!socket.isConnected) return PrintResult.Error("Conexión Bluetooth perdida")
+        // Cerrar el socket desde el watchdog interrumpe el write() bloqueado con una excepción.
+        val (watchdog, timedOut) = writeWatchdog { disconnectBluetoothInternal() }
         return try {
-            val socket = bluetoothSocket ?: return PrintResult.Error("Impresora Bluetooth no conectada")
-            if (!socket.isConnected) return PrintResult.Error("Conexión Bluetooth perdida")
             socket.outputStream.write(bytes)
             socket.outputStream.flush()
             PrintResult.Success
         } catch (e: Exception) {
-            PrintResult.Error("Error al imprimir BT: ${e.message}", e)
+            // Cualquier falla de escritura deja el socket en estado indeterminado — se limpia
+            // aquí para que el próximo intento no reutilice un socket roto.
+            disconnectBluetoothInternal()
+            if (timedOut.get()) {
+                PrintResult.Error("Tiempo de espera agotado enviando datos por Bluetooth")
+            } else {
+                PrintResult.Error("Error al imprimir BT: ${e.message}", e)
+            }
+        } finally {
+            watchdog.cancel()
         }
     }
 
     private fun printTcp(bytes: ByteArray, host: String, port: Int): PrintResult {
         if (host.isBlank()) return PrintResult.Error("Host TCP vacío")
+        val socket = Socket()
+        val (watchdog, timedOut) = writeWatchdog {
+            try {
+                socket.close()
+            } catch (_: Exception) {
+            }
+        }
         return try {
-            Socket().use { socket ->
-                socket.connect(InetSocketAddress(host, port), 8_000)
-                socket.getOutputStream().use { out ->
-                    out.write(bytes)
-                    out.flush()
-                }
+            socket.connect(InetSocketAddress(host, port), CONNECT_TIMEOUT_MS)
+            socket.getOutputStream().use { out ->
+                out.write(bytes)
+                out.flush()
             }
             PrintResult.Success
         } catch (e: Exception) {
-            PrintResult.Error("Error TCP: ${e.message}", e)
+            if (timedOut.get()) {
+                PrintResult.Error("Tiempo de espera agotado enviando datos a la impresora")
+            } else {
+                PrintResult.Error("Error TCP: ${e.message}", e)
+            }
+        } finally {
+            watchdog.cancel()
+            try {
+                socket.close()
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -141,5 +193,10 @@ class AndroidPrinterTransport @Inject constructor(
         } catch (_: Exception) {
         }
         bluetoothSocket = null
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 8_000
+        const val WRITE_TIMEOUT_MS = 15_000L
     }
 }

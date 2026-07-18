@@ -10,6 +10,7 @@ import com.bendey.restaurant.core.domain.catalog.ComboItem
 import com.bendey.restaurant.core.domain.catalog.ComboSlot
 import com.bendey.restaurant.core.domain.catalog.ComboSlotOption
 import com.bendey.restaurant.core.domain.catalog.CombosRepository
+import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.buildComboSaveSlots
 import com.bendey.restaurant.core.domain.catalog.usesFixed
@@ -55,7 +56,10 @@ class CombosViewModel @Inject constructor(
     private val repository: CombosRepository,
     private val productsRepository: ProductsRepository,
     private val settingsRepository: SettingsRepository,
+    private val productImageRepository: ProductImageRepository,
 ) : ViewModel() {
+
+    val tenantBaseUrl: String? = productImageRepository.tenantAssetsBaseUrl()
 
     private val _uiState = MutableStateFlow(CombosUiState())
     val uiState: StateFlow<CombosUiState> = _uiState.asStateFlow()
@@ -152,6 +156,21 @@ class CombosViewModel @Inject constructor(
 
     fun updateForm(transform: (ComboFormInput) -> ComboFormInput) {
         _uiState.update { it.copy(form = transform(it.form)) }
+    }
+
+    fun setPendingImage(bytes: ByteArray, mimeType: String) {
+        updateForm { it.copy(pendingImageBytes = bytes, pendingImageMimeType = mimeType) }
+    }
+
+    /** Sube y reemplaza la imagen de un combo directamente desde la lista, sin abrir el formulario. */
+    suspend fun uploadQuickComboImage(comboId: Int, bytes: ByteArray, mimeType: String) {
+        when (val result = productImageRepository.uploadComboImage(comboId, bytes, mimeType)) {
+            is AppResult.Success -> _uiState.update { state ->
+                state.copy(combos = state.combos.map { if (it.id == comboId) it.copy(imageUrl = result.data) else it })
+            }
+            is AppResult.Error -> _uiState.update { it.copy(error = "No se pudo subir la imagen") }
+            AppResult.Loading -> Unit
+        }
     }
 
     fun setProductSearchQuery(query: String) {
@@ -297,7 +316,18 @@ class CombosViewModel @Inject constructor(
             }
             when (result) {
                 is AppResult.Success -> {
-                    _uiState.update { it.copy(actionLoading = false, formOpen = false, editingId = null) }
+                    val comboId = result.data.id
+                    val pendingBytes = form.pendingImageBytes
+                    val pendingMime = form.pendingImageMimeType
+                    var imageError: String? = null
+                    if (pendingBytes != null && pendingMime != null) {
+                        when (productImageRepository.uploadComboImage(comboId, pendingBytes, pendingMime)) {
+                            is AppResult.Success -> Unit
+                            is AppResult.Error -> imageError = "Combo guardado; no se pudo subir la imagen"
+                            AppResult.Loading -> Unit
+                        }
+                    }
+                    _uiState.update { it.copy(actionLoading = false, formOpen = false, editingId = null, error = imageError) }
                     refresh()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }

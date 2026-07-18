@@ -26,10 +26,13 @@ import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.UiPresence
+import com.bendey.restaurant.core.realtime.store.CashStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
@@ -56,6 +59,7 @@ data class MovementForm(
     val amount: String = "",
     val reference: String = "",
     val notes: String = "",
+    val titular: String = "",
     val paymentMethod: String = "cash",
 )
 
@@ -151,6 +155,7 @@ data class CajaUiState(
     val arqueoDraft: Map<String, Int> = emptyArqueo(),
     val error: String? = null,
     val snackMessage: String? = null,
+    val allowsReportExport: Boolean = false,
 ) {
     val currentBalance: Double get() = session?.expectedBalance ?: 0.0
 }
@@ -161,12 +166,14 @@ class CajaViewModel @Inject constructor(
     private val mesasRepository: MesasRepository,
     private val sessionStore: UserSessionStore,
     private val fileShareService: BendeyFileShareService,
+    private val cashStore: CashStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CajaUiState())
     val uiState: StateFlow<CajaUiState> = _uiState.asStateFlow()
 
     init {
+        UiPresence.caja = true
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
@@ -176,11 +183,22 @@ class CajaViewModel @Inject constructor(
                         branchName = user?.activeBranch?.name,
                         canViewCashSettings = RestaurantPermissions.canViewCashSettings(perms, employeeType),
                         canManageCashSettings = RestaurantPermissions.canManageCashSettings(perms, employeeType),
+                        allowsReportExport = user?.allowsReportExport == true,
                     )
                 }
             }
         }
+        // `restaurant.bill.closed` agenda recovery PARTIAL cash (si UiPresence.caja) que hidrata
+        // el cashStore compartido; al cambiar, resincronizamos el estado propio de esta pantalla.
+        viewModelScope.launch {
+            cashStore.state.drop(1).collect { refresh() }
+        }
         refresh()
+    }
+
+    override fun onCleared() {
+        UiPresence.caja = false
+        super.onCleared()
     }
 
     fun setTab(tab: CajaTab) {
@@ -347,6 +365,7 @@ class CajaViewModel @Inject constructor(
                         reference = form.reference,
                         notes = form.notes,
                         paymentMethod = form.paymentMethod,
+                        titular = form.titular,
                     ),
                 )
             ) {

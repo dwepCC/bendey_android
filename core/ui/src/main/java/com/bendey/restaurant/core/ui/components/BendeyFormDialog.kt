@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -31,10 +33,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -229,17 +240,21 @@ fun BendeySearchableSelect(
     }
 
     Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
+        if (label.isNotBlank()) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = BendeyColors.OnSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        var triggerWidthPx by remember { mutableStateOf(0) }
         Box(modifier = Modifier.fillMaxWidth()) {
             Column {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onSizeChanged { triggerWidthPx = it.width }
                         .clip(BendeyShapeTokens.md)
                         .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
                         .background(BendeyColors.Surface)
@@ -260,54 +275,74 @@ fun BendeySearchableSelect(
                         tint = BendeyColors.OnSurfaceVariant,
                     )
                 }
+                // Flota sobre el contenido (no empuja layout): esta fila puede vivir dentro
+                // de un header de altura fija cuyo hermano usa weight(1f) para la lista;
+                // si el desplegable creciera inline, le robaría espacio a esa lista.
                 if (expanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                        .clip(BendeyShapeTokens.md)
-                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
-                        .background(BendeyColors.Surface),
+                    Popup(
+                        popupPositionProvider = remember {
+                            object : PopupPositionProvider {
+                                override fun calculatePosition(
+                                    anchorBounds: IntRect,
+                                    windowSize: IntSize,
+                                    layoutDirection: LayoutDirection,
+                                    popupContentSize: IntSize,
+                                ): IntOffset = IntOffset(anchorBounds.left, anchorBounds.bottom + 4)
+                            }
+                        },
+                        onDismissRequest = { expanded = false },
+                        properties = PopupProperties(focusable = true),
                     ) {
-                    BendeyTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        label = placeholder,
-                        modifier = Modifier.padding(8.dp),
-                    )
-                    HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.5f))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 180.dp)
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        if (filtered.isEmpty()) {
-                            Text(
-                                text = "Sin resultados",
-                                modifier = Modifier.padding(12.dp),
-                                color = BendeyColors.OnSurfaceVariant,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        } else {
-                            filtered.forEach { option ->
-                                Text(
-                                    text = option.label,
+                        val triggerWidthDp = with(LocalDensity.current) { triggerWidthPx.toDp() }
+                        Surface(
+                            modifier = Modifier.width(triggerWidthDp),
+                            shape = BendeyShapeTokens.md,
+                            color = BendeyColors.Surface,
+                            border = BorderStroke(1.dp, BendeyColors.Outline),
+                            shadowElevation = 8.dp,
+                        ) {
+                            Column {
+                                BendeyTextField(
+                                    value = query,
+                                    onValueChange = { query = it },
+                                    label = placeholder,
+                                    modifier = Modifier.padding(8.dp),
+                                )
+                                HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.5f))
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            onSelect(option.id)
-                                            expanded = false
-                                            query = ""
+                                        .heightIn(max = 180.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                ) {
+                                    if (filtered.isEmpty()) {
+                                        Text(
+                                            text = "Sin resultados",
+                                            modifier = Modifier.padding(12.dp),
+                                            color = BendeyColors.OnSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    } else {
+                                        filtered.forEach { option ->
+                                            Text(
+                                                text = option.label,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        onSelect(option.id)
+                                                        expanded = false
+                                                        query = ""
+                                                    }
+                                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (option.id == selectedId) BendeyColors.Primary else BendeyColors.OnSurface,
+                                                fontWeight = if (option.id == selectedId) FontWeight.SemiBold else FontWeight.Normal,
+                                            )
                                         }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (option.id == selectedId) BendeyColors.Primary else BendeyColors.OnSurface,
-                                    fontWeight = if (option.id == selectedId) FontWeight.SemiBold else FontWeight.Normal,
-                                )
+                                    }
+                                }
                             }
                         }
-                    }
                     }
                 }
             }

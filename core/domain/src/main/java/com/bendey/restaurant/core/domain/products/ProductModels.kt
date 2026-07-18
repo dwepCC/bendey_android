@@ -14,6 +14,39 @@ enum class CatalogSection(val label: String) {
     COMBOS("Combos"),
 }
 
+/** comercial: se compra y vende, sin receta · insumo: no aparece en POS, ingrediente de recetas ·
+ * elaborado: tiene receta, costo calculado, nunca stock propio — ver feature/produccion. */
+enum class ProductType(val code: String, val label: String) {
+    COMERCIAL("comercial", "Comercial — se compra y se vende"),
+    INSUMO("insumo", "Insumo — ingrediente de recetas, no aparece en POS"),
+    ELABORADO("elaborado", "Elaborado — tiene receta, costo calculado"),
+    ;
+
+    companion object {
+        fun fromCode(code: String?): ProductType =
+            entries.firstOrNull { it.code == code?.trim() } ?: COMERCIAL
+    }
+}
+
+/** Subconjunto práctico del catálogo SUNAT 03 (unidades de medida) para negocios de restaurante. */
+enum class UnitOfMeasure(val code: String, val label: String) {
+    NIU("NIU", "NIU - Unidad"),
+    KGM("KGM", "KGM - Kilogramo"),
+    GRM("GRM", "GRM - Gramo"),
+    LTR("LTR", "LTR - Litro"),
+    MLT("MLT", "MLT - Mililitro"),
+    BX("BX", "BX - Caja"),
+    PK("PK", "PK - Paquete"),
+    DZN("DZN", "DZN - Docena"),
+    BG("BG", "BG - Bolsa"),
+    ;
+
+    companion object {
+        fun fromCode(code: String?): UnitOfMeasure =
+            entries.firstOrNull { it.code == code?.trim()?.uppercase() } ?: NIU
+    }
+}
+
 enum class IgvAffectation(val code: String, val label: String) {
     GRAVADO("10", "10 - Gravado IGV"),
     EXONERADO("20", "20 - Exonerado"),
@@ -53,6 +86,7 @@ data class ProductItem(
     val igvAffectationType: String,
     val priceIncludesIgv: Boolean,
     val active: Boolean,
+    val productType: ProductType = ProductType.COMERCIAL,
 )
 
 data class ProductFormInput(
@@ -61,11 +95,14 @@ data class ProductFormInput(
     val description: String = "",
     val salePrice: String = "",
     val purchasePrice: String = "",
+    val unit: String = "NIU",
     val categoryId: Int? = null,
     val preparationAreaId: Int? = null,
     val igvAffectation: IgvAffectation = IgvAffectation.GRAVADO,
     val priceIncludesIgv: Boolean = true,
     val availableForSale: Boolean = true,
+    val menuChannelEnabled: Boolean = true,
+    val productType: ProductType = ProductType.COMERCIAL,
     val manageStock: Boolean = false,
     val minStock: String = "0",
     val initialStock: String = "",
@@ -97,6 +134,10 @@ data class ProductListQuery(
     val branchId: Int? = null,
     val page: Int = 1,
     val perPage: Int = 25,
+    /** 'non_insumo' excluye insumos; 'insumo'|'comercial'|'elaborado' filtra a ese tipo exacto. */
+    val productTypeFilter: String? = null,
+    /** Mostrar SOLO productos desactivados (active=false). Por defecto se listan los activos. */
+    val inactiveOnly: Boolean = false,
 )
 
 data class ProductReportBranchStock(
@@ -150,11 +191,13 @@ fun ProductItem.toFormInput(
     description = description.orEmpty(),
     salePrice = formatProductAmount(salePrice),
     purchasePrice = purchasePrice?.let { formatProductAmount(it) }.orEmpty(),
+    unit = unit,
     categoryId = categoryId,
     preparationAreaId = preparationAreaId ?: preparationArea?.id,
     igvAffectation = IgvAffectation.fromCode(igvAffectationType),
     priceIncludesIgv = priceIncludesIgv,
     availableForSale = availableForSale,
+    productType = productType,
     manageStock = manageStock,
     minStock = if (manageStock) formatProductAmount(minStock) else "0",
     hasModifiers = hasModifiers,

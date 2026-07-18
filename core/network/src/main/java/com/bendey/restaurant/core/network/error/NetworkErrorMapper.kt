@@ -13,10 +13,13 @@ object NetworkErrorMapper {
             error.response()?.errorBody()?.string()?.takeIf { it.isNotBlank() }
         }.getOrNull()
         if (bodyMessage != null) {
-            val parsed = runCatching {
-                Json.decodeFromString<ApiErrorDto>(bodyMessage).error
-            }.getOrNull()?.takeIf { it.isNotBlank() }
-            return IllegalStateException(parsed ?: bodyMessage, error)
+            val parsedDto = runCatching { Json.decodeFromString<ApiErrorDto>(bodyMessage) }.getOrNull()
+            val parsedMessage = parsedDto?.error?.takeIf { it.isNotBlank() }
+            val moduleKey = parsedDto?.module?.takeIf { it.isNotBlank() }
+            if (code == 403 && moduleKey != null) {
+                return ModuleLockedException(parsedMessage ?: bodyMessage, moduleKey, error)
+            }
+            return IllegalStateException(parsedMessage ?: bodyMessage, error)
         }
         val message = when (code) {
             401 -> unauthorizedMessage

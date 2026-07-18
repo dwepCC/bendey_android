@@ -61,6 +61,7 @@ import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
+import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.BluetoothDeviceInfo
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
@@ -257,6 +258,38 @@ fun PrinterTestScreen(
             }
 
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                    shape = BendeyShapeTokens.lg,
+                    colors = BendeyCardDefaults.colors(),
+                    elevation = BendeyCardDefaults.elevation(),
+                ) {
+                    Column(
+                        Modifier.padding(BendeySpacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    ) {
+                        Text("Agrupar productos de combos", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Une los componentes iguales de varios combos en una sola línea sumando " +
+                                "cantidades (ej. 2 combos con papa → 2x Papa Frita), con un resumen de " +
+                                "combos arriba. Los productos sueltos y la pantalla de cocina no cambian.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                            FilterChip(
+                                selected = state.comandaGroupCombos,
+                                onClick = { viewModel.setComandaGroupCombos(!state.comandaGroupCombos) },
+                                label = { Text("Agrupar combos", style = MaterialTheme.typography.labelMedium) },
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
                 ComandaAreasCard(
                     expanded = areasExpanded,
                     onToggleExpanded = { areasExpanded = !areasExpanded },
@@ -301,6 +334,39 @@ fun PrinterTestScreen(
                             selected = state.autoPrintDocuments,
                             onClick = { viewModel.setAutoPrintDocuments(!state.autoPrintDocuments) },
                             label = { Text("Documentos", style = MaterialTheme.typography.labelMedium) },
+                        )
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                shape = BendeyShapeTokens.lg,
+                colors = BendeyCardDefaults.colors(),
+                elevation = BendeyCardDefaults.elevation(),
+            ) {
+                Column(
+                    Modifier.padding(BendeySpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
+                    Text("Tamaño del logo en comprobantes", style = MaterialTheme.typography.titleSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                        FilterChip(
+                            selected = state.documentLogoSize == LogoSize.SMALL,
+                            onClick = { viewModel.setDocumentLogoSize(LogoSize.SMALL) },
+                            label = { Text("Pequeño", style = MaterialTheme.typography.labelMedium) },
+                        )
+                        FilterChip(
+                            selected = state.documentLogoSize == LogoSize.MEDIUM,
+                            onClick = { viewModel.setDocumentLogoSize(LogoSize.MEDIUM) },
+                            label = { Text("Mediano", style = MaterialTheme.typography.labelMedium) },
+                        )
+                        FilterChip(
+                            selected = state.documentLogoSize == LogoSize.LARGE,
+                            onClick = { viewModel.setDocumentLogoSize(LogoSize.LARGE) },
+                            label = { Text("Grande", style = MaterialTheme.typography.labelMedium) },
                         )
                     }
                 }

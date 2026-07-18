@@ -41,6 +41,15 @@ import com.bendey.restaurant.core.network.dto.StaffOptionDto
 import com.bendey.restaurant.core.network.dto.StaffManagementDto
 import com.bendey.restaurant.core.network.dto.CreateStaffUserRequestDto
 import com.bendey.restaurant.core.network.dto.CreateStaffUserResponseDto
+import com.bendey.restaurant.core.network.dto.MenuTokenRegenerateResponseDto
+import com.bendey.restaurant.core.network.dto.ProductPublicationChannelsDto
+import com.bendey.restaurant.core.network.dto.ProductPublicationChannelsUpdateDto
+import com.bendey.restaurant.core.network.dto.ProductPublicationChannelsUpdateResponseDto
+import com.bendey.restaurant.core.network.dto.StaffMenuSettingsDto
+import com.bendey.restaurant.core.network.dto.StaffMenuSettingsUpdateDto
+import com.bendey.restaurant.core.network.dto.StaffMenuSettingsUpdateResponseDto
+import com.bendey.restaurant.core.network.dto.TableMenuQrDto
+import com.bendey.restaurant.core.network.dto.TableMenuQrRotateResponseDto
 import com.bendey.restaurant.core.network.dto.SetUserStaffRequestDto
 import com.bendey.restaurant.core.network.dto.SetUserStaffResponseDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
@@ -251,6 +260,7 @@ interface ProductsApi {
         @Query("q") query: String = "",
         @Query("restaurant_only") restaurantOnly: String = "true",
         @Query("active_only") activeOnly: String = "true",
+        @Query("inactive_only") inactiveOnly: String? = null,
         @Query("catalog_only") catalogOnly: String? = null,
         @Query("page") page: Int = 1,
         @Query("per_page") perPage: Int = 40,
@@ -259,6 +269,7 @@ interface ProductsApi {
         @Query("branch_id") branchId: Int? = null,
         @Query("report") report: Boolean? = null,
         @Query("stock_less_than") stockLessThan: Double? = null,
+        @Query("product_type_filter") productTypeFilter: String? = null,
     ): ProductListResponseDto
 
     @GET("/api/products/{id}")
@@ -275,6 +286,9 @@ interface ProductsApi {
 
     @DELETE("/api/products/{id}")
     suspend fun deleteProduct(@Path("id") id: Int): SuccessResponseDto
+
+    @PATCH("/api/products/{id}/toggle")
+    suspend fun toggleProduct(@Path("id") id: Int): SuccessResponseDto
 
     @GET("/api/categories")
     suspend fun listCategories(): ListResponseDto<CategoryDto>
@@ -298,4 +312,33 @@ interface ProductsApi {
     suspend fun getStockSummary(
         @Query("product_ids") productIds: String,
     ): StockSummaryResponseDto
+}
+
+interface DigitalMenuApi {
+    @GET("/api/restaurant/menu/settings")
+    suspend fun getMenuSettings(): StaffMenuSettingsDto
+
+    @PUT("/api/restaurant/menu/settings")
+    suspend fun updateMenuSettings(@Body body: StaffMenuSettingsUpdateDto): StaffMenuSettingsUpdateResponseDto
+
+    @POST("/api/restaurant/menu/regenerate-token")
+    suspend fun regenerateMenuToken(): MenuTokenRegenerateResponseDto
+
+    @GET("/api/products/{id}/publication-channels")
+    suspend fun getProductPublicationChannels(@Path("id") productId: Int): ProductPublicationChannelsDto
+
+    @PUT("/api/products/{id}/publication-channels")
+    suspend fun setProductPublicationChannels(
+        @Path("id") productId: Int,
+        @Body body: ProductPublicationChannelsUpdateDto,
+    ): ProductPublicationChannelsUpdateResponseDto
+
+    @GET("/api/restaurant/menu/tables/{id}/menu-qr")
+    suspend fun getTableMenuQr(
+        @Path("id") tableId: Int,
+        @Query("png") png: Int? = null,
+    ): TableMenuQrDto
+
+    @POST("/api/restaurant/menu/tables/{id}/rotate-menu-token")
+    suspend fun rotateTableMenuToken(@Path("id") tableId: Int): TableMenuQrRotateResponseDto
 }

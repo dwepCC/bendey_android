@@ -27,6 +27,7 @@ import com.bendey.restaurant.core.domain.catalog.usesFixed
 import com.bendey.restaurant.core.domain.catalog.CombosRepository
 import com.bendey.restaurant.core.domain.catalog.CompanyConfig
 import com.bendey.restaurant.core.domain.catalog.CompanyConfigFormInput
+import com.bendey.restaurant.core.domain.catalog.UbiItem
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
@@ -304,11 +305,21 @@ class SettingsRepositoryImpl @Inject constructor(
                 current.copy(
                     tradeName = input.tradeName.trim().ifBlank { current.tradeName },
                     address = input.address.trim().ifBlank { current.address },
+                    ubigeo = input.ubigeo.trim().ifBlank { current.ubigeo ?: "" },
                     phone = input.phone.trim().ifBlank { current.phone },
                     email = input.email.trim().ifBlank { current.email },
                 ),
             ).data.toDomain().also { operationalDataCache.updateCompanyConfig(it) }
         }
+
+    override suspend fun getUbigeoRegiones(): AppResult<List<UbiItem>> =
+        catalogApiCall { api.getUbigeoRegiones().data.map { UbiItem(it.id, it.nombre) } }
+
+    override suspend fun getUbigeoProvincias(regionId: String): AppResult<List<UbiItem>> =
+        catalogApiCall { api.getUbigeoProvincias(regionId).data.map { UbiItem(it.id, it.nombre) } }
+
+    override suspend fun getUbigeoDistritos(provinciaId: String): AppResult<List<UbiItem>> =
+        catalogApiCall { api.getUbigeoDistritos(provinciaId).data.map { UbiItem(it.id, it.nombre) } }
 
     override suspend fun getSunatConfig(): AppResult<SunatConfig> {
         operationalDataCache.getTenantSettings()?.sunat?.let { return AppResult.Success(it) }
@@ -580,6 +591,7 @@ private fun ComboDto.toListItem() = ComboItem(
     slotsCount = slots.size,
     validFrom = validFrom,
     validTo = validTo,
+    imageUrl = imageUrl,
 )
 
 private fun ComboDto.toFormInput() = ComboFormInput(
@@ -623,6 +635,7 @@ private fun ComboDto.toFormInput() = ComboFormInput(
             priceOverride = it.priceOverride?.toString().orEmpty(),
         )
     },
+    imageUrl = imageUrl,
 )
 
 private fun ComboFormInput.toDto(): ComboUpsertRequestDto {
@@ -722,6 +735,7 @@ private fun CompanyConfigDto.toDomain() = CompanyConfig(
     tradeName = tradeName,
     ruc = ruc,
     address = address,
+    ubigeo = ubigeo ?: "",
     phone = phone,
     email = email,
     currency = currency,

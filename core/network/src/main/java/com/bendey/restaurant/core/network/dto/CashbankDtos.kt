@@ -119,6 +119,7 @@ data class CashMovementDto(
     @SerialName("payment_method") val paymentMethod: String? = null,
     val amount: Double,
     val notes: String? = null,
+    val titular: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
 )
 
@@ -130,6 +131,8 @@ data class AddCashMovementRequestDto(
     @SerialName("payment_method") val paymentMethod: String? = null,
     val amount: Double,
     val notes: String? = null,
+    /** A nombre de quién es el ingreso/egreso manual. */
+    val titular: String? = null,
 )
 
 @Serializable

@@ -48,6 +48,8 @@ private data class StoredUserSession(
     val activeBranch: StoredBranch? = null,
     val canSwitchBranch: Boolean = false,
     val allowedBranches: List<StoredBranch> = emptyList(),
+    val removesBendeyBranding: Boolean = false,
+    val allowsReportExport: Boolean = false,
 )
 
 @Serializable
@@ -228,6 +230,8 @@ private fun UserSession.toStored() = StoredUserSession(
     activeBranch = activeBranch?.let { StoredBranch(it.id, it.name, it.isMain) },
     canSwitchBranch = canSwitchBranch,
     allowedBranches = allowedBranches.map { StoredBranch(it.id, it.name, it.isMain) },
+    removesBendeyBranding = removesBendeyBranding,
+    allowsReportExport = allowsReportExport,
 )
 
 private fun StoredUserSession.toDomain() = UserSession(
@@ -246,4 +250,6 @@ private fun StoredUserSession.toDomain() = UserSession(
     activeBranch = activeBranch?.let { BranchBrief(it.id, it.name, it.isMain) },
     canSwitchBranch = canSwitchBranch,
     allowedBranches = allowedBranches.map { BranchBrief(it.id, it.name, it.isMain) },
+    removesBendeyBranding = removesBendeyBranding,
+    allowsReportExport = allowsReportExport,
 )

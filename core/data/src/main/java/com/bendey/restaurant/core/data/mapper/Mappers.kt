@@ -37,4 +37,6 @@ fun LoginResponseDto.toDomain(): UserSession = UserSession(
     allowedBranches = allowedBranches.orEmpty().map {
         BranchBrief(it.id, it.name, it.isMain == true)
     },
+    removesBendeyBranding = removesBendeyBranding == true,
+    allowsReportExport = allowsReportExport == true,
 )

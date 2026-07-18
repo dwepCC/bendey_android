@@ -36,8 +36,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 
 import androidx.compose.material3.MaterialTheme
 
-import androidx.compose.material3.OutlinedButton
-
 import androidx.compose.material3.OutlinedTextField
 
 import androidx.compose.material3.Text
@@ -101,6 +99,8 @@ import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 
+import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
+
 import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
 
 import com.bendey.restaurant.core.ui.components.BendeySelectOption
@@ -128,6 +128,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun ReportesScreen(
 
     onShowMessage: (String) -> Unit = {},
+
+    onNavigateToSubscription: () -> Unit = {},
 
     modifier: Modifier = Modifier,
 
@@ -245,6 +247,32 @@ fun ReportesScreen(
 
                     }
 
+                    if (state.tab == ReportesTab.RECETAS) {
+
+                        BendeyHorizontalScrollRow(
+
+                            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+
+                        ) {
+
+                            RecetasSubTab.entries.forEach { subTab ->
+
+                                BendeyFilterChip(
+
+                                    selected = state.recetasSubTab == subTab,
+
+                                    onClick = { viewModel.selectRecetasSubTab(subTab) },
+
+                                    text = subTab.label,
+
+                                )
+
+                            }
+
+                        }
+
+                    }
+
                 }
 
                 when (state.tab) {
@@ -283,6 +311,13 @@ fun ReportesScreen(
 
                         onBillingStatusChange = viewModel::setBillingStatusFilter,
 
+                    )
+
+                    ReportesTab.RECETAS -> RecetasReportFilters(
+                        state = state,
+                        onFromDate = viewModel::setFromDate,
+                        onToDate = viewModel::setToDate,
+                        onBranch = viewModel::setBranchId,
                     )
 
                 }
@@ -366,7 +401,11 @@ fun ReportesScreen(
 
                         exportBusy = state.exportBusy,
 
+                        allowsExport = state.allowsReportExport,
+
                         onExport = { format -> viewModel.export(context, format) },
+
+                        onLockedExport = onNavigateToSubscription,
 
                         loadingMore = state.loading && state.salesList.isNotEmpty(),
 
@@ -384,10 +423,191 @@ fun ReportesScreen(
 
             }
 
+            ReportesTab.RECETAS -> {
+
+                when (state.recetasSubTab) {
+
+                    RecetasSubTab.MARGEN -> {
+
+                        if (state.loading && state.plateMarginRows.isEmpty()) {
+
+                            Box(modifier = contentModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+                                CircularProgressIndicator()
+
+                            }
+
+                        } else {
+
+                            PlateMarginList(state.plateMarginRows, currency, bottomPadding, contentModifier)
+
+                        }
+
+                    }
+
+                    RecetasSubTab.STOCK -> {
+
+                        if (state.loading && state.lowStockInsumos.isEmpty()) {
+
+                            Box(modifier = contentModifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+
+                                CircularProgressIndicator()
+
+                            }
+
+                        } else {
+
+                            LowStockInsumosList(state.lowStockInsumos, bottomPadding, contentModifier)
+
+                        }
+
+                    }
+
+                }
+
+            }
+
         }
 
     }
 
+}
+
+
+
+@Composable
+
+private fun RecetasReportFilters(
+    state: ReportesUiState,
+    onFromDate: (String) -> Unit,
+    onToDate: (String) -> Unit,
+    onBranch: (Int?) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+    ) {
+        if (state.branches.size > 1) {
+            val branchOptions = listOf(BendeySelectOption(-1, "Todas las sucursales")) +
+                state.branches.map { BendeySelectOption(it.id, it.name) }
+            BendeySearchableSelect(
+                options = branchOptions,
+                selectedId = state.branchId ?: -1,
+                onSelect = { id -> onBranch(if (id == -1) null else id) },
+                label = "Sucursal",
+                placeholder = "Buscar sucursal…",
+            )
+        }
+        if (state.recetasSubTab == RecetasSubTab.MARGEN) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+                BendeyTextField(
+                    value = state.fromDate,
+                    onValueChange = onFromDate,
+                    label = "Desde",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = state.toDate,
+                    onValueChange = onToDate,
+                    label = "Hasta",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+private fun PlateMarginList(
+    rows: List<com.bendey.restaurant.core.domain.production.PlateMarginRow>,
+    currency: NumberFormat,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    if (rows.isEmpty()) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "Sin ventas de platos en este período.",
+                color = BendeyColors.OnSurfaceVariant,
+            )
+        }
+        return
+    }
+    BendeyLazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(
+            start = BendeySpacing.md,
+            end = BendeySpacing.md,
+            top = BendeySpacing.sm,
+            bottom = BendeySpacing.md + bottomPadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+    ) {
+        items(rows, key = { it.productId }) { row ->
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(row.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text(currency.format(row.margin), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
+                }
+                Text(
+                    "${row.qtySold} vendidos · Ingreso ${currency.format(row.revenue)} · Costo ${currency.format(row.cost)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+private fun LowStockInsumosList(
+    rows: List<com.bendey.restaurant.core.domain.production.LowStockInsumo>,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    if (rows.isEmpty()) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "Ningún insumo está por debajo de su stock mínimo.",
+                color = BendeyColors.OnSurfaceVariant,
+            )
+        }
+        return
+    }
+    BendeyLazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(
+            start = BendeySpacing.md,
+            end = BendeySpacing.md,
+            top = BendeySpacing.sm,
+            bottom = BendeySpacing.md + bottomPadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+    ) {
+        items(rows, key = { it.productId }) { row ->
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Text(row.name, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${row.code} · Stock: ${row.quantity} ${row.unit} · Mín: ${row.minStock}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.Error,
+                )
+            }
+        }
+    }
 }
 
 
@@ -517,6 +737,8 @@ private fun ReportFilters(
             }
 
             ReportesTab.VENTAS -> Unit
+
+            ReportesTab.RECETAS -> Unit
 
         }
 
@@ -876,6 +1098,10 @@ private fun SalesDocumentsList(
 
     onExport: (String) -> Unit,
 
+    allowsExport: Boolean = true,
+
+    onLockedExport: () -> Unit = {},
+
     loadingMore: Boolean,
 
     currency: NumberFormat,
@@ -960,43 +1186,27 @@ private fun SalesDocumentsList(
 
         item(key = "sales-export") {
 
-            Row(
+            BendeyExportActionsRow(
 
-                modifier = Modifier.fillMaxWidth(),
+                allowsExport = allowsExport,
 
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                exportBusy = exportBusy,
 
-            ) {
+                onExportPdf = { onExport("pdf") },
 
-                OutlinedButton(
+                onExportExcel = { onExport("excel") },
 
-                    onClick = { onExport("pdf") },
+                onLockedClick = onLockedExport,
 
-                    enabled = exportBusy == null,
+                pdfLabel = "PDF",
 
-                    modifier = Modifier.weight(1f),
+                excelLabel = "Excel",
 
-                ) {
+                pdfBusyLabel = "Exportando…",
 
-                    Text(if (exportBusy == "pdf") "Exportando…" else "PDF")
+                excelBusyLabel = "Exportando…",
 
-                }
-
-                OutlinedButton(
-
-                    onClick = { onExport("excel") },
-
-                    enabled = exportBusy == null,
-
-                    modifier = Modifier.weight(1f),
-
-                ) {
-
-                    Text(if (exportBusy == "excel") "Exportando…" else "Excel")
-
-                }
-
-            }
+            )
 
         }
 

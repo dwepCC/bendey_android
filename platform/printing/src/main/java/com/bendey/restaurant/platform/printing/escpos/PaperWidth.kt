@@ -21,6 +21,14 @@ enum class ComandaTextSize {
     MEDIANO,
 }
 
+/** Tamaño del logo en comprobantes (ticket ESC/POS y PDF). El factor `scale` se aplica
+ *  igual en 58 y 80 mm. LARGE = ancho casi completo (comportamiento anterior). */
+enum class LogoSize(val scale: Float) {
+    SMALL(0.5f),
+    MEDIUM(0.75f),
+    LARGE(1f),
+}
+
 data class ComandaEscposLayout(
     val titleMul: Pair<Int, Int>,
     val headerMul: Pair<Int, Int>,

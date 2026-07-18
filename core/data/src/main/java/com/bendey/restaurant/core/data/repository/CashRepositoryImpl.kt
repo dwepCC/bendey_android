@@ -144,6 +144,7 @@ class CashRepositoryImpl @Inject constructor(
                 paymentMethod = input.paymentMethod.ifBlank { "cash" },
                 amount = input.amount,
                 notes = input.notes.takeIf { it.isNotBlank() },
+                titular = input.titular.takeIf { it.isNotBlank() },
             ),
         ).data ?: error("Movimiento no registrado")
         dto.toDomain()
@@ -487,6 +488,7 @@ private fun CashMovementDto.toDomain() = CashMovement(
     reference = reference,
     amount = amount,
     notes = notes,
+    titular = titular,
     createdAt = createdAt,
 )
 

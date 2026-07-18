@@ -13,6 +13,8 @@ import com.bendey.restaurant.core.domain.catalog.ProductImportRepository
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
 import com.bendey.restaurant.core.domain.inventory.InventoryRepository
 import com.bendey.restaurant.core.domain.inventory.InventoryAdjustmentInput
+import com.bendey.restaurant.core.domain.digitalmenu.DigitalMenuRepository
+import com.bendey.restaurant.core.domain.digitalmenu.isMenuChannelEnabled
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
@@ -20,6 +22,7 @@ import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
+import com.bendey.restaurant.core.domain.production.ProductionRepository
 import com.bendey.restaurant.core.domain.products.ProductListQuery
 import com.bendey.restaurant.core.domain.products.ProductosTab
 import com.bendey.restaurant.core.domain.products.ProductsRepository
@@ -52,6 +55,8 @@ data class ProductosUiState(
     val searchQuery: String = "",
     val categoryFilterId: Int? = null,
     val areaFilterId: Int? = null,
+    val productTypeFilter: String = "non_insumo",
+    val showInactive: Boolean = false,
     val preparationAreas: List<PreparationAreaItem> = emptyList(),
     val branchFilterId: Int? = null,
     val branches: List<BranchItem> = emptyList(),
@@ -61,6 +66,7 @@ data class ProductosUiState(
     val productFormOpen: Boolean = false,
     val editingProductId: Int? = null,
     val productForm: ProductFormInput = ProductFormInput(),
+    val recipeDraft: RecipeDraft? = null,
     val showMoreOptions: Boolean = false,
     val presentationsOpen: Boolean = false,
     val deleteProductId: Int? = null,
@@ -84,6 +90,8 @@ data class ProductosUiState(
 @HiltViewModel
 class ProductosViewModel @Inject constructor(
     private val productsRepository: ProductsRepository,
+    private val productionRepository: ProductionRepository,
+    private val digitalMenuRepository: DigitalMenuRepository,
     private val inventoryRepository: InventoryRepository,
     private val modifiersRepository: ModifiersRepository,
     private val preparationAreasRepository: PreparationAreasRepository,
@@ -145,6 +153,18 @@ class ProductosViewModel @Inject constructor(
         refreshProducts()
     }
 
+    fun setProductTypeFilter(filter: String) {
+        if (_uiState.value.productTypeFilter == filter) return
+        _uiState.update { it.copy(productTypeFilter = filter, page = 1) }
+        refreshProducts()
+    }
+
+    fun setShowInactive(value: Boolean) {
+        if (_uiState.value.showInactive == value) return
+        _uiState.update { it.copy(showInactive = value, page = 1) }
+        refreshProducts()
+    }
+
     fun refreshProducts() {
         viewModelScope.launch {
             val state = _uiState.value
@@ -158,6 +178,8 @@ class ProductosViewModel @Inject constructor(
                         branchId = state.branchFilterId,
                         page = 1,
                         perPage = state.perPage,
+                        productTypeFilter = state.productTypeFilter,
+                        inactiveOnly = state.showInactive,
                     ),
                 )
             ) {
@@ -188,6 +210,8 @@ class ProductosViewModel @Inject constructor(
                         branchId = state.branchFilterId,
                         page = state.page + 1,
                         perPage = state.perPage,
+                        productTypeFilter = state.productTypeFilter,
+                        inactiveOnly = state.showInactive,
                     ),
                 )
             ) {
@@ -260,7 +284,8 @@ class ProductosViewModel @Inject constructor(
             it.copy(
                 productFormOpen = true,
                 editingProductId = null,
-                productForm = ProductFormInput(code = generateProductCode()),
+                productForm = ProductFormInput(code = generateProductCode(), menuChannelEnabled = true),
+                recipeDraft = null,
                 showMoreOptions = false,
                 presentationsOpen = false,
                 error = null,
@@ -271,28 +296,51 @@ class ProductosViewModel @Inject constructor(
     fun openEditProduct(productId: Int) {
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
-            when (val result = productsRepository.getProductDetail(productId)) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(
-                        actionLoading = false,
-                        productFormOpen = true,
-                        editingProductId = productId,
-                        productForm = result.data.toFormInput(),
-                        showMoreOptions = true,
-                    )
+            val detailResult = productsRepository.getProductDetail(productId)
+            val channelsResult = digitalMenuRepository.getProductPublicationChannels(productId)
+            when (detailResult) {
+                is AppResult.Success -> {
+                    val menuEnabled = when (channelsResult) {
+                        is AppResult.Success -> channelsResult.data.isMenuChannelEnabled()
+                        else -> true
+                    }
+                    _uiState.update {
+                        it.copy(
+                            actionLoading = false,
+                            productFormOpen = true,
+                            editingProductId = productId,
+                            productForm = detailResult.data.toFormInput().copy(menuChannelEnabled = menuEnabled),
+                            recipeDraft = null,
+                            showMoreOptions = true,
+                        )
+                    }
                 }
-                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = detailResult.message) }
                 AppResult.Loading -> Unit
             }
         }
     }
 
     fun dismissProductForm() {
-        _uiState.update { it.copy(productFormOpen = false, editingProductId = null, showMoreOptions = false, presentationsOpen = false) }
+        _uiState.update {
+            it.copy(
+                productFormOpen = false,
+                editingProductId = null,
+                recipeDraft = null,
+                showMoreOptions = false,
+                presentationsOpen = false,
+            )
+        }
     }
 
     fun updateProductForm(transform: (ProductFormInput) -> ProductFormInput) {
         _uiState.update { it.copy(productForm = transform(it.productForm)) }
+    }
+
+    /** Borrador local de receta — NO persiste en el backend. Se guarda recién cuando
+     * saveProduct() confirma el resto del formulario, junto con internal/production. */
+    fun setRecipeDraft(draft: RecipeDraft) {
+        _uiState.update { it.copy(recipeDraft = draft) }
     }
 
     fun toggleMoreOptions() {
@@ -323,6 +371,17 @@ class ProductosViewModel @Inject constructor(
 
     fun setPendingImage(bytes: ByteArray, mimeType: String) {
         _uiState.update { it.copy(productForm = it.productForm.copy(pendingImageBytes = bytes, pendingImageMimeType = mimeType)) }
+    }
+
+    /** Sube y reemplaza la imagen de un producto directamente desde la lista, sin abrir el formulario. */
+    suspend fun uploadQuickProductImage(productId: Int, bytes: ByteArray, mimeType: String) {
+        when (val result = productImageRepository.uploadProductImage(productId, bytes, mimeType)) {
+            is AppResult.Success -> _uiState.update { state ->
+                state.copy(products = state.products.map { if (it.id == productId) it.copy(imageUrl = result.data) else it })
+            }
+            is AppResult.Error -> _uiState.update { it.copy(snackMessage = "No se pudo subir la imagen: ${result.message}") }
+            AppResult.Loading -> Unit
+        }
     }
 
     fun openImportDialog() {
@@ -392,11 +451,30 @@ class ProductosViewModel @Inject constructor(
                     val productId = result.data.id
                     val pendingBytes = form.pendingImageBytes
                     val pendingMime = form.pendingImageMimeType
+                    when (val channelResult = digitalMenuRepository.setMenuChannelEnabled(productId, form.menuChannelEnabled)) {
+                        is AppResult.Error -> {
+                            _uiState.update { it.copy(snackMessage = "Producto guardado; no se pudo actualizar el canal menú digital") }
+                        }
+                        else -> Unit
+                    }
                     if (pendingBytes != null && pendingMime != null) {
-                        when (productImageRepository.uploadProductImage(productId, pendingBytes, pendingMime)) {
+                        when (val imageResult = productImageRepository.uploadProductImage(productId, pendingBytes, pendingMime)) {
                             is AppResult.Success -> Unit
                             is AppResult.Error -> {
-                                _uiState.update { it.copy(snackMessage = "Producto guardado; no se pudo subir la imagen") }
+                                _uiState.update {
+                                    it.copy(snackMessage = "Producto guardado; no se pudo subir la imagen: ${imageResult.message}")
+                                }
+                            }
+                            AppResult.Loading -> Unit
+                        }
+                    }
+                    val draft = state.recipeDraft
+                    var recipeSnack: String? = null
+                    if (draft != null) {
+                        when (productionRepository.upsertRecipe(productId, draft.notes, draft.items)) {
+                            is AppResult.Success -> Unit
+                            is AppResult.Error -> {
+                                recipeSnack = "Producto guardado; no se pudo guardar la receta"
                             }
                             AppResult.Loading -> Unit
                         }
@@ -406,7 +484,9 @@ class ProductosViewModel @Inject constructor(
                             actionLoading = false,
                             productFormOpen = false,
                             editingProductId = null,
-                            snackMessage = if (state.editingProductId == null) "Producto creado" else "Producto actualizado",
+                            recipeDraft = null,
+                            snackMessage = recipeSnack
+                                ?: if (state.editingProductId == null) "Producto creado" else "Producto actualizado",
                         )
                     }
                     refreshProducts()
@@ -427,6 +507,23 @@ class ProductosViewModel @Inject constructor(
             when (val result = productsRepository.deleteProduct(productId)) {
                 is AppResult.Success -> {
                     _uiState.update { it.copy(actionLoading = false, snackMessage = "Producto eliminado") }
+                    refreshProducts()
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /** Activa/desactiva un producto sin eliminarlo. */
+    fun toggleProductActive(productId: Int) {
+        val product = _uiState.value.products.firstOrNull { it.id == productId }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            when (val result = productsRepository.toggleProduct(productId)) {
+                is AppResult.Success -> {
+                    val message = if (product?.active == false) "Producto activado" else "Producto desactivado"
+                    _uiState.update { it.copy(actionLoading = false, snackMessage = message) }
                     refreshProducts()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }

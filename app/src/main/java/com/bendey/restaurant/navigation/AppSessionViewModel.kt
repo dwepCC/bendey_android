@@ -3,6 +3,7 @@ package com.bendey.restaurant.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.cache.OperationalDataPreloader
+import com.bendey.restaurant.core.realtime.StaffOrderAlertsCoordinator
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.ui.permission.PermissionContext
@@ -20,6 +21,7 @@ class AppSessionViewModel @Inject constructor(
     private val sessionStore: UserSessionStore,
     private val authRepository: AuthRepository,
     operationalDataPreloader: OperationalDataPreloader,
+    private val staffOrderAlertsCoordinator: StaffOrderAlertsCoordinator,
 ) : ViewModel() {
 
     /** null = hidratando DataStore (evita flash de pantalla RUC). */
@@ -50,6 +52,7 @@ class AppSessionViewModel @Inject constructor(
         viewModelScope.launch {
             operationalDataPreloader.preloadActiveBranch()
         }
+        staffOrderAlertsCoordinator.start(viewModelScope)
         viewModelScope.launch {
             sessionStore.userSessionFlow
                 .distinctUntilChanged { old, new -> old?.token == new?.token }

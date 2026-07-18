@@ -116,6 +116,7 @@ data class SalePrintData(
     val legendText: String?,
     val qrData: String? = null,
     val sunatHash: String? = null,
+    val showsBendeyBranding: Boolean = true,
 )
 
 data class SalePrintLine(

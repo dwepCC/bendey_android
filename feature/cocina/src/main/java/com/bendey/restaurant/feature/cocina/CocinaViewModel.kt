@@ -8,6 +8,9 @@ import com.bendey.restaurant.core.domain.restaurant.collectPreparationAreas
 import com.bendey.restaurant.core.domain.restaurant.collectTableNames
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
+import com.bendey.restaurant.core.realtime.UiPresence
+import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
+import com.bendey.restaurant.core.realtime.store.KitchenStore
 import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
 import com.bendey.restaurant.core.domain.permission.RestaurantFeature
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
@@ -90,6 +93,8 @@ data class CocinaUiState(
 @HiltViewModel
 class CocinaViewModel @Inject constructor(
     private val kitchenRepository: KitchenRepository,
+    private val kitchenStore: KitchenStore,
+    private val restaurantHydrators: RestaurantHydrators,
     private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
@@ -109,6 +114,12 @@ class CocinaViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            kitchenStore.state.collect { snapshot ->
+                val items = snapshot.ids.mapNotNull { snapshot.entities[it] }
+                _uiState.update { it.copy(items = items) }
+            }
+        }
+        viewModelScope.launch {
             sessionStore.userSessionFlow
                 .map { session ->
                     val perms = session?.restaurantPermissions.orEmpty()
@@ -117,10 +128,12 @@ class CocinaViewModel @Inject constructor(
                 }
                 .distinctUntilChanged()
                 .collect { canAccess ->
+                    UiPresence.kitchen = canAccess
                     if (canAccess) {
                         refresh()
                     } else {
                         _uiState.update { it.copy(loading = false, items = emptyList(), error = null) }
+                        kitchenStore.reset()
                     }
                 }
         }
@@ -129,14 +142,9 @@ class CocinaViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
-            when (val result = kitchenRepository.loadKitchen()) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, items = result.data)
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
-                }
-                AppResult.Loading -> Unit
+            val ok = restaurantHydrators.hydrateKitchen()
+            _uiState.update {
+                it.copy(loading = false, error = if (!ok) "Error al cargar comandas" else null)
             }
         }
     }
