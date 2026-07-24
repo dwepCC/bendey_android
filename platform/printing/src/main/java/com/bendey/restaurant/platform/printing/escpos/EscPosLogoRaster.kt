@@ -176,20 +176,25 @@ object EscPosLogoRaster {
         return trimmed to h
     }
 
+    /**
+     * Alto máximo de cada banda raster. Varias ticketeras clon abortan un `GS v 0` con imágenes
+     * altas (buffer raster limitado por comando / timeout de transporte) y vuelcan el resto de
+     * los bytes como TEXTO (los caracteres basura tras el logo). Enviar la imagen en tiras — cada
+     * una con su propio `GS v 0` — evita ese límite sin cambiar el resultado visual: las bandas se
+     * imprimen contiguas (el comando avanza el papel exactamente su alto, sin costuras ni LF entre
+     * bandas). Un logo más bajo que esto genera una sola banda = comportamiento idéntico al previo.
+     */
+    private const val RASTER_BAND_ROWS = 64
+
     private fun grayscaleToEscPosRaster(gray: IntArray, width: Int, height: Int): ByteArray {
         val bitmapWidthBytes = width / 8
-        val headerLen = 8
-        val dataLen = bitmapWidthBytes * height
-        val out = ByteArray(headerLen + dataLen)
-        out[0] = 0x1D
-        out[1] = 0x76
-        out[2] = 0x30
-        out[3] = 0
-        out[4] = (bitmapWidthBytes and 0xFF).toByte()
-        out[5] = ((bitmapWidthBytes shr 8) and 0xFF).toByte()
-        out[6] = (height and 0xFF).toByte()
-        out[7] = ((height shr 8) and 0xFF).toByte()
-        var offset = headerLen
+        val xL = (bitmapWidthBytes and 0xFF).toByte()
+        val xH = ((bitmapWidthBytes shr 8) and 0xFF).toByte()
+
+        // Empaqueta toda la imagen (row-major, 8 px por byte). Con ancho múltiplo de 8, cada fila
+        // ocupa exactamente `bitmapWidthBytes`, así que las bandas son cortes contiguos del array.
+        val data = ByteArray(bitmapWidthBytes * height)
+        var offset = 0
         var i = 0
         while (i < gray.size) {
             var byte = 0
@@ -198,8 +203,29 @@ object EscPosLogoRaster {
                     byte = byte or (1 shl (7 - j))
                 }
             }
-            out[offset++] = byte.toByte()
+            data[offset++] = byte.toByte()
             i += 8
+        }
+
+        val bandCount = (height + RASTER_BAND_ROWS - 1) / RASTER_BAND_ROWS
+        val out = ByteArray(data.size + bandCount * 8) // 8 bytes de encabezado por banda
+        var o = 0
+        var top = 0
+        while (top < height) {
+            val bandH = min(RASTER_BAND_ROWS, height - top)
+            out[o++] = 0x1D
+            out[o++] = 0x76
+            out[o++] = 0x30
+            out[o++] = 0
+            out[o++] = xL
+            out[o++] = xH
+            out[o++] = (bandH and 0xFF).toByte()
+            out[o++] = ((bandH shr 8) and 0xFF).toByte()
+            val start = top * bitmapWidthBytes
+            val len = bandH * bitmapWidthBytes
+            System.arraycopy(data, start, out, o, len)
+            o += len
+            top += RASTER_BAND_ROWS
         }
         return out
     }

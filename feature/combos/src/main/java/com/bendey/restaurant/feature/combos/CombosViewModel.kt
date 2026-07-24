@@ -47,6 +47,8 @@ data class CombosUiState(
     val productLabels: Map<Int, String> = emptyMap(),
     val activePicker: ComboProductPickerTarget? = null,
     val deleteId: Int? = null,
+    /** Incluye los combos desactivados en el listado, para poder reactivarlos. */
+    val showInactive: Boolean = false,
     val error: String? = null,
 )
 
@@ -80,13 +82,21 @@ class CombosViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            val includeInactive = _uiState.value.showInactive
             _uiState.update { it.copy(loading = true, error = null) }
-            when (val result = repository.listCombos()) {
+            when (val result = repository.listCombos(includeInactive = includeInactive)) {
                 is AppResult.Success -> _uiState.update { it.copy(loading = false, combos = result.data) }
                 is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
                 AppResult.Loading -> Unit
             }
         }
+    }
+
+    /** Alterna entre ver solo activos o incluir los desactivados (para reactivarlos). */
+    fun setShowInactive(show: Boolean) {
+        if (_uiState.value.showInactive == show) return
+        _uiState.update { it.copy(showInactive = show) }
+        refresh()
     }
 
     fun openCreate() {

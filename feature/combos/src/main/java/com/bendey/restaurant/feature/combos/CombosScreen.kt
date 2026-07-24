@@ -39,6 +39,7 @@ import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyQuickImageThumb
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import java.text.NumberFormat
 import java.util.Locale
@@ -87,6 +88,13 @@ fun CombosScreen(
                 onOpenModificadores = onOpenModificadores,
                 onOpenAreasPreparacion = onOpenAreasPreparacion,
                 onOpenCombos = {},
+            )
+            // Permite ver los combos desactivados para poder reactivarlos (antes quedaban ocultos).
+            BendeySwitchRow(
+                label = "Mostrar inactivos",
+                checked = state.showInactive,
+                onCheckedChange = viewModel::setShowInactive,
+                modifier = Modifier.padding(horizontal = BendeySpacing.md),
             )
             state.error?.takeIf { !state.formOpen }?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))

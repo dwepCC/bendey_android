@@ -149,8 +149,9 @@ class CombosRepositoryImpl @Inject constructor(
     private val api: CombosApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listCombos(): AppResult<List<ComboItem>> = catalogApiCall {
-        api.listCombos().data.map { it.toListItem() }
+    override suspend fun listCombos(includeInactive: Boolean): AppResult<List<ComboItem>> = catalogApiCall {
+        // OJO: el backend evalúa `active_only != "0"`, así que "false" NO incluye inactivos: debe ser "0".
+        api.listCombos(activeOnly = if (includeInactive) "0" else "true").data.map { it.toListItem() }
     }
 
     override suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>> =

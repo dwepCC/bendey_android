@@ -22,7 +22,8 @@ data class ComboResolveResult(
 )
 
 interface CombosRepository {
-    suspend fun listCombos(): AppResult<List<ComboItem>>
+    /** includeInactive = true trae también los combos desactivados (para poder reactivarlos). */
+    suspend fun listCombos(includeInactive: Boolean = false): AppResult<List<ComboItem>>
     suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>>
     suspend fun getCombo(id: Int): AppResult<ComboFormInput>
     suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<ComboResolveResult>

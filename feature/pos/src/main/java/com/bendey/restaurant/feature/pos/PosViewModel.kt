@@ -315,6 +315,8 @@ class PosViewModel @Inject constructor(
                 }
                 AppResult.Loading -> Unit
             }
+            // El catálogo incluye combos: sin esto, "actualizar" no traía combos nuevos.
+            loadCombos()
         }
     }
 
@@ -426,7 +428,9 @@ class PosViewModel @Inject constructor(
             if (tab == PosCatalogTab.PRODUCTS) {
                 loadProducts(branchId = branchId)
             }
-            if (tab == PosCatalogTab.COMBOS && _uiState.value.combos.isEmpty()) {
+            // Recargar siempre al entrar a Combos: antes solo cargaba si la lista estaba vacía,
+            // por lo que un combo nuevo (o reactivado) no aparecía hasta reiniciar la app.
+            if (tab == PosCatalogTab.COMBOS) {
                 loadCombos()
             }
         }
