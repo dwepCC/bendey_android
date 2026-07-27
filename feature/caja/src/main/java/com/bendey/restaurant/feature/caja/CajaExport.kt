@@ -75,6 +75,20 @@ fun shareSessionReportPdf(
     }
 }
 
+fun shareArqueoPdf(
+    context: Context,
+    fileShareService: BendeyFileShareService,
+    lines: List<String>,
+): ExportShareResult {
+    return try {
+        val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/arqueo-caja.pdf")
+        ReportPdfWriter.writePortraitA4(file, "Arqueo de caja", lines)
+        fileShareService.shareFile(context, file, "application/pdf", "Exportar arqueo PDF")
+    } catch (e: Exception) {
+        fileShareService.failureFrom(e)
+    }
+}
+
 fun formatSessionReportLines(
     report: com.bendey.restaurant.core.domain.cash.CashSessionReport,
     products: List<com.bendey.restaurant.core.domain.cash.CashSessionProductSold>,

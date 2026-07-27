@@ -35,6 +35,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import com.bendey.restaurant.core.data.printer.DocumentPrintService
+import java.text.NumberFormat
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -153,6 +156,8 @@ data class CajaUiState(
     val movementForm: MovementForm = MovementForm(),
     val closeForm: CloseCashForm = CloseCashForm(),
     val arqueoDraft: Map<String, Int> = emptyArqueo(),
+    val canPrintArqueo: Boolean = false,
+    val arqueoDocBusy: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
     val allowsReportExport: Boolean = false,
@@ -166,8 +171,11 @@ class CajaViewModel @Inject constructor(
     private val mesasRepository: MesasRepository,
     private val sessionStore: UserSessionStore,
     private val fileShareService: BendeyFileShareService,
+    private val documentPrintService: DocumentPrintService,
     private val cashStore: CashStore,
 ) : ViewModel() {
+
+    private val arqueoCurrency: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
     private val _uiState = MutableStateFlow(CajaUiState())
     val uiState: StateFlow<CajaUiState> = _uiState.asStateFlow()
@@ -396,10 +404,69 @@ class CajaViewModel @Inject constructor(
                 error = null,
             )
         }
+        // Habilita el botón "Imprimir" solo si hay impresora de documentos configurada.
+        viewModelScope.launch {
+            val canPrint = documentPrintService.hasConfiguredPrinter()
+            _uiState.update { it.copy(canPrintArqueo = canPrint) }
+        }
     }
 
     fun dismissArqueoDialog() {
         _uiState.update { it.copy(showArqueoDialog = false) }
+    }
+
+    /** Líneas del arqueo actual (desglose + total contado vs esperado) para PDF/ticket. */
+    private fun currentArqueoLines(): List<String>? {
+        val session = _uiState.value.session ?: return null
+        val text = formatArqueoReportText(
+            branchName = session.branchName,
+            openedAt = session.openedAt,
+            openingBalance = session.openingBalance,
+            expectedBalance = session.expectedBalance,
+            arqueo = _uiState.value.arqueoDraft,
+            currency = arqueoCurrency,
+        )
+        return text.trimEnd().split("\n")
+    }
+
+    fun exportArqueoPdf(context: Context) {
+        if (_uiState.value.arqueoDocBusy) return
+        val lines = currentArqueoLines() ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(arqueoDocBusy = true) }
+            val shareResult = withContext(Dispatchers.Main) {
+                shareArqueoPdf(context = context, fileShareService = fileShareService, lines = lines)
+            }
+            _uiState.update {
+                it.copy(
+                    arqueoDocBusy = false,
+                    snackMessage = when (shareResult) {
+                        ExportShareResult.Success -> "Arqueo PDF exportado"
+                        is ExportShareResult.Failure -> shareResult.userMessage
+                    },
+                )
+            }
+        }
+    }
+
+    fun printArqueo() {
+        if (_uiState.value.arqueoDocBusy) return
+        val lines = currentArqueoLines() ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(arqueoDocBusy = true) }
+            // title = null: las líneas ya empiezan con "ARQUEO DE CAJA" (evita duplicarlo).
+            val ok = documentPrintService.printReportTicket(null, lines, force = true)
+            _uiState.update {
+                it.copy(
+                    arqueoDocBusy = false,
+                    snackMessage = when (ok) {
+                        true -> "Arqueo enviado a la impresora"
+                        false -> "No se pudo imprimir el arqueo"
+                        null -> "Configura una impresora de documentos directa"
+                    },
+                )
+            }
+        }
     }
 
     fun setArqueoQty(denomination: String, qty: Int) {

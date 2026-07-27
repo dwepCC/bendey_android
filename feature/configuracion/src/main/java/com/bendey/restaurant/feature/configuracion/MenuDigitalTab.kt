@@ -8,17 +8,29 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -111,6 +123,18 @@ fun MenuDigitalTab(
             }
             val mime = context.contentResolver.getType(it) ?: "image/jpeg"
             viewModel.setBackgroundImageBase64(toDataUrl(bytes, mime))
+        }
+    }
+
+    val heroImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            val bytes = readBytes(context, it) ?: return@let
+            if (bytes.size > MAX_BACKGROUND_IMAGE_BYTES) {
+                Toast.makeText(context, "La imagen supera el tamaño máximo (1.5 MB)", Toast.LENGTH_SHORT).show()
+                return@let
+            }
+            val mime = context.contentResolver.getType(it) ?: "image/jpeg"
+            viewModel.setHeroImage(toDataUrl(bytes, mime))
         }
     }
 
@@ -244,6 +268,52 @@ fun MenuDigitalTab(
                         )
                     }
 
+                    OptionChipsRow(
+                        label = "Tipografía",
+                        options = FONT_OPTIONS,
+                        selected = state.fontFamily,
+                        enabled = state.canManage,
+                        onSelect = viewModel::setFontFamily,
+                    )
+                    OptionChipsRow(
+                        label = "Diseño de tarjetas",
+                        options = CARD_VARIANT_OPTIONS,
+                        selected = state.cardVariant,
+                        enabled = state.canManage,
+                        onSelect = viewModel::setCardVariant,
+                    )
+                    OptionChipsRow(
+                        label = "Esquinas",
+                        options = CORNER_OPTIONS,
+                        selected = state.cornerStyle,
+                        enabled = state.canManage,
+                        onSelect = viewModel::setCornerStyle,
+                    )
+                    BendeySwitchRow(
+                        label = "Mostrar \"Agotado\"",
+                        checked = state.showStockBadges,
+                        enabled = state.canManage,
+                        onCheckedChange = viewModel::setShowStockBadges,
+                    )
+                    Column {
+                        Text("Portada del inicio (opcional)", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                            BendeyPrimaryButton(
+                                text = if (state.heroImageBase64.isBlank()) "Elegir portada" else "Cambiar portada",
+                                onClick = { heroImageLauncher.launch("image/*") },
+                                enabled = state.canManage,
+                            )
+                            if (state.heroImageBase64.isNotBlank()) {
+                                Text(
+                                    "Quitar",
+                                    color = BendeyColors.Error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.clickable(enabled = state.canManage) { viewModel.clearHeroImage() },
+                                )
+                            }
+                        }
+                    }
+
                     ThemePreview(
                         colorHex = state.previewColorHex,
                         backgroundDataUrl = if (state.isCustomTheme) state.backgroundImageBase64.ifBlank { null } else null,
@@ -255,6 +325,11 @@ fun MenuDigitalTab(
                         onClick = viewModel::save,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = state.canManage && !state.saving,
+                    )
+                    BendeyTextButton(
+                        text = "Previsualizar",
+                        onClick = viewModel::openPreview,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -275,6 +350,50 @@ fun MenuDigitalTab(
         state.error?.let { error ->
             item {
                 Text(error, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+
+    if (state.previewOpen) {
+        Dialog(onDismissRequest = viewModel::closePreview) {
+            MenuMockPreview(state = state, onClose = viewModel::closePreview)
+        }
+    }
+}
+
+/** Opciones de diseño (valor guardado → etiqueta visible). "" = por defecto del tema Bendey. */
+private val FONT_OPTIONS = listOf(
+    "" to "Por defecto", "sans" to "Moderna", "serif" to "Clásica", "rounded" to "Redondeada",
+    "slab" to "Robusta", "display" to "Titular", "mono" to "Mono",
+)
+private val CARD_VARIANT_OPTIONS = listOf(
+    "" to "Clásico", "grid" to "Cuadrícula", "list" to "Lista", "featured" to "Destacado",
+)
+private val CORNER_OPTIONS = listOf(
+    "" to "Redondeadas", "soft" to "Suaves", "sharp" to "Rectas",
+)
+
+@Composable
+private fun OptionChipsRow(
+    label: String,
+    options: List<Pair<String, String>>,
+    selected: String,
+    enabled: Boolean,
+    onSelect: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+        ) {
+            options.forEach { (value, text) ->
+                SelectableChip(
+                    label = text,
+                    selected = selected == value,
+                    enabled = enabled,
+                    onClick = { onSelect(value) },
+                )
             }
         }
     }
@@ -455,6 +574,164 @@ private fun ThemePreview(colorHex: String, backgroundDataUrl: String?, isGlass: 
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Previsualización con datos ficticios de cómo se verá la carta con el diseño actual. */
+@Composable
+private fun MenuMockPreview(state: MenuDigitalUiState, onClose: () -> Unit) {
+    val accent = parseHexColorOrNull(state.previewColorHex) ?: Color(0xFFC9393B)
+    val hasBg = state.isCustomTheme && state.backgroundImageBase64.isNotBlank()
+    val solid = state.styleVariant == MenuStyleVariant.SOLID
+    val cardRadius = when (state.cornerStyle) {
+        "sharp" -> 6.dp
+        "soft" -> 10.dp
+        else -> 18.dp
+    }
+    val fam = when (state.fontFamily) {
+        "serif" -> FontFamily.Serif
+        "mono" -> FontFamily.Monospace
+        else -> FontFamily.Default
+    }
+    val vertical = state.cardVariant == "grid" || state.cardVariant == "featured"
+    val heroBmp = state.heroImageBase64.takeIf { it.isNotBlank() }?.let { dataUrlToBitmap(it) }
+    val bgBmp = if (hasBg) dataUrlToBitmap(state.backgroundImageBase64) else null
+    val cardBg = if (solid) Color.White else Color.White.copy(alpha = 0.88f)
+    val dummies = listOf(
+        Triple("Lomo saltado", 28.5, true),
+        Triple("Ceviche clásico", 32.0, true),
+        Triple("Ají de gallina", 24.0, false),
+        Triple("Limonada", 15.0, true),
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(BendeySpacing.md)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF1A1A1A)),
+    ) {
+        if (bgBmp != null) {
+            Image(
+                bitmap = bgBmp.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.35f)))
+        } else {
+            Box(Modifier.matchParentSize().background(accent.copy(alpha = 0.06f)))
+        }
+
+        ProvideTextStyle(LocalTextStyle.current.copy(fontFamily = fam)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 540.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(BendeySpacing.md),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            ) {
+                Text(
+                    "Vista previa (datos de ejemplo)",
+                    color = if (bgBmp != null) Color.White else BendeyColors.OnSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                if (heroBmp != null) {
+                    Box(Modifier.fillMaxWidth().height(110.dp).clip(RoundedCornerShape(16.dp))) {
+                        Image(
+                            bitmap = heroBmp.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                        Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.4f)))
+                        Column(Modifier.align(Alignment.BottomStart).padding(10.dp)) {
+                            Text(state.welcomeTitle.ifBlank { "Bienvenido" }, color = Color.White, fontWeight = FontWeight.Bold)
+                            if (state.welcomeDescription.isNotBlank()) {
+                                Text(state.welcomeDescription, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                } else if (state.welcomeTitle.isNotBlank() || state.welcomeDescription.isNotBlank()) {
+                    Column(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(cardRadius)).background(cardBg).padding(12.dp),
+                    ) {
+                        if (state.welcomeTitle.isNotBlank()) Text(state.welcomeTitle, fontWeight = FontWeight.Bold)
+                        if (state.welcomeDescription.isNotBlank()) {
+                            Text(state.welcomeDescription, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        }
+                    }
+                }
+
+                if (vertical) {
+                    dummies.chunked(2).forEach { rowItems ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+                            rowItems.forEach { (name, price, avail) ->
+                                MockCard(Modifier.weight(1f), true, name, price, avail, accent, cardBg, cardRadius, state.showPrices, state.showStockBadges)
+                            }
+                            if (rowItems.size == 1) Box(Modifier.weight(1f))
+                        }
+                    }
+                } else {
+                    dummies.forEach { (name, price, avail) ->
+                        MockCard(Modifier.fillMaxWidth(), false, name, price, avail, accent, cardBg, cardRadius, state.showPrices, state.showStockBadges)
+                    }
+                }
+
+                BendeyTextButton(text = "Cerrar", onClick = onClose, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockCard(
+    modifier: Modifier,
+    vertical: Boolean,
+    name: String,
+    price: Double,
+    available: Boolean,
+    accent: Color,
+    cardBg: Color,
+    radius: androidx.compose.ui.unit.Dp,
+    showPrices: Boolean,
+    showStock: Boolean,
+) {
+    val outOfStock = showStock && !available
+    val priceText = "S/ ${"%.2f".format(price)}"
+    val badge: @Composable () -> Unit = {
+        if (outOfStock) {
+            Text(
+                "Agotado",
+                color = Color.White,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(4.dp).clip(RoundedCornerShape(8.dp)).background(Color.Black.copy(alpha = 0.7f)).padding(horizontal = 6.dp, vertical = 2.dp),
+            )
+        }
+    }
+    if (vertical) {
+        Column(modifier.clip(RoundedCornerShape(radius)).background(cardBg)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                Text(name.take(1), color = accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Box(Modifier.align(Alignment.TopStart)) { badge() }
+            }
+            Column(Modifier.padding(8.dp)) {
+                Text(name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                if (showPrices) Text(priceText, color = accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    } else {
+        Row(modifier.clip(RoundedCornerShape(radius)).background(cardBg).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.size(56.dp).clip(RoundedCornerShape(radius)).background(accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                Text(name.take(1), color = accent, fontWeight = FontWeight.Bold)
+                Box(Modifier.align(Alignment.TopStart)) { badge() }
+            }
+            Column(Modifier.weight(1f)) {
+                Text(name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                if (showPrices) Text(priceText, color = accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

@@ -13,6 +13,7 @@ import com.bendey.restaurant.core.domain.model.TenantBinding
 import com.bendey.restaurant.core.domain.model.UserSession
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
+import com.bendey.restaurant.core.network.session.SessionInvalidationGate
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -83,6 +84,7 @@ private data class StoredCashSession(
 class SessionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val tokenManager: TokenManager,
+    private val invalidationGate: SessionInvalidationGate,
     private val json: Json,
 ) : NetworkSessionProvider, UserSessionStore {
 
@@ -135,6 +137,9 @@ class SessionManager @Inject constructor(
     }
 
     suspend fun applyUserSession(session: UserSession) {
+        // Sesión nueva: reabre la compuerta para volver a permitir peticiones autenticadas
+        // (se había cerrado al expirar el token anterior).
+        invalidationGate.reset()
         tokenManager.setToken(session.token)
         context.sessionDataStore.edit {
             it[keyUserSession] = json.encodeToString(session.toStored())

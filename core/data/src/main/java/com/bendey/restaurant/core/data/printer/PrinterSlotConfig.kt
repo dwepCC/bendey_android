@@ -62,6 +62,8 @@ data class PrinterSettings(
     val documentLogoSize: LogoSize = LogoSize.MEDIUM,
     val deliveryMode: PrintDeliveryMode = PrintDeliveryMode.LOCAL,
     val printServer: PrintServerSelection? = null,
+    /** Abrir la gaveta de caja tras imprimir un COMPROBANTE (no comandas ni precuenta). */
+    val openCashDrawerOnDocument: Boolean = false,
 ) {
     fun targetFor(slot: PrinterSlot): PrinterTarget? = when (slot) {
         PrinterSlot.COMANDAS -> comandas.toTarget()

@@ -22,6 +22,12 @@ data class MenuConfig(
     val primaryColorHex: String = BENDEY_OFFICIAL_COLOR_HEX,
     val backgroundImageBase64: String = "",
     val styleVariant: MenuStyleVariant = MenuStyleVariant.GLASS,
+    // Diseño ampliado (vacío = valores por defecto del tema Bendey).
+    val fontFamily: String = "",      // sans | serif | rounded | slab | display | mono
+    val cardVariant: String = "",     // grid | list | featured
+    val cornerStyle: String = "",     // rounded | soft | sharp
+    val showStockBadges: Boolean = false,
+    val heroImageBase64: String = "",
 )
 
 /** Tema oficial Bendey Resto — usado por defecto en toda carta digital sin personalizar. */

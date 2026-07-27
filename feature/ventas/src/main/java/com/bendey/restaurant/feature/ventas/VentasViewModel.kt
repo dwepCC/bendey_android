@@ -3,6 +3,7 @@ package com.bendey.restaurant.feature.ventas
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.export.BendeyDownloadSaver
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
@@ -143,6 +144,7 @@ class VentasViewModel @Inject constructor(
     private val documentPrintService: DocumentPrintService,
     private val receiptPdfService: ReceiptPdfService,
     private val fileShareService: BendeyFileShareService,
+    private val downloadSaver: BendeyDownloadSaver,
     private val billingEventsClient: BillingEventsClient,
     private val sessionStore: UserSessionStore,
     private val contactsRepository: ContactsRepository,
@@ -823,8 +825,40 @@ class VentasViewModel @Inject constructor(
         }
     }
 
-    fun openOfficialSunatPdf(context: Context) {
-        downloadBillingDocument(context, BillingDocumentKind.PDF, openPdf = true)
+    /**
+     * Descarga el PDF del comprobante generándolo LOCALMENTE (ticket o A4) y guardándolo en la
+     * carpeta Descargas. Nunca se solicita el PDF al facturador: funciona aunque el comprobante
+     * no se haya enviado a SUNAT o esté pendiente. El PDF local incluye QR y leyenda de
+     * representación impresa cuando es electrónico.
+     */
+    fun downloadReceiptPdf(format: ReceiptPdfFormat) {
+        val data = _uiState.value.receiptPrintData ?: _uiState.value.detail?.printData ?: run {
+            _uiState.update { it.copy(snackMessage = "Sin datos para generar PDF") }
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(billingBusy = "pdf") }
+            try {
+                val file = receiptPdfService.generate(data, format)
+                val suffix = if (format == ReceiptPdfFormat.TICKET) "ticket" else "a4"
+                val safeNumber = data.number.replace(Regex("\\s+"), "")
+                val displayName = "comprobante-$safeNumber-$suffix.pdf"
+                val result = downloadSaver.saveToDownloads(file, displayName, "application/pdf")
+                _uiState.update {
+                    it.copy(
+                        billingBusy = null,
+                        snackMessage = when (result) {
+                            ExportShareResult.Success -> "PDF guardado en Descargas"
+                            is ExportShareResult.Failure -> result.userMessage
+                        },
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(billingBusy = null, snackMessage = fileShareService.failureFrom(e).userMessage)
+                }
+            }
+        }
     }
 
     fun downloadXmlSent(context: Context) {

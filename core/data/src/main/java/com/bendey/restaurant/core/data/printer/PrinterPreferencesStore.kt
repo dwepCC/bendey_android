@@ -47,6 +47,7 @@ class PrinterPreferencesStore @Inject constructor(
                 ComandaTextSize.DEFAULT -> "default"
             }
             prefs[Keys.COMANDA_GROUP_COMBOS] = settings.comandaGroupCombos
+            prefs[Keys.OPEN_CASH_DRAWER_DOC] = settings.openCashDrawerOnDocument
             prefs[Keys.DOCUMENT_LOGO_SIZE] = when (settings.documentLogoSize) {
                 LogoSize.SMALL -> "small"
                 LogoSize.MEDIUM -> "medium"
@@ -126,6 +127,7 @@ class PrinterPreferencesStore @Inject constructor(
                 else -> ComandaTextSize.DEFAULT
             },
             comandaGroupCombos = this[Keys.COMANDA_GROUP_COMBOS] ?: false,
+            openCashDrawerOnDocument = this[Keys.OPEN_CASH_DRAWER_DOC] ?: false,
             documentLogoSize = when (this[Keys.DOCUMENT_LOGO_SIZE]) {
                 "small" -> LogoSize.SMALL
                 "large" -> LogoSize.LARGE
@@ -198,6 +200,7 @@ class PrinterPreferencesStore @Inject constructor(
         val COMANDAS_BY_AREA = stringPreferencesKey("comandas_by_area_json")
         val COMANDA_TEXT_SIZE = stringPreferencesKey("comanda_text_size")
         val COMANDA_GROUP_COMBOS = booleanPreferencesKey("comanda_group_combos")
+        val OPEN_CASH_DRAWER_DOC = booleanPreferencesKey("open_cash_drawer_on_document")
         val DOCUMENT_LOGO_SIZE = stringPreferencesKey("document_logo_size")
         val DELIVERY_MODE = stringPreferencesKey("print_delivery_mode")
         val PRINT_SERVER_JSON = stringPreferencesKey("print_server_json")

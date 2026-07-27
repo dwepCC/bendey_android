@@ -9,7 +9,10 @@ import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
+import com.bendey.restaurant.platform.printing.escpos.EscPosAlign
+import com.bendey.restaurant.platform.printing.escpos.EscPosBuilder
 import com.bendey.restaurant.platform.printing.escpos.EscPosLogoRaster
+import com.bendey.restaurant.platform.printing.escpos.EscPosTextUtils
 import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrintResult
@@ -42,7 +45,7 @@ class DocumentPrintService @Inject constructor(
             ?: settings.targetFor(PrinterSlot.COMANDAS)
             ?: return null
         val logoRaster = loadLogoRaster(data.companyLogoUrl, target.paperWidth, settings.documentLogoSize)
-        return when (printerRepository.printDocument(target, data.toInput(logoRaster))) {
+        return when (printerRepository.printDocument(target, data.toInput(logoRaster, settings.openCashDrawerOnDocument))) {
             is PrintResult.Success -> true
             is PrintResult.Error -> false
         }
@@ -51,6 +54,51 @@ class DocumentPrintService @Inject constructor(
     suspend fun hasConfiguredPrinter(): Boolean {
         val settings = printerPreferencesStore.settings.first()
         return settings.isDocumentPrintReady()
+    }
+
+    /**
+     * Imprime un reporte de texto libre (p. ej. el arqueo de caja) en la ticketera de documentos.
+     * null = sin impresora directa (o modo servidor, que solo acepta documentos estructurados);
+     * true = OK; false = error. El título va centrado en negrita; cada línea se ajusta al ancho.
+     */
+    suspend fun printReportTicket(title: String?, lines: List<String>, force: Boolean = false): Boolean? {
+        val settings = printerPreferencesStore.settings.first()
+        if (!force && !settings.autoPrintDocuments) return null
+        if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
+            // El servidor de impresión solo expone endpoints estructurados (documento/comanda);
+            // el reporte de texto se imprime únicamente con impresora directa (BT/USB/red).
+            return null
+        }
+        val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
+            ?: settings.targetFor(PrinterSlot.COMANDAS)
+            ?: return null
+        val cols = when (target.paperWidth) {
+            PaperWidthMm.W58 -> 32
+            PaperWidthMm.W80 -> 48
+        }
+        val builder = EscPosBuilder()
+        builder.init()
+        if (!title.isNullOrBlank()) {
+            builder.align(EscPosAlign.CENTER)
+            builder.bold(true)
+            builder.size(2, 2)
+            builder.line(title)
+            builder.size(1, 1)
+            builder.bold(false)
+            builder.align(EscPosAlign.LEFT)
+        }
+        builder.divider(cols)
+        lines.forEach { raw ->
+            if (raw.isEmpty()) builder.line()
+            else EscPosTextUtils.wrapText(raw, cols).forEach { builder.line(it) }
+        }
+        builder.line()
+        builder.line()
+        builder.cutPartial()
+        return when (printerRepository.printRaw(builder.bytes(), target)) {
+            is PrintResult.Success -> true
+            is PrintResult.Error -> false
+        }
     }
 
     private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm, logoSize: LogoSize): ByteArray? {
@@ -67,7 +115,7 @@ class DocumentPrintService @Inject constructor(
     }
 }
 
-private fun SalePrintData.toInput(logoRaster: ByteArray?) = DocumentPrintInput(
+private fun SalePrintData.toInput(logoRaster: ByteArray?, openCashDrawer: Boolean = false) = DocumentPrintInput(
     docType = docType,
     sunatCode = sunatCode,
     number = number,
@@ -98,4 +146,5 @@ private fun SalePrintData.toInput(logoRaster: ByteArray?) = DocumentPrintInput(
     qrData = qrData,
     sunatHash = sunatHash,
     logoRaster = logoRaster,
+    openCashDrawer = openCashDrawer,
 )

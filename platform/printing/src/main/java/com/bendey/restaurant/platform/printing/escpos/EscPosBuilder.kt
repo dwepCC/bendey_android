@@ -37,6 +37,9 @@ class EscPosBuilder {
 
     fun cutPartial() = command(0x1D, 0x56, 0x41, 0x10)
 
+    /** Pulso para abrir la gaveta/cajón de dinero (ESC p m t1 t2; m=0 = pin 2, el más común). */
+    fun openDrawer() = command(0x1B, 0x70, 0x00, 0x19, 0xFA)
+
     fun raw(bytes: ByteArray) {
         buffer.addAll(bytes.toList())
     }

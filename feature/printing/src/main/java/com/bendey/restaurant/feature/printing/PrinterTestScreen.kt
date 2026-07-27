@@ -384,6 +384,31 @@ fun PrinterTestScreen(
                     Modifier.padding(BendeySpacing.sm),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
+                    Text("Gaveta de caja", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "Abre el cajón de dinero al imprimir el comprobante (solo documentos, no comandas ni precuenta). Requiere una gaveta conectada a la impresora.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    FilterChip(
+                        selected = state.openCashDrawerOnDocument,
+                        onClick = { viewModel.setOpenCashDrawerOnDocument(!state.openCashDrawerOnDocument) },
+                        label = { Text("Abrir gaveta al imprimir", style = MaterialTheme.typography.labelMedium) },
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+                shape = BendeyShapeTokens.lg,
+                colors = BendeyCardDefaults.colors(),
+                elevation = BendeyCardDefaults.elevation(),
+            ) {
+                Column(
+                    Modifier.padding(BendeySpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                ) {
                     Text("Impresión de prueba", style = MaterialTheme.typography.titleSmall)
                     Row(
                         modifier = Modifier.fillMaxWidth(),

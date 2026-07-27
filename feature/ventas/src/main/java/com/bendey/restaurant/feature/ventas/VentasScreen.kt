@@ -76,7 +76,6 @@ import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canResendToSunat
 import com.bendey.restaurant.core.domain.sales.canSendToSunat
 import com.bendey.restaurant.core.domain.sales.canShowCdr
-import com.bendey.restaurant.core.domain.sales.canShowOfficialSunatPdf
 import com.bendey.restaurant.core.domain.sales.canShowXmlGenerated
 import com.bendey.restaurant.core.domain.sales.canShowXmlSent
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
@@ -221,7 +220,7 @@ fun VentasScreen(
                 onEmitElectronic = viewModel::openEmitElectronic,
                 onSendSunat = viewModel::sendToSunat,
                 onResendSunat = viewModel::resendToSunat,
-                onOpenOfficialPdf = { viewModel.openOfficialSunatPdf(context) },
+                onDownloadPdf = { viewModel.downloadReceiptPdf(ReceiptPdfFormat.A4) },
                 onViewXmlSent = viewModel::viewXmlSent,
                 onViewXmlGenerated = viewModel::viewXmlGenerated,
                 onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
@@ -655,12 +654,12 @@ private fun SaleDetailContent(
     error: String?,
     onReprint: () -> Unit,
     onOpenPdf: () -> Unit,
+    onDownloadPdf: () -> Unit,
     onVoidCreditNote: () -> Unit,
     onCancelNota: () -> Unit,
     onEmitElectronic: () -> Unit,
     onSendSunat: () -> Unit,
     onResendSunat: () -> Unit,
-    onOpenOfficialPdf: () -> Unit,
     onViewXmlSent: () -> Unit,
     onViewXmlGenerated: () -> Unit,
     onDownloadXmlSent: () -> Unit,
@@ -745,6 +744,15 @@ private fun SaleDetailContent(
                 ) {
                     Text("Ver / compartir PDF")
                 }
+                // PDF local (A4) guardado en Descargas. Funciona en cualquier estado (aunque no se
+                // haya enviado a SUNAT); nunca se solicita al facturador.
+                OutlinedButton(
+                    onClick = onDownloadPdf,
+                    enabled = detail.printData != null && billingBusy != "pdf",
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (billingBusy == "pdf") "Guardando PDF…" else "Descargar PDF")
+                }
                 when (tab) {
                     VentasTab.NOTAS -> {
                         if (detail.canIssueElectronicFromNota(sunatEnabled)) {
@@ -777,17 +785,6 @@ private fun SaleDetailContent(
                             ) {
                                 Text(
                                     if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
-                                )
-                            }
-                        }
-                        if (canShowOfficialSunatPdf(detail.billingStatus)) {
-                            OutlinedButton(
-                                onClick = onOpenOfficialPdf,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    if (billingBusy == "pdf") "Abriendo PDF…" else "Ver PDF oficial SUNAT",
                                 )
                             }
                         }
@@ -824,17 +821,6 @@ private fun SaleDetailContent(
                             ) {
                                 Text(
                                     if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
-                                )
-                            }
-                        }
-                        if (canShowOfficialSunatPdf(detail.billingStatus)) {
-                            OutlinedButton(
-                                onClick = onOpenOfficialPdf,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    if (billingBusy == "pdf") "Abriendo PDF…" else "Ver PDF oficial SUNAT",
                                 )
                             }
                         }

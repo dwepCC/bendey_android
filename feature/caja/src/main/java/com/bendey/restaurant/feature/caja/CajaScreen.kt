@@ -207,7 +207,11 @@ fun CajaScreen(
         expectedBalance = state.currentBalance,
         loading = state.actionLoading,
         currency = currency,
+        canPrint = state.canPrintArqueo,
+        docBusy = state.arqueoDocBusy,
         onQtyChange = viewModel::setArqueoQty,
+        onExportPdf = { viewModel.exportArqueoPdf(context) },
+        onPrint = viewModel::printArqueo,
         onDismiss = viewModel::dismissArqueoDialog,
         onConfirm = viewModel::confirmSaveArqueo,
     )

@@ -53,6 +53,7 @@ data class PrinterTestUiState(
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
     val comandaGroupCombos: Boolean = false,
+    val openCashDrawerOnDocument: Boolean = false,
     val documentLogoSize: LogoSize = LogoSize.MEDIUM,
     val autoPrintComandas: Boolean = true,
     val autoPrintDocuments: Boolean = true,
@@ -96,6 +97,8 @@ class PrinterTestViewModel @Inject constructor(
                     selectedPrintServer = cachedSettings.printServer,
                     manualServerHost = cachedSettings.printServer?.manualHost.orEmpty(),
                     documentLogoSize = cachedSettings.documentLogoSize,
+                    comandaGroupCombos = cachedSettings.comandaGroupCombos,
+                    openCashDrawerOnDocument = cachedSettings.openCashDrawerOnDocument,
                 )
             }
             applySlotToUi(cachedSettings, PrinterSlot.COMANDAS, editingAreaKey = null)
@@ -180,6 +183,12 @@ class PrinterTestViewModel @Inject constructor(
     fun setComandaGroupCombos(enabled: Boolean) {
         _uiState.update { it.copy(comandaGroupCombos = enabled) }
         cachedSettings = cachedSettings.copy(comandaGroupCombos = enabled)
+        viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
+    }
+
+    fun setOpenCashDrawerOnDocument(enabled: Boolean) {
+        _uiState.update { it.copy(openCashDrawerOnDocument = enabled) }
+        cachedSettings = cachedSettings.copy(openCashDrawerOnDocument = enabled)
         viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
     }
 

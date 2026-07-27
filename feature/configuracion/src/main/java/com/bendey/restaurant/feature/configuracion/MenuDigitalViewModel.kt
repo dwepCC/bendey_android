@@ -36,6 +36,12 @@ data class MenuDigitalUiState(
     val primaryColorHex: String = BENDEY_OFFICIAL_COLOR_HEX,
     val backgroundImageBase64: String = "",
     val styleVariant: MenuStyleVariant = MenuStyleVariant.GLASS,
+    val fontFamily: String = "",
+    val cardVariant: String = "",
+    val cornerStyle: String = "",
+    val showStockBadges: Boolean = false,
+    val heroImageBase64: String = "",
+    val previewOpen: Boolean = false,
     val canManage: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
@@ -92,6 +98,11 @@ class MenuDigitalViewModel @Inject constructor(
                             primaryColorHex = config.primaryColorHex,
                             backgroundImageBase64 = config.backgroundImageBase64,
                             styleVariant = config.styleVariant,
+                            fontFamily = config.fontFamily,
+                            cardVariant = config.cardVariant,
+                            cornerStyle = config.cornerStyle,
+                            showStockBadges = config.showStockBadges,
+                            heroImageBase64 = config.heroImageBase64,
                         )
                     }
                 }
@@ -154,6 +165,38 @@ class MenuDigitalViewModel @Inject constructor(
         _uiState.update { it.copy(styleVariant = variant) }
     }
 
+    fun setFontFamily(value: String) {
+        _uiState.update { it.copy(fontFamily = value) }
+    }
+
+    fun setCardVariant(value: String) {
+        _uiState.update { it.copy(cardVariant = value) }
+    }
+
+    fun setCornerStyle(value: String) {
+        _uiState.update { it.copy(cornerStyle = value) }
+    }
+
+    fun setShowStockBadges(value: Boolean) {
+        _uiState.update { it.copy(showStockBadges = value) }
+    }
+
+    fun setHeroImage(dataUrl: String) {
+        _uiState.update { it.copy(heroImageBase64 = dataUrl) }
+    }
+
+    fun clearHeroImage() {
+        _uiState.update { it.copy(heroImageBase64 = "") }
+    }
+
+    fun openPreview() {
+        _uiState.update { it.copy(previewOpen = true) }
+    }
+
+    fun closePreview() {
+        _uiState.update { it.copy(previewOpen = false) }
+    }
+
     fun save() {
         val state = _uiState.value
         if (!state.canManage) {
@@ -177,6 +220,11 @@ class MenuDigitalViewModel @Inject constructor(
                 primaryColorHex = state.primaryColorHex,
                 backgroundImageBase64 = state.backgroundImageBase64,
                 styleVariant = state.styleVariant,
+                fontFamily = state.fontFamily,
+                cardVariant = state.cardVariant,
+                cornerStyle = state.cornerStyle,
+                showStockBadges = state.showStockBadges,
+                heroImageBase64 = state.heroImageBase64,
             )
             when (val result = repository.updateSettings(state.menuEnabled, config)) {
                 is AppResult.Success -> _uiState.update {

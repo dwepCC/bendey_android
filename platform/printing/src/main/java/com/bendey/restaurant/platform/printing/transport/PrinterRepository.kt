@@ -47,6 +47,8 @@ interface PrinterRepository {
     suspend fun printPrecuenta(target: PrinterTarget, input: PrecuentaPrintInput): PrintResult
     suspend fun printDocument(target: PrinterTarget, input: DocumentPrintInput): PrintResult
     suspend fun printTestPage(target: PrinterTarget, label: String): PrintResult
+    /** Impresión de bytes ESC/POS ya construidos (p. ej. reporte/arqueo de texto libre). */
+    suspend fun printRaw(payload: ByteArray, target: PrinterTarget): PrintResult
     suspend fun getPairedDevices(): List<BluetoothDeviceInfo>
     suspend fun connectBluetooth(address: String): PrintResult
 }
@@ -71,6 +73,9 @@ class PrinterRepositoryImpl(
         )
         return transport.print(payload, target)
     }
+
+    override suspend fun printRaw(payload: ByteArray, target: PrinterTarget): PrintResult =
+        transport.print(payload, target)
 
     override suspend fun printTestPage(target: PrinterTarget, label: String): PrintResult {
         val sample = ComandaPrintInput(

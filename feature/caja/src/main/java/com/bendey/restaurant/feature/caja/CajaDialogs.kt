@@ -139,7 +139,11 @@ fun ArqueoDialog(
     expectedBalance: Double,
     loading: Boolean,
     currency: NumberFormat,
+    canPrint: Boolean,
+    docBusy: Boolean,
     onQtyChange: (String, Int) -> Unit,
+    onExportPdf: () -> Unit,
+    onPrint: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -148,7 +152,26 @@ fun ArqueoDialog(
         onDismissRequest = onDismiss,
         title = { Text("Arqueo de caja") },
         text = {
-            ArqueoDialogContent(values, expectedBalance, currency, onQtyChange)
+            Column {
+                ArqueoDialogContent(values, expectedBalance, currency, onQtyChange)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    BendeyTextButton(
+                        text = if (docBusy) "Generando…" else "Descargar PDF",
+                        onClick = onExportPdf,
+                        enabled = !docBusy,
+                    )
+                    if (canPrint) {
+                        BendeyTextButton(
+                            text = "Imprimir",
+                            onClick = onPrint,
+                            enabled = !docBusy,
+                        )
+                    }
+                }
+            }
         },
         confirmButton = {
             BendeyPrimaryButton(

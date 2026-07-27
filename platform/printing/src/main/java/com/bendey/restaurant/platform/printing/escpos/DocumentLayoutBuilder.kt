@@ -35,6 +35,8 @@ data class DocumentPrintInput(
     val sunatHash: String? = null,
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
     val logoRaster: ByteArray? = null,
+    /** Abrir la gaveta de caja tras imprimir (solo comprobantes; venta ↔ efectivo). */
+    val openCashDrawer: Boolean = false,
 )
 
 /** Ticket de venta — port de buildSaleDocumentEscPos (QR SUNAT en CPE electrónicos). */
@@ -126,6 +128,7 @@ object DocumentLayoutBuilder {
         b.line("Gracias por su preferencia")
         b.line()
         b.cutPartial()
+        if (input.openCashDrawer) b.openDrawer()
         return b.bytes()
     }
 

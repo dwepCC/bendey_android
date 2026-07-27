@@ -25,6 +25,11 @@ data class MenuConfigDto(
     @SerialName("primary_color_hex") val primaryColorHex: String? = null,
     @SerialName("background_image_base64") val backgroundImageBase64: String? = null,
     @SerialName("style_variant") val styleVariant: String? = null,
+    @SerialName("font_family") val fontFamily: String? = null,
+    @SerialName("card_variant") val cardVariant: String? = null,
+    @SerialName("corner_style") val cornerStyle: String? = null,
+    @SerialName("show_stock_badges") val showStockBadges: Boolean = false,
+    @SerialName("hero_image_base64") val heroImageBase64: String? = null,
 )
 
 @Serializable

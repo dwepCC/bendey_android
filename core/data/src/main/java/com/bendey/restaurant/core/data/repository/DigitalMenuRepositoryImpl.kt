@@ -95,6 +95,11 @@ private fun StaffMenuSettingsDto.toDomain() = StaffMenuSettings(
         primaryColorHex = menuConfig.primaryColorHex?.takeIf { HEX_COLOR_REGEX.matches(it) } ?: BENDEY_OFFICIAL_COLOR_HEX,
         backgroundImageBase64 = menuConfig.backgroundImageBase64.orEmpty(),
         styleVariant = if (menuConfig.styleVariant == "solid") MenuStyleVariant.SOLID else MenuStyleVariant.GLASS,
+        fontFamily = menuConfig.fontFamily.orEmpty(),
+        cardVariant = menuConfig.cardVariant.orEmpty(),
+        cornerStyle = menuConfig.cornerStyle.orEmpty(),
+        showStockBadges = menuConfig.showStockBadges,
+        heroImageBase64 = menuConfig.heroImageBase64.orEmpty(),
     ),
 )
 
@@ -109,6 +114,11 @@ private fun MenuConfig.toDto() = MenuConfigDto(
     primaryColorHex = primaryColorHex.ifBlank { null },
     backgroundImageBase64 = backgroundImageBase64.ifBlank { null },
     styleVariant = if (styleVariant == MenuStyleVariant.SOLID) "solid" else "glass",
+    fontFamily = fontFamily.ifBlank { null },
+    cardVariant = cardVariant.ifBlank { null },
+    cornerStyle = cornerStyle.ifBlank { null },
+    showStockBadges = showStockBadges,
+    heroImageBase64 = heroImageBase64.ifBlank { null },
 )
 
 private fun PublicationChannelDto.toDomain() = PublicationChannel(channel = channel, enabled = enabled)
