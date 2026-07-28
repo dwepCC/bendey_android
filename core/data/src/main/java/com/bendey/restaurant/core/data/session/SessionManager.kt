@@ -61,6 +61,7 @@ private data class StoredUser(
     val role: String,
     val employeeType: String? = null,
     val staffId: Int? = null,
+    val authMethod: String? = null,
 )
 
 @Serializable
@@ -228,6 +229,7 @@ private fun UserSession.toStored() = StoredUserSession(
         role = user.role,
         employeeType = user.employeeType,
         staffId = user.staffId,
+        authMethod = user.authMethod,
     ),
     restaurantPermissions = restaurantPermissions,
     modules = modules,
@@ -248,6 +250,7 @@ private fun StoredUserSession.toDomain() = UserSession(
         role = user.role,
         employeeType = user.employeeType,
         staffId = user.staffId,
+        authMethod = user.authMethod,
     ),
     restaurantPermissions = restaurantPermissions,
     modules = modules,

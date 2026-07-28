@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
+import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import org.json.JSONObject
 
 data class ArqueoDenomination(
@@ -55,6 +57,7 @@ fun formatArqueoReportText(
     expectedBalance: Double,
     arqueo: Map<String, Int>,
     currency: java.text.NumberFormat,
+    nonCashMethods: List<CashMethodTotal> = emptyList(),
 ): String = buildString {
     appendLine("ARQUEO DE CAJA")
     branchName?.let { appendLine("Sucursal: $it") }
@@ -74,6 +77,16 @@ fun formatArqueoReportText(
     appendLine("Total contado: ${currency.format(sumArqueo(arqueo))}")
     val diff = sumArqueo(arqueo) - expectedBalance
     appendLine("Diferencia: ${currency.format(diff)}")
+    appendLine()
+    appendLine("Otros metodos de pago:")
+    if (nonCashMethods.isEmpty()) {
+        appendLine("  Sin cobros electronicos")
+    } else {
+        nonCashMethods.forEach { m ->
+            appendLine("  ${salePaymentMethodLabelEs(m.method)}: ${currency.format(m.total)}")
+        }
+        appendLine("Total no efectivo: ${currency.format(nonCashMethods.sumOf { it.total })}")
+    }
 }
 
 fun formatSessionReportText(
@@ -99,14 +112,14 @@ fun formatSessionReportText(
         appendLine()
         appendLine("Ventas por método:")
         report.salesByMethod.forEach { row ->
-            appendLine("  ${row.method}: ${currency.format(row.total)}")
+            appendLine("  ${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}")
         }
     }
     if (report.nonCashSalesByMethod.isNotEmpty()) {
         appendLine()
         appendLine("Ventas no efectivo:")
         report.nonCashSalesByMethod.forEach { row ->
-            appendLine("  ${row.method}: ${currency.format(row.total)}")
+            appendLine("  ${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}")
         }
     }
     if (report.incomeDetail.isNotEmpty()) {

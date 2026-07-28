@@ -58,6 +58,7 @@ import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
+import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
@@ -294,6 +295,13 @@ private fun SessionTab(
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             OutlinedButton(onClick = viewModel::showArqueoDialog, modifier = Modifier.weight(1f)) { Text("Arqueo") }
+            if (state.canOpenCashDrawer) {
+                OutlinedButton(
+                    onClick = viewModel::openCashDrawer,
+                    enabled = !state.openingDrawer,
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (state.openingDrawer) "Abriendo…" else "Abrir gaveta") }
+            }
             BendeyPrimaryButton(
                 text = if (state.actionLoading) "Cerrando…" else "Cerrar caja",
                 onClick = viewModel::showCloseDialog,
@@ -570,13 +578,13 @@ private fun ReportContent(
         if (report.salesByMethod.isNotEmpty()) {
             Text("Ventas por método", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.salesByMethod.forEach { row ->
-                ReportRow(row.method, currency.format(row.total))
+                ReportRow(salePaymentMethodLabelEs(row.method), currency.format(row.total))
             }
         }
         if (report.nonCashSalesByMethod.isNotEmpty()) {
             Text("Ventas no efectivo", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.nonCashSalesByMethod.forEach { row ->
-                ReportRow(row.method, currency.format(row.total))
+                ReportRow(salePaymentMethodLabelEs(row.method), currency.format(row.total))
             }
         }
         if (report.incomeDetail.isNotEmpty()) {

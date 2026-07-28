@@ -158,6 +158,8 @@ data class CajaUiState(
     val arqueoDraft: Map<String, Int> = emptyArqueo(),
     val canPrintArqueo: Boolean = false,
     val arqueoDocBusy: Boolean = false,
+    val canOpenCashDrawer: Boolean = false,
+    val openingDrawer: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
     val allowsReportExport: Boolean = false,
@@ -269,6 +271,29 @@ class CajaViewModel @Inject constructor(
                     it.copy(loading = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
+            }
+        }
+        // Botón "Abrir gaveta": solo si hay impresora de documentos configurada.
+        viewModelScope.launch {
+            val canOpen = documentPrintService.hasConfiguredPrinter()
+            _uiState.update { it.copy(canOpenCashDrawer = canOpen) }
+        }
+    }
+
+    fun openCashDrawer() {
+        if (_uiState.value.openingDrawer) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(openingDrawer = true) }
+            val ok = documentPrintService.openCashDrawer()
+            _uiState.update {
+                it.copy(
+                    openingDrawer = false,
+                    snackMessage = when (ok) {
+                        true -> "Gaveta abierta"
+                        false -> "No se pudo abrir la gaveta"
+                        null -> "Configura una impresora de documentos directa"
+                    },
+                )
             }
         }
     }
@@ -415,9 +440,17 @@ class CajaViewModel @Inject constructor(
         _uiState.update { it.copy(showArqueoDialog = false) }
     }
 
-    /** Líneas del arqueo actual (desglose + total contado vs esperado) para PDF/ticket. */
-    private fun currentArqueoLines(): List<String>? {
+    /**
+     * Líneas del arqueo actual (desglose + total contado vs esperado + otros métodos de pago)
+     * para PDF/ticket. Los métodos electrónicos (Yape/Plin/Tarjeta/etc.) no pasan por caja física,
+     * así que se consultan aparte del conteo de billetes/monedas.
+     */
+    private suspend fun currentArqueoLines(): List<String>? {
         val session = _uiState.value.session ?: return null
+        val nonCashMethods = when (val result = cashRepository.getSessionReport(session.id)) {
+            is AppResult.Success -> result.data.nonCashSalesByMethod
+            else -> emptyList()
+        }
         val text = formatArqueoReportText(
             branchName = session.branchName,
             openedAt = session.openedAt,
@@ -425,15 +458,20 @@ class CajaViewModel @Inject constructor(
             expectedBalance = session.expectedBalance,
             arqueo = _uiState.value.arqueoDraft,
             currency = arqueoCurrency,
+            nonCashMethods = nonCashMethods,
         )
         return text.trimEnd().split("\n")
     }
 
     fun exportArqueoPdf(context: Context) {
         if (_uiState.value.arqueoDocBusy) return
-        val lines = currentArqueoLines() ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(arqueoDocBusy = true) }
+            val lines = currentArqueoLines()
+            if (lines == null) {
+                _uiState.update { it.copy(arqueoDocBusy = false) }
+                return@launch
+            }
             val shareResult = withContext(Dispatchers.Main) {
                 shareArqueoPdf(context = context, fileShareService = fileShareService, lines = lines)
             }
@@ -451,9 +489,13 @@ class CajaViewModel @Inject constructor(
 
     fun printArqueo() {
         if (_uiState.value.arqueoDocBusy) return
-        val lines = currentArqueoLines() ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(arqueoDocBusy = true) }
+            val lines = currentArqueoLines()
+            if (lines == null) {
+                _uiState.update { it.copy(arqueoDocBusy = false) }
+                return@launch
+            }
             // title = null: las líneas ya empiezan con "ARQUEO DE CAJA" (evita duplicarlo).
             val ok = documentPrintService.printReportTicket(null, lines, force = true)
             _uiState.update {

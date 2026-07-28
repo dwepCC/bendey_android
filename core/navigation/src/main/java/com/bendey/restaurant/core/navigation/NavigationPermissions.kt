@@ -23,6 +23,8 @@ fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
     BendeyDrawerDestination.CLIENTES -> RestaurantFeature.CLIENTES
     BendeyDrawerDestination.CONFIGURACION -> RestaurantFeature.CONFIGURACION
     BendeyDrawerDestination.REPARTIDORES -> RestaurantFeature.REPARTIDORES
+    BendeyDrawerDestination.COMPRAS -> RestaurantFeature.COMPRAS
+    BendeyDrawerDestination.PROVEEDORES -> RestaurantFeature.PROVEEDORES
     BendeyDrawerDestination.IMPRESORAS -> RestaurantFeature.IMPRESORAS
     // Suscripción siempre debe ser accesible, sin importar el permiso: no se restringe por
     // RestaurantFeature real (ver routeRequiredFeature, que la deja sin mapear = sin gating).
@@ -48,6 +50,8 @@ fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
     route == BendeyRoutes.CONFIGURACION -> RestaurantFeature.CONFIGURACION
     route == BendeyRoutes.REPARTIDORES -> RestaurantFeature.REPARTIDORES
     route == BendeyRoutes.PRINTING_TEST -> RestaurantFeature.IMPRESORAS
+    route == BendeyRoutes.COMPRAS -> RestaurantFeature.COMPRAS
+    route == BendeyRoutes.PROVEEDORES -> RestaurantFeature.PROVEEDORES
     else -> null
 }
 

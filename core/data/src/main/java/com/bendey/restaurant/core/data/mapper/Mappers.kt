@@ -28,6 +28,7 @@ fun LoginResponseDto.toDomain(): UserSession = UserSession(
         role = user.role,
         employeeType = user.employeeType,
         staffId = user.staffId,
+        authMethod = user.authMethod,
     ),
     restaurantPermissions = restaurantPermissions.orEmpty(),
     modules = modules.orEmpty(),

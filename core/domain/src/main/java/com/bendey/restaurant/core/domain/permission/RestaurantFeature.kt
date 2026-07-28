@@ -18,4 +18,6 @@ enum class RestaurantFeature {
     CONFIGURACION,
     IMPRESORAS,
     REPORTES,
+    COMPRAS,
+    PROVEEDORES,
 }

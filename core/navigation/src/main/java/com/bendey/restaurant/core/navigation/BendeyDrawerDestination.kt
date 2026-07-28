@@ -6,7 +6,9 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.DeliveryDining
@@ -33,6 +35,8 @@ enum class BendeyDrawerDestination(
     PRODUCTOS(BendeyRoutes.PRODUCTOS, "Productos", Icons.Default.Inventory2, BendeyDrawerGroup.CATALOG),
     CLIENTES(BendeyRoutes.CLIENTES, "Clientes", Icons.Default.People, BendeyDrawerGroup.CATALOG),
     REPARTIDORES(BendeyRoutes.REPARTIDORES, "Repartidores", Icons.Default.DeliveryDining, BendeyDrawerGroup.CATALOG),
+    COMPRAS(BendeyRoutes.COMPRAS, "Compras", Icons.Default.ShoppingBag, BendeyDrawerGroup.CATALOG),
+    PROVEEDORES(BendeyRoutes.PROVEEDORES, "Proveedores", Icons.Default.LocalShipping, BendeyDrawerGroup.CATALOG),
     MESAS_ADMIN(BendeyRoutes.MESAS_ADMIN, "Mesas", Icons.Default.Layers, BendeyDrawerGroup.CONFIGURATION),
     IMPRESORAS(BendeyRoutes.PRINTING_TEST, "Impresoras", Icons.Default.Print, BendeyDrawerGroup.CONFIGURATION),
     CONFIGURACION(BendeyRoutes.CONFIGURACION, "Configuración", Icons.Default.Settings, BendeyDrawerGroup.CONFIGURATION),

@@ -174,6 +174,8 @@ class AuthRepositoryImpl @Inject constructor(
                 user = session.user.copy(
                     employeeType = dto.employeeType?.takeIf { it.isNotBlank() } ?: session.user.employeeType,
                     staffId = dto.staffId ?: session.user.staffId,
+                    // claims.AuthMethod viene del JWT vivo: "" en login completo, "pin" en PIN.
+                    authMethod = dto.authMethod ?: session.user.authMethod,
                 ),
             )
         } catch (_: Exception) {

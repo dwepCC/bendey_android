@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.data.export.ReportCsvWriter
 import com.bendey.restaurant.core.data.export.ReportPdfWriter
 import com.bendey.restaurant.core.domain.cash.CashMovementReportRow
 import com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow
+import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -105,6 +106,20 @@ fun formatSessionReportLines(
     lines += "Ventas netas: ${currency.format(report.totalNetSales)}"
     if (report.totalVoidedSales > 0) lines += "Ventas anuladas: ${currency.format(report.totalVoidedSales)}"
     lines += "Saldo final: ${currency.format(report.finalBalance)}"
+    if (report.salesByMethod.isNotEmpty()) {
+        lines += ""
+        lines += "Ventas por método"
+        report.salesByMethod.forEach { row ->
+            lines += "${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}"
+        }
+    }
+    if (report.nonCashSalesByMethod.isNotEmpty()) {
+        lines += ""
+        lines += "Ventas no efectivo"
+        report.nonCashSalesByMethod.forEach { row ->
+            lines += "${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}"
+        }
+    }
     if (products.isNotEmpty()) {
         lines += ""
         lines += "Productos vendidos"

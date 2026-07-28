@@ -22,7 +22,11 @@ data class AuthUser(
     val role: String,
     val employeeType: String? = null,
     val staffId: Int? = null,
-)
+    val authMethod: String? = null,
+) {
+    /** "pin" solo cuando el login fue por PIN de turno; el login completo nunca lo trae. */
+    val isPinSession: Boolean get() = authMethod == "pin"
+}
 
 data class UserSession(
     val token: String,

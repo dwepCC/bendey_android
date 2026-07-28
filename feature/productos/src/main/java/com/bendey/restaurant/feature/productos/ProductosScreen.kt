@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOff
@@ -170,6 +171,7 @@ fun ProductosScreen(
                     onDelete = viewModel::requestDeleteProduct,
                     onToggleActive = viewModel::toggleProductActive,
                     onAdjustStock = viewModel::openStockAdjustment,
+                    onMenuChannel = viewModel::openMenuChannel,
                     onLoadMore = viewModel::loadMoreProducts,
                     onQuickImagePicked = viewModel::uploadQuickProductImage,
                     modifier = contentModifier,
@@ -265,6 +267,17 @@ fun ProductosScreen(
             onConfirm = viewModel::confirmStockAdjustment,
         )
     }
+
+    state.menuChannelForm?.let { form ->
+        MenuChannelDialog(
+            form = form,
+            loading = state.menuChannelLoading,
+            error = state.error?.takeIf { state.menuChannelForm != null },
+            onDismiss = viewModel::dismissMenuChannel,
+            onFormChange = viewModel::updateMenuChannelForm,
+            onConfirm = viewModel::confirmMenuChannel,
+        )
+    }
 }
 
 @Composable
@@ -306,6 +319,7 @@ private fun ProductsTabContent(
     onDelete: (Int) -> Unit,
     onToggleActive: (Int) -> Unit,
     onAdjustStock: (ProductItem) -> Unit,
+    onMenuChannel: (ProductItem) -> Unit,
     onLoadMore: () -> Unit,
     onQuickImagePicked: suspend (Int, ByteArray, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -415,6 +429,7 @@ private fun ProductsTabContent(
                             onDelete = { onDelete(product.id) },
                             onToggleActive = { onToggleActive(product.id) },
                             onAdjustStock = { onAdjustStock(product) },
+                            onMenuChannel = { onMenuChannel(product) },
                             onImagePicked = { bytes, mime -> onQuickImagePicked(product.id, bytes, mime) },
                         )
                     }
@@ -445,13 +460,14 @@ private fun ProductRow(
     onDelete: () -> Unit,
     onToggleActive: () -> Unit,
     onAdjustStock: () -> Unit,
+    onMenuChannel: () -> Unit,
     onImagePicked: suspend (ByteArray, String) -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
     var menuExpanded by remember { mutableStateOf(false) }
     BendeyCard(
         containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
-        contentPadding = PaddingValues(BendeySpacing.cardPadding),
+        contentPadding = PaddingValues(BendeySpacing.sm),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -524,6 +540,7 @@ private fun ProductRow(
                 onExpandedChange = { menuExpanded = it },
                 onEdit = onEdit,
                 onAdjustStock = onAdjustStock,
+                onMenuChannel = onMenuChannel,
                 onToggleActive = onToggleActive,
                 onDelete = onDelete,
             )
@@ -540,6 +557,7 @@ private fun ProductRowOverflowMenu(
     onExpandedChange: (Boolean) -> Unit,
     onEdit: () -> Unit,
     onAdjustStock: () -> Unit,
+    onMenuChannel: () -> Unit,
     onToggleActive: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -568,6 +586,14 @@ private fun ProductRowOverflowMenu(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text("Menú digital") },
+                leadingIcon = { Icon(Icons.Default.MenuBook, contentDescription = null) },
+                onClick = {
+                    onExpandedChange(false)
+                    onMenuChannel()
+                },
+            )
             DropdownMenuItem(
                 text = { Text(if (isActive) "Desactivar" else "Activar") },
                 leadingIcon = {

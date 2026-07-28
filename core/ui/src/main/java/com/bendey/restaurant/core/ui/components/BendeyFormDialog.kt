@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -97,11 +98,16 @@ fun BendeyFormDialog(
         tabletPos -> PosPolishTokens.dialogWidthFraction(profile, physicalPortrait)
         else -> 0.94f
     }
-    val maxDialogHeight = if (tabletPos) {
+    val requestedDialogHeight = if (tabletPos) {
         PosPolishTokens.dialogMaxHeight(profile, physicalPortrait)
     } else {
         720.dp
     }
+    // En pantallas chicas 720dp puede superar el alto real disponible; como solo el contenido
+    // interno hace scroll (no el diálogo completo), el resto se desbordaba fuera de pantalla y
+    // los botones Cancelar/Confirmar quedaban inalcanzables. Se limita al alto real de pantalla.
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
+    val maxDialogHeight = requestedDialogHeight.coerceAtMost(screenHeightDp * 0.92f)
     val footerReserve = 96.dp + if (tabletPos) BendeySpacing.md else BendeySpacing.lg
     val titleReserve = 36.dp + if (tabletPos) BendeySpacing.sm else BendeySpacing.md
     val defaultContentMaxHeight = (maxDialogHeight - footerReserve - titleReserve - surfacePadding * 2)

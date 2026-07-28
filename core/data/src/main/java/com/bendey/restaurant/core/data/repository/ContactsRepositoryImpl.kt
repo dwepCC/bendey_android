@@ -29,10 +29,14 @@ class ContactsRepositoryImpl @Inject constructor(
     private val consultaApi: ConsultaApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listCustomers(query: String, includeInactive: Boolean): AppResult<List<CustomerContact>> = apiCall {
+    override suspend fun listCustomers(
+        query: String,
+        includeInactive: Boolean,
+        type: String,
+    ): AppResult<List<CustomerContact>> = apiCall {
         contactsApi.listContacts(
             query = query,
-            type = "customer",
+            type = type,
             status = if (includeInactive) "all" else "active",
         ).data.map { it.toCustomer() }
     }
@@ -41,12 +45,12 @@ class ContactsRepositoryImpl @Inject constructor(
         contactsApi.getContact(id).data.toCustomer()
     }
 
-    override suspend fun createCustomer(input: ContactFormInput): AppResult<CustomerContact> = apiCall {
-        contactsApi.createContact(input.toCreateDto()).data.toCustomer()
+    override suspend fun createCustomer(input: ContactFormInput, type: String): AppResult<CustomerContact> = apiCall {
+        contactsApi.createContact(input.toCreateDto(type)).data.toCustomer()
     }
 
-    override suspend fun updateCustomer(id: Int, input: ContactFormInput): AppResult<CustomerContact> = apiCall {
-        contactsApi.updateContact(id, input.toUpdateDto()).data.toCustomer()
+    override suspend fun updateCustomer(id: Int, input: ContactFormInput, type: String): AppResult<CustomerContact> = apiCall {
+        contactsApi.updateContact(id, input.toUpdateDto(type)).data.toCustomer()
     }
 
     override suspend fun deleteCustomer(id: Int): AppResult<Unit> = apiCall {
@@ -100,8 +104,8 @@ private fun ContactDto.toCustomer() = CustomerContact(
     active = active,
 )
 
-private fun ContactFormInput.toCreateDto() = CreateContactRequestDto(
-    type = "customer",
+private fun ContactFormInput.toCreateDto(type: String) = CreateContactRequestDto(
+    type = type,
     docType = docType.code,
     docNumber = docNumber.trim(),
     businessName = businessName.trim(),
@@ -112,8 +116,8 @@ private fun ContactFormInput.toCreateDto() = CreateContactRequestDto(
     email = email.trim(),
 )
 
-private fun ContactFormInput.toUpdateDto() = UpdateContactRequestDto(
-    type = "customer",
+private fun ContactFormInput.toUpdateDto(type: String) = UpdateContactRequestDto(
+    type = type,
     docType = docType.code,
     docNumber = docNumber.trim(),
     businessName = businessName.trim(),

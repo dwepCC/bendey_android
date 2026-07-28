@@ -80,6 +80,8 @@ data class ProductosUiState(
     val importLoading: Boolean = false,
     val stockAdjustment: StockAdjustmentForm? = null,
     val adjustmentLoading: Boolean = false,
+    val menuChannelForm: MenuChannelForm? = null,
+    val menuChannelLoading: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
 ) {
@@ -618,6 +620,63 @@ class ProductosViewModel @Inject constructor(
                     refreshProducts()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(adjustmentLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openMenuChannel(product: ProductItem) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(menuChannelLoading = true, error = null) }
+            when (val result = digitalMenuRepository.getProductPublicationChannels(product.id)) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            menuChannelForm = MenuChannelForm(
+                                productId = product.id,
+                                productName = product.name,
+                                enabled = result.data.isMenuChannelEnabled(),
+                            ),
+                            menuChannelLoading = false,
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(menuChannelLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissMenuChannel() {
+        _uiState.update { it.copy(menuChannelForm = null, menuChannelLoading = false) }
+    }
+
+    fun updateMenuChannelForm(transform: (MenuChannelForm) -> MenuChannelForm) {
+        _uiState.update { state ->
+            val current = state.menuChannelForm ?: return@update state
+            state.copy(menuChannelForm = transform(current))
+        }
+    }
+
+    fun confirmMenuChannel() {
+        val form = _uiState.value.menuChannelForm ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(menuChannelLoading = true, error = null) }
+            when (val result = digitalMenuRepository.setMenuChannelEnabled(form.productId, form.enabled)) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            menuChannelForm = null,
+                            menuChannelLoading = false,
+                            snackMessage = if (form.enabled) {
+                                "Producto visible en menú digital"
+                            } else {
+                                "Producto oculto del menú digital"
+                            },
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(menuChannelLoading = false, error = result.message) }
                 AppResult.Loading -> Unit
             }
         }

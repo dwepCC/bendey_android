@@ -14,8 +14,8 @@ android {
         applicationId = "bendey.resto.cloud"
         minSdk = 29
         targetSdk = 35
-        versionCode = 10029
-        versionName = "1.1.9"
+        versionCode = 10030
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -66,6 +66,8 @@ dependencies {
     implementation(project(":feature:ventas"))
     implementation(project(":feature:productos"))
     implementation(project(":feature:clientes"))
+    implementation(project(":feature:proveedores"))
+    implementation(project(":feature:compras"))
     implementation(project(":feature:modificadores"))
     implementation(project(":feature:areas-preparacion"))
     implementation(project(":feature:combos"))

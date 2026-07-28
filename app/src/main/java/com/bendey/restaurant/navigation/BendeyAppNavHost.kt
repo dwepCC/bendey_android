@@ -59,6 +59,8 @@ import com.bendey.restaurant.feature.mesas.navigation.mesasGraph
 import com.bendey.restaurant.feature.pos.navigation.posGraph
 import com.bendey.restaurant.feature.printing.navigation.printingGraph
 import com.bendey.restaurant.feature.clientes.navigation.clientesGraph
+import com.bendey.restaurant.feature.proveedores.navigation.proveedoresGraph
+import com.bendey.restaurant.feature.compras.navigation.comprasGraph
 import com.bendey.restaurant.feature.combos.navigation.combosGraph
 import com.bendey.restaurant.feature.configuracion.navigation.configuracionGraph
 import com.bendey.restaurant.feature.areaspreparacion.navigation.areasPreparacionGraph
@@ -425,6 +427,8 @@ private fun MainShell(
             )
             repartidoresGraph(onBack = { mainNavController.popBackStack() })
             clientesGraph(onShowMessage = onShowMessage)
+            proveedoresGraph(onShowMessage = onShowMessage)
+            comprasGraph(onShowMessage = onShowMessage)
             subscriptionGraph(
                 onBack = { mainNavController.popBackStack() },
                 onShowMessage = onShowMessage,

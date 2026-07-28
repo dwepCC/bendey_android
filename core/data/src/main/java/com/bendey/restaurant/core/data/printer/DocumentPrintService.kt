@@ -101,6 +101,26 @@ class DocumentPrintService @Inject constructor(
         }
     }
 
+    /**
+     * Abre la gaveta de dinero sin imprimir nada — usa la impresora de documentos/comprobantes.
+     * null = sin impresora directa configurada (el servidor de impresión solo expone endpoints
+     * estructurados, no un pulso de gaveta suelto); true = OK; false = error.
+     */
+    suspend fun openCashDrawer(): Boolean? {
+        val settings = printerPreferencesStore.settings.first()
+        if (settings.deliveryMode == PrintDeliveryMode.SERVER) return null
+        val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
+            ?: settings.targetFor(PrinterSlot.COMANDAS)
+            ?: return null
+        val builder = EscPosBuilder()
+        builder.init()
+        builder.openDrawer()
+        return when (printerRepository.printRaw(builder.bytes(), target)) {
+            is PrintResult.Success -> true
+            is PrintResult.Error -> false
+        }
+    }
+
     private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm, logoSize: LogoSize): ByteArray? {
         val baseMaxPx = when (paperWidth) {
             PaperWidthMm.W58 -> 360

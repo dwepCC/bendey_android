@@ -37,6 +37,12 @@ object RestaurantPermissions {
                 isRestaurantAdmin(permissions)
             RestaurantFeature.IMPRESORAS ->
                 canConfigureDevicePrinters(permissions, null)
+            // Compras/Proveedores: solo visibles para quien administra el negocio. El acceso REAL
+            // a /api/purchases lo exige el backend por rol ("purchases.*"), permisos que solo se
+            // emiten en login completo (no PIN) — ver ComprasViewModel, que bloquea la pantalla si
+            // la sesión activa tiene staffId (PIN), aunque el admin también tenga PERM_ADMIN por PIN.
+            RestaurantFeature.COMPRAS, RestaurantFeature.PROVEEDORES ->
+                isRestaurantAdmin(permissions)
             else -> hasPermission(permissions, requiredPerm(feature))
         }
     }
@@ -53,6 +59,7 @@ object RestaurantPermissions {
         RestaurantFeature.REPARTIDORES -> PERM_REPARTIDORES
         RestaurantFeature.REPORTES -> PERM_PRODUCTOS
         RestaurantFeature.CONFIGURACION, RestaurantFeature.IMPRESORAS -> PERM_ADMIN
+        RestaurantFeature.COMPRAS, RestaurantFeature.PROVEEDORES -> PERM_ADMIN
     }
 
     fun isRestaurantAdmin(permissions: List<String>): Boolean =
