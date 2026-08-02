@@ -26,6 +26,8 @@ data class MenuDigitalUiState(
     val regenerating: Boolean = false,
     val menuEnabled: Boolean = false,
     val menuUrl: String = "",
+    /** PNG en base64 del QR del menú general; null mientras no se haya cargado. */
+    val menuQrBase64: String? = null,
     val welcomeTitle: String = "",
     val welcomeDescription: String = "",
     val showPrices: Boolean = true,
@@ -40,6 +42,7 @@ data class MenuDigitalUiState(
     val cardVariant: String = "",
     val cornerStyle: String = "",
     val showStockBadges: Boolean = false,
+    val requireOrderApproval: Boolean = false,
     val heroImageBase64: String = "",
     val previewOpen: Boolean = false,
     val canManage: Boolean = false,
@@ -88,6 +91,9 @@ class MenuDigitalViewModel @Inject constructor(
                             loading = false,
                             menuEnabled = settings.menuEnabled,
                             menuUrl = settings.menuUrl,
+                            // El QR se pide aparte: es una imagen que genera el
+                            // servidor y no tiene por qué viajar con los ajustes.
+                            menuQrBase64 = null,
                             welcomeTitle = config.welcomeTitle,
                             welcomeDescription = config.welcomeDescription,
                             showPrices = config.showPrices,
@@ -102,9 +108,11 @@ class MenuDigitalViewModel @Inject constructor(
                             cardVariant = config.cardVariant,
                             cornerStyle = config.cornerStyle,
                             showStockBadges = config.showStockBadges,
+                            requireOrderApproval = config.requireOrderApproval,
                             heroImageBase64 = config.heroImageBase64,
                         )
                     }
+                    loadMenuQr()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
                 AppResult.Loading -> Unit
@@ -181,6 +189,10 @@ class MenuDigitalViewModel @Inject constructor(
         _uiState.update { it.copy(showStockBadges = value) }
     }
 
+    fun setRequireOrderApproval(value: Boolean) {
+        _uiState.update { it.copy(requireOrderApproval = value) }
+    }
+
     fun setHeroImage(dataUrl: String) {
         _uiState.update { it.copy(heroImageBase64 = dataUrl) }
     }
@@ -224,6 +236,7 @@ class MenuDigitalViewModel @Inject constructor(
                 cardVariant = state.cardVariant,
                 cornerStyle = state.cornerStyle,
                 showStockBadges = state.showStockBadges,
+                requireOrderApproval = state.requireOrderApproval,
                 heroImageBase64 = state.heroImageBase64,
             )
             when (val result = repository.updateSettings(state.menuEnabled, config)) {
@@ -235,6 +248,20 @@ class MenuDigitalViewModel @Inject constructor(
                     )
                 }
                 is AppResult.Error -> _uiState.update { it.copy(saving = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Carga la imagen del QR del menú general. Un fallo aquí no es bloqueante: la
+     * pantalla sigue mostrando el enlace, solo se queda sin el QR descargable.
+     */
+    private fun loadMenuQr() {
+        viewModelScope.launch {
+            when (val result = repository.getMenuQr()) {
+                is AppResult.Success -> _uiState.update { it.copy(menuQrBase64 = result.data) }
+                is AppResult.Error -> _uiState.update { it.copy(menuQrBase64 = null) }
                 AppResult.Loading -> Unit
             }
         }
@@ -258,6 +285,8 @@ class MenuDigitalViewModel @Inject constructor(
                 is AppResult.Error -> _uiState.update { it.copy(regenerating = false, error = result.message) }
                 AppResult.Loading -> Unit
             }
+            // El token cambió: el QR anterior ya no lleva a ningún lado.
+            loadMenuQr()
         }
     }
 }

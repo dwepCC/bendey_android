@@ -29,6 +29,8 @@ data class MenuConfigDto(
     @SerialName("card_variant") val cardVariant: String? = null,
     @SerialName("corner_style") val cornerStyle: String? = null,
     @SerialName("show_stock_badges") val showStockBadges: Boolean = false,
+    /** Los pedidos del cliente esperan aprobación del personal antes de llegar a cocina. */
+    @SerialName("require_order_approval") val requireOrderApproval: Boolean = false,
     @SerialName("hero_image_base64") val heroImageBase64: String? = null,
 )
 
@@ -100,4 +102,16 @@ data class TableMenuQrDto(
 data class TableMenuQrRotateResponseDto(
     val success: Boolean = true,
     val data: TableMenuQrDto,
+)
+
+/** QR del menú general del restaurante (no el de una mesa). */
+@Serializable
+data class MenuQrDataDto(
+    @SerialName("menu_url") val menuUrl: String = "",
+    @SerialName("qr_png_base64") val qrPngBase64: String? = null,
+)
+
+@Serializable
+data class MenuQrResponseDto(
+    val data: MenuQrDataDto = MenuQrDataDto(),
 )

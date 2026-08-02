@@ -63,6 +63,10 @@ class DigitalMenuRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun getMenuQr(): AppResult<String?> = apiCall {
+        api.getMenuQr().data.qrPngBase64
+    }
+
     override suspend fun getTableMenuQr(tableId: Int, includePng: Boolean): AppResult<TableMenuQr> = apiCall {
         api.getTableMenuQr(tableId, png = if (includePng) 1 else null).toDomain()
     }
@@ -99,6 +103,7 @@ private fun StaffMenuSettingsDto.toDomain() = StaffMenuSettings(
         cardVariant = menuConfig.cardVariant.orEmpty(),
         cornerStyle = menuConfig.cornerStyle.orEmpty(),
         showStockBadges = menuConfig.showStockBadges,
+        requireOrderApproval = menuConfig.requireOrderApproval,
         heroImageBase64 = menuConfig.heroImageBase64.orEmpty(),
     ),
 )
@@ -118,6 +123,7 @@ private fun MenuConfig.toDto() = MenuConfigDto(
     cardVariant = cardVariant.ifBlank { null },
     cornerStyle = cornerStyle.ifBlank { null },
     showStockBadges = showStockBadges,
+    requireOrderApproval = requireOrderApproval,
     heroImageBase64 = heroImageBase64.ifBlank { null },
 )
 

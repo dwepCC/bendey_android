@@ -28,6 +28,10 @@ data class BillingContext(
     val currentPaymentLabel: String = "",
     val currentPaymentTone: String = "success",
     val hasRealDebt: Boolean = false,
+    /** El backend decide cuándo mostrar el aviso de vencimiento; la app solo obedece. */
+    val showExpiryModal: Boolean = false,
+    val expiryModalTitle: String = "",
+    val expiryModalMessage: String = "",
 )
 
 data class PaymentMethodOption(

@@ -580,7 +580,7 @@ private fun LowStockInsumosList(
     if (rows.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                "Ningún insumo está por debajo de su stock mínimo.",
+                "Ningún producto está por debajo de su stock mínimo.",
                 color = BendeyColors.OnSurfaceVariant,
             )
         }
@@ -598,10 +598,11 @@ private fun LowStockInsumosList(
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         items(rows, key = { it.productId }) { row ->
+            val tipo = if (row.productType == "comercial") "Comercial" else "Insumo"
             Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text(row.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${row.code} · Stock: ${row.quantity} ${row.unit} · Mín: ${row.minStock}",
+                    "${row.code} · $tipo · Stock: ${row.quantity} ${row.unit} · Mín: ${row.minStock}",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.Error,
                 )

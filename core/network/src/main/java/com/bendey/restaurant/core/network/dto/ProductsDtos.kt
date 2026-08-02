@@ -22,6 +22,7 @@ data class ProductDto(
     @SerialName("has_variants") val hasVariants: Boolean = false,
     @SerialName("manage_stock") val manageStock: Boolean = false,
     @SerialName("min_stock") val minStock: Double = 0.0,
+    @SerialName("stock_by_presentation") val stockByPresentation: Boolean = false,
     @SerialName("stock_total") val stockTotal: Double? = null,
     @SerialName("stock_by_branch") val stockByBranch: List<ProductReportBranchStockDto>? = null,
     val active: Boolean = true,
@@ -78,6 +79,7 @@ data class CreateProductRequestDto(
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean = true,
     @SerialName("manage_stock") val manageStock: Boolean = false,
     @SerialName("min_stock") val minStock: Double = 0.0,
+    @SerialName("stock_by_presentation") val stockByPresentation: Boolean = false,
     @SerialName("initial_stock") val initialStock: Double? = null,
     @SerialName("has_modifiers") val hasModifiers: Boolean = false,
     @SerialName("has_variants") val hasVariants: Boolean = false,
@@ -102,6 +104,9 @@ data class UpdateProductRequestDto(
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean? = null,
     @SerialName("manage_stock") val manageStock: Boolean? = null,
     @SerialName("min_stock") val minStock: Double? = null,
+    // null = no tocar el campo en el servidor. Importa: Android no siempre conoce
+    // este flag y no debe apagarlo al guardar desde su ficha.
+    @SerialName("stock_by_presentation") val stockByPresentation: Boolean? = null,
     @SerialName("available_for_sale") val availableForSale: Boolean? = null,
     @SerialName("is_restaurant") val isRestaurant: Boolean? = null,
     @SerialName("has_modifiers") val hasModifiers: Boolean? = null,

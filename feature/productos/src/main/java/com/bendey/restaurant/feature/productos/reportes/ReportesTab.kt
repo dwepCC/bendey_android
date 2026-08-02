@@ -14,5 +14,5 @@ enum class SalesReportSubTab(val label: String) {
 
 enum class RecetasSubTab(val label: String) {
     MARGEN("Costo y ganancia"),
-    STOCK("Insumos con poco stock"),
+    STOCK("Productos con poco stock"),
 }

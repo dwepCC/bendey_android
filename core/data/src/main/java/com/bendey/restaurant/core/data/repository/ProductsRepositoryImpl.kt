@@ -290,6 +290,7 @@ private fun ProductDto.toDomain() = ProductItem(
     imageUrl = imageUrl?.takeIf { it.isNotBlank() },
     manageStock = manageStock,
     minStock = minStock,
+    stockByPresentation = stockByPresentation,
     hasModifiers = hasModifiers,
     hasVariants = hasVariants,
     availableForSale = availableForSale,
@@ -375,6 +376,9 @@ private fun ProductFormInput.toCreateDto(): CreateProductRequestDto {
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = effectiveManageStock,
         minStock = if (effectiveManageStock) min else 0.0,
+        // Solo tiene sentido con presentaciones y control de stock; el servidor lo
+        // rechaza igual, pero mandarlo en false evita un error al guardar.
+        stockByPresentation = effectiveManageStock && activePresentations.isNotEmpty() && stockByPresentation,
         initialStock = if (effectiveManageStock) initial else null,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),
         hasVariants = hasVariants || activePresentations.isNotEmpty(),
@@ -402,6 +406,7 @@ private fun ProductFormInput.toUpdateDto(): UpdateProductRequestDto {
         priceIncludesIgv = if (IgvAffectation.isGravado(igvAffectation.code)) priceIncludesIgv else false,
         manageStock = effectiveManageStock,
         minStock = if (effectiveManageStock) min else 0.0,
+        stockByPresentation = effectiveManageStock && activePresentations.isNotEmpty() && stockByPresentation,
         availableForSale = availableForSale,
         isRestaurant = true,
         hasModifiers = hasModifiers || modifierGroupIds.isNotEmpty(),

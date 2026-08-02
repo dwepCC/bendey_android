@@ -61,11 +61,23 @@ data class LowStockInsumoDto(
     val unit: String = "",
     val quantity: Double = 0.0,
     @SerialName("min_stock") val minStock: Double = 0.0,
+    /** "insumo" | "comercial" — el reporte ya no cubre solo insumos. */
+    @SerialName("product_type") val productType: String = "insumo",
 )
 
 @Serializable
 data class LowStockInsumosResponseDto(
     val data: List<LowStockInsumoDto> = emptyList(),
+)
+
+@Serializable
+data class LowStockCountDto(
+    val count: Int = 0,
+)
+
+@Serializable
+data class LowStockCountResponseDto(
+    val data: LowStockCountDto = LowStockCountDto(),
 )
 
 @Serializable

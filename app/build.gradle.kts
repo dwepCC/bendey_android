@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.bendey.restaurant"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "bendey.resto.cloud"
         minSdk = 29
-        targetSdk = 35
-        versionCode = 10030
-        versionName = "1.2.0"
+        targetSdk = 36
+        versionCode = 10031
+        versionName = "1.2.1"
     }
 
     buildTypes {

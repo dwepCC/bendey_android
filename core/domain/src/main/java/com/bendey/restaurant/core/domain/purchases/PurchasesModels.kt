@@ -13,6 +13,7 @@ data class Purchase(
     val total: Double,
     val currency: String,
     val status: String,
+    val paymentMethod: String? = null,
     val notes: String?,
 ) {
     val isCancelled: Boolean get() = status == "cancelled"
@@ -45,7 +46,7 @@ data class CreatePurchaseInput(
     val number: String,
     val issueDate: String,
     val currency: String = "PEN",
-    val paymentMethod: String? = null,
+    val paymentMethod: String,
     val notes: String? = null,
     val items: List<PurchaseItem>,
 )
@@ -53,5 +54,15 @@ data class CreatePurchaseInput(
 /** Tipos de comprobante que registra el proveedor (no un código SUNAT). */
 val PURCHASE_DOC_TYPES = listOf("FACTURA", "BOLETA", "NOTA DE CRÉDITO", "TICKET")
 
-/** Mismos métodos que Caja/checkout — si se asigna uno, el backend descuenta esa cuenta. */
+/** Mismos métodos que Caja/checkout — el backend exige uno y descuenta esa cuenta (caja o banco). */
 val PURCHASE_PAYMENT_METHODS = listOf("efectivo", "yape", "plin", "transferencia", "tarjeta")
+
+/** "" = todas. */
+val PURCHASE_STATUS_FILTERS = listOf("" to "Todas", "received" to "Recibidas", "cancelled" to "Anuladas")
+
+data class PurchaseListParams(
+    val query: String = "",
+    val dateFrom: String? = null,
+    val dateTo: String? = null,
+    val status: String? = null,
+)

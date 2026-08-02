@@ -28,6 +28,8 @@ data class LowStockInsumo(
     val unit: String,
     val quantity: Double,
     val minStock: Double,
+    /** "insumo" | "comercial" — el reporte ya no cubre solo insumos. */
+    val productType: String = "insumo",
 )
 
 data class PlateMarginRow(
@@ -47,5 +49,6 @@ interface ProductionRepository {
     suspend fun deleteRecipe(productId: Int): AppResult<Unit>
     suspend fun getRecipeCost(productId: Int, branchId: Int? = null): AppResult<Double>
     suspend fun lowStockInsumos(branchId: Int? = null): AppResult<List<LowStockInsumo>>
+    suspend fun lowStockCount(branchId: Int? = null): AppResult<Int>
     suspend fun plateMargin(branchId: Int? = null, from: String? = null, to: String? = null): AppResult<List<PlateMarginRow>>
 }

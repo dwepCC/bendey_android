@@ -547,6 +547,32 @@ class ProductosViewModel @Inject constructor(
                 error = null,
             )
         }
+        // El listado no trae las presentaciones: si el producto reparte su stock por
+        // presentación hay que pedirlas para que el ajuste diga a cuál va.
+        if (!product.stockByPresentation) return
+        viewModelScope.launch {
+            when (val result = productsRepository.getProductDetail(product.id)) {
+                is AppResult.Success -> {
+                    val options = result.data.presentations
+                        .filter { it.active != false && it.id != null }
+                        .map { StockAdjustmentPresentation(it.id!!, it.name) }
+                    _uiState.update { state ->
+                        val current = state.stockAdjustment ?: return@update state
+                        if (current.productId != product.id) return@update state
+                        state.copy(
+                            stockAdjustment = current.copy(
+                                presentations = options,
+                                presentationId = options.firstOrNull()?.id,
+                            ),
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(error = "No se pudieron cargar las presentaciones del producto")
+                }
+                is AppResult.Loading -> Unit
+            }
+        }
     }
 
     fun dismissStockAdjustment() {
@@ -603,6 +629,7 @@ class ProductosViewModel @Inject constructor(
                     InventoryAdjustmentInput(
                         productId = adjustment.productId,
                         branchId = branchId,
+                        presentationId = adjustment.presentationId,
                         type = if (adjustment.isIncrease) "in" else "out",
                         quantity = qty,
                         notes = adjustment.notes.trim(),

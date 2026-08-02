@@ -295,6 +295,12 @@ fun MenuDigitalTab(
                         enabled = state.canManage,
                         onCheckedChange = viewModel::setShowStockBadges,
                     )
+                    BendeySwitchRow(
+                        label = "Revisar pedidos antes de cocina",
+                        checked = state.requireOrderApproval,
+                        enabled = state.canManage,
+                        onCheckedChange = viewModel::setRequireOrderApproval,
+                    )
                     Column {
                         Text("Portada del inicio (opcional)", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
@@ -339,6 +345,7 @@ fun MenuDigitalTab(
                 BendeyMenuQrPreview(
                     menuUrl = state.menuUrl,
                     title = "principal",
+                    qrPngBase64 = state.menuQrBase64,
                     onCopy = { copyMenuUrl(context, state.menuUrl) },
                     onShare = { shareMenuUrl(context, state.menuUrl, "principal") },
                     onRegenerate = viewModel::regenerateToken,

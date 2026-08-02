@@ -54,6 +54,10 @@ class ProductionRepositoryImpl @Inject constructor(
         api.lowStockInsumos(branchId).data.map { it.toDomain() }
     }
 
+    override suspend fun lowStockCount(branchId: Int?): AppResult<Int> = apiCall {
+        api.lowStockCount(branchId).data.count
+    }
+
     override suspend fun plateMargin(branchId: Int?, from: String?, to: String?): AppResult<List<PlateMarginRow>> =
         apiCall {
             api.plateMargin(branchId, from, to).data.map { it.toDomain() }
@@ -88,6 +92,7 @@ private fun LowStockInsumoDto.toDomain() = LowStockInsumo(
     unit = unit,
     quantity = quantity,
     minStock = minStock,
+    productType = productType,
 )
 
 private fun PlateMarginRowDto.toDomain() = PlateMarginRow(

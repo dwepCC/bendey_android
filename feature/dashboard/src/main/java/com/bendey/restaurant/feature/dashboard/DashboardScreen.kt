@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Warning
 import com.bendey.restaurant.core.designsystem.components.BendeyBadge
 import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
@@ -121,6 +122,9 @@ fun DashboardScreen(
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
         ) {
+            if (state.lowStockCount > 0) {
+                item { LowStockAlertCard(count = state.lowStockCount) }
+            }
             if (state.canChangeDateRange) {
                 item {
                     var showCustomRange by remember { mutableStateOf(false) }
@@ -902,6 +906,39 @@ private fun ordersLabel(range: DashboardRange): String = when (range) {
     DashboardRange.WEEK -> "Pedidos (7 días)"
     DashboardRange.MONTH -> "Pedidos (30 días)"
     DashboardRange.CUSTOM -> "Pedidos del período"
+}
+
+/**
+ * Aviso de stock bajo. Antes esta información solo existía dentro de Reportes → Recetas: había que
+ * acordarse de ir a mirarla, así que en la práctica nadie se enteraba hasta quedarse sin producto
+ * en pleno servicio. Aquí aparece solo en la pantalla que se abre a diario.
+ */
+@Composable
+private fun LowStockAlertCard(count: Int) {
+    BendeyCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = BendeyColors.Error,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    if (count == 1) "1 producto con poco stock" else "$count productos con poco stock",
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "Revisa Reportes → Recetas → Productos con poco stock.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 @Composable

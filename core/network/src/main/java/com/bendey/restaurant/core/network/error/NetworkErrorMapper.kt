@@ -19,7 +19,19 @@ object NetworkErrorMapper {
             if (code == 403 && moduleKey != null) {
                 return ModuleLockedException(parsedMessage ?: bodyMessage, moduleKey, error)
             }
+            if (code == 402) {
+                val blocked = parsedDto?.code == "TENANT_BLOCKED"
+                val supportMessage = parsedDto?.supportMessage?.takeIf { it.isNotBlank() }
+                return SubscriptionBlockedException(
+                    supportMessage ?: subscriptionBlockedMessage(blocked),
+                    blocked,
+                    error,
+                )
+            }
             return IllegalStateException(parsedMessage ?: bodyMessage, error)
+        }
+        if (code == 402) {
+            return SubscriptionBlockedException(subscriptionBlockedMessage(blocked = false), false, error)
         }
         val message = when (code) {
             401 -> unauthorizedMessage
@@ -27,5 +39,11 @@ object NetworkErrorMapper {
             else -> "Error de conexión ($code)"
         }
         return IllegalStateException(message, error)
+    }
+
+    private fun subscriptionBlockedMessage(blocked: Boolean): String = if (blocked) {
+        "Tu cuenta está bloqueada. Comunícate con soporte para reactivar el servicio."
+    } else {
+        "Tu plan venció y el acceso quedó restringido. Registra tu pago para seguir trabajando."
     }
 }

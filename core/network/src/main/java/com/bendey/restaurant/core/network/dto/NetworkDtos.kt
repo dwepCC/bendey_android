@@ -138,6 +138,8 @@ data class ApiErrorDto(
     val code: String? = null,
     val message: String? = null,
     val module: String? = null,
+    /** Presente en el 402 de suscripción: mensaje de soporte configurado en Panel Central. */
+    @SerialName("support_message") val supportMessage: String? = null,
 )
 
 @Serializable

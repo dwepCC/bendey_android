@@ -27,6 +27,8 @@ data class MenuConfig(
     val cardVariant: String = "",     // grid | list | featured
     val cornerStyle: String = "",     // rounded | soft | sharp
     val showStockBadges: Boolean = false,
+    /** Los pedidos del cliente esperan aprobación del personal antes de llegar a cocina. */
+    val requireOrderApproval: Boolean = false,
     val heroImageBase64: String = "",
 )
 

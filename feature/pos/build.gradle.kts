@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.bendey.restaurant.feature.pos"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 29

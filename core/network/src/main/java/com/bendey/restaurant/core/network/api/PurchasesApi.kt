@@ -22,6 +22,7 @@ interface PurchasesApi {
         @Query("contact_id") contactId: Int? = null,
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("status") status: String? = null,
         @Query("page") page: Int? = null,
         @Query("per_page") perPage: Int? = null,
     ): PurchaseListResponseDto

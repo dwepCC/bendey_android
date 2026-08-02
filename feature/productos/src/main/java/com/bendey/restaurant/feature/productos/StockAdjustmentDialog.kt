@@ -26,7 +26,15 @@ data class StockAdjustmentForm(
     val isIncrease: Boolean = true,
     val quantity: String = "1",
     val notes: String = "",
+    /**
+     * Productos con stock por presentación: cada una lleva su propio stock, así que
+     * el ajuste tiene que decir a cuál va. Vacío = el producto no las usa para stock.
+     */
+    val presentations: List<StockAdjustmentPresentation> = emptyList(),
+    val presentationId: Int? = null,
 )
+
+data class StockAdjustmentPresentation(val id: Int, val name: String)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -45,7 +53,11 @@ fun StockAdjustmentDialog(
         title = "Ajuste de stock",
         confirmText = if (loading) "Guardando…" else "Guardar ajuste",
         loading = loading,
-        confirmEnabled = !loading && form.notes.trim().isNotEmpty(),
+        // Sin presentación elegida el servidor rechaza el ajuste: se bloquea acá para
+        // no hacer perder el formulario lleno.
+        confirmEnabled = !loading &&
+            form.notes.trim().isNotEmpty() &&
+            (form.presentations.isEmpty() || form.presentationId != null),
         onConfirm = onConfirm,
         enableContentScroll = true,
     ) {
@@ -63,6 +75,16 @@ fun StockAdjustmentDialog(
                         onFormChange { it.copy(branchId = value.toIntOrNull()) }
                     },
                     label = "Sucursal",
+                )
+            }
+            if (form.presentations.isNotEmpty()) {
+                BendeySimpleSelect(
+                    options = form.presentations.map { BendeyOption(it.id.toString(), it.name) },
+                    selectedValue = form.presentationId?.toString().orEmpty(),
+                    onSelect = { value ->
+                        onFormChange { it.copy(presentationId = value.toIntOrNull()) }
+                    },
+                    label = "Presentación",
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

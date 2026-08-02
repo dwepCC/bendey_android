@@ -939,6 +939,19 @@ private fun ProductFormFields(
             }
             BendeyTextButton(text = "Cerrar presentaciones", onClick = onDismissPresentations)
         }
+        // Solo se ofrece cuando hay presentaciones y control de stock: sin eso no hay
+        // nada que repartir y el servidor lo rechazaría.
+        if (form.productType != ProductType.ELABORADO &&
+            form.manageStock &&
+            form.presentations.any { it.name.isNotBlank() }
+        ) {
+            BendeyCheckboxRow(
+                label = "Stock independiente por presentación " +
+                    "(cada una lleva su propio stock; el del producto es la suma)",
+                checked = form.stockByPresentation,
+                onCheckedChange = { checked -> onFormChange { it.copy(stockByPresentation = checked) } },
+            )
+        }
         BendeySectionTitle(text = "Grupos de modificadores")
         ProductModifiersSection(modifierGroups, form.modifierGroupIds, onToggleModifierGroup)
         BendeyTextButton(

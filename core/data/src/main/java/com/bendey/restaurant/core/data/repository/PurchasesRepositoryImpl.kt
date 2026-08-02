@@ -5,6 +5,7 @@ import com.bendey.restaurant.core.domain.purchases.CreatePurchaseInput
 import com.bendey.restaurant.core.domain.purchases.Purchase
 import com.bendey.restaurant.core.domain.purchases.PurchaseDetail
 import com.bendey.restaurant.core.domain.purchases.PurchaseItem
+import com.bendey.restaurant.core.domain.purchases.PurchaseListParams
 import com.bendey.restaurant.core.domain.purchases.PurchasesRepository
 import com.bendey.restaurant.core.network.api.PurchasesApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
@@ -24,8 +25,13 @@ class PurchasesRepositoryImpl @Inject constructor(
     private val api: PurchasesApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listPurchases(query: String): AppResult<List<Purchase>> = apiCall {
-        api.listPurchases(query = query).data.map { it.toDomain() }
+    override suspend fun listPurchases(params: PurchaseListParams): AppResult<List<Purchase>> = apiCall {
+        api.listPurchases(
+            query = params.query,
+            from = params.dateFrom,
+            to = params.dateTo,
+            status = params.status,
+        ).data.map { it.toDomain() }
     }
 
     override suspend fun getPurchase(id: Int): AppResult<PurchaseDetail> = apiCall {
@@ -62,6 +68,7 @@ private fun PurchaseDto.toDomain() = Purchase(
     total = total,
     currency = currency,
     status = status,
+    paymentMethod = paymentMethod,
     notes = notes,
 )
 
@@ -79,6 +86,7 @@ private fun PurchaseDetailDataDto.toDetail() = PurchaseDetail(
         total = total,
         currency = currency,
         status = status,
+        paymentMethod = paymentMethod,
         notes = notes,
     ),
     items = items.map { it.toDomain() },

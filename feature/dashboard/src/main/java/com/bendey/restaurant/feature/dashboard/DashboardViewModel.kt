@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
 import com.bendey.restaurant.core.domain.dashboard.RestaurantDashboard
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.production.ProductionRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.realtime.UiPresence
 import com.bendey.restaurant.core.realtime.dispatcher.ConnectionState
@@ -21,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -58,6 +60,8 @@ data class DashboardUiState(
     val branchName: String? = null,
     val exportBusy: String? = null,
     val allowsReportExport: Boolean = false,
+    /** Productos en o por debajo de su stock mínimo — alimenta el aviso del Dashboard. */
+    val lowStockCount: Int = 0,
 ) {
     val fromApi: String get() = fromDate.toApiDate()
     val toApi: String get() = toDate.toApiDate()
@@ -70,6 +74,7 @@ class DashboardViewModel @Inject constructor(
     private val dashboardStore: DashboardStore,
     private val observability: RealtimeObservability,
     private val fileShareService: BendeyFileShareService,
+    private val productionRepository: ProductionRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -200,6 +205,19 @@ class DashboardViewModel @Inject constructor(
                     else -> _uiState.update { it.copy(loading = false) }
                 }
             }
+            loadLowStockCount()
+        }
+    }
+
+    /**
+     * Aviso de stock bajo. Antes esta información solo existía dentro de Reportes → Recetas: había
+     * que acordarse de ir a mirarla. Un fallo aquí no debe romper el dashboard, así que se ignora.
+     */
+    private suspend fun loadLowStockCount() {
+        val branchId = sessionManager.userSessionFlow.first()?.activeBranch?.id
+        when (val result = productionRepository.lowStockCount(branchId)) {
+            is AppResult.Success -> _uiState.update { it.copy(lowStockCount = result.data) }
+            else -> Unit
         }
     }
 

@@ -32,6 +32,8 @@ data class StockMovementQuery(
 data class InventoryAdjustmentInput(
     val productId: Int,
     val branchId: Int,
+    /** Requerido si el producto lleva stock por presentación. */
+    val presentationId: Int? = null,
     val type: String,
     val quantity: Double,
     val notes: String,

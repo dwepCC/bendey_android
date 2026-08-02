@@ -29,13 +29,20 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.billing.calcItem
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.purchases.Purchase
 import com.bendey.restaurant.core.domain.purchases.PurchaseItem
+import com.bendey.restaurant.core.domain.purchases.PURCHASE_PAYMENT_METHODS
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
@@ -105,6 +112,8 @@ fun ComprasScreen(
                 state = state,
                 onSearchChange = viewModel::setSearchQuery,
                 onOpenDetail = viewModel::openDetail,
+                onSetDateRange = viewModel::setDateRange,
+                onSetStatusFilter = viewModel::setStatusFilter,
                 modifier = contentModifier,
             )
         }
@@ -133,15 +142,23 @@ fun ComprasScreen(
     }
 }
 
+private fun paymentMethodLabel(code: String?): String {
+    if (code.isNullOrBlank()) return "Sin asignar"
+    return PURCHASE_PAYMENT_METHODS.find { it == code }?.replaceFirstChar { c -> c.uppercase() } ?: code
+}
+
 @Composable
 private fun ComprasListPane(
     state: ComprasUiState,
     onSearchChange: (String) -> Unit,
     onOpenDetail: (Int) -> Unit,
+    onSetDateRange: (String, String) -> Unit,
+    onSetStatusFilter: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
+    var showDateRangeDialog by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         BendeyTextField(
             value = state.searchQuery,
@@ -149,6 +166,29 @@ private fun ComprasListPane(
             label = "Buscar por comprobante o proveedor",
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = BendeySpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BendeyTextButton(
+                text = if (state.dateFrom.isBlank() && state.dateTo.isBlank()) {
+                    "Filtrar por fecha"
+                } else {
+                    "${state.dateFrom.ifBlank { "…" }} → ${state.dateTo.ifBlank { "…" }}"
+                },
+                onClick = { showDateRangeDialog = true },
+            )
+            BendeySimpleSelect(
+                options = state.statusFilterOptions.map { (value, label) -> BendeyOption(value, label) },
+                selectedValue = state.statusFilter,
+                onSelect = onSetStatusFilter,
+                label = "Estado",
+                modifier = Modifier.weight(1f),
+            )
+        }
         state.error?.takeIf { !state.formOpen }?.let { error ->
             Text(error, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
@@ -172,6 +212,33 @@ private fun ComprasListPane(
             }
         }
     }
+    if (showDateRangeDialog) {
+        CustomDateRangeDialog(
+            from = state.dateFrom,
+            to = state.dateTo,
+            onDismiss = { showDateRangeDialog = false },
+            onApply = { from, to ->
+                showDateRangeDialog = false
+                onSetDateRange(from, to)
+            },
+        )
+    }
+}
+
+@Composable
+private fun CustomDateRangeDialog(from: String, to: String, onDismiss: () -> Unit, onApply: (String, String) -> Unit) {
+    var fromValue by remember(from) { mutableStateOf(from) }
+    var toValue by remember(to) { mutableStateOf(to) }
+    BendeyFormDialog(
+        onDismissRequest = onDismiss,
+        title = "Rango de fechas",
+        confirmText = "Aplicar",
+        onConfirm = { onApply(fromValue.trim(), toValue.trim()) },
+        onDismiss = onDismiss,
+    ) {
+        BendeyTextField(value = fromValue, onValueChange = { fromValue = it }, label = "Desde (AAAA-MM-DD)")
+        BendeyTextField(value = toValue, onValueChange = { toValue = it }, label = "Hasta (AAAA-MM-DD)")
+    }
 }
 
 @Composable
@@ -186,6 +253,11 @@ private fun PurchaseRow(purchase: Purchase, onOpenDetail: () -> Unit) {
                     color = BendeyColors.OnSurfaceVariant,
                 )
                 Text(purchase.issueDate, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                Text(
+                    paymentMethodLabel(purchase.paymentMethod),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
                 if (purchase.isCancelled) {
                     BendeyStatusChip(label = "Anulada", accentColor = BendeyColors.Error)
                 }
@@ -241,13 +313,14 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
             label = "Fecha (AAAA-MM-DD)",
         )
         BendeySimpleSelect(
-            options = listOf(BendeyOption("", "Sin asignar")) + state.paymentMethodOptions.map { BendeyOption(it, it) },
-            selectedValue = form.paymentMethod ?: "",
-            onSelect = { value -> viewModel.updateForm { f -> f.copy(paymentMethod = value.ifBlank { null }) } },
-            label = "Método de pago",
+            options = state.paymentMethodOptions.map { BendeyOption(it, it.replaceFirstChar { c -> c.uppercase() }) },
+            selectedValue = form.paymentMethod,
+            onSelect = { value -> viewModel.updateForm { f -> f.copy(paymentMethod = value) } },
+            label = "Método de pago *",
         )
         Text(
-            "Si eliges un método de pago, el monto se descuenta de esa cuenta (efectivo → caja abierta).",
+            "El monto se descuenta de la cuenta del método elegido (efectivo → caja abierta del turno). " +
+                "Si no hay caja abierta, o el método no tiene cuenta configurada, no se podrá registrar la compra.",
             style = MaterialTheme.typography.labelSmall,
             color = BendeyColors.OnSurfaceVariant,
         )
@@ -257,14 +330,22 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
             Text("Detalle de la compra", fontWeight = FontWeight.SemiBold)
             BendeyTextButton(text = "Agregar ítem", onClick = viewModel::openProductPicker)
         }
+        BendeyCheckboxRow(
+            label = "Los precios que agregue ya incluyen IGV (ítems nuevos; cada fila se ajusta aparte)",
+            checked = form.defaultPriceIncludesIgv,
+            onCheckedChange = viewModel::setDefaultPriceIncludesIgv,
+        )
         if (form.items.isEmpty()) {
             Text("Sin ítems. Usa «Agregar ítem» para elegir productos.", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         } else {
             form.items.forEachIndexed { index, item ->
                 PurchaseItemRow(
                     item = item,
+                    taxRate = state.taxRate,
+                    taxConfig = state.taxConfig,
                     onQuantityChange = { qty -> viewModel.updateItem(index) { it.copy(quantity = qty) } },
                     onUnitCostChange = { cost -> viewModel.updateItem(index) { it.copy(unitCost = cost) } },
+                    onPriceIncludesIgvChange = { value -> viewModel.updateItem(index) { it.copy(priceIncludesIgv = value) } },
                     onRemove = { viewModel.removeItem(index) },
                 )
             }
@@ -273,9 +354,13 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
         HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.xs))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Column(horizontalAlignment = Alignment.End) {
-                Text("Subtotal: ${currency.format(form.subtotal)}", style = MaterialTheme.typography.bodySmall)
-                Text("IGV: ${currency.format(form.igv)}", style = MaterialTheme.typography.bodySmall)
-                Text("Total: ${currency.format(form.total)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text("Subtotal: ${currency.format(form.subtotal(state.taxRate, state.taxConfig))}", style = MaterialTheme.typography.bodySmall)
+                Text("IGV: ${currency.format(form.igv(state.taxRate, state.taxConfig))}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Total: ${currency.format(form.total(state.taxRate, state.taxConfig))}",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                )
             }
         }
         state.error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
@@ -285,8 +370,11 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
 @Composable
 private fun PurchaseItemRow(
     item: PurchaseItem,
+    taxRate: Double,
+    taxConfig: TaxConfig,
     onQuantityChange: (Double) -> Unit,
     onUnitCostChange: (Double) -> Unit,
+    onPriceIncludesIgvChange: (Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.sm)) {
@@ -311,7 +399,16 @@ private fun PurchaseItemRow(
                     modifier = Modifier.weight(1f),
                 )
             }
-            Text(currency.format(item.lineTotal), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            BendeyCheckboxRow(
+                label = "Incluye IGV",
+                checked = item.priceIncludesIgv,
+                onCheckedChange = onPriceIncludesIgvChange,
+            )
+            Text(
+                currency.format(calcItem(item.unitCost, item.quantity, 0.0, item.igvAffectationType, item.priceIncludesIgv, taxRate, taxConfig).total),
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
         }
     }
 }

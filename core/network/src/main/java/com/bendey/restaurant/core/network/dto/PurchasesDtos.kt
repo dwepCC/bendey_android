@@ -17,6 +17,7 @@ data class PurchaseDto(
     val total: Double = 0.0,
     val currency: String = "PEN",
     val status: String = "received",
+    @SerialName("payment_method") val paymentMethod: String? = null,
     val notes: String? = null,
 )
 
@@ -53,6 +54,7 @@ data class PurchaseDetailDataDto(
     val total: Double = 0.0,
     val currency: String = "PEN",
     val status: String = "received",
+    @SerialName("payment_method") val paymentMethod: String? = null,
     val notes: String? = null,
     val items: List<PurchaseItemDto> = emptyList(),
 )
@@ -71,7 +73,7 @@ data class CreatePurchaseRequestDto(
     val number: String,
     @SerialName("issue_date") val issueDate: String,
     val currency: String = "PEN",
-    @SerialName("payment_method") val paymentMethod: String? = null,
+    @SerialName("payment_method") val paymentMethod: String,
     val notes: String? = null,
     val items: List<PurchaseItemDto>,
 )

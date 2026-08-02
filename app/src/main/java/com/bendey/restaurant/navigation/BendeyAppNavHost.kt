@@ -441,6 +441,11 @@ private fun MainShell(
             .align(Alignment.BottomCenter)
             .padding(bottom = snackbarBottomPadding),
     )
+    // Aviso de vencimiento del plan: se monta a nivel de shell para que aparezca esté donde esté
+    // el usuario, no solo si entra a la pantalla de suscripción.
+    SubscriptionExpiryDialog(
+        onGoToSubscription = { mainNavController.navigate(BendeyRoutes.SUSCRIPCION) },
+    )
     }
 }
 

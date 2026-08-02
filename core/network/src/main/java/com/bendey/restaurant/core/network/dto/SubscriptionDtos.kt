@@ -47,6 +47,10 @@ data class BillingContextViewDto(
     @SerialName("show_status_banner") val showStatusBanner: Boolean = false,
     @SerialName("status_banner_variant") val statusBannerVariant: String? = null,
     @SerialName("status_banner_message") val statusBannerMessage: String? = null,
+    /** El backend decide si toca mostrar el modal de vencimiento (regla única para todas las apps). */
+    @SerialName("show_expiry_modal") val showExpiryModal: Boolean = false,
+    @SerialName("expiry_modal_title") val expiryModalTitle: String? = null,
+    @SerialName("expiry_modal_message") val expiryModalMessage: String? = null,
 )
 
 @Serializable

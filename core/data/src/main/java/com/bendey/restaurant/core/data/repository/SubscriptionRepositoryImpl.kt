@@ -163,6 +163,9 @@ private fun BillingHubDto.toDomain(): BillingHub = BillingHub(
         currentPaymentLabel = billingContext.currentPaymentLabel,
         currentPaymentTone = billingContext.currentPaymentTone,
         hasRealDebt = billingContext.hasRealDebt,
+        showExpiryModal = billingContext.showExpiryModal,
+        expiryModalTitle = billingContext.expiryModalTitle.orEmpty(),
+        expiryModalMessage = billingContext.expiryModalMessage.orEmpty(),
     ),
     paymentConfig = PaymentConfig(
         methods = paymentConfig.methods.map { PaymentMethodOption(it.key, it.label, it.enabled) },

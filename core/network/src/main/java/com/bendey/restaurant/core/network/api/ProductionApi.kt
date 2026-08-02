@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.network.api
 
+import com.bendey.restaurant.core.network.dto.LowStockCountResponseDto
 import com.bendey.restaurant.core.network.dto.LowStockInsumosResponseDto
 import com.bendey.restaurant.core.network.dto.PlateMarginResponseDto
 import com.bendey.restaurant.core.network.dto.RecipeCostResponseDto
@@ -36,6 +37,10 @@ interface ProductionApi {
 
     @GET("/api/production/reports/low-stock")
     suspend fun lowStockInsumos(@Query("branch_id") branchId: Int? = null): LowStockInsumosResponseDto
+
+    /** Solo el conteo, para el aviso del Dashboard (no trae el listado completo). */
+    @GET("/api/production/reports/low-stock-count")
+    suspend fun lowStockCount(@Query("branch_id") branchId: Int? = null): LowStockCountResponseDto
 
     @GET("/api/production/reports/plate-margin")
     suspend fun plateMargin(

@@ -65,6 +65,7 @@ class InventoryRepositoryImpl @Inject constructor(
             com.bendey.restaurant.core.network.dto.InventoryAdjustmentRequestDto(
                 productId = input.productId,
                 branchId = input.branchId,
+                presentationId = input.presentationId,
                 type = input.type,
                 quantity = input.quantity,
                 notes = input.notes.trim(),

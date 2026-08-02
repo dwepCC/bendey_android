@@ -41,6 +41,7 @@ import com.bendey.restaurant.core.network.dto.StaffOptionDto
 import com.bendey.restaurant.core.network.dto.StaffManagementDto
 import com.bendey.restaurant.core.network.dto.CreateStaffUserRequestDto
 import com.bendey.restaurant.core.network.dto.CreateStaffUserResponseDto
+import com.bendey.restaurant.core.network.dto.MenuQrResponseDto
 import com.bendey.restaurant.core.network.dto.MenuTokenRegenerateResponseDto
 import com.bendey.restaurant.core.network.dto.ProductPublicationChannelsDto
 import com.bendey.restaurant.core.network.dto.ProductPublicationChannelsUpdateDto
@@ -332,6 +333,9 @@ interface DigitalMenuApi {
         @Path("id") productId: Int,
         @Body body: ProductPublicationChannelsUpdateDto,
     ): ProductPublicationChannelsUpdateResponseDto
+
+    @GET("/api/restaurant/menu/qr")
+    suspend fun getMenuQr(): MenuQrResponseDto
 
     @GET("/api/restaurant/menu/tables/{id}/menu-qr")
     suspend fun getTableMenuQr(

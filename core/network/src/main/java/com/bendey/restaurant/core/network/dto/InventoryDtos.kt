@@ -44,6 +44,8 @@ data class StockMovementListResponseDto(
 data class InventoryAdjustmentRequestDto(
     @SerialName("product_id") val productId: Int,
     @SerialName("branch_id") val branchId: Int,
+    /** Requerido si el producto lleva stock por presentación. */
+    @SerialName("presentation_id") val presentationId: Int? = null,
     val type: String,
     val quantity: Double,
     val notes: String,
