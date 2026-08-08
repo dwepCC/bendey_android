@@ -544,7 +544,15 @@ private fun ReportTab(
                 }
             }
         }
-        ReportDetailContent()
+        // CON `weight`, NO SIN EL. El reporte tiene su propio `verticalScroll`, pero dentro de esta
+        // Column sin peso recibia altura SIN LIMITE: un contenedor con scroll y altura libre crece hasta
+        // el tamano de su contenido y nunca desplaza nada — se ve el principio y el resto queda fuera de
+        // la pantalla, sin forma de bajar. Con el peso toma la altura que sobra, que es finita, y ahi el
+        // scroll empieza a funcionar.
+        //
+        // Se nota recien cuando el contenido pasa de una pantalla, y el bloque que lo delata es
+        // "Productos vendidos": va ultimo y no tiene tope de filas.
+        ReportDetailContent(Modifier.weight(1f))
     }
 }
 

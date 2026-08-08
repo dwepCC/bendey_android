@@ -60,11 +60,30 @@ import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
+import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.BluetoothDeviceInfo
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
+
+/** Mismas tres opciones, mismo orden y mismas etiquetas que Bendey Resto (Tauri). */
+private val COMBO_DISPLAY_OPTIONS = listOf(
+    ComandaComboDisplay.DETAILED to "Detallada",
+    ComandaComboDisplay.GROUPED to "Agrupada",
+    ComandaComboDisplay.PRODUCTS to "Solo productos",
+)
+
+private val COMBO_DISPLAY_HINTS = mapOf(
+    ComandaComboDisplay.DETAILED to
+        "Cada combo con sus componentes, uno debajo del otro. Es lo clásico.",
+    ComandaComboDisplay.GROUPED to
+        "Resume los combos iguales arriba y suma los componentes repetidos " +
+        "(ej. 2 combos con papa → 2x Papa frita).",
+    ComandaComboDisplay.PRODUCTS to
+        "Solo los platos a preparar, sin nombre de combo. Los platos iguales " +
+        "van juntos en una línea aunque vengan de combos distintos.",
+)
 
 @Composable
 fun PrinterTestScreen(
@@ -270,21 +289,28 @@ fun PrinterTestScreen(
                         Modifier.padding(BendeySpacing.sm),
                         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                     ) {
-                        Text("Agrupar productos de combos", style = MaterialTheme.typography.titleSmall)
+                        Text("Combos en la comanda", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "Une los componentes iguales de varios combos en una sola línea sumando " +
-                                "cantidades (ej. 2 combos con papa → 2x Papa Frita), con un resumen de " +
-                                "combos arriba. Los productos sueltos y la pantalla de cocina no cambian.",
+                            "Cómo se imprimen los combos en cocina. Solo productos muestra únicamente " +
+                                "los platos a preparar, sin el nombre del combo. La pantalla de cocina " +
+                                "y el carrito no cambian.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                            FilterChip(
-                                selected = state.comandaGroupCombos,
-                                onClick = { viewModel.setComandaGroupCombos(!state.comandaGroupCombos) },
-                                label = { Text("Agrupar combos", style = MaterialTheme.typography.labelMedium) },
-                            )
+                            COMBO_DISPLAY_OPTIONS.forEach { (value, label) ->
+                                FilterChip(
+                                    selected = state.comandaComboDisplay == value,
+                                    onClick = { viewModel.setComandaComboDisplay(value) },
+                                    label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                                )
+                            }
                         }
+                        Text(
+                            COMBO_DISPLAY_HINTS.getValue(state.comandaComboDisplay),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }

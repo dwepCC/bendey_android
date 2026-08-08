@@ -54,8 +54,25 @@ data class CreatePurchaseInput(
 /** Tipos de comprobante que registra el proveedor (no un código SUNAT). */
 val PURCHASE_DOC_TYPES = listOf("FACTURA", "BOLETA", "NOTA DE CRÉDITO", "TICKET")
 
-/** Mismos métodos que Caja/checkout — el backend exige uno y descuenta esa cuenta (caja o banco). */
-val PURCHASE_PAYMENT_METHODS = listOf("efectivo", "yape", "plin", "transferencia", "tarjeta")
+/**
+ * Respaldo para cuando todavía no cargaron los métodos reales del tenant (o la lista vino vacía).
+ *
+ * NO es la lista buena. El backend exige un método y con él decide a qué cuenta —caja o banco— le
+ * descuenta la compra, así que los códigos tienen que ser los que ese tenant tiene configurados: si
+ * el local renombró un método, agregó uno propio o desactivó Plin, esta lista fija le ofrece
+ * opciones que no existen y le esconde las que sí. Los cinco de acá son los que el backend
+ * normaliza igual en cualquier tenant, y sirven solo para que el formulario no quede sin opciones.
+ *
+ * Los reales se piden en [com.bendey.restaurant.feature.compras.ComprasViewModel]; mismo criterio
+ * que Bendey Resto (Tauri), donde esto es PAYMENT_METHODS_FALLBACK.
+ */
+val PURCHASE_PAYMENT_METHODS_FALLBACK = listOf(
+    "efectivo" to "Efectivo",
+    "yape" to "Yape",
+    "plin" to "Plin",
+    "transferencia" to "Transferencia",
+    "tarjeta" to "Tarjeta",
+)
 
 /** "" = todas. */
 val PURCHASE_STATUS_FILTERS = listOf("" to "Todas", "received" to "Recibidas", "cancelled" to "Anuladas")

@@ -40,7 +40,6 @@ import com.bendey.restaurant.core.domain.billing.calcItem
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.purchases.Purchase
 import com.bendey.restaurant.core.domain.purchases.PurchaseItem
-import com.bendey.restaurant.core.domain.purchases.PURCHASE_PAYMENT_METHODS
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
@@ -140,11 +139,6 @@ fun ComprasScreen(
             confirmText = if (state.voiding) "Anulando…" else "Anular",
         )
     }
-}
-
-private fun paymentMethodLabel(code: String?): String {
-    if (code.isNullOrBlank()) return "Sin asignar"
-    return PURCHASE_PAYMENT_METHODS.find { it == code }?.replaceFirstChar { c -> c.uppercase() } ?: code
 }
 
 @Composable
@@ -254,7 +248,7 @@ private fun PurchaseRow(purchase: Purchase, onOpenDetail: () -> Unit) {
                 )
                 Text(purchase.issueDate, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                 Text(
-                    paymentMethodLabel(purchase.paymentMethod),
+                    state.paymentMethodLabel(purchase.paymentMethod),
                     style = MaterialTheme.typography.labelSmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -313,7 +307,7 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
             label = "Fecha (AAAA-MM-DD)",
         )
         BendeySimpleSelect(
-            options = state.paymentMethodOptions.map { BendeyOption(it, it.replaceFirstChar { c -> c.uppercase() }) },
+            options = state.paymentMethodOptions.map { (code, label) -> BendeyOption(code, label) },
             selectedValue = form.paymentMethod,
             onSelect = { value -> viewModel.updateForm { f -> f.copy(paymentMethod = value) } },
             label = "Método de pago *",

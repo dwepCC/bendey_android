@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
+import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
@@ -46,7 +47,11 @@ class PrinterPreferencesStore @Inject constructor(
                 ComandaTextSize.MEDIANO -> "mediano"
                 ComandaTextSize.DEFAULT -> "default"
             }
-            prefs[Keys.COMANDA_GROUP_COMBOS] = settings.comandaGroupCombos
+            prefs[Keys.COMANDA_COMBO_DISPLAY] = when (settings.comandaComboDisplay) {
+                ComandaComboDisplay.DETAILED -> "detailed"
+                ComandaComboDisplay.GROUPED -> "grouped"
+                ComandaComboDisplay.PRODUCTS -> "products"
+            }
             prefs[Keys.OPEN_CASH_DRAWER_DOC] = settings.openCashDrawerOnDocument
             prefs[Keys.DOCUMENT_LOGO_SIZE] = when (settings.documentLogoSize) {
                 LogoSize.SMALL -> "small"
@@ -126,7 +131,19 @@ class PrinterPreferencesStore @Inject constructor(
                 "mediano" -> ComandaTextSize.MEDIANO
                 else -> ComandaTextSize.DEFAULT
             },
-            comandaGroupCombos = this[Keys.COMANDA_GROUP_COMBOS] ?: false,
+            comandaComboDisplay = when (this[Keys.COMANDA_COMBO_DISPLAY]) {
+                "grouped" -> ComandaComboDisplay.GROUPED
+                "products" -> ComandaComboDisplay.PRODUCTS
+                "detailed" -> ComandaComboDisplay.DETAILED
+                // Sin la clave nueva: es un dispositivo que viene de la version del booleano. El
+                // `true` de entonces es exactamente GROUPED, asi que se respeta lo que el local ya
+                // tenia elegido en lugar de arrancar de cero.
+                else -> if (this[Keys.COMANDA_GROUP_COMBOS_LEGACY] == true) {
+                    ComandaComboDisplay.GROUPED
+                } else {
+                    ComandaComboDisplay.DETAILED
+                }
+            },
             openCashDrawerOnDocument = this[Keys.OPEN_CASH_DRAWER_DOC] ?: false,
             documentLogoSize = when (this[Keys.DOCUMENT_LOGO_SIZE]) {
                 "small" -> LogoSize.SMALL
@@ -199,7 +216,17 @@ class PrinterPreferencesStore @Inject constructor(
         val AUTO_PRINT_DOCS = booleanPreferencesKey("auto_print_documents")
         val COMANDAS_BY_AREA = stringPreferencesKey("comandas_by_area_json")
         val COMANDA_TEXT_SIZE = stringPreferencesKey("comanda_text_size")
-        val COMANDA_GROUP_COMBOS = booleanPreferencesKey("comanda_group_combos")
+        val COMANDA_COMBO_DISPLAY = stringPreferencesKey("comanda_combo_display")
+
+        /**
+         * Clave anterior, de cuando el ajuste era un booleano de dos estados. Se sigue LEYENDO para
+         * no apagarle la agrupacion a quien ya la tenia puesta: sin esto, actualizar la app le
+         * devuelve la comanda detallada sin aviso y el local se entera imprimiendo.
+         *
+         * No se escribe mas: en cuanto el usuario toca el ajuste queda [COMANDA_COMBO_DISPLAY], y
+         * este valor pasa a ser inerte.
+         */
+        val COMANDA_GROUP_COMBOS_LEGACY = booleanPreferencesKey("comanda_group_combos")
         val OPEN_CASH_DRAWER_DOC = booleanPreferencesKey("open_cash_drawer_on_document")
         val DOCUMENT_LOGO_SIZE = stringPreferencesKey("document_logo_size")
         val DELIVERY_MODE = stringPreferencesKey("print_delivery_mode")

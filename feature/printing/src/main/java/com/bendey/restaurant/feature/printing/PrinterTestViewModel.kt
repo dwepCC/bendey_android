@@ -25,6 +25,7 @@ import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
+import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
@@ -52,7 +53,7 @@ data class PrinterTestUiState(
     val tcpPort: String = "9100",
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
-    val comandaGroupCombos: Boolean = false,
+    val comandaComboDisplay: ComandaComboDisplay = ComandaComboDisplay.DETAILED,
     val openCashDrawerOnDocument: Boolean = false,
     val documentLogoSize: LogoSize = LogoSize.MEDIUM,
     val autoPrintComandas: Boolean = true,
@@ -97,7 +98,7 @@ class PrinterTestViewModel @Inject constructor(
                     selectedPrintServer = cachedSettings.printServer,
                     manualServerHost = cachedSettings.printServer?.manualHost.orEmpty(),
                     documentLogoSize = cachedSettings.documentLogoSize,
-                    comandaGroupCombos = cachedSettings.comandaGroupCombos,
+                    comandaComboDisplay = cachedSettings.comandaComboDisplay,
                     openCashDrawerOnDocument = cachedSettings.openCashDrawerOnDocument,
                 )
             }
@@ -165,7 +166,7 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
-                    comandaGroupCombos = state.comandaGroupCombos,
+                    comandaComboDisplay = state.comandaComboDisplay,
                     documentLogoSize = state.documentLogoSize,
                     deliveryMode = state.deliveryMode,
                     printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
@@ -180,9 +181,9 @@ class PrinterTestViewModel @Inject constructor(
         viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
     }
 
-    fun setComandaGroupCombos(enabled: Boolean) {
-        _uiState.update { it.copy(comandaGroupCombos = enabled) }
-        cachedSettings = cachedSettings.copy(comandaGroupCombos = enabled)
+    fun setComandaComboDisplay(display: ComandaComboDisplay) {
+        _uiState.update { it.copy(comandaComboDisplay = display) }
+        cachedSettings = cachedSettings.copy(comandaComboDisplay = display)
         viewModelScope.launch { printerPreferencesStore.save(cachedSettings) }
     }
 
@@ -581,7 +582,7 @@ class PrinterTestViewModel @Inject constructor(
                     autoPrintComandas = state.autoPrintComandas,
                     autoPrintDocuments = state.autoPrintDocuments,
                     comandaTextSize = state.comandaTextSize,
-                    comandaGroupCombos = state.comandaGroupCombos,
+                    comandaComboDisplay = state.comandaComboDisplay,
                     documentLogoSize = state.documentLogoSize,
                     deliveryMode = state.deliveryMode,
                     printServer = state.selectedPrintServer?.copy(manualHost = state.manualServerHost.trim()),
@@ -606,7 +607,7 @@ class PrinterTestViewModel @Inject constructor(
                 tcpPort = config.tcpPort.toString(),
                 paperWidth = config.paperWidth,
                 comandaTextSize = settings.comandaTextSize,
-                comandaGroupCombos = settings.comandaGroupCombos,
+                comandaComboDisplay = settings.comandaComboDisplay,
                 autoPrintComandas = settings.autoPrintComandas,
                 autoPrintDocuments = settings.autoPrintDocuments,
                 comandasByArea = settings.comandasByArea,

@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.data.printer
 
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
+import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.LogoSize
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
@@ -53,11 +54,10 @@ data class PrinterSettings(
     val autoPrintDocuments: Boolean = true,
     val comandaTextSize: ComandaTextSize = ComandaTextSize.DEFAULT,
     /**
-     * Agrupa en la comanda impresa los componentes iguales de varios combos en una sola línea
-     * sumando cantidades, con un resumen de combos arriba. Solo afecta la impresión directa; no
-     * toca la pantalla de cocina ni el carrito. Por defecto false (cada combo por separado).
+     * Cómo se imprimen los combos en la comanda (ver [ComandaComboDisplay]). Solo afecta la
+     * impresión directa; no toca la pantalla de cocina ni el carrito. Por defecto DETAILED.
      */
-    val comandaGroupCombos: Boolean = false,
+    val comandaComboDisplay: ComandaComboDisplay = ComandaComboDisplay.DETAILED,
     /** Tamaño del logo en comprobantes (documentos), ticket y PDF. */
     val documentLogoSize: LogoSize = LogoSize.MEDIUM,
     val deliveryMode: PrintDeliveryMode = PrintDeliveryMode.LOCAL,

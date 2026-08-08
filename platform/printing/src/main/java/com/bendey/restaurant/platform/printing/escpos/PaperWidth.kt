@@ -21,6 +21,23 @@ enum class ComandaTextSize {
     MEDIANO,
 }
 
+/**
+ * Como se presentan los combos en la comanda IMPRESA. No toca la pantalla de cocina ni el carrito.
+ *
+ * Reemplaza al booleano `comandaGroupCombos`, que solo alcanzaba para dos de estos tres estados
+ * (DETAILED = false, GROUPED = true). Ver [com.bendey.restaurant.core.data.printer.PrinterSettings].
+ */
+enum class ComandaComboDisplay {
+    /** Cada combo con sus componentes, sin resumen arriba ni fusiones. Es el comportamiento clasico. */
+    DETAILED,
+
+    /** Resume los combos iguales arriba y suma los componentes repetidos en una sola linea. */
+    GROUPED,
+
+    /** Solo los platos a preparar: sin nombre de combo, y los platos iguales juntos en una linea. */
+    PRODUCTS,
+}
+
 /** Tamaño del logo en comprobantes (ticket ESC/POS y PDF). El factor `scale` se aplica
  *  igual en 58 y 80 mm. LARGE = ancho casi completo (comportamiento anterior). */
 enum class LogoSize(val scale: Float) {

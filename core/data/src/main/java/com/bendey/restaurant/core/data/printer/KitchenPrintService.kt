@@ -1,9 +1,11 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.data.kitchen.KitchenRoutingLine
 import com.bendey.restaurant.core.data.kitchen.PRINT_DEFAULT_AREA_KEY
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
 import com.bendey.restaurant.core.data.kitchen.comandasToRoutingLines
 import com.bendey.restaurant.core.data.kitchen.consolidateComboLinesForPrint
+import com.bendey.restaurant.core.data.kitchen.flattenComboLinesToProducts
 import com.bendey.restaurant.core.data.kitchen.groupLinesByPreparationArea
 import com.bendey.restaurant.core.data.kitchen.toPrintItem
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
@@ -12,6 +14,7 @@ import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnection
 import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
+import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
 import com.bendey.restaurant.platform.printing.escpos.ComandaPrintInput
 import com.bendey.restaurant.platform.printing.escpos.ComandaTextSize
 import com.bendey.restaurant.platform.printing.escpos.PrecuentaItem
@@ -108,12 +111,8 @@ class KitchenPrintService @Inject constructor(
         var printed = 0
         var hadError = false
         for ((areaKey, areaLines) in groups) {
-            // Ajuste local: agrupar componentes de combos por área (resumen + sumas). Con OFF
-            // (por defecto) se conserva el comportamiento actual: sin resumen, cada combo detallado.
-            val routedLines =
-                if (settings.comandaGroupCombos) consolidateComboLinesForPrint(areaLines) else areaLines
-            val printableLines =
-                if (settings.comandaGroupCombos) routedLines else routedLines.filter { !it.isComboHeader }
+            // Ajuste local: cómo se presentan los combos en el ticket de esta área.
+            val printableLines = comboLinesForPrint(areaLines, settings.comandaComboDisplay)
             if (printableLines.isEmpty()) continue
             val prepArea = if (areaKey == PRINT_DEFAULT_AREA_KEY) null else areaKey
             val target = settings.targetForComandaArea(prepArea) ?: continue
@@ -186,11 +185,7 @@ class KitchenPrintService @Inject constructor(
     ): PrintResult {
         val settings = printerPreferencesStore.settings.first()
         val allLines = comandasToRoutingLines(comandas)
-        val printableLines = if (settings.comandaGroupCombos) {
-            consolidateComboLinesForPrint(allLines)
-        } else {
-            allLines.filter { !it.isComboHeader }
-        }
+        val printableLines = comboLinesForPrint(allLines, settings.comandaComboDisplay)
         return printerRepository.printComanda(
             target,
             ComandaPrintInput(
@@ -203,4 +198,22 @@ class KitchenPrintService @Inject constructor(
             ),
         )
     }
+}
+
+/**
+ * Aplica el modo de combos elegido a las lineas de UN ticket (una area, o todas si no hay ruteo).
+ *
+ * Vive fuera de la clase porque los dos caminos de impresion —el ruteo por area y la impresion
+ * dirigida a una impresora concreta— tienen que resolverlo IGUAL. Antes cada uno repetia el mismo
+ * `if`, y con tres modos esa duplicacion es justo donde uno de los dos se queda atras.
+ */
+private fun comboLinesForPrint(
+    lines: List<KitchenRoutingLine>,
+    display: ComandaComboDisplay,
+): List<KitchenRoutingLine> = when (display) {
+    ComandaComboDisplay.GROUPED -> consolidateComboLinesForPrint(lines)
+    ComandaComboDisplay.PRODUCTS -> flattenComboLinesToProducts(lines)
+    // La cabecera del combo no se imprime en este modo: cocina ya ve los componentes, y el nombre
+    // del combo solo agrega una linea que no se prepara.
+    ComandaComboDisplay.DETAILED -> lines.filter { !it.isComboHeader }
 }

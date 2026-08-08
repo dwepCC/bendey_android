@@ -8,6 +8,8 @@ import com.bendey.restaurant.core.domain.billing.ItemTaxBreakdown
 import com.bendey.restaurant.core.domain.billing.TaxConfig
 import com.bendey.restaurant.core.domain.billing.calcItem
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
+import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
+import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.contacts.ContactsRepository
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -16,7 +18,7 @@ import com.bendey.restaurant.core.domain.products.ProductType
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.purchases.CreatePurchaseInput
 import com.bendey.restaurant.core.domain.purchases.PURCHASE_DOC_TYPES
-import com.bendey.restaurant.core.domain.purchases.PURCHASE_PAYMENT_METHODS
+import com.bendey.restaurant.core.domain.purchases.PURCHASE_PAYMENT_METHODS_FALLBACK
 import com.bendey.restaurant.core.domain.purchases.PURCHASE_STATUS_FILTERS
 import com.bendey.restaurant.core.domain.purchases.Purchase
 import com.bendey.restaurant.core.domain.purchases.PurchaseDetail
@@ -79,6 +81,8 @@ data class ComprasUiState(
     val dateFrom: String = "",
     val dateTo: String = "",
     val statusFilter: String = "",
+    /** Métodos de pago del tenant, activos e inactivos; vacío = no cargaron o falló la consulta. */
+    val paymentMethods: List<CashPaymentMethod> = emptyList(),
     val formOpen: Boolean = false,
     val saving: Boolean = false,
     val suppliers: List<CustomerContact> = emptyList(),
@@ -97,8 +101,25 @@ data class ComprasUiState(
     val snackMessage: String? = null,
 ) {
     val docTypeOptions: List<String> get() = PURCHASE_DOC_TYPES
-    val paymentMethodOptions: List<String> get() = PURCHASE_PAYMENT_METHODS
     val statusFilterOptions: List<Pair<String, String>> get() = PURCHASE_STATUS_FILTERS
+
+    /** (código, etiqueta) elegibles en el formulario: los ACTIVOS del tenant, o el respaldo. */
+    val paymentMethodOptions: List<Pair<String, String>>
+        get() = paymentMethods.filter { it.active }
+            .map { it.code to it.name }
+            .ifEmpty { PURCHASE_PAYMENT_METHODS_FALLBACK }
+
+    /**
+     * Etiqueta de un método ya guardado en una compra. Busca en la lista completa y no solo entre
+     * los activos: una compra vieja pagada con un método que despues se desactivo tiene que seguir
+     * mostrando su nombre, no el codigo crudo.
+     */
+    fun paymentMethodLabel(code: String?): String {
+        if (code.isNullOrBlank()) return "Sin asignar"
+        paymentMethods.firstOrNull { it.code == code }?.let { return it.name }
+        return PURCHASE_PAYMENT_METHODS_FALLBACK.firstOrNull { it.first == code }?.second
+            ?: code.replaceFirstChar { c -> c.uppercase() }
+    }
 }
 
 @OptIn(FlowPreview::class)
@@ -108,6 +129,7 @@ class ComprasViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
     private val productsRepository: ProductsRepository,
     private val billingRepository: BillingRepository,
+    private val cashRepository: CashRepository,
     private val sessionStore: UserSessionStore,
 ) : ViewModel() {
 
@@ -130,6 +152,7 @@ class ComprasViewModel @Inject constructor(
             if (!isPinSession) {
                 refresh()
                 loadTaxConfig()
+                loadPaymentMethods()
             }
         }
         viewModelScope.launch {
@@ -141,6 +164,34 @@ class ComprasViewModel @Inject constructor(
     }
 
     /** Tasa real del tenant (18%, 10.5% zona selva, exonerado) — mismo dato que usa el checkout. */
+    /**
+     * Metodos de pago reales del tenant. Sin esto el formulario ofrecia una lista fija de cinco, y
+     * el backend usa el metodo para decidir a que cuenta le descuenta la compra: un local con un
+     * metodo propio no podia elegirlo, y uno que renombro los suyos veia nombres que ya no usa.
+     *
+     * Si falla —por ejemplo, un usuario sin permiso sobre la configuracion de caja— se queda con el
+     * respaldo y el formulario sigue funcionando. No vale la pena bloquear una compra por esto.
+     */
+    private fun loadPaymentMethods() {
+        viewModelScope.launch {
+            val metodos = when (val result = cashRepository.listPaymentMethods()) {
+                is AppResult.Success -> result.data
+                else -> return@launch
+            }
+            val elegibles = metodos.filter { it.active }
+            if (elegibles.isEmpty()) return@launch
+            _uiState.update { state ->
+                // Si el metodo que trae el formulario no esta activo en este tenant, se cambia al
+                // primero real: guardarlo asi lo mandaria al backend con un codigo que no resuelve.
+                val vigente = state.form.paymentMethod.takeIf { actual -> elegibles.any { it.code == actual } }
+                state.copy(
+                    paymentMethods = metodos,
+                    form = state.form.copy(paymentMethod = vigente ?: elegibles.first().code),
+                )
+            }
+        }
+    }
+
     private fun loadTaxConfig() {
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
@@ -197,7 +248,15 @@ class ComprasViewModel @Inject constructor(
 
     fun openForm() {
         _uiState.update {
-            it.copy(formOpen = true, form = ComprasFormState(issueDate = todayPeru()), error = null)
+            // El metodo arranca en el PRIMERO del tenant, no en el default de ComprasFormState: ese
+            // es "efectivo" fijo, y en un tenant que renombro sus metodos no existe. Se elige aca y
+            // no en el data class porque el default de una data class no puede mirar el estado.
+            val inicial = it.paymentMethodOptions.first().first
+            it.copy(
+                formOpen = true,
+                form = ComprasFormState(issueDate = todayPeru(), paymentMethod = inicial),
+                error = null,
+            )
         }
         viewModelScope.launch {
             when (val result = contactsRepository.listCustomers(type = SUPPLIER_TYPE)) {
