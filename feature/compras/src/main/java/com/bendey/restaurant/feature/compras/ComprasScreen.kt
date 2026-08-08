@@ -200,7 +200,14 @@ private fun ComprasListPane(
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
                 ) {
                     items(state.purchases, key = { it.id }) { purchase ->
-                        PurchaseRow(purchase = purchase, onOpenDetail = { onOpenDetail(purchase.id) })
+                        PurchaseRow(
+                            purchase = purchase,
+                            // La etiqueta se resuelve acá y no adentro: la fila no necesita el
+                            // estado entero para pintar un texto, y así sigue dependiendo solo de
+                            // lo que muestra.
+                            paymentLabel = state.paymentMethodLabel(purchase.paymentMethod),
+                            onOpenDetail = { onOpenDetail(purchase.id) },
+                        )
                     }
                 }
             }
@@ -236,7 +243,7 @@ private fun CustomDateRangeDialog(from: String, to: String, onDismiss: () -> Uni
 }
 
 @Composable
-private fun PurchaseRow(purchase: Purchase, onOpenDetail: () -> Unit) {
+private fun PurchaseRow(purchase: Purchase, paymentLabel: String, onOpenDetail: () -> Unit) {
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.cardPadding)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Column(modifier = Modifier.weight(1f)) {
@@ -248,7 +255,7 @@ private fun PurchaseRow(purchase: Purchase, onOpenDetail: () -> Unit) {
                 )
                 Text(purchase.issueDate, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                 Text(
-                    state.paymentMethodLabel(purchase.paymentMethod),
+                    paymentLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )

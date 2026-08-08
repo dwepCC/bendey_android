@@ -16,6 +16,7 @@ import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoResponseDto
 import com.bendey.restaurant.core.network.dto.AddBankMovementRequestDto
 import com.bendey.restaurant.core.network.dto.BankMovementDto
+import com.bendey.restaurant.core.network.dto.BankMovementsReportResponseDto
 import com.bendey.restaurant.core.network.dto.BankAccountDto
 import com.bendey.restaurant.core.network.dto.BankAccountUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.PaymentMethodUpsertRequestDto
