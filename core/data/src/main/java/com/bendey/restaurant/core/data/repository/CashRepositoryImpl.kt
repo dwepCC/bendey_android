@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.cash.BankMethodTotals
+import com.bendey.restaurant.core.domain.cash.BankMovementRow
 import com.bendey.restaurant.core.domain.cash.BankMovementsSummary
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
@@ -315,6 +316,19 @@ class CashRepositoryImpl @Inject constructor(
                     net = it.net,
                     incomeCount = it.incomeCount,
                     expenseCount = it.expenseCount,
+                )
+            },
+            rows = r.data.map {
+                BankMovementRow(
+                    id = it.id,
+                    date = it.date,
+                    isIncome = it.type == "credit",
+                    amount = it.amount,
+                    method = it.method,
+                    accountName = it.accountName,
+                    description = it.description,
+                    reference = it.reference,
+                    userName = it.userName,
                 )
             },
         )

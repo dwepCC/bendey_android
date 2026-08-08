@@ -196,12 +196,28 @@ data class BankMethodTotals(
  * mientras el de efectivo, justo arriba, muestra ingresos, egresos y neto. Un egreso pagado con Yape no
  * aparecia en ninguna parte de esa mitad.
  */
+/** Un movimiento de una cuenta no efectiva, ya resuelto a metodo. */
+data class BankMovementRow(
+    val id: Int,
+    val date: String,
+    /** true = entro a la cuenta. Se guarda como booleano y no como el "credit"/"debit" del backend
+     *  para que la pantalla no tenga que conocer ese vocabulario en cada lugar donde lo pinta. */
+    val isIncome: Boolean,
+    val amount: Double,
+    val method: String,
+    val accountName: String,
+    val description: String,
+    val reference: String,
+    val userName: String,
+)
+
 data class BankMovementsSummary(
     val totalRows: Int = 0,
     val sumIncome: Double = 0.0,
     val sumExpense: Double = 0.0,
     val netMovement: Double = 0.0,
     val byMethod: List<BankMethodTotals> = emptyList(),
+    val rows: List<BankMovementRow> = emptyList(),
 )
 
 data class CashPaymentDetailRow(

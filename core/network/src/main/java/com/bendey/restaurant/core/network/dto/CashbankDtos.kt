@@ -264,7 +264,22 @@ data class BankMovementsReportSummaryDto(
 )
 
 @Serializable
+data class BankMovementReportRowDto(
+    val id: Int = 0,
+    val date: String = "",
+    /** credit = entro a la cuenta; debit = salio. */
+    val type: String = "",
+    val amount: Double = 0.0,
+    val method: String = "",
+    @SerialName("account_name") val accountName: String = "",
+    val description: String = "",
+    val reference: String = "",
+    @SerialName("user_name") val userName: String = "",
+)
+
+@Serializable
 data class BankMovementsReportResponseDto(
+    val data: List<BankMovementReportRowDto> = emptyList(),
     val total: Int = 0,
     val summary: BankMovementsReportSummaryDto? = null,
 )

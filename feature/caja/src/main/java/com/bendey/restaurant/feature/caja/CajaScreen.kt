@@ -487,6 +487,32 @@ private fun MovementsTab(
                     }
                 }
             }
+            // LAS FILAS, NO SOLO EL TOTAL. Con el neto pero sin el detalle, el encargado ve bajar el
+            // numero y no encuentra la linea que lo explica: el egreso de Yape no estaba en esta mitad
+            // ni en la de efectivo. El cliente lo reporto asi.
+            items(bank.rows, key = { "bank-${it.id}" }) { row ->
+                BendeyManagementCard {
+                    Column {
+                        Text(
+                            row.description.ifBlank { row.accountName },
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            "${row.date} · ${if (row.isIncome) "Ingreso" else "Egreso"} · ${row.method}" +
+                                if (row.userName.isNotBlank()) " · ${row.userName}" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                        // El signo va en la CIFRA, no solo en el texto de arriba: un egreso que se lee
+                        // "S/ 1.00" es indistinguible de un ingreso para quien mira solo el monto.
+                        Text(
+                            (if (row.isIncome) "" else "-") + currency.format(row.amount),
+                            fontWeight = FontWeight.Bold,
+                            color = if (row.isIncome) BendeyColors.Primary else BendeyColors.Error,
+                        )
+                    }
+                }
+            }
         }
 
         val electronic = state.paymentsReport?.detail?.filter { row ->
