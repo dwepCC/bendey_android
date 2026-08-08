@@ -179,6 +179,31 @@ data class CashMovementsReportQuery(
     val perPage: Int = 25,
 )
 
+/** Totales de un metodo electronico en el periodo: las dos patas y el neto que se muestra. */
+data class BankMethodTotals(
+    val method: String,
+    val income: Double,
+    val expense: Double,
+    val net: Double,
+    val incomeCount: Int,
+    val expenseCount: Int,
+)
+
+/**
+ * Resumen no efectivo del periodo, con sus EGRESOS.
+ *
+ * El panel electronico de la pantalla de movimientos solo listaba cobros y no mostraba ningun total,
+ * mientras el de efectivo, justo arriba, muestra ingresos, egresos y neto. Un egreso pagado con Yape no
+ * aparecia en ninguna parte de esa mitad.
+ */
+data class BankMovementsSummary(
+    val totalRows: Int = 0,
+    val sumIncome: Double = 0.0,
+    val sumExpense: Double = 0.0,
+    val netMovement: Double = 0.0,
+    val byMethod: List<BankMethodTotals> = emptyList(),
+)
+
 data class CashPaymentDetailRow(
     val date: String,
     val saleNumber: String,

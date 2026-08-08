@@ -23,6 +23,9 @@ interface CashRepository {
         sessionId: Int,
         input: AddCashMovementInput,
     ): AppResult<CashMovement>
+    /** Ingresos, egresos y neto de las cuentas NO efectivas, con los mismos filtros de la pantalla. */
+    suspend fun bankMovementsSummary(query: CashMovementsReportQuery): AppResult<BankMovementsSummary>
+
     suspend fun listPaymentMethods(): AppResult<List<CashPaymentMethod>>
     suspend fun createPaymentMethod(name: String, code: String, destinationType: String, bankAccountId: Int?): AppResult<Unit>
     suspend fun updatePaymentMethod(id: Int, name: String, code: String, destinationType: String, bankAccountId: Int?, active: Boolean): AppResult<Unit>

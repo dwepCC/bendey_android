@@ -130,6 +130,21 @@ interface CashbankApi {
         @Query("per_page") perPage: Int? = null,
     ): MovementsReportResponseDto
 
+    /**
+     * Mitad no efectiva de la pantalla de movimientos: mismos filtros, pero sobre Yape/Plin/tarjeta y
+     * CON los egresos. Sin esto el panel electronico no tiene ningun total y solo lista cobros.
+     */
+    @GET("/api/cashbank/reports/bank-movements")
+    suspend fun listBankMovementsReport(
+        @Query("branch_id") branchId: Int? = null,
+        @Query("user_id") userId: Int? = null,
+        @Query("date_from") dateFrom: String? = null,
+        @Query("date_to") dateTo: String? = null,
+        @Query("session_id") sessionId: Int? = null,
+        @Query("type") type: String? = null,
+        @Query("payment_method") paymentMethod: String? = null,
+    ): BankMovementsReportResponseDto
+
     @GET("/api/cashbank/sessions/{sessionId}/report/products")
     suspend fun getSessionProductsReport(
         @Path("sessionId") sessionId: Int,

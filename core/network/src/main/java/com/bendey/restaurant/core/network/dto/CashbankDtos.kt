@@ -241,6 +241,34 @@ data class MovementsReportResponseDto(
     val summary: MovementsReportSummaryDto? = null,
 )
 
+/** Totales de un metodo electronico en el periodo: las dos patas y el neto que se muestra. */
+@Serializable
+data class BankMethodTotalsDto(
+    val method: String = "",
+    val income: Double = 0.0,
+    val expense: Double = 0.0,
+    /** Lo calcula el backend, no el cliente: es EL numero que el encargado lee, y dejarlo a cada
+     *  frontend es como Android y el escritorio terminan mostrando cosas distintas. */
+    val net: Double = 0.0,
+    @SerialName("income_count") val incomeCount: Int = 0,
+    @SerialName("expense_count") val expenseCount: Int = 0,
+)
+
+@Serializable
+data class BankMovementsReportSummaryDto(
+    @SerialName("total_rows") val totalRows: Int = 0,
+    @SerialName("sum_income") val sumIncome: Double = 0.0,
+    @SerialName("sum_expense") val sumExpense: Double = 0.0,
+    @SerialName("net_movement") val netMovement: Double = 0.0,
+    @SerialName("by_method") val byMethod: List<BankMethodTotalsDto> = emptyList(),
+)
+
+@Serializable
+data class BankMovementsReportResponseDto(
+    val total: Int = 0,
+    val summary: BankMovementsReportSummaryDto? = null,
+)
+
 @Serializable
 data class SessionProductSoldDto(
     @SerialName("product_id") val productId: Int? = null,

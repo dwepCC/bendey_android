@@ -449,6 +449,46 @@ private fun MovementsTab(
                 }
             }
         }
+        // MEDIOS ELECTRONICOS, CON SUS EGRESOS.
+        //
+        // Arriba, la mitad de efectivo muestra ingresos, egresos y neto. Esta solo listaba cobros: un
+        // egreso pagado con Yape no aparecia en ningun total de esta pantalla. Un cliente registro el
+        // mismo egreso dos veces porque el numero no le bajaba.
+        val bank = state.bankMovementsSummary
+        if (bank.sumIncome > 0.0 || bank.sumExpense > 0.0) {
+            item {
+                Text("Medios electrónicos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = BendeySpacing.sm))
+            }
+            item {
+                Text(
+                    "Ingresos: ${currency.format(bank.sumIncome)} · " +
+                        "Egresos: ${currency.format(bank.sumExpense)} · " +
+                        "Neto: ${currency.format(bank.netMovement)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            items(bank.byMethod, key = { "metodo-${it.method}" }) { m ->
+                BendeyManagementCard {
+                    Column {
+                        Text(m.method, fontWeight = FontWeight.Medium)
+                        // El desglose va siempre que haya un egreso: sin el, un neto de 29 donde
+                        // entraron 30 parece un error de redondeo en vez de un egreso de 1.
+                        Text(
+                            if (m.expense > 0.0) {
+                                "+${currency.format(m.income)} − ${currency.format(m.expense)}"
+                            } else {
+                                "${m.incomeCount} cobro${if (m.incomeCount != 1) "s" else ""}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                        Text(currency.format(m.net), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
         val electronic = state.paymentsReport?.detail?.filter { row ->
             row.method.trim().lowercase() !in setOf("efectivo", "cash", "contado")
         }.orEmpty()

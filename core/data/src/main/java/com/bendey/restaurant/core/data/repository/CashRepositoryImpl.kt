@@ -1,6 +1,8 @@
 package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.session.SessionManager
+import com.bendey.restaurant.core.domain.cash.BankMethodTotals
+import com.bendey.restaurant.core.domain.cash.BankMovementsSummary
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
@@ -286,6 +288,37 @@ class CashRepositoryImpl @Inject constructor(
 
     override suspend fun listMovementsReportAll(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage> =
         fetchMovementsReport(query.copy(page = 1, perPage = 0))
+
+    override suspend fun bankMovementsSummary(
+        query: CashMovementsReportQuery,
+    ): AppResult<BankMovementsSummary> = apiCall {
+        val r = tenantRetrofitProvider.create<CashbankApi>().listBankMovementsReport(
+            branchId = query.branchId,
+            userId = query.userId,
+            dateFrom = query.dateFrom,
+            dateTo = query.dateTo,
+            sessionId = query.sessionId,
+            type = query.type?.trim()?.takeIf { it.isNotEmpty() },
+            paymentMethod = query.paymentMethod?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        val s = r.summary
+        BankMovementsSummary(
+            totalRows = s?.totalRows ?: 0,
+            sumIncome = s?.sumIncome ?: 0.0,
+            sumExpense = s?.sumExpense ?: 0.0,
+            netMovement = s?.netMovement ?: 0.0,
+            byMethod = s?.byMethod.orEmpty().map {
+                BankMethodTotals(
+                    method = it.method,
+                    income = it.income,
+                    expense = it.expense,
+                    net = it.net,
+                    incomeCount = it.incomeCount,
+                    expenseCount = it.expenseCount,
+                )
+            },
+        )
+    }
 
     override suspend fun getPaymentsReport(
         from: String,

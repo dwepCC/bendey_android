@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
+import com.bendey.restaurant.core.domain.cash.BankMovementsSummary
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
@@ -142,6 +143,9 @@ data class CajaUiState(
     val movementsReportLoading: Boolean = false,
     val movementsReportRows: List<CashMovementReportRow> = emptyList(),
     val movementsReportSummary: CashMovementsReportSummary = CashMovementsReportSummary(),
+    /** Ingresos, egresos y neto de Yape/Plin/tarjeta. Sin esto la mitad electronica solo lista cobros
+     *  y un egreso pagado con Yape no aparece en ningun total. */
+    val bankMovementsSummary: BankMovementsSummary = BankMovementsSummary(),
     val paymentsReport: CashPaymentsReport? = null,
     val filterUsers: List<CashFilterUser> = emptyList(),
     val reportProducts: List<CashSessionProductSold> = emptyList(),
@@ -713,6 +717,7 @@ class CajaViewModel @Inject constructor(
                 perPage = 25,
             )
             val cashResult = cashRepository.listMovementsReport(query)
+            val bankResult = cashRepository.bankMovementsSummary(query)
             val paymentsResult = cashRepository.getPaymentsReport(
                 from = filter.dateFrom,
                 to = filter.dateTo,
@@ -726,6 +731,8 @@ class CajaViewModel @Inject constructor(
                     movementsReportRows = (cashResult as? AppResult.Success)?.data?.rows.orEmpty(),
                     movementsReportSummary = (cashResult as? AppResult.Success)?.data?.summary
                         ?: CashMovementsReportSummary(),
+                    bankMovementsSummary = (bankResult as? AppResult.Success)?.data
+                        ?: BankMovementsSummary(),
                     paymentsReport = (paymentsResult as? AppResult.Success)?.data,
                     error = (cashResult as? AppResult.Error)?.message
                         ?: (paymentsResult as? AppResult.Error)?.message,
