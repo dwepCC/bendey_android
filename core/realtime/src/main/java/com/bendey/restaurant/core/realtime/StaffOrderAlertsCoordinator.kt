@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.realtime
 
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.connection.AppForeground
 import com.bendey.restaurant.core.realtime.connection.ConnectionSession
 import com.bendey.restaurant.core.realtime.connection.RealtimeConnectionPolicy
 import com.bendey.restaurant.core.realtime.dispatcher.ConnectionState
@@ -14,9 +15,9 @@ import com.bendey.restaurant.core.realtime.recovery.RealtimeRecovery
 import com.bendey.restaurant.core.realtime.store.RestaurantStores
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,6 +36,7 @@ class StaffOrderAlertsCoordinator @Inject constructor(
     private val sideEffectRunner: SideEffectRunner,
     private val realtimeRecovery: RealtimeRecovery,
     private val restaurantStores: RestaurantStores,
+    private val appForeground: AppForeground,
 ) {
     private val latestPermissions = MutableStateFlow<List<String>>(emptyList())
     private val latestBranchId = MutableStateFlow<Int?>(null)
@@ -42,6 +44,9 @@ class StaffOrderAlertsCoordinator @Inject constructor(
 
     fun start(scope: CoroutineScope) {
         platform.init()
+        // Se llama desde el hilo principal (init del AppSessionViewModel), que es lo que exige
+        // ProcessLifecycleOwner.
+        appForeground.observar()
         wireProviders()
 
         scope.launch {
@@ -53,15 +58,15 @@ class StaffOrderAlertsCoordinator @Inject constructor(
         }
 
         scope.launch {
-            sessionStore.userSessionFlow
-                .map { session ->
-                    RealtimeConnectionPolicy.shouldConnect(
-                        ConnectionSession(
-                            isAuthenticated = session != null,
-                            restaurantPermissions = session?.restaurantPermissions.orEmpty(),
-                        ),
-                    )
-                }
+            combine(sessionStore.userSessionFlow, appForeground.enPantalla) { session, enPantalla ->
+                RealtimeConnectionPolicy.shouldConnect(
+                    ConnectionSession(
+                        isAuthenticated = session != null,
+                        restaurantPermissions = session?.restaurantPermissions.orEmpty(),
+                        isForeground = enPantalla,
+                    ),
+                )
+            }
                 .distinctUntilChanged()
                 .collect { enabled ->
                     if (enabled) {

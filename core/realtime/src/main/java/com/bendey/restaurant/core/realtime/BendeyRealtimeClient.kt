@@ -56,6 +56,12 @@ class BendeyRealtimeClient @Inject constructor(
 
     fun connect() {
         closedByUser = false
+        // EL CONTADOR VUELVE A CERO EN CADA CONEXIÓN PEDIDA. Solo se reiniciaba al autenticar, así que
+        // arrastraba los intentos fallidos de antes: el mozo volvía a la app y el primer reintento ya
+        // esperaba el tope de 30 s, sin pedidos ni mesas en vivo mientras tanto. Un `connect()` explícito
+        // es un arranque nuevo — la espera exponencial sirve para no machacar a un servidor caído, no
+        // para castigar a quien acaba de abrir la aplicación.
+        reconnectAttempt = 0
         openSocket()
     }
 
