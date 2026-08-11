@@ -10,7 +10,7 @@ import com.bendey.restaurant.core.network.dto.CloseCashSessionRequestDto
 import com.bendey.restaurant.core.network.dto.ListResponseDto
 import com.bendey.restaurant.core.network.dto.MovementsReportResponseDto
 import com.bendey.restaurant.core.network.dto.OpenCashSessionRequestDto
-import com.bendey.restaurant.core.network.dto.SessionProductSoldDto
+import com.bendey.restaurant.core.network.dto.SessionProductsReportResponseDto
 import com.bendey.restaurant.core.network.dto.CashSessionReportResponseDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoResponseDto
@@ -149,5 +149,5 @@ interface CashbankApi {
     @GET("/api/cashbank/sessions/{sessionId}/report/products")
     suspend fun getSessionProductsReport(
         @Path("sessionId") sessionId: Int,
-    ): ListResponseDto<SessionProductSoldDto>
+    ): SessionProductsReportResponseDto
 }

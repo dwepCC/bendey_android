@@ -38,6 +38,6 @@ interface CashRepository {
     suspend fun listMovementsReport(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage>
     suspend fun listMovementsReportAll(query: CashMovementsReportQuery): AppResult<CashMovementsReportPage>
     suspend fun getPaymentsReport(from: String, to: String, method: String?, userId: Int?, sessionId: Int?): AppResult<CashPaymentsReport>
-    suspend fun getSessionProductsReport(sessionId: Int): AppResult<List<CashSessionProductSold>>
+    suspend fun getSessionProductsReport(sessionId: Int): AppResult<CashSessionProductsReport>
     suspend fun listCashFilterUsers(): AppResult<List<CashFilterUser>>
 }

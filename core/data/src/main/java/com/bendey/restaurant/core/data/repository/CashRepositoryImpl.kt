@@ -26,7 +26,9 @@ import com.bendey.restaurant.core.domain.cash.CashMovementsReportQuery
 import com.bendey.restaurant.core.domain.cash.CashMovementsReportSummary
 import com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow
 import com.bendey.restaurant.core.domain.cash.CashPaymentsReport
+import com.bendey.restaurant.core.domain.cash.CashSessionComboComponent
 import com.bendey.restaurant.core.domain.cash.CashSessionProductSold
+import com.bendey.restaurant.core.domain.cash.CashSessionProductsReport
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.model.CashSessionSnapshot
 import com.bendey.restaurant.core.network.api.CashbankApi
@@ -50,6 +52,7 @@ import com.bendey.restaurant.core.network.api.RestaurantApi
 import com.bendey.restaurant.core.network.dto.MovementReportRowDto
 import com.bendey.restaurant.core.network.dto.MovementsReportSummaryDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
+import com.bendey.restaurant.core.network.dto.SessionComboComponentDto
 import com.bendey.restaurant.core.network.dto.SessionProductSoldDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
@@ -369,11 +372,12 @@ class CashRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getSessionProductsReport(sessionId: Int): AppResult<List<CashSessionProductSold>> = apiCall {
-        tenantRetrofitProvider.create<CashbankApi>()
-            .getSessionProductsReport(sessionId)
-            .data
-            .map { it.toProductSoldDomain() }
+    override suspend fun getSessionProductsReport(sessionId: Int): AppResult<CashSessionProductsReport> = apiCall {
+        val res = tenantRetrofitProvider.create<CashbankApi>().getSessionProductsReport(sessionId)
+        CashSessionProductsReport(
+            products = res.data.map { it.toProductSoldDomain() },
+            comboComponents = res.comboComponents.map { it.toComboComponentDomain() },
+        )
     }
 
     override suspend fun listCashFilterUsers(): AppResult<List<CashFilterUser>> = apiCall {
@@ -470,6 +474,7 @@ private fun CashSessionReportDto.toDomain(): CashSessionReport {
         cancelledSalesDetail = cancelledSalesDetail.map { it.toDomain() },
         salesByMethod = totalsByMethod?.sales?.map { it.toDomain() }.orEmpty(),
         nonCashSalesByMethod = nonCashSalesByMethod.map { it.toDomain() },
+        nonCashByMethod = nonCashByMethod.map { it.toDomain() },
         totalIncome = totalsDto.totalIncome,
         totalExpense = totalsDto.totalExpense,
         totalSales = totalsDto.totalSales,
@@ -568,4 +573,11 @@ private fun SessionProductSoldDto.toProductSoldDomain() = CashSessionProductSold
     description = description,
     quantity = quantity,
     total = total,
+)
+
+private fun SessionComboComponentDto.toComboComponentDomain() = CashSessionComboComponent(
+    productId = productId,
+    code = code,
+    description = description,
+    quantity = quantity,
 )

@@ -93,6 +93,7 @@ fun shareArqueoPdf(
 fun formatSessionReportLines(
     report: com.bendey.restaurant.core.domain.cash.CashSessionReport,
     products: List<com.bendey.restaurant.core.domain.cash.CashSessionProductSold>,
+    comboComponents: List<com.bendey.restaurant.core.domain.cash.CashSessionComboComponent> = emptyList(),
 ): List<String> {
     val session = report.session
     val lines = mutableListOf<String>()
@@ -100,12 +101,19 @@ fun formatSessionReportLines(
     session.branchName?.let { lines += it }
     session.openedAt?.let { lines += "Apertura: $it" }
     session.closedAt?.let { lines += "Cierre: $it" }
-    lines += "Apertura: ${currency.format(session.openingBalance)}"
-    lines += "Ingresos: ${currency.format(report.totalIncome)}"
-    lines += "Egresos: ${currency.format(report.totalExpense)}"
     lines += "Ventas netas: ${currency.format(report.totalNetSales)}"
     if (report.totalVoidedSales > 0) lines += "Ventas anuladas: ${currency.format(report.totalVoidedSales)}"
-    lines += "Saldo final: ${currency.format(report.finalBalance)}"
+    lines += ""
+    lines += "Efectivo en caja"
+    lines += "Saldo de apertura: ${currency.format(session.openingBalance)}"
+    lines += "+ Ingresos en efectivo: ${currency.format(report.totalIncome)}"
+    lines += "- Egresos en efectivo: ${currency.format(report.totalExpense)}"
+    lines += "= Esperado en caja: ${currency.format(report.finalBalance)}"
+    session.closingBalance?.let { contado ->
+        lines += "Contado al cerrar: ${currency.format(contado)}"
+        val dif = contado - report.finalBalance
+        lines += "Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}"
+    }
     if (report.salesByMethod.isNotEmpty()) {
         lines += ""
         lines += "Ventas por método"
@@ -120,11 +128,26 @@ fun formatSessionReportLines(
             lines += "${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}"
         }
     }
+    if (report.nonCashByMethod.isNotEmpty()) {
+        lines += ""
+        lines += "Medios electrónicos (neto = ventas − compras − egresos)"
+        report.nonCashByMethod.forEach { row ->
+            lines += "${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}"
+        }
+    }
     if (products.isNotEmpty()) {
         lines += ""
         lines += "Productos vendidos"
         products.forEach { p ->
             lines += "${p.quantity} x ${p.description} · ${currency.format(p.total)}"
+        }
+    }
+    // Sin importe: la plata de estos platos ya está contada en la línea del combo.
+    if (comboComponents.isNotEmpty()) {
+        lines += ""
+        lines += "Platos de combos (ya incluidos en el precio del combo)"
+        comboComponents.forEach { c ->
+            lines += "${c.quantity} x ${c.description}"
         }
     }
     return lines

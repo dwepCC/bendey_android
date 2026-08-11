@@ -100,6 +100,12 @@ data class CashSessionReportDto(
     @SerialName("cancelled_sales_detail") val cancelledSalesDetail: List<CashCancelledSaleRowDto> = emptyList(),
     @SerialName("totals_by_method") val totalsByMethod: CashTotalsByMethodDto? = null,
     @SerialName("non_cash_sales_by_method") val nonCashSalesByMethod: List<CashMethodTotalDto> = emptyList(),
+    /**
+     * Neto REAL por método no efectivo: ventas − compras − egresos + reversas. NO es lo mismo que
+     * [nonCashSalesByMethod], que solo mira cobros de venta: un egreso pagado por Yape baja este número
+     * y no toca aquél.
+     */
+    @SerialName("non_cash_by_method") val nonCashByMethod: List<CashMethodTotalDto> = emptyList(),
     val totals: CashReportTotalsDto = CashReportTotalsDto(),
 )
 
@@ -291,6 +297,32 @@ data class SessionProductSoldDto(
     val description: String = "",
     val quantity: Double = 0.0,
     val total: Double = 0.0,
+)
+
+/**
+ * Plato que salió de cocina dentro de un combo. SIN importe: la plata ya está contada en la línea del
+ * combo, en [SessionProductSoldDto]. Sumar las dos listas daría el doble de lo vendido.
+ */
+@Serializable
+data class SessionComboComponentDto(
+    @SerialName("product_id") val productId: Int = 0,
+    val code: String = "",
+    val description: String = "",
+    val quantity: Double = 0.0,
+)
+
+/**
+ * La respuesta del reporte de productos de una sesión.
+ *
+ * Los platos de combos vienen en una clave APARTE de `data` a propósito: un combo se guarda como una
+ * sola línea de venta y sus platos viven dentro de su snapshot, así que el reporte mostraba
+ * «1x PROMOCION BRASERITO» y ni rastro del pollo o la papa. Meterlos dentro de `data` haría que el
+ * total de unidades contara dos veces lo mismo.
+ */
+@Serializable
+data class SessionProductsReportResponseDto(
+    val data: List<SessionProductSoldDto> = emptyList(),
+    @SerialName("combo_components") val comboComponents: List<SessionComboComponentDto> = emptyList(),
 )
 
 @Serializable

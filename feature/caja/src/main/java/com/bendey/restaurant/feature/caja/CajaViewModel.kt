@@ -17,6 +17,8 @@ import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.cash.CashSession
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
+import com.bendey.restaurant.core.domain.cash.CashSessionComboComponent
+import com.bendey.restaurant.core.domain.cash.CashSessionProductsReport
 import com.bendey.restaurant.core.domain.cash.CashFilterUser
 import com.bendey.restaurant.core.domain.cash.CashMovementReportRow
 import com.bendey.restaurant.core.domain.cash.CashMovementsReportQuery
@@ -149,6 +151,8 @@ data class CajaUiState(
     val paymentsReport: CashPaymentsReport? = null,
     val filterUsers: List<CashFilterUser> = emptyList(),
     val reportProducts: List<CashSessionProductSold> = emptyList(),
+    /** Platos que salieron dentro de combos. Sin importe: ya está contado en la línea del combo. */
+    val reportComboComponents: List<CashSessionComboComponent> = emptyList(),
     val movementsExportBusy: Boolean = false,
     val sessionReportExportBusy: Boolean = false,
     val showOpenDialog: Boolean = false,
@@ -652,15 +656,16 @@ class CajaViewModel @Inject constructor(
             _uiState.update { it.copy(reportLoading = true, reportSessionId = sessionId, error = null) }
             when (val result = cashRepository.getSessionReport(sessionId)) {
                 is AppResult.Success -> {
-                    val products = when (val productsResult = cashRepository.getSessionProductsReport(sessionId)) {
+                    val productos = when (val productsResult = cashRepository.getSessionProductsReport(sessionId)) {
                         is AppResult.Success -> productsResult.data
-                        else -> emptyList()
+                        else -> CashSessionProductsReport()
                     }
                     _uiState.update {
                         it.copy(
                             reportLoading = false,
                             report = result.data,
-                            reportProducts = products,
+                            reportProducts = productos.products,
+                            reportComboComponents = productos.comboComponents,
                             tab = CajaTab.REPORT,
                         )
                     }
@@ -803,7 +808,11 @@ class CajaViewModel @Inject constructor(
         if (_uiState.value.sessionReportExportBusy) return
         viewModelScope.launch {
             _uiState.update { it.copy(sessionReportExportBusy = true) }
-            val lines = formatSessionReportLines(report, _uiState.value.reportProducts)
+            val lines = formatSessionReportLines(
+                report,
+                _uiState.value.reportProducts,
+                _uiState.value.reportComboComponents,
+            )
             val shareResult = withContext(Dispatchers.Main) {
                 shareSessionReportPdf(
                     context = context,

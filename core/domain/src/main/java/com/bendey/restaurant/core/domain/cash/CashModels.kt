@@ -68,6 +68,8 @@ data class CashSessionReport(
     val cancelledSalesDetail: List<CashCancelledSaleRow> = emptyList(),
     val salesByMethod: List<CashMethodTotal> = emptyList(),
     val nonCashSalesByMethod: List<CashMethodTotal> = emptyList(),
+    /** Neto real por método no efectivo: ventas − compras − egresos. No solo cobros de venta. */
+    val nonCashByMethod: List<CashMethodTotal> = emptyList(),
     val totalIncome: Double,
     val totalExpense: Double,
     val totalSales: Double,
@@ -250,6 +252,28 @@ data class CashSessionProductSold(
     val description: String,
     val quantity: Double,
     val total: Double,
+)
+
+/**
+ * Plato que salió de cocina dentro de un combo. SIN importe: ya está contado en la línea del combo.
+ * Repartirlo entre los platos obligaría a inventar un criterio, y sumar las dos listas daría el doble
+ * de lo vendido.
+ */
+data class CashSessionComboComponent(
+    val productId: Int,
+    val code: String,
+    val description: String,
+    val quantity: Double,
+)
+
+/**
+ * El reporte de productos de una sesión: lo vendido y, aparte, los platos que salieron dentro de
+ * combos. Van juntos para que nadie pida uno sin el otro — un combo listado sin sus platos es
+ * exactamente el reporte incompleto que esto vino a arreglar.
+ */
+data class CashSessionProductsReport(
+    val products: List<CashSessionProductSold> = emptyList(),
+    val comboComponents: List<CashSessionComboComponent> = emptyList(),
 )
 
 data class CashFilterUser(

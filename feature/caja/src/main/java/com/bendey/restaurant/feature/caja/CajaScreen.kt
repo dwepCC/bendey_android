@@ -556,11 +556,11 @@ private fun ReportTab(
                 CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
             } else {
                 state.report?.let { report ->
-                    ReportContent(report, state.reportProducts, currency)
+                    ReportContent(report, state.reportProducts, state.reportComboComponents, currency)
                     Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.sm)) {
                         OutlinedButton(
                             onClick = {
-                                val text = formatSessionReportText(report, currency)
+                                val text = formatSessionReportText(report, currency, state.reportComboComponents)
                                 context.startActivity(
                                     Intent.createChooser(
                                         Intent(Intent.ACTION_SEND).apply {
@@ -626,6 +626,7 @@ private fun ReportTab(
 private fun ReportContent(
     report: CashSessionReport,
     products: List<com.bendey.restaurant.core.domain.cash.CashSessionProductSold>,
+    comboComponents: List<com.bendey.restaurant.core.domain.cash.CashSessionComboComponent>,
     currency: NumberFormat,
 ) {
     val session = report.session
@@ -641,14 +642,10 @@ private fun ReportContent(
         session.branchName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         session.openedAt?.let { Text("Apertura: $it", style = MaterialTheme.typography.bodySmall) }
         session.closedAt?.let { Text("Cierre: $it", style = MaterialTheme.typography.bodySmall) }
-        ReportRow("Apertura", currency.format(session.openingBalance))
-        ReportRow("Ingresos", currency.format(report.totalIncome))
-        ReportRow("Egresos", currency.format(report.totalExpense))
         ReportRow("Ventas netas", currency.format(report.totalNetSales))
         if (report.totalVoidedSales > 0) {
             ReportRow("Ventas anuladas", currency.format(report.totalVoidedSales))
         }
-        ReportRow("Saldo final", currency.format(report.finalBalance), bold = true)
         if (report.salesByMethod.isNotEmpty()) {
             Text("Ventas por método", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.salesByMethod.forEach { row ->
@@ -658,6 +655,34 @@ private fun ReportContent(
         if (report.nonCashSalesByMethod.isNotEmpty()) {
             Text("Ventas no efectivo", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.nonCashSalesByMethod.forEach { row ->
+                ReportRow(salePaymentMethodLabelEs(row.method), currency.format(row.total))
+            }
+        }
+        // EFECTIVO EN CAJA, con su propio título y la cuenta completa a la vista.
+        //
+        // Antes eran filas sueltas ("Apertura", "Ingresos", "Egresos", "Saldo final") mezcladas con las
+        // ventas, y ninguna decía que hablaban SOLO de efectivo. Un cliente leyó las ventas en efectivo
+        // como el dinero de la gaveta y reportó su caja descuadrada: los dos números estaban bien, el
+        // reporte no los enfrentaba. Faltaban además lo contado y la diferencia.
+        Text("Efectivo en caja", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
+        ReportRow("Saldo de apertura", currency.format(session.openingBalance))
+        ReportRow("+ Ingresos en efectivo", currency.format(report.totalIncome))
+        ReportRow("- Egresos en efectivo", currency.format(report.totalExpense))
+        ReportRow("= Esperado en caja", currency.format(report.finalBalance), bold = true)
+        session.closingBalance?.let { contado ->
+            ReportRow("Contado al cerrar", currency.format(contado))
+            val dif = contado - report.finalBalance
+            // El signo se escribe siempre: un "0.00" pelado no distingue "cuadró" de "no se contó".
+            ReportRow("Diferencia", (if (dif >= 0) "+" else "-") + currency.format(kotlin.math.abs(dif)), bold = true)
+        }
+        if (report.nonCashByMethod.isNotEmpty()) {
+            Text("Medios electrónicos (neto)", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
+            Text(
+                "Ventas − compras − egresos",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            report.nonCashByMethod.forEach { row ->
                 ReportRow(salePaymentMethodLabelEs(row.method), currency.format(row.total))
             }
         }
@@ -688,8 +713,27 @@ private fun ReportContent(
                 )
             }
         }
+        // Los platos de combos van en su propia sección y sin importe: la plata ya está arriba, en la
+        // línea del combo. Acá la pregunta es cuántos platos salieron de cocina, que es lo que el
+        // reporte no podía responder.
+        if (comboComponents.isNotEmpty()) {
+            Text("Platos de combos", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
+            Text(
+                "Ya incluidos en el precio del combo",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            comboComponents.forEach { c ->
+                Text("${c.quantity}× ${c.description}", style = MaterialTheme.typography.bodySmall)
+            }
+            ReportRow("Total platos de combos", formatCantidadCombo(comboComponents.sumOf { it.quantity }))
+        }
     }
 }
+
+/** Cantidad sin ceros sobrantes: 2.0 → "2", 1.50 → "1.5". */
+private fun formatCantidadCombo(q: Double): String =
+    if (q % 1.0 == 0.0) q.toLong().toString() else q.toString().trimEnd('0').trimEnd('.')
 
 @Composable
 private fun ReportRow(label: String, value: String, bold: Boolean = false) {

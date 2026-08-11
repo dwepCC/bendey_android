@@ -92,6 +92,7 @@ fun formatArqueoReportText(
 fun formatSessionReportText(
     report: com.bendey.restaurant.core.domain.cash.CashSessionReport,
     currency: java.text.NumberFormat,
+    comboComponents: List<com.bendey.restaurant.core.domain.cash.CashSessionComboComponent> = emptyList(),
 ): String = buildString {
     val session = report.session
     appendLine("REPORTE DE CAJA #${session.id}")
@@ -100,14 +101,23 @@ fun formatSessionReportText(
     session.closedAt?.let { appendLine("Cierre: $it") }
     session.openedByName?.let { appendLine("Operador: $it") }
     appendLine()
-    appendLine("Apertura: ${currency.format(session.openingBalance)}")
-    appendLine("Ingresos: ${currency.format(report.totalIncome)}")
-    appendLine("Egresos: ${currency.format(report.totalExpense)}")
     appendLine("Ventas netas: ${currency.format(report.totalNetSales)}")
     if (report.totalVoidedSales > 0) {
         appendLine("Ventas anuladas: ${currency.format(report.totalVoidedSales)}")
     }
-    appendLine("Saldo final: ${currency.format(report.finalBalance)}")
+    appendLine()
+    // Con su propio título y la cuenta completa: sin esto, las ventas en efectivo se leían como el
+    // dinero de la gaveta y la caja parecía descuadrada.
+    appendLine("EFECTIVO EN CAJA")
+    appendLine("  Saldo de apertura: ${currency.format(session.openingBalance)}")
+    appendLine("  + Ingresos en efectivo: ${currency.format(report.totalIncome)}")
+    appendLine("  - Egresos en efectivo: ${currency.format(report.totalExpense)}")
+    appendLine("  = Esperado en caja: ${currency.format(report.finalBalance)}")
+    session.closingBalance?.let { contado ->
+        appendLine("  Contado al cerrar: ${currency.format(contado)}")
+        val dif = contado - report.finalBalance
+        appendLine("  Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}")
+    }
     if (report.salesByMethod.isNotEmpty()) {
         appendLine()
         appendLine("Ventas por método:")
@@ -119,6 +129,13 @@ fun formatSessionReportText(
         appendLine()
         appendLine("Ventas no efectivo:")
         report.nonCashSalesByMethod.forEach { row ->
+            appendLine("  ${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}")
+        }
+    }
+    if (report.nonCashByMethod.isNotEmpty()) {
+        appendLine()
+        appendLine("Medios electronicos (neto = ventas - compras - egresos):")
+        report.nonCashByMethod.forEach { row ->
             appendLine("  ${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}")
         }
     }
@@ -141,6 +158,14 @@ fun formatSessionReportText(
         appendLine("Ventas anuladas:")
         report.cancelledSalesDetail.take(30).forEach { row ->
             appendLine("  ${row.date} ${row.docNumber} ${row.paymentMethod} ${currency.format(row.amount)}")
+        }
+    }
+    // Sin importe a propósito: la plata de estos platos ya está en la línea del combo, más arriba.
+    if (comboComponents.isNotEmpty()) {
+        appendLine()
+        appendLine("Platos de combos (ya incluidos en el precio del combo):")
+        comboComponents.forEach { c ->
+            appendLine("  ${c.quantity}x ${c.description}")
         }
     }
 }
