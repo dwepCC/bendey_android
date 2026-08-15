@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
 import com.bendey.restaurant.core.domain.cash.CashCancelledSaleRow
 import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.cash.CashPendingRefundRow
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
 import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
@@ -472,6 +473,14 @@ private fun CashSessionReportDto.toDomain(): CashSessionReport {
         incomeDetail = incomeDetail.map { it.toDomain() },
         expenseDetail = expenseDetail.map { it.toDomain() },
         cancelledSalesDetail = cancelledSalesDetail.map { it.toDomain() },
+        pendingRefunds = pendingRefunds.map {
+            CashPendingRefundRow(
+                saleId = it.saleId,
+                date = it.date,
+                docNumber = it.docNumber,
+                amount = it.amount,
+            )
+        },
         salesByMethod = totalsByMethod?.sales?.map { it.toDomain() }.orEmpty(),
         nonCashSalesByMethod = nonCashSalesByMethod.map { it.toDomain() },
         nonCashByMethod = nonCashByMethod.map { it.toDomain() },
@@ -481,6 +490,7 @@ private fun CashSessionReportDto.toDomain(): CashSessionReport {
         finalBalance = totalsDto.finalBalance,
         totalNetSales = totalsDto.totalNetSales ?: totalsDto.totalSales,
         totalVoidedSales = totalsDto.totalVoidedSales ?: 0.0,
+        totalPendingRefunds = totalsDto.totalPendingRefunds ?: 0.0,
     )
 }
 

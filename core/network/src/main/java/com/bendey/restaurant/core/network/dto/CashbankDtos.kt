@@ -71,6 +71,7 @@ data class CashReportTotalsDto(
     @SerialName("final_balance") val finalBalance: Double = 0.0,
     @SerialName("total_net_sales") val totalNetSales: Double? = null,
     @SerialName("total_voided_sales") val totalVoidedSales: Double? = null,
+    @SerialName("total_pending_refunds") val totalPendingRefunds: Double? = null,
 )
 
 @Serializable
@@ -83,6 +84,19 @@ data class CashCancelledSaleRowDto(
     val amount: Double = 0.0,
     @SerialName("payment_method") val paymentMethod: String = "",
     val reason: String = "",
+)
+
+/**
+ * Venta anulada cobrada en esta caja a la que nadie registro la devolucion. Anular ya no saca plata
+ * sola, asi que si el cajero la entrego y no lo registro, esto es el faltante que va a aparecer al
+ * contar.
+ */
+@Serializable
+data class CashPendingRefundRowDto(
+    @SerialName("sale_id") val saleId: Int = 0,
+    val date: String = "",
+    @SerialName("doc_number") val docNumber: String = "",
+    val amount: Double = 0.0,
 )
 
 @Serializable
@@ -98,6 +112,7 @@ data class CashSessionReportDto(
     @SerialName("income_detail") val incomeDetail: List<CashReportRowDto> = emptyList(),
     @SerialName("expense_detail") val expenseDetail: List<CashReportRowDto> = emptyList(),
     @SerialName("cancelled_sales_detail") val cancelledSalesDetail: List<CashCancelledSaleRowDto> = emptyList(),
+    @SerialName("pending_refunds") val pendingRefunds: List<CashPendingRefundRowDto> = emptyList(),
     @SerialName("totals_by_method") val totalsByMethod: CashTotalsByMethodDto? = null,
     @SerialName("non_cash_sales_by_method") val nonCashSalesByMethod: List<CashMethodTotalDto> = emptyList(),
     /**

@@ -619,11 +619,19 @@ private fun SaleRow(
                     }
                 }
                 // Anulada no implica devuelta: el dinero puede seguir en la caja. Son dos estados
-                // distintos y hay que poder verlos por separado.
+                // distintos y hay que poder verlos por separado. El que importa avisar es el
+                // pendiente: ese es el que termina en un faltante al cerrar la caja.
                 if (sale.isRefunded()) {
                     BendeyStatusChip(
                         label = "Devuelto",
                         accentColor = BendeyColors.Error,
+                        modifier = Modifier.padding(top = BendeySpacing.xxs),
+                    )
+                }
+                if (sale.canRegisterRefund()) {
+                    BendeyStatusChip(
+                        label = "Pendiente de devolución",
+                        accentColor = BendeyColors.Warning,
                         modifier = Modifier.padding(top = BendeySpacing.xxs),
                     )
                 }

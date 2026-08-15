@@ -66,6 +66,8 @@ data class CashSessionReport(
     val incomeDetail: List<CashReportRow>,
     val expenseDetail: List<CashReportRow>,
     val cancelledSalesDetail: List<CashCancelledSaleRow> = emptyList(),
+    /** Ventas anuladas de esta caja a las que todavia nadie les registro la devolucion. */
+    val pendingRefunds: List<CashPendingRefundRow> = emptyList(),
     val salesByMethod: List<CashMethodTotal> = emptyList(),
     val nonCashSalesByMethod: List<CashMethodTotal> = emptyList(),
     /** Neto real por método no efectivo: ventas − compras − egresos. No solo cobros de venta. */
@@ -76,6 +78,8 @@ data class CashSessionReport(
     val finalBalance: Double,
     val totalNetSales: Double,
     val totalVoidedSales: Double,
+    /** Efectivo anulado sin devolucion registrada: el faltante que aparecera al contar. */
+    val totalPendingRefunds: Double = 0.0,
 )
 
 data class CashMovement(
@@ -131,6 +135,13 @@ data class CashBankMovement(
 )
 
 data class CashMethodTotal(val method: String, val total: Double)
+
+data class CashPendingRefundRow(
+    val saleId: Int,
+    val date: String,
+    val docNumber: String,
+    val amount: Double,
+)
 
 data class CashCancelledSaleRow(
     val date: String,

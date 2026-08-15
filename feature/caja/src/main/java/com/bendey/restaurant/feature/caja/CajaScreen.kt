@@ -675,6 +675,30 @@ private fun ReportContent(
             // El signo se escribe siempre: un "0.00" pelado no distingue "cuadró" de "no se contó".
             ReportRow("Diferencia", (if (dif >= 0) "+" else "-") + currency.format(kotlin.math.abs(dif)), bold = true)
         }
+        // EL FALTANTE NO PUEDE APARECER RECIEN AL CONTAR.
+        //
+        // Anular ya no saca plata sola: entregarle el dinero al cliente es un acto que alguien
+        // registra. Si el cajero lo entrego y no lo registro, su caja espera un efectivo que ya no
+        // esta. Va pegado a la diferencia a proposito: es la explicacion mas probable de ese numero.
+        if (report.pendingRefunds.isNotEmpty()) {
+            Text(
+                "Ventas anuladas sin devolucion registrada",
+                fontWeight = FontWeight.SemiBold,
+                color = BendeyColors.Warning,
+                modifier = Modifier.padding(top = BendeySpacing.xs),
+            )
+            Text(
+                "Se cobraron en esta caja y despues se anularon, pero nadie registro que el dinero " +
+                    "se devolviera. Si ya se entrego, registralo desde el comprobante; si no, el " +
+                    "efectivo deberia seguir en la caja.",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            report.pendingRefunds.forEach { row ->
+                ReportRow(row.docNumber, currency.format(row.amount))
+            }
+            ReportRow("Total pendiente", currency.format(report.totalPendingRefunds), bold = true)
+        }
         if (report.nonCashByMethod.isNotEmpty()) {
             Text("Medios electrónicos (neto)", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             Text(
