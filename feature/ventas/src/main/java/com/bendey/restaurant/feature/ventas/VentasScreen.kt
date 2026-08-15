@@ -74,6 +74,7 @@ import com.bendey.restaurant.core.domain.sales.billingStatusLabel
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canResendToSunat
+import com.bendey.restaurant.core.domain.sales.sunatSendActionLabel
 import com.bendey.restaurant.core.domain.sales.canSendToSunat
 import com.bendey.restaurant.core.domain.sales.canShowCdr
 import com.bendey.restaurant.core.domain.sales.canShowXmlGenerated
@@ -784,7 +785,7 @@ private fun SaleDetailContent(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
-                                    if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
+                                    if (billingBusy == "resend") "Reenviando…" else sunatSendActionLabel(detail.billingStatus),
                                 )
                             }
                         }
@@ -820,7 +821,7 @@ private fun SaleDetailContent(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text(
-                                    if (billingBusy == "resend") "Reenviando…" else "Reenviar a SUNAT",
+                                    if (billingBusy == "resend") "Reenviando…" else sunatSendActionLabel(detail.billingStatus),
                                 )
                             }
                         }

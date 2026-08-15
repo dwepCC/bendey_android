@@ -11,7 +11,12 @@ data class DocumentSeries(
     val sunatCode: String?,
     val active: Boolean,
     val currentNumber: Int = 0,
+    /** Congela la IDENTIDAD de la serie (serie, tipo, código SUNAT, categoría). El correlativo NO. */
     val locked: Boolean = false,
+    /** Comprobantes emitidos: ventas, guías y cotizaciones. Decide si hay que advertir al renumerar. */
+    val documentsCount: Int = 0,
+    /** Número más alto ya emitido. Bajar por debajo repite comprobantes y SUNAT los rechaza. */
+    val lastCorrelativeUsed: Int = 0,
     val canDelete: Boolean = true,
 ) {
     val displayLabel: String get() = "$docType · $series"

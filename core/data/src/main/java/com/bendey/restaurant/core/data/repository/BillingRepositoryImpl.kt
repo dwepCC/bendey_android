@@ -248,6 +248,9 @@ private fun DocumentSeriesDto.toDomain(): DocumentSeries {
         active = active,
         currentNumber = correlativeValue,
         locked = computedLocked,
+        // Se cae a `salesCount` para backends viejos: antes solo se contaban las ventas.
+        documentsCount = documentsCount ?: sales,
+        lastCorrelativeUsed = lastCorrelativeUsed ?: 0,
         canDelete = computedCanDelete,
     )
 }

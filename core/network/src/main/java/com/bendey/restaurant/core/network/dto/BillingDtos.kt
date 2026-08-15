@@ -127,9 +127,14 @@ data class DocumentSeriesDto(
     @SerialName("current_number") val currentNumber: Int = 0,
     val correlative: Int? = null,
     @SerialName("sales_count") val salesCount: Int? = null,
+    /** Comprobantes emitidos sobre la serie: ventas, guías y cotizaciones. Decide si hay que advertir. */
+    @SerialName("documents_count") val documentsCount: Int? = null,
+    /** Número más alto ya emitido, para avisar cuando el correlativo nuevo lo pisa. */
+    @SerialName("last_correlative_used") val lastCorrelativeUsed: Int? = null,
     val category: String = "",
     val active: Boolean = true,
     @SerialName("sunat_code") val sunatCode: String? = null,
+    /** Congela la IDENTIDAD de la serie (serie, tipo, código SUNAT, categoría). El correlativo NO. */
     val locked: Boolean? = null,
     @SerialName("can_delete") val canDelete: Boolean? = null,
 )

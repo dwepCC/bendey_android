@@ -235,7 +235,12 @@ data class SeriesFormInput(
     val sunatCode: String = "00",
     val active: Boolean = true,
     val currentNumber: Int = 0,
+    /** Congela la IDENTIDAD de la serie. El correlativo se edita igual: es un contador. */
     val locked: Boolean = false,
+    /** Comprobantes ya emitidos sobre la serie: si son > 0 hay que advertir antes de renumerar. */
+    val documentsCount: Int = 0,
+    /** Número más alto ya emitido. Bajar por debajo repite comprobantes y SUNAT los rechaza. */
+    val lastCorrelativeUsed: Int = 0,
     val canDelete: Boolean = true,
 )
 

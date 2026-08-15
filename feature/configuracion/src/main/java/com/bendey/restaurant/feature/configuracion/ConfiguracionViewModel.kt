@@ -485,6 +485,8 @@ class ConfiguracionViewModel @Inject constructor(
                     active = series.active,
                     currentNumber = series.currentNumber,
                     locked = series.locked,
+                    documentsCount = series.documentsCount,
+                    lastCorrelativeUsed = series.lastCorrelativeUsed,
                     canDelete = series.canDelete,
                 ),
                 error = null,

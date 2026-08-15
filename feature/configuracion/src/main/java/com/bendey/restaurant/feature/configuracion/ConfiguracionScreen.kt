@@ -518,12 +518,24 @@ private fun SeriesCard(
         enabled = !fieldsLocked && billingModuleEnabled,
     )
     if (form.id != null) {
+        // EL CORRELATIVO NO LLEVA `enabled = !fieldsLocked`: es lo único editable con la serie en uso.
+        // Los campos de arriba definen la identidad del comprobante ante SUNAT y para cambiarlos se crea
+        // una serie nueva; la numeración es un contador, y hay que poder corregirla cuando el tenant
+        // migra desde otro proveedor o SUNAT rechaza por números ya informados. Bloquearla obligaba a
+        // editar la base de datos. Ver docs/BILLING-HALLAZGOS-2026-08-15.md (BUG-05).
         BendeyTextField(
             form.currentNumber.toString(),
             { v -> viewModel.updateSeriesForm { it.copy(currentNumber = v.toIntOrNull() ?: 0) } },
             "Correlativo",
-            enabled = !fieldsLocked,
         )
+        if (form.documentsCount > 0) {
+            Text(
+                "Esta serie ya emitió ${form.documentsCount} comprobante(s); el último fue el " +
+                    "${form.lastCorrelativeUsed}. Cambiar la numeración afecta lo que se declara a SUNAT.",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+        }
         BendeySwitchRow(
             label = "Activa",
             checked = form.active,
