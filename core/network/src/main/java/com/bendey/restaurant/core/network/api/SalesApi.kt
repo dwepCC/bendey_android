@@ -7,6 +7,8 @@ import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
 import com.bendey.restaurant.core.network.dto.CancelSaleResponseDto
 import com.bendey.restaurant.core.network.dto.IssueElectronicRequestDto
 import com.bendey.restaurant.core.network.dto.IssueElectronicResponseDto
+import com.bendey.restaurant.core.network.dto.RefundSaleRequestDto
+import com.bendey.restaurant.core.network.dto.RefundSaleResponseDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -38,6 +40,16 @@ interface SalesApi {
         @Path("saleId") saleId: Int,
         @Body body: CancelSaleRequestDto,
     ): CancelSaleResponseDto
+
+    /**
+     * Registra que el dinero de una venta volvio al cliente. Anular no es devolver: esta es la unica
+     * operacion que saca plata de la caja, y por eso pide confirmacion explicita.
+     */
+    @POST("/api/sales/{saleId}/refund")
+    suspend fun refundSale(
+        @Path("saleId") saleId: Int,
+        @Body body: RefundSaleRequestDto,
+    ): RefundSaleResponseDto
 
     @POST("/api/sales/{saleId}/issue-electronic")
     suspend fun issueElectronicFromNota(

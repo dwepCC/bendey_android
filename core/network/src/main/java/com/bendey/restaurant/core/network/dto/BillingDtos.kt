@@ -257,6 +257,34 @@ data class SaleDto(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("payment_method") val paymentMethod: String? = null,
     val payments: List<SalePaymentDto> = emptyList(),
+    // Devolucion del dinero, calculada por el backend cruzando caja y banco. No se deduce de
+    // `payments`: anular una venta y devolver la plata son hechos distintos.
+    val refundable: Boolean = false,
+    @SerialName("refundable_amount") val refundableAmount: Double = 0.0,
+    @SerialName("refunded_amount") val refundedAmount: Double = 0.0,
+)
+
+@Serializable
+data class RefundSaleRequestDto(
+    // El importe no viaja: lo deriva el backend de lo que la venta cobro de verdad.
+    val confirmation: Boolean = true,
+    val reason: String,
+)
+
+@Serializable
+data class RefundSaleResultDto(
+    @SerialName("sale_id") val saleId: Int = 0,
+    val total: Double = 0.0,
+    @SerialName("cash_refunded") val cashRefunded: Double = 0.0,
+    @SerialName("bank_refunded") val bankRefunded: Double = 0.0,
+    val reference: String = "",
+)
+
+@Serializable
+data class RefundSaleResponseDto(
+    val success: Boolean = true,
+    val message: String? = null,
+    val data: RefundSaleResultDto? = null,
 )
 
 @Serializable

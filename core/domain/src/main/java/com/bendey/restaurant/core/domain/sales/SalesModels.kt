@@ -20,9 +20,22 @@ data class SaleSummary(
     val electronicIssueSaleId: Int? = null,
     val branchId: Int? = null,
     val contactId: Int? = null,
+    // Devolucion del dinero: la calcula el backend. `refundableAmount` es lo efectivamente cobrado
+    // que se devolveria, no el total de la venta.
+    val refundable: Boolean = false,
+    val refundableAmount: Double = 0.0,
+    val refundedAmount: Double = 0.0,
 ) {
     val displayNumber: String get() = formatSaleDocumentNumber(number)
 }
+
+data class RefundResult(
+    val saleId: Int,
+    val total: Double,
+    val cashRefunded: Double,
+    val bankRefunded: Double,
+    val reference: String,
+)
 
 data class CancelNotaResult(
     val message: String?,
@@ -78,6 +91,9 @@ data class SaleDetail(
     val electronicIssueSaleId: Int? = null,
     val branchId: Int? = null,
     val contactId: Int? = null,
+    val refundable: Boolean = false,
+    val refundableAmount: Double = 0.0,
+    val refundedAmount: Double = 0.0,
     val contact: SaleContactBrief? = null,
     val items: List<SaleDetailLine>,
     val payments: List<SaleDetailPayment>,
@@ -155,6 +171,12 @@ interface SalesRepository {
     suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail>
 
     suspend fun cancelNotaVenta(saleId: Int, reason: String): AppResult<CancelNotaResult>
+
+    /**
+     * Registra que el dinero de una venta volvio al cliente. El importe no se envia: lo deriva el
+     * backend de lo que la venta cobro de verdad.
+     */
+    suspend fun refundSale(saleId: Int, reason: String): AppResult<RefundResult>
 
     suspend fun issueElectronicFromNota(
         saleId: Int,

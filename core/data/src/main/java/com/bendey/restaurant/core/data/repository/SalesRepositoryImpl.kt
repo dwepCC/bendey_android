@@ -3,6 +3,7 @@ package com.bendey.restaurant.core.data.repository
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.CancelNotaResult
 import com.bendey.restaurant.core.domain.sales.IssueElectronicResult
+import com.bendey.restaurant.core.domain.sales.RefundResult
 import com.bendey.restaurant.core.domain.sales.SaleContactBrief
 import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SaleDetailLine
@@ -20,6 +21,7 @@ import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.network.api.SalesApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
+import com.bendey.restaurant.core.network.dto.RefundSaleRequestDto
 import com.bendey.restaurant.core.network.dto.IssueElectronicRequestDto
 import com.bendey.restaurant.core.network.dto.SaleContactDto
 import com.bendey.restaurant.core.network.dto.SaleDetailResponseDto
@@ -92,6 +94,19 @@ class SalesRepositoryImpl @Inject constructor(
         val response = tenantRetrofitProvider.create<SalesApi>()
             .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim()))
         CancelNotaResult(message = response.message ?: "Nota de venta anulada")
+    }
+
+    override suspend fun refundSale(saleId: Int, reason: String): AppResult<RefundResult> = apiCall {
+        val response = tenantRetrofitProvider.create<SalesApi>()
+            .refundSale(saleId, RefundSaleRequestDto(reason = reason.trim()))
+        val data = response.data ?: error("El servidor no informo cuanto se devolvio")
+        RefundResult(
+            saleId = data.saleId,
+            total = data.total,
+            cashRefunded = data.cashRefunded,
+            bankRefunded = data.bankRefunded,
+            reference = data.reference,
+        )
     }
 
     override suspend fun issueElectronicFromNota(
@@ -201,6 +216,9 @@ private fun SaleDto.toDomain() = SaleSummary(
     electronicIssueSaleId = electronicIssueSaleId,
     branchId = branchId,
     contactId = contactId,
+    refundable = refundable,
+    refundableAmount = refundableAmount,
+    refundedAmount = refundedAmount,
 )
 
 private fun formatSaleNumber(series: String, number: String): String {
@@ -238,6 +256,9 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         electronicIssueSaleId = saleDto.electronicIssueSaleId,
         branchId = saleDto.branchId,
         contactId = saleDto.contactId,
+        refundable = saleDto.refundable,
+        refundableAmount = saleDto.refundableAmount,
+        refundedAmount = saleDto.refundedAmount,
         contact = contact?.toDomain(),
         items = items.map {
             SaleDetailLine(

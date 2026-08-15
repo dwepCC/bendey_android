@@ -29,6 +29,7 @@ import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
+import com.bendey.restaurant.core.domain.sales.canRegisterRefund
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
 import com.bendey.restaurant.core.domain.permission.RestaurantFeature
@@ -56,6 +57,13 @@ import javax.inject.Inject
 enum class VoidAction {
     CREDIT_NOTE,
     CANCEL_NOTA,
+
+    /**
+     * Devolver el dinero al cliente. Comparte el dialogo de motivo con las anulaciones porque pide lo
+     * mismo —un motivo y una confirmacion—, pero NO es una anulacion: es la unica de las tres que
+     * saca plata de la caja, y el dialogo lo dice con sus propias etiquetas.
+     */
+    REFUND,
 }
 
 enum class VentasDatePreset(val label: String) {
@@ -395,6 +403,12 @@ class VentasViewModel @Inject constructor(
         }
     }
 
+    fun openRefund() {
+        _uiState.update {
+            it.copy(voidDialogOpen = true, voidAction = VoidAction.REFUND, voidReason = "", error = null)
+        }
+    }
+
     fun openCancelNota() {
         _uiState.update {
             it.copy(voidDialogOpen = true, voidAction = VoidAction.CANCEL_NOTA, voidReason = "", error = null)
@@ -432,6 +446,13 @@ class VentasViewModel @Inject constructor(
                     return
                 }
                 submitCancelNota(detail.id, reason)
+            }
+            VoidAction.REFUND -> {
+                if (!detail.canRegisterRefund()) {
+                    _uiState.update { it.copy(error = "Esta venta no admite una devolucion de dinero") }
+                    return
+                }
+                submitRefund(detail.id, reason)
             }
             null -> Unit
         }
@@ -485,6 +506,35 @@ class VentasViewModel @Inject constructor(
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(voidSubmitting = false, error = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    private fun submitRefund(saleId: Int, reason: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(voidSubmitting = true, error = null) }
+            when (val result = salesRepository.refundSale(saleId, reason)) {
+                is AppResult.Success -> {
+                    // El importe del mensaje sale de la respuesta, no del que se mostro al confirmar:
+                    // el backend es el que sabe cuanto salio de verdad.
+                    val monto = "%.2f".format(result.data.total)
+                    _uiState.update {
+                        it.copy(
+                            voidSubmitting = false,
+                            voidDialogOpen = false,
+                            voidAction = null,
+                            voidReason = "",
+                            selectedSaleId = null,
+                            detail = null,
+                            snackMessage = "Devolucion registrada correctamente. Se devolvieron S/ $monto.",
+                        )
+                    }
+                    refresh()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(voidSubmitting = false, error = mensajeDeDevolucion(result.message))
                 }
                 AppResult.Loading -> Unit
             }
@@ -1111,6 +1161,30 @@ class VentasViewModel @Inject constructor(
 
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
+    }
+}
+
+/**
+ * Traduce el error del backend a algo accionable frente al mostrador.
+ *
+ * El backend responde con el motivo real —«la caja del cobro original ya fue cerrada»—, correcto pero
+ * escrito para quien lee el codigo. Lo que le sirve al cajero es la salida: abre una caja. Se reconoce
+ * por el texto porque el endpoint no manda un codigo; si algun dia lo agrega, esto se reemplaza.
+ */
+internal fun mensajeDeDevolucion(raw: String?): String {
+    val texto = raw?.trim().orEmpty()
+    val lower = texto.lowercase()
+    return when {
+        lower.contains("sesion de caja abierta") || lower.contains("sesión de caja abierta") ->
+            "No hay una sesion de caja abierta para registrar la devolucion. Abre una caja antes de realizar esta operacion."
+        lower.contains("ya tiene una devolucion") || lower.contains("ya tiene una devolución") ->
+            "Esta venta ya tiene registrada una devolucion."
+        lower.contains("no tiene un cobro registrado") ->
+            "No existe un importe cobrado disponible para devolver."
+        lower.contains("permiso") ->
+            "No tienes permisos para registrar devoluciones de dinero."
+        texto.isNotEmpty() -> texto
+        else -> "No se pudo registrar la devolucion."
     }
 }
 

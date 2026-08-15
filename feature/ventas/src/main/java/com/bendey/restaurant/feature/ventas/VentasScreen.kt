@@ -72,6 +72,8 @@ import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.domain.sales.billingStatusLabel
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
+import com.bendey.restaurant.core.domain.sales.canRegisterRefund
+import com.bendey.restaurant.core.domain.sales.isRefunded
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
 import com.bendey.restaurant.core.domain.sales.canResendToSunat
 import com.bendey.restaurant.core.domain.sales.sunatSendActionLabel
@@ -218,6 +220,7 @@ fun VentasScreen(
                 onOpenPdf = viewModel::openReceiptModal,
                 onVoidCreditNote = viewModel::openVoidCreditNote,
                 onCancelNota = viewModel::openCancelNota,
+                onRefund = viewModel::openRefund,
                 onEmitElectronic = viewModel::openEmitElectronic,
                 onSendSunat = viewModel::sendToSunat,
                 onResendSunat = viewModel::resendToSunat,
@@ -235,6 +238,7 @@ fun VentasScreen(
     if (state.voidDialogOpen) {
         VoidReasonDialog(
             action = state.voidAction,
+            refundAmount = state.detail?.refundableAmount ?: 0.0,
             reason = state.voidReason,
             loading = state.voidSubmitting,
             error = state.error,
@@ -614,6 +618,15 @@ private fun SaleRow(
                         )
                     }
                 }
+                // Anulada no implica devuelta: el dinero puede seguir en la caja. Son dos estados
+                // distintos y hay que poder verlos por separado.
+                if (sale.isRefunded()) {
+                    BendeyStatusChip(
+                        label = "Devuelto",
+                        accentColor = BendeyColors.Error,
+                        modifier = Modifier.padding(top = BendeySpacing.xxs),
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -658,6 +671,7 @@ private fun SaleDetailContent(
     onDownloadPdf: () -> Unit,
     onVoidCreditNote: () -> Unit,
     onCancelNota: () -> Unit,
+    onRefund: () -> Unit,
     onEmitElectronic: () -> Unit,
     onSendSunat: () -> Unit,
     onResendSunat: () -> Unit,
@@ -835,6 +849,13 @@ private fun SaleDetailContent(
                             onDownloadXmlGenerated = onDownloadXmlGenerated,
                             onDownloadCdr = onDownloadCdr,
                         )
+                    }
+                }
+                // Devolver el dinero vale para las tres pestanas: una venta anulada por cualquier via
+                // puede tener plata pendiente de entregar. Anular y devolver son cosas distintas.
+                if (detail.canRegisterRefund()) {
+                    OutlinedButton(onClick = onRefund, modifier = Modifier.fillMaxWidth()) {
+                        Text("Registrar devolucion", color = BendeyColors.Error)
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(bottom = BendeySpacing.md))
@@ -1097,6 +1118,7 @@ private fun EmitClientQuickAddDialog(
 @Composable
 private fun VoidReasonDialog(
     action: VoidAction?,
+    refundAmount: Double,
     reason: String,
     loading: Boolean,
     error: String?,
@@ -1107,21 +1129,40 @@ private fun VoidReasonDialog(
     val title = when (action) {
         VoidAction.CREDIT_NOTE -> "Anular con nota de crédito"
         VoidAction.CANCEL_NOTA -> "Anular nota de venta"
+        VoidAction.REFUND -> "Registrar devolución"
         null -> "Anular"
     }
     val confirmLabel = when (action) {
         VoidAction.CREDIT_NOTE -> if (loading) "Procesando…" else "Generar nota de crédito"
         VoidAction.CANCEL_NOTA -> if (loading) "Anulando…" else "Confirmar anulación"
+        // El boton nombra lo que hace: aca sale dinero, no es un "Aceptar" cualquiera.
+        VoidAction.REFUND -> if (loading) "Procesando devolución…" else "Confirmar devolución"
         null -> "Confirmar"
     }
+    val esDevolucion = action == VoidAction.REFUND
 
     AlertDialog(
         onDismissRequest = { if (!loading) onDismiss() },
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (esDevolucion) {
+                    // El importe no es editable ni lo calcula la app: llega en `refundableAmount`,
+                    // derivado por el backend de lo que la venta cobro de verdad.
+                    Text(
+                        "Importe a devolver: S/ %.2f".format(refundAmount),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = BendeyColors.Error,
+                    )
+                    Text(
+                        "Es lo efectivamente cobrado por esta venta, no su total. Esta operación " +
+                            "registra una salida real de dinero y afecta la caja o la cuenta correspondiente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
                 Text(
-                    "Indique el motivo de anulación.",
+                    if (esDevolucion) "Indique el motivo de la devolución." else "Indique el motivo de anulación.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BendeyColors.OnSurfaceVariant,
                 )
