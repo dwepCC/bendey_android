@@ -75,7 +75,8 @@ data class CreateProductRequestDto(
     @SerialName("purchase_price") val purchasePrice: Double = 0.0,
     @SerialName("category_id") val categoryId: Int? = null,
     @SerialName("preparation_area_id") val preparationAreaId: Int? = null,
-    @SerialName("igv_affectation_type") val igvAffectationType: String = "10",
+    // Vacio = «sin declarar»: el backend aplica la politica del tenant al crear.
+    @SerialName("igv_affectation_type") val igvAffectationType: String = "",
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean = true,
     @SerialName("manage_stock") val manageStock: Boolean = false,
     @SerialName("min_stock") val minStock: Double = 0.0,

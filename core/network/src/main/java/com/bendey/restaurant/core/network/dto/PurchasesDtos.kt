@@ -35,7 +35,7 @@ data class PurchaseItemDto(
     val unit: String = "",
     val quantity: Double = 0.0,
     @SerialName("unit_cost") val unitCost: Double = 0.0,
-    @SerialName("igv_affectation_type") val igvAffectationType: String = "10",
+    @SerialName("igv_affectation_type") val igvAffectationType: String = "",
     @SerialName("price_includes_igv") val priceIncludesIgv: Boolean = false,
     val serials: List<String> = emptyList(),
 )

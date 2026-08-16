@@ -27,7 +27,8 @@ data class PurchaseItem(
     val unit: String,
     val quantity: Double,
     val unitCost: Double,
-    val igvAffectationType: String = "10",
+    // Vacio = «sin declarar»: lo resuelve la politica del tenant en el backend.
+    val igvAffectationType: String = "",
     val priceIncludesIgv: Boolean = false,
 ) {
     val lineTotal: Double get() = quantity * unitCost

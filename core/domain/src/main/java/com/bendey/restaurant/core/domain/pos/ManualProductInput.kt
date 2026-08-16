@@ -7,6 +7,9 @@ data class ManualProductInput(
     val unitPrice: String = "",
     val notes: String = "",
     val code: String = "MANUAL",
-    val igvAffectationType: String = "10",
+    // Vacio = «el usuario no eligio». El backend aplica entonces la politica del tenant, que en un
+    // negocio acogido a la Ley 27037 es «20 Exonerado». Escribir "10" aca lo declaraba Gravado sin
+    // que nadie lo hubiera elegido.
+    val igvAffectationType: String = "",
     val priceIncludesIgv: Boolean = true,
 )
