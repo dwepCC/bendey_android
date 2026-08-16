@@ -163,7 +163,7 @@ interface BillingRepository {
     suspend fun refreshCheckoutMeta(branchId: Int): AppResult<CheckoutMeta>
     suspend fun billSession(sessionId: Int, input: BillSessionInput): AppResult<BillSessionResult>
     suspend fun billQuickSale(input: BillQuickSaleInput): AppResult<BillSessionResult>
-    suspend fun voidWithCreditNote(saleId: Int, reason: String): AppResult<VoidCreditNoteResult>
+    suspend fun voidWithCreditNote(saleId: Int, reason: String, pin: String): AppResult<VoidCreditNoteResult>
     suspend fun sendToSunat(saleId: Int): AppResult<BillingActionResult>
     suspend fun resendToSunat(saleId: Int): AppResult<BillingActionResult>
     suspend fun downloadOfficialPdf(saleId: Int): AppResult<java.io.File>

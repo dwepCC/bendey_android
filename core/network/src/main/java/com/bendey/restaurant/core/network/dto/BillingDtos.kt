@@ -186,6 +186,8 @@ data class PaymentMethodDto(
 @Serializable
 data class CancelSaleRequestDto(
     val reason: String,
+    /** PIN de operaciones del negocio: anular una venta no puede quedar a criterio de quien cobra. */
+    val pin: String,
 )
 
 @Serializable
@@ -197,6 +199,8 @@ data class CancelSaleResponseDto(
 @Serializable
 data class VoidCreditNoteRequestDto(
     val reason: String,
+    /** PIN de operaciones del negocio, igual que al anular una nota de venta. */
+    val pin: String,
 )
 
 @Serializable

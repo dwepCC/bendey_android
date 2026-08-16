@@ -155,9 +155,10 @@ class BillingRepositoryImpl @Inject constructor(
     override suspend fun voidWithCreditNote(
         saleId: Int,
         reason: String,
+        pin: String,
     ): AppResult<VoidCreditNoteResult> = apiCall {
         val response = tenantRetrofitProvider.create<BillingApi>()
-            .voidWithCreditNote(saleId, VoidCreditNoteRequestDto(reason = reason.trim()))
+            .voidWithCreditNote(saleId, VoidCreditNoteRequestDto(reason = reason.trim(), pin = pin.trim()))
         VoidCreditNoteResult(
             message = response.message,
             async = response.async,

@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.ventas
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -240,9 +243,11 @@ fun VentasScreen(
             action = state.voidAction,
             refundAmount = state.detail?.refundableAmount ?: 0.0,
             reason = state.voidReason,
+            pin = state.voidPin,
             loading = state.voidSubmitting,
             error = state.error,
             onReasonChange = viewModel::setVoidReason,
+            onPinChange = viewModel::setVoidPin,
             onDismiss = viewModel::dismissVoidDialog,
             onConfirm = viewModel::confirmVoid,
         )
@@ -1128,9 +1133,11 @@ private fun VoidReasonDialog(
     action: VoidAction?,
     refundAmount: Double,
     reason: String,
+    pin: String,
     loading: Boolean,
     error: String?,
     onReasonChange: (String) -> Unit,
+    onPinChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -1180,6 +1187,23 @@ private fun VoidReasonDialog(
                     label = "Motivo",
                     modifier = Modifier.fillMaxWidth(),
                 )
+                // Anular exige el PIN del negocio; devolver el dinero no, y el backend hace la misma
+                // distincion. Mostrar el campo donde no se pide solo confundiria a quien cobra.
+                if (!esDevolucion) {
+                    BendeyTextField(
+                        value = pin,
+                        onValueChange = onPinChange,
+                        label = "PIN de operaciones",
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        "Mismo PIN configurado en Ajustes del restaurante.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
                 error?.let {
                     Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -1189,7 +1213,7 @@ private fun VoidReasonDialog(
             BendeyPrimaryButton(
                 text = confirmLabel,
                 onClick = onConfirm,
-                enabled = !loading && reason.isNotBlank(),
+                enabled = !loading && reason.isNotBlank() && (esDevolucion || pin.isNotBlank()),
             )
         },
         dismissButton = {

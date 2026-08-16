@@ -31,6 +31,11 @@ class AuthInterceptor @Inject constructor(
             )
         }
 
+        // Identifica a Bendey Resto frente al panel del ERP, que comparte backend, endpoints y token.
+        // El backend la usa para saber qué reglas aplicar: el PIN de operaciones es del restaurante,
+        // mientras que el ERP autoriza por roles y permisos.
+        builder.header("X-Bendey-App", "resto")
+
         sessionProvider.token()?.let { builder.header("Authorization", "Bearer $it") }
         sessionProvider.tenantSlug()?.let { builder.header("X-Tenant-Slug", it) }
 

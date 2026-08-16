@@ -90,9 +90,9 @@ class SalesRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.create<SalesApi>().getSale(saleId).toDomain()
     }
 
-    override suspend fun cancelNotaVenta(saleId: Int, reason: String): AppResult<CancelNotaResult> = apiCall {
+    override suspend fun cancelNotaVenta(saleId: Int, reason: String, pin: String): AppResult<CancelNotaResult> = apiCall {
         val response = tenantRetrofitProvider.create<SalesApi>()
-            .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim()))
+            .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim(), pin = pin.trim()))
         CancelNotaResult(message = response.message ?: "Nota de venta anulada")
     }
 

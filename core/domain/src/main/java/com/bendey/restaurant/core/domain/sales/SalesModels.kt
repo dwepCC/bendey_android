@@ -170,7 +170,7 @@ interface SalesRepository {
 
     suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail>
 
-    suspend fun cancelNotaVenta(saleId: Int, reason: String): AppResult<CancelNotaResult>
+    suspend fun cancelNotaVenta(saleId: Int, reason: String, pin: String): AppResult<CancelNotaResult>
 
     /**
      * Registra que el dinero de una venta volvio al cliente. El importe no se envia: lo deriva el

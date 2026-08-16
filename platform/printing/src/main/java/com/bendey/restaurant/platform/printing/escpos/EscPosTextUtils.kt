@@ -17,6 +17,8 @@ object EscPosTextUtils {
         /** Ticketeras ESC/POS suelen no soportar UTF-8; × y · salen como basura (a veces "tm"). */
         Regex("×") to "x",
         Regex("[·•]") to "-",
+        Regex("[´`]") to "'",
+        Regex("[®©]") to "",
         Regex("[\u201c\u201d]") to "\"",
         Regex("[\u2018\u2019]") to "'",
         Regex("[\u200b-\u200d\ufeff]") to "",
@@ -35,6 +37,15 @@ object EscPosTextUtils {
         for ((pattern, replacement) in symbolReplacements) {
             s = s.replace(pattern, replacement)
         }
+        // RED DE SEGURIDAD: lo que no quedó en ASCII imprimible se cae acá.
+        //
+        // El texto se envía en UTF-8 y la ticketera lo lee en su página de códigos (CP437 y
+        // parecidas), así que un carácter multibyte no sale «raro»: sale como 2 o 3 símbolos de
+        // basura. Pasó de verdad con «ALITAS JACK DANIEL´S», donde ese ´ no estaba en la tabla.
+        //
+        // Se borra en vez de sustituirse por «?» porque en una comanda el ruido confunde más que
+        // la ausencia. Tabuladores y saltos se conservan: el formato del ticket depende de ellos.
+        s = s.replace(Regex("[^\\n\\r\\t\\x20-\\x7e]"), "")
         return s
     }
 

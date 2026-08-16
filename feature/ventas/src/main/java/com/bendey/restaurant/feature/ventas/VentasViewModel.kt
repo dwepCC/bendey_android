@@ -20,6 +20,7 @@ import com.bendey.restaurant.core.domain.billing.isFacturaDocType
 import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
 import com.bendey.restaurant.core.data.repository.pickVariosContactId
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.ContactsRepository
@@ -95,6 +96,8 @@ data class VentasUiState(
     val voidDialogOpen: Boolean = false,
     val voidAction: VoidAction? = null,
     val voidReason: String = "",
+    /** PIN de operaciones. Solo lo piden las anulaciones; la devolución de dinero no lo usa. */
+    val voidPin: String = "",
     val voidSubmitting: Boolean = false,
     val emitDialogOpen: Boolean = false,
     val emitDocKind: String = "03",
@@ -156,6 +159,7 @@ class VentasViewModel @Inject constructor(
     private val billingEventsClient: BillingEventsClient,
     private val sessionStore: UserSessionStore,
     private val contactsRepository: ContactsRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
@@ -397,31 +401,53 @@ class VentasViewModel @Inject constructor(
         _uiState.update { it.copy(selectedSaleId = null, detail = null, detailLoading = false) }
     }
 
-    fun openVoidCreditNote() {
+    // Sin PIN configurado no se abre el diálogo, misma convención que anular un pedido: escribir el
+    // motivo y el PIN para recibir recién ahí un «configúrelo en Configuración» no le sirve a nadie.
+    private fun conPinConfigurado(abrir: () -> Unit) {
+        viewModelScope.launch {
+            when (val settings = settingsRepository.getRestaurantSettings()) {
+                is AppResult.Success -> {
+                    if (!settings.data.hasDeletionPin) {
+                        _uiState.update { it.copy(error = "Configure el PIN de operaciones en Configuración") }
+                        return@launch
+                    }
+                    abrir()
+                }
+                is AppResult.Error -> _uiState.update { it.copy(error = settings.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openVoidCreditNote() = conPinConfigurado {
         _uiState.update {
-            it.copy(voidDialogOpen = true, voidAction = VoidAction.CREDIT_NOTE, voidReason = "", error = null)
+            it.copy(voidDialogOpen = true, voidAction = VoidAction.CREDIT_NOTE, voidReason = "", voidPin = "", error = null)
         }
     }
 
     fun openRefund() {
         _uiState.update {
-            it.copy(voidDialogOpen = true, voidAction = VoidAction.REFUND, voidReason = "", error = null)
+            it.copy(voidDialogOpen = true, voidAction = VoidAction.REFUND, voidReason = "", voidPin = "", error = null)
         }
     }
 
-    fun openCancelNota() {
+    fun openCancelNota() = conPinConfigurado {
         _uiState.update {
-            it.copy(voidDialogOpen = true, voidAction = VoidAction.CANCEL_NOTA, voidReason = "", error = null)
+            it.copy(voidDialogOpen = true, voidAction = VoidAction.CANCEL_NOTA, voidReason = "", voidPin = "", error = null)
         }
     }
 
     fun dismissVoidDialog() {
         if (_uiState.value.voidSubmitting) return
-        _uiState.update { it.copy(voidDialogOpen = false, voidAction = null, voidReason = "") }
+        _uiState.update { it.copy(voidDialogOpen = false, voidAction = null, voidReason = "", voidPin = "") }
     }
 
     fun setVoidReason(reason: String) {
         _uiState.update { it.copy(voidReason = reason) }
+    }
+
+    fun setVoidPin(pin: String) {
+        _uiState.update { it.copy(voidPin = pin.filter { ch -> ch.isDigit() }.take(6)) }
     }
 
     fun confirmVoid() {
@@ -432,20 +458,27 @@ class VentasViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Indique el motivo de anulación") }
             return
         }
+        // El PIN cubre las anulaciones, no la devolución: son operaciones distintas y el backend
+        // solo lo exige en las primeras. Pedirlo acá igual solo trabaría una que el servidor acepta.
+        val pin = state.voidPin.trim()
+        if (pin.isBlank() && state.voidAction != VoidAction.REFUND) {
+            _uiState.update { it.copy(error = "Ingrese el PIN de operaciones") }
+            return
+        }
         when (state.voidAction) {
             VoidAction.CREDIT_NOTE -> {
                 if (!detail.canVoidWithCreditNote()) {
                     _uiState.update { it.copy(error = "Esta venta no puede anularse con nota de crédito") }
                     return
                 }
-                submitVoidCreditNote(detail.id, reason)
+                submitVoidCreditNote(detail.id, reason, pin)
             }
             VoidAction.CANCEL_NOTA -> {
                 if (!detail.canCancelNotaVenta()) {
                     _uiState.update { it.copy(error = "Esta nota no puede anularse") }
                     return
                 }
-                submitCancelNota(detail.id, reason)
+                submitCancelNota(detail.id, reason, pin)
             }
             VoidAction.REFUND -> {
                 if (!detail.canRegisterRefund()) {
@@ -458,10 +491,10 @@ class VentasViewModel @Inject constructor(
         }
     }
 
-    private fun submitVoidCreditNote(saleId: Int, reason: String) {
+    private fun submitVoidCreditNote(saleId: Int, reason: String, pin: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(voidSubmitting = true, error = null) }
-            when (val result = billingRepository.voidWithCreditNote(saleId, reason)) {
+            when (val result = billingRepository.voidWithCreditNote(saleId, reason, pin)) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -469,6 +502,7 @@ class VentasViewModel @Inject constructor(
                             voidDialogOpen = false,
                             voidAction = null,
                             voidReason = "",
+                            voidPin = "",
                             selectedSaleId = null,
                             detail = null,
                             tab = VentasTab.CREDITOS,
@@ -486,10 +520,10 @@ class VentasViewModel @Inject constructor(
         }
     }
 
-    private fun submitCancelNota(saleId: Int, reason: String) {
+    private fun submitCancelNota(saleId: Int, reason: String, pin: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(voidSubmitting = true, error = null) }
-            when (val result = salesRepository.cancelNotaVenta(saleId, reason)) {
+            when (val result = salesRepository.cancelNotaVenta(saleId, reason, pin)) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -497,6 +531,7 @@ class VentasViewModel @Inject constructor(
                             voidDialogOpen = false,
                             voidAction = null,
                             voidReason = "",
+                            voidPin = "",
                             selectedSaleId = null,
                             detail = null,
                             snackMessage = result.data.message ?: "Nota de venta anulada",
@@ -526,6 +561,7 @@ class VentasViewModel @Inject constructor(
                             voidDialogOpen = false,
                             voidAction = null,
                             voidReason = "",
+                            voidPin = "",
                             selectedSaleId = null,
                             detail = null,
                             snackMessage = "Devolucion registrada correctamente. Se devolvieron S/ $monto.",
