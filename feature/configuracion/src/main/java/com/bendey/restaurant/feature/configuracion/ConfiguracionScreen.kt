@@ -442,10 +442,18 @@ private fun SeriesCard(
             onSelect = { value -> viewModel.updateSunatForm { it.copy(taxRate = value) } },
             label = "Tasa IGV",
         )
+        // El «Regimen IGV» que habia aca no existe en SUNAT: mezclaba el regimen tributario del
+        // contribuyente, la afectacion del IGV (que es por linea, catalogo 07) y un beneficio
+        // territorial. Son dos condiciones independientes.
         BendeySwitchRow(
-            label = "Zona de beneficio tributario",
-            checked = state.sunatForm.taxBenefitZone,
-            onCheckedChange = { checked -> viewModel.updateSunatForm { it.copy(taxBenefitZone = checked) } },
+            label = "Contribuyente del Nuevo RUS (NRUS)",
+            checked = state.sunatForm.isNRUS,
+            onCheckedChange = { checked -> viewModel.updateSunatForm { it.copy(isNRUS = checked) } },
+        )
+        BendeySwitchRow(
+            label = "Beneficio tributario de la Amazonia (Ley 27037)",
+            checked = state.sunatForm.hasAmazonBenefit,
+            onCheckedChange = { checked -> viewModel.updateSunatForm { it.copy(hasAmazonBenefit = checked) } },
         )
     }
 }

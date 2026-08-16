@@ -196,14 +196,14 @@ data class UbiItem(
 data class SunatConfig(
     val sunatEnabled: Boolean,
     val taxRate: Double,
-    val igvRegime: String,
-    val taxBenefitZone: Boolean,
+    val isNRUS: Boolean,
+    val hasAmazonBenefit: Boolean,
 )
 
 data class SunatConfigFormInput(
     val taxRate: String = "",
-    val igvRegime: String = "",
-    val taxBenefitZone: Boolean = false,
+    val isNRUS: Boolean = false,
+    val hasAmazonBenefit: Boolean = false,
 )
 
 data class BranchItem(

@@ -299,8 +299,10 @@ data class UbiItemDto(
 data class SunatConfigDto(
     @SerialName("sunat_enabled") val sunatEnabled: Boolean = false,
     @SerialName("tax_rate") val taxRate: Double = 18.0,
-    @SerialName("igv_regime") val igvRegime: String = "",
-    @SerialName("tax_benefit_zone") val taxBenefitZone: Boolean = false,
+    // El regimen es del CONTRIBUYENTE (no puede emitir facturas) y el beneficio de la Ley 27037
+    // solo fija la afectacion POR DEFECTO. Ninguno altera el XML ni la afectacion de una linea.
+    @SerialName("is_nrus") val isNRUS: Boolean = false,
+    @SerialName("has_amazon_benefit") val hasAmazonBenefit: Boolean = false,
 )
 
 @Serializable

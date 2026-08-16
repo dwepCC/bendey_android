@@ -313,8 +313,8 @@ class ConfiguracionViewModel @Inject constructor(
                 sunatFormOpen = true,
                 sunatForm = SunatConfigFormInput(
                     taxRate = normalizeIgvRateOption(sunat.taxRate),
-                    igvRegime = sunat.igvRegime,
-                    taxBenefitZone = sunat.taxBenefitZone,
+                    isNRUS = sunat.isNRUS,
+                    hasAmazonBenefit = sunat.hasAmazonBenefit,
                 ),
                 error = null,
             )

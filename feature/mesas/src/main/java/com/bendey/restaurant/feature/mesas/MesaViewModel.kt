@@ -163,8 +163,8 @@ data class MesaUiState(
             val taxRate = resolveTaxRatePercent(checkoutMeta?.taxRate)
             val taxConfig = TaxConfig(
                 taxRate = taxRate,
-                igvRegime = checkoutMeta?.igvRegime ?: "standard",
-                taxBenefitZone = checkoutMeta?.taxBenefitZone ?: false,
+                isNRUS = checkoutMeta?.isNRUS ?: false,
+                hasAmazonBenefit = checkoutMeta?.hasAmazonBenefit ?: false,
             )
             return sumComandasPayableTotal(selected, taxRate, taxConfig)
         }

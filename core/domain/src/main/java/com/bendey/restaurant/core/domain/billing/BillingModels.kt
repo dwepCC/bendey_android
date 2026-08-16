@@ -62,8 +62,8 @@ data class CheckoutMeta(
     val bankAccounts: List<BankAccountBrief> = emptyList(),
     val sunatEnabled: Boolean = false,
     val taxRate: Double = DEFAULT_TAX_RATE_PERCENT,
-    val igvRegime: String = "standard",
-    val taxBenefitZone: Boolean = false,
+    val isNRUS: Boolean = false,
+    val hasAmazonBenefit: Boolean = false,
 )
 
 data class BillSessionInput(

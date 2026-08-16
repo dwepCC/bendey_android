@@ -350,8 +350,8 @@ fun MesaScreen(
             val taxRate = resolveTaxRatePercent(state.checkoutMeta?.taxRate)
             val taxConfig = TaxConfig(
                 taxRate = taxRate,
-                igvRegime = state.checkoutMeta?.igvRegime ?: "standard",
-                taxBenefitZone = state.checkoutMeta?.taxBenefitZone ?: false,
+                isNRUS = state.checkoutMeta?.isNRUS ?: false,
+                hasAmazonBenefit = state.checkoutMeta?.hasAmazonBenefit ?: false,
             )
             CheckoutSplitBillControl(
                 enabled = state.splitBillEnabled,

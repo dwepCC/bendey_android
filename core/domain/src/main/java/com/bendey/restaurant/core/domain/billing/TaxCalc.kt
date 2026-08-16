@@ -5,9 +5,24 @@ const val DEFAULT_TAX_RATE_PERCENT = 18.0
 
 data class TaxConfig(
     val taxRate: Double = DEFAULT_TAX_RATE_PERCENT,
-    val igvRegime: String = "standard",
-    val taxBenefitZone: Boolean = false,
+    /** Contribuyente del Nuevo RUS: no puede emitir facturas. No altera la afectacion de la linea. */
+    val isNRUS: Boolean = false,
+    /** Acogido a la Ley 27037: la afectacion POR DEFECTO de una linea nueva es «20 Exonerado». */
+    val hasAmazonBenefit: Boolean = false,
 )
+
+/**
+ * Afectacion con la que nace una linea que no declaro la suya (espejo de tax.AfectacionDeLinea).
+ *
+ * Un negocio acogido a la Ley 27037 vende, en su operacion corriente, dentro de la zona: ese es el
+ * defecto. Las ventas fuera del ambito se resuelven declarando la afectacion en la linea, y esta
+ * funcion nunca la pisa.
+ */
+fun defaultAffectation(declared: String?, taxConfig: TaxConfig = TaxConfig()): String {
+    val code = declared?.trim().orEmpty()
+    if (code.isNotEmpty()) return code
+    return if (taxConfig.hasAmazonBenefit) "20" else "10"
+}
 
 data class ItemTaxBreakdown(
     val subtotal: Double,
@@ -26,11 +41,9 @@ fun effectiveRate(
     val code = igvAffectationType.trim().ifEmpty { "10" }
     return when (code) {
         "20", "30", "40" -> 0.0
-        else -> if (taxConfig.taxBenefitZone && taxConfig.igvRegime == "exonerated") {
-            0.0
-        } else {
-            taxRatePercent
-        }
+        // Aca habia una trampa espejada del backend: «zona + regimen exonerado» ponia 0% sobre los
+        // items GRAVADOS. Exonerar no es cobrar 0%: es emitir la linea con afectacion 20.
+        else -> taxRatePercent
     }
 }
 

@@ -337,8 +337,8 @@ class SettingsRepositoryImpl @Inject constructor(
         api.updateSunatConfig(
             current.copy(
                 taxRate = taxRate,
-                igvRegime = input.igvRegime.trim().ifBlank { current.igvRegime },
-                taxBenefitZone = input.taxBenefitZone,
+                isNRUS = input.isNRUS,
+                hasAmazonBenefit = input.hasAmazonBenefit,
             ),
         )
         api.getSunatConfig().toDomain().also { operationalDataCache.updateSunatConfig(it) }
@@ -746,6 +746,6 @@ private fun CompanyConfigDto.toDomain() = CompanyConfig(
 private fun com.bendey.restaurant.core.network.dto.SunatConfigDto.toDomain() = SunatConfig(
     sunatEnabled = sunatEnabled,
     taxRate = taxRate,
-    igvRegime = igvRegime,
-    taxBenefitZone = taxBenefitZone,
+    isNRUS = isNRUS,
+    hasAmazonBenefit = hasAmazonBenefit,
 )

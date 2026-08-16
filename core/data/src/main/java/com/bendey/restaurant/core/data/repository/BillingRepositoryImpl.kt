@@ -85,8 +85,8 @@ class BillingRepositoryImpl @Inject constructor(
             bankAccounts = bankAccounts,
             sunatEnabled = sunat.sunatEnabled,
             taxRate = sunat.taxRate,
-            igvRegime = sunat.igvRegime.ifBlank { "standard" },
-            taxBenefitZone = sunat.taxBenefitZone,
+            isNRUS = sunat.isNRUS,
+            hasAmazonBenefit = sunat.hasAmazonBenefit,
         ).also { operationalDataCache.setCheckoutMeta(branchId, it) }
     }
 

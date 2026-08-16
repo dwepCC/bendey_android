@@ -201,8 +201,8 @@ class ComprasViewModel @Inject constructor(
                         taxRate = resolveTaxRatePercent(result.data.taxRate),
                         taxConfig = TaxConfig(
                             taxRate = resolveTaxRatePercent(result.data.taxRate),
-                            igvRegime = result.data.igvRegime,
-                            taxBenefitZone = result.data.taxBenefitZone,
+                            isNRUS = result.data.isNRUS,
+                            hasAmazonBenefit = result.data.hasAmazonBenefit,
                         ),
                     )
                 }
