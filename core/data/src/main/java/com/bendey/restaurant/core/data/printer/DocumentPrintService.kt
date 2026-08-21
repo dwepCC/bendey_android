@@ -5,6 +5,7 @@ import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
 import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.data.receipt.ReceiptLogoLoader
+import com.bendey.restaurant.core.data.receipt.ReceiptModifierLines
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
@@ -153,6 +154,10 @@ private fun SalePrintData.toInput(logoRaster: ByteArray?, openCashDrawer: Boolea
             quantity = it.quantity,
             unitPrice = it.unitPrice,
             total = it.total,
+            detailLines = ReceiptModifierLines.of(it.modifiersJson) { monto ->
+                "${if (currency.uppercase() == "USD") "USD" else "S/"} ${"%.2f".format(monto)}"
+            },
+            discount = it.discount,
         )
     },
     subtotal = subtotal,
@@ -162,6 +167,8 @@ private fun SalePrintData.toInput(logoRaster: ByteArray?, openCashDrawer: Boolea
     payments = payments.map {
         DocumentPrintPayment(method = it.method, amount = it.amount)
     },
+    amountPaid = amountPaid,
+    change = change,
     legendText = legendText,
     qrData = qrData,
     sunatHash = sunatHash,

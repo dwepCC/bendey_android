@@ -31,6 +31,8 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
                 quantity = it.quantity,
                 unitPrice = it.unitPrice,
                 total = it.total,
+                discount = it.discount,
+                modifiersJson = it.modifiersJson,
             )
         },
         subtotal = subtotal,
@@ -38,6 +40,8 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         total = total,
         currency = currency,
         payments = payments.map { SalePrintPayment(method = it.method, amount = it.amount) },
+        amountPaid = amountPaid,
+        change = change,
         legendText = legendText,
         qrData = qrData.takeIf { it.isNotBlank() },
         sunatHash = sunatHash?.takeIf { it.isNotBlank() },

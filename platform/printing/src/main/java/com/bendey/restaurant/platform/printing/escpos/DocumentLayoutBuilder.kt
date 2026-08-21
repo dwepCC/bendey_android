@@ -5,6 +5,13 @@ data class DocumentPrintLine(
     val quantity: Double,
     val unitPrice: Double,
     val total: Double,
+    /**
+     * Presentación y extras elegidos, ya formateados. El nombre comercial vive acá y no en
+     * [description]: sin esto, un «Duo 6 Nuggets + 6 Alitas + Papa» y unas «6 Alitas Acevichadas
+     * con Papas» se imprimen las dos como «6 Alitas», que es el producto base.
+     */
+    val detailLines: List<String> = emptyList(),
+    val discount: Double = 0.0,
 )
 
 data class DocumentPrintPayment(
@@ -30,6 +37,12 @@ data class DocumentPrintInput(
     val total: Double,
     val currency: String,
     val payments: List<DocumentPrintPayment>,
+    /**
+     * Contado con vuelto: [amountPaid] es el efectivo que entregó el cliente y [change] lo que se
+     * le devolvió. Solo llegan con valor cuando hubo vuelto; un pago exacto no imprime nada.
+     */
+    val amountPaid: Double = 0.0,
+    val change: Double = 0.0,
     val legendText: String?,
     val qrData: String? = null,
     val sunatHash: String? = null,
@@ -90,9 +103,17 @@ object DocumentLayoutBuilder {
         b.divider(cols)
         b.align(EscPosAlign.RIGHT)
         if (input.taxAmount > 0) b.line("IGV: ${money(input.taxAmount)}")
+        val descuentoTotal = input.items.sumOf { it.discount }
+        if (descuentoTotal > 0.009) b.line("Descuento: -${money(descuentoTotal)}")
         b.bold(true)
         b.line("TOTAL: ${money(input.total)}")
         b.bold(false)
+        // Solo con vuelto: si el cliente pagó justo no hay nada que informarle.
+        if (input.change > 0.009) {
+            val entregado = if (input.amountPaid > 0.009) input.amountPaid else input.total + input.change
+            b.line("Recibido: ${money(entregado)}")
+            b.line("Vuelto: ${money(input.change)}")
+        }
 
         input.legendText?.takeIf { it.isNotBlank() }?.let { legend ->
             b.align(EscPosAlign.LEFT)
@@ -154,6 +175,12 @@ object DocumentLayoutBuilder {
         val firstLeft = "${qty}x ${descWrapped.firstOrNull().orEmpty()}".padEnd(leftCols)
         b.line("$firstLeft $totalStr")
         descWrapped.drop(1).forEach { w -> b.line("   $w") }
+        // Debajo del producto, qué se llevó de verdad, y el descuento que se le hizo.
+        val detalle = item.detailLines.toMutableList()
+        if (item.discount > 0.009) detalle.add("Dscto: -${money(item.discount)}")
+        detalle.forEach { linea ->
+            EscPosTextUtils.wrapText(linea, maxOf(8, leftCols - 3)).forEach { w -> b.line("   $w") }
+        }
     }
 
     private fun formatQty(qty: Double): String = qty.toString().replace(Regex("\\.0+$"), "")

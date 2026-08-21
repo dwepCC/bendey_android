@@ -58,6 +58,9 @@ data class PrintDataDto(
     val company: PrintCompanyDto? = null,
     val branch: PrintBranchDto? = null,
     val items: List<PrintItemDto> = emptyList(),
+    /** Solo llegan cuando hubo vuelto: efectivo entregado y cambio devuelto. */
+    @SerialName("amount_paid") val amountPaid: Double = 0.0,
+    val change: Double = 0.0,
     val subtotal: Double = 0.0,
     @SerialName("tax_amount") val taxAmount: Double = 0.0,
     val total: Double = 0.0,
@@ -100,7 +103,10 @@ data class PrintItemDto(
     val description: String = "",
     val quantity: Double = 0.0,
     @SerialName("unit_price") val unitPrice: Double = 0.0,
+    val discount: Double = 0.0,
     val total: Double = 0.0,
+    /** Presentación y extras elegidos; el nombre comercial vive acá, no en [description]. */
+    @SerialName("modifiers_json") val modifiersJson: String? = null,
 )
 
 @Serializable

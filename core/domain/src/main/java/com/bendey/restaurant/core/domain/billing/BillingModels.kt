@@ -118,6 +118,9 @@ data class SalePrintData(
     val total: Double,
     val currency: String,
     val payments: List<SalePrintPayment>,
+    /** Solo con valor cuando hubo vuelto: efectivo entregado y cambio devuelto. */
+    val amountPaid: Double = 0.0,
+    val change: Double = 0.0,
     val legendText: String?,
     val qrData: String? = null,
     val sunatHash: String? = null,
@@ -129,6 +132,9 @@ data class SalePrintLine(
     val quantity: Double,
     val unitPrice: Double,
     val total: Double,
+    val discount: Double = 0.0,
+    /** Presentación y extras elegidos; el nombre comercial vive acá, no en [description]. */
+    val modifiersJson: String? = null,
 )
 
 data class SalePrintPayment(
