@@ -37,8 +37,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -443,9 +445,20 @@ private fun MovementsTab(
         items(state.movementsReportRows, key = { it.movementId }) { row ->
             BendeyManagementCard {
                 Column {
-                    Text(row.docNumber.ifBlank { row.category.orEmpty() }, fontWeight = FontWeight.Medium)
+                    // Un movimiento anulado desde otra terminal sigue en la lista, pero su importe ya
+                    // no cuenta para ningun total: sin la marca se lee como plata que entro o salio.
+                    Text(
+                        row.docNumber.ifBlank { row.category.orEmpty() } + if (row.estaAnulado) " · ANULADO" else "",
+                        fontWeight = FontWeight.Medium,
+                        color = if (row.estaAnulado) BendeyColors.OnSurfaceVariant else Color.Unspecified,
+                    )
                     Text("${row.date} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
-                    Text(currency.format(row.amount), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)
+                    Text(
+                        currency.format(row.amount),
+                        fontWeight = FontWeight.Bold,
+                        color = if (row.estaAnulado) BendeyColors.OnSurfaceVariant else BendeyColors.Primary,
+                        textDecoration = if (row.estaAnulado) TextDecoration.LineThrough else null,
+                    )
                 }
             }
         }

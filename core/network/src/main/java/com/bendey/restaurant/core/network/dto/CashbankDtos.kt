@@ -245,6 +245,9 @@ data class MovementReportRowDto(
     val category: String? = null,
     @SerialName("cash_reference") val cashReference: String? = null,
     @SerialName("notes_detail") val notesDetail: String? = null,
+    /** Anulado desde otra terminal: la fila sigue en la lista, pero su importe ya no es plata. */
+    @SerialName("cancelled_at") val cancelledAt: String? = null,
+    @SerialName("cancel_reason") val cancelReason: String? = null,
 )
 
 @Serializable

@@ -568,6 +568,8 @@ private fun MovementReportRowDto.toMovementReportDomain() = CashMovementReportRo
     category = category,
     cashReference = cashReference,
     notesDetail = notesDetail,
+    cancelledAt = cancelledAt,
+    cancelReason = cancelReason,
 )
 
 private fun MovementsReportSummaryDto.toSummaryDomain() = CashMovementsReportSummary(

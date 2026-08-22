@@ -165,7 +165,12 @@ data class CashMovementReportRow(
     val category: String?,
     val cashReference: String?,
     val notesDetail: String?,
-)
+    val cancelledAt: String? = null,
+    val cancelReason: String? = null,
+) {
+    /** Un movimiento anulado se sigue viendo, pero su importe ya no cuenta para ningún saldo. */
+    val estaAnulado: Boolean get() = !cancelledAt.isNullOrBlank()
+}
 
 data class CashMovementsReportSummary(
     val totalRows: Int = 0,
