@@ -131,6 +131,11 @@ data class ComandaLine(
     val status: ComandaStatus,
     val preparationArea: String? = null,
     val comboSnapshotJson: String? = null,
+    /**
+     * Platos que lleva el combo, ya extraídos del snapshot. Un combo es UNA línea llamada «MENU DEL
+     * DIA» y sin esto había que reimprimir la comanda para saber qué incluía.
+     */
+    val comboPlatos: List<String> = emptyList(),
 )
 
 data class AddOrderResult(
@@ -154,6 +159,11 @@ data class SessionComandaSummary(
     val modifiersJson: String? = null,
     val preparationArea: String? = null,
     val comboSnapshotJson: String? = null,
+    /**
+     * Platos que lleva el combo, ya extraídos del snapshot. Un combo es UNA línea llamada «MENU DEL
+     * DIA»: sin esto el mozo tiene que reimprimir la comanda para saber qué incluye.
+     */
+    val comboPlatos: List<String> = emptyList(),
     val igvAffectationType: String? = null,
     val priceIncludesIgv: Boolean? = null,
     val cancelledAt: String? = null,

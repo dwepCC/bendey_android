@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.kitchen.comboPlatosDe
+
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.restaurant.AddOrderResult
@@ -482,6 +484,7 @@ private fun SessionOrderDto.toDomain() = SessionOrderSummary(
             modifiersJson = comanda.modifiersJson,
             preparationArea = comanda.preparationArea,
             comboSnapshotJson = comanda.comboSnapshotJson,
+            comboPlatos = comboPlatosDe(comanda.comboSnapshotJson),
             igvAffectationType = comanda.igvAffectationType,
             priceIncludesIgv = comanda.priceIncludesIgv,
             cancelledAt = comanda.cancelledAt,

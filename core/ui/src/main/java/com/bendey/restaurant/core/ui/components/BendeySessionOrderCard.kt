@@ -85,6 +85,7 @@ fun BendeySessionOrderCard(
                 }
             }
             order.comandas.forEach { comanda ->
+              Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -104,6 +105,17 @@ fun BendeySessionOrderCard(
                         accentColor = comanda.status.accentColor(),
                     )
                 }
+                // Qué lleva el combo. Sin esto la ronda dice «1× MENU DEL DIA» y el mozo tiene que
+                // reimprimir la comanda para saber qué platos incluye.
+                if (comanda.comboPlatos.isNotEmpty()) {
+                    Text(
+                        text = comanda.comboPlatos.joinToString(", "),
+                        modifier = Modifier.padding(start = BendeySpacing.md),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+              }
             }
         }
     }

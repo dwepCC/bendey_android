@@ -144,6 +144,27 @@ private fun comandaToRoutingLines(item: KitchenItem): List<RoutingLine> {
     )
 }
 
+/**
+ * Platos que lleva un combo, para mostrarlos donde solo se veía su nombre.
+ *
+ * Un combo es UNA línea llamada «MENU DEL DIA»: en el panel de lo ya enviado a cocina el mozo tenía
+ * que reimprimir la comanda para saber qué platos incluía.
+ */
+fun comboPlatosDe(snapshotJson: String?): List<String> {
+    val raw = snapshotJson?.trim().orEmpty()
+    if (raw.isEmpty()) return emptyList()
+    val obj = try {
+        Json.parseToJsonElement(raw) as? JsonObject ?: return emptyList()
+    } catch (_: Exception) {
+        // Un snapshot ilegible no puede romper la pantalla: se pierde el detalle, nada más.
+        return emptyList()
+    }
+    return parseComboComponents(obj).mapNotNull { c ->
+        val nombre = c.productName.trim()
+        if (nombre.isEmpty()) null else nombre
+    }
+}
+
 private fun parseComboComponents(obj: JsonObject): List<ComboSnapshotComponent> {
     val arr = obj["components"]?.jsonArray ?: return emptyList()
     return arr.mapNotNull { element ->
