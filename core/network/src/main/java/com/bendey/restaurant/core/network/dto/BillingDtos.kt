@@ -143,6 +143,8 @@ data class DocumentSeriesDto(
     /** Congela la IDENTIDAD de la serie (serie, tipo, código SUNAT, categoría). El correlativo NO. */
     val locked: Boolean? = null,
     @SerialName("can_delete") val canDelete: Boolean? = null,
+    /** El régimen del tenant no permite emitir con esta serie: hoy, un NRUS no emite factura. */
+    @SerialName("regime_blocked") val regimeBlocked: Boolean = false,
 )
 
 @Serializable

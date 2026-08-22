@@ -18,8 +18,19 @@ data class DocumentSeries(
     /** Número más alto ya emitido. Bajar por debajo repite comprobantes y SUNAT los rechaza. */
     val lastCorrelativeUsed: Int = 0,
     val canDelete: Boolean = true,
+    /**
+     * El régimen del tenant no permite emitir con esta serie: hoy, un NRUS no emite factura.
+     *
+     * La serie igual llega —en Ajustes hay que poder verla, y vuelve a servir si cambia de régimen—
+     * pero el checkout no debe ofrecerla: el backend la rechaza al reservar el correlativo, o sea
+     * recien despues de que el mozo eligio el tipo y cobro.
+     */
+    val regimeBlocked: Boolean = false,
 ) {
     val displayLabel: String get() = "$docType · $series"
+
+    /** Se puede emitir con esta serie HOY: ni desactivada ni prohibida por el régimen. */
+    val emisible: Boolean get() = active && !regimeBlocked
 }
 
 data class ContactBrief(

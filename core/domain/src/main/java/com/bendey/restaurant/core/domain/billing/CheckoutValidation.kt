@@ -30,7 +30,9 @@ fun filterRestaurantCheckoutSeries(
     list: List<DocumentSeries>,
     sunatEnabled: Boolean = true,
 ): List<DocumentSeries> = list.filter { series ->
-    if (!series.active) return@filter false
+    // El régimen del tenant manda: un NRUS no emite factura. El backend la rechaza al reservar el
+    // correlativo, o sea recien despues de que el mozo eligio el tipo y cobro.
+    if (!series.emisible) return@filter false
     val cat = series.category.lowercase()
     if (cat.isNotEmpty() && cat != "venta") return@filter false
     val code = series.sunatCode?.trim().orEmpty()

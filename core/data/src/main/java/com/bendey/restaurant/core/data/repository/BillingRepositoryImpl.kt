@@ -253,6 +253,7 @@ private fun DocumentSeriesDto.toDomain(): DocumentSeries {
         documentsCount = documentsCount ?: sales,
         lastCorrelativeUsed = lastCorrelativeUsed ?: 0,
         canDelete = computedCanDelete,
+        regimeBlocked = regimeBlocked,
     )
 }
 

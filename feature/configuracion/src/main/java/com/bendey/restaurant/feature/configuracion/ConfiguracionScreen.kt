@@ -365,6 +365,8 @@ private fun SeriesCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyStatusChip(if (series.active) "Activa" else "Inactiva", if (series.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
                     if (series.locked) BendeyStatusChip("En uso", BendeyColors.Warning)
+                    // Sin esto, la serie no aparece al cobrar y no hay donde enterarse de por que.
+                    if (series.regimeBlocked) BendeyStatusChip("No aplica a su regimen", BendeyColors.OnSurfaceVariant)
                 }
             }
             if (canManage) {
