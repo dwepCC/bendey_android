@@ -3,19 +3,18 @@ package com.bendey.restaurant.core.data.export
 import android.content.Context
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
+import com.bendey.restaurant.core.domain.sales.incluyeElectronicos
+import com.bendey.restaurant.core.domain.sales.atencionConMesa
 import com.bendey.restaurant.core.domain.sales.billingStatusLabel
 import com.bendey.restaurant.core.domain.sales.formatPaymentsCompact
 import java.util.Locale
 
 private fun fmt2(value: Double): String = String.format(Locale.US, "%.2f", value)
 
-fun salesListExportTitle(tab: VentasTab, reportStyle: Boolean = false): String = when (tab) {
-    VentasTab.NOTAS ->
-        if (reportStyle) "Reporte — Notas de venta" else "Notas de venta"
-    VentasTab.CREDITOS -> "Notas de crédito"
-    VentasTab.FACTURACION ->
-        if (reportStyle) "Reporte — Boletas y facturas" else "Facturas y boletas"
-}
+// El titulo sale del propio filtro: al agregar opciones nuevas, un `when` por rama se habria
+// quedado corto en silencio o habria dejado de compilar en cada cambio.
+fun salesListExportTitle(tab: VentasTab, reportStyle: Boolean = false): String =
+    if (reportStyle) "Reporte — ${tab.label}" else tab.label
 
 private fun exportFileBase(tab: VentasTab, reportStyle: Boolean): String =
     salesListExportTitle(tab, reportStyle)
@@ -36,15 +35,18 @@ fun exportSalesListCsv(
     reportStyle: Boolean = false,
 ): ExportShareResult {
     return try {
-        val includeBilling = tab != VentasTab.NOTAS
+        val includeBilling = tab.incluyeElectronicos()
         val rows = mutableListOf<List<String>>()
-        val headers = mutableListOf("Fecha", "Comprobante", "Cliente", "Total (S/)", "Métodos de pago", "Estado")
+        val headers = mutableListOf(
+            "Fecha", "Comprobante", "Atención", "Cliente", "Total (S/)", "Métodos de pago", "Estado",
+        )
         if (includeBilling) headers += "Estado SUNAT"
         rows += headers
         sales.forEach { sale ->
             val row = mutableListOf(
                 sale.issueDate,
                 "${sale.docType} ${sale.displayNumber}".trim(),
+                atencionConMesa(sale.orderType, sale.tableName),
                 sale.contactName ?: "—",
                 fmt2(sale.total),
                 formatPaymentsCompact(sale, maxChars = 512),
@@ -76,11 +78,12 @@ fun exportSalesListPdf(
     reportStyle: Boolean = false,
 ): ExportShareResult {
     return try {
-        val includeBilling = tab != VentasTab.NOTAS
+        val includeBilling = tab.incluyeElectronicos()
         val title = "${salesListExportTitle(tab, reportStyle)} · $from — $to"
         val header = buildString {
             append(String.format("%-12s", "Fecha"))
             append(String.format("%-20s", "Comprobante"))
+            append(String.format("%-16s", "Atención"))
             append(String.format("%-20s", "Cliente"))
             append(String.format("%10s", "Total"))
             append(String.format("%-28s", "Métodos de pago"))
@@ -92,6 +95,7 @@ fun exportSalesListPdf(
             val line = buildString {
                 append(String.format("%-12s", sale.issueDate.take(12)))
                 append(String.format("%-20s", "${sale.docType} ${sale.displayNumber}".trim().take(20)))
+                append(String.format("%-16s", atencionConMesa(sale.orderType, sale.tableName).take(16)))
                 append(String.format("%-20s", (sale.contactName ?: "—").take(20)))
                 append(String.format("%10s", fmt2(sale.total)))
                 append(String.format("%-28s", formatPaymentsCompact(sale, maxChars = 28)))

@@ -267,6 +267,9 @@ data class SaleDto(
     @SerialName("branch_id") val branchId: Int? = null,
     @SerialName("contact_id") val contactId: Int? = null,
     @SerialName("created_at") val createdAt: String? = null,
+    // Como se atendio la venta y en que mesa: los resuelve el backend desde la sesion del pedido.
+    @SerialName("table_name") val tableName: String? = null,
+    @SerialName("order_type") val orderType: String? = null,
     @SerialName("payment_method") val paymentMethod: String? = null,
     val payments: List<SalePaymentDto> = emptyList(),
     // Devolucion del dinero, calculada por el backend cruzando caja y banco. No se deduce de

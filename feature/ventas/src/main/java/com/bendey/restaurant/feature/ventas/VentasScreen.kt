@@ -73,6 +73,11 @@ import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SaleListSummary
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
+import com.bendey.restaurant.core.domain.sales.atencionConMesa
+import com.bendey.restaurant.core.domain.sales.incluyeElectronicos
+import com.bendey.restaurant.core.domain.sales.isCreditNoteDoc
+import com.bendey.restaurant.core.domain.sales.isNotaVenta
+import com.bendey.restaurant.core.domain.sales.TipoDeAtencion
 import com.bendey.restaurant.core.domain.sales.billingStatusLabel
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
 import com.bendey.restaurant.core.domain.sales.canRegisterRefund
@@ -144,10 +149,9 @@ fun VentasScreen(
             }
     }
 
-    val billingHint = when (state.tab) {
-        VentasTab.FACTURACION -> " · SUNAT en vivo"
-        else -> ""
-    }
+    // El aviso de «en vivo» corresponde a cualquier filtro que traiga comprobantes: el flujo de
+    // eventos se conecta por capacidad, no por pestaña.
+    val billingHint = if (state.tab.incluyeElectronicos() && state.sunatEnabled) " · SUNAT en vivo" else ""
     val detailError = if (state.voidDialogOpen || state.emitDialogOpen) null else state.error
 
     BendeyListScreenLayout(
@@ -177,6 +181,7 @@ fun VentasScreen(
                     onFromDateChange = viewModel::setFromDate,
                     onToDateChange = viewModel::setToDate,
                     onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                    onOrderTypeChange = viewModel::selectOrderType,
                     onBillingStatusChange = viewModel::setBillingStatusFilter,
                     onExportPdf = { viewModel.exportListPdf(context) },
                     onExportExcel = { viewModel.exportListExcel(context) },
@@ -211,7 +216,6 @@ fun VentasScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
-                tab = state.tab,
                 sunatEnabled = state.sunatEnabled,
                 loading = state.detailLoading,
                 detail = state.detail,
@@ -376,6 +380,7 @@ private fun VentasFiltersSection(
     onFromDateChange: (String) -> Unit,
     onToDateChange: (String) -> Unit,
     onPaymentMethodChange: (String) -> Unit,
+    onOrderTypeChange: (String) -> Unit,
     onBillingStatusChange: (String) -> Unit,
     onExportPdf: () -> Unit,
     onExportExcel: () -> Unit,
@@ -387,14 +392,14 @@ private fun VentasFiltersSection(
             .padding(horizontal = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
-        if (state.tab != VentasTab.FACTURACION && state.tab != VentasTab.NOTAS) {
-            BendeyTextField(
-                value = state.searchQuery,
-                onValueChange = onSearchChange,
-                label = "Buscar por número",
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        // EL BUSCADOR, SIEMPRE. Antes solo salia en notas de credito: en una lista que junta notas
+        // de venta, boletas y facturas, encontrar un numero entre cientos deja de ser opcional.
+        BendeyTextField(
+            value = state.searchQuery,
+            onValueChange = onSearchChange,
+            label = "Buscar por número",
+            modifier = Modifier.fillMaxWidth(),
+        )
         BendeyHorizontalScrollRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
@@ -429,7 +434,13 @@ private fun VentasFiltersSection(
             options = listOf("" to "Todos") + paymentMethods.map { it.code to it.name },
             onSelect = onPaymentMethodChange,
         )
-        if (state.tab == VentasTab.FACTURACION && state.sunatEnabled) {
+        FilterDropdown(
+            label = "Atención",
+            value = state.orderTypeFilter,
+            options = TipoDeAtencion.entries.map { it.codigo to it.label },
+            onSelect = onOrderTypeChange,
+        )
+        if (state.tab.incluyeElectronicos() && state.sunatEnabled) {
             FilterDropdown(
                 label = "Estado SUNAT",
                 value = state.billingStatusFilter,
@@ -500,7 +511,9 @@ private fun VentasListHintsAndSummary(
     paymentMethods: List<PaymentMethodOption>,
     currency: NumberFormat,
 ) {
-    if (state.tab == VentasTab.FACTURACION && !state.sunatEnabled) {
+    // «Todas» y «Solo notas de venta» funcionan sin facturación: traen notas de venta. El aviso solo
+    // corresponde cuando el filtro elegido no puede devolver nada sin SUNAT.
+    if (state.tab.incluyeElectronicos() && state.tab != VentasTab.TODAS && !state.sunatEnabled) {
         Text(
             "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
             color = BendeyColors.OnSurfaceVariant,
@@ -550,8 +563,6 @@ private fun VentasSalesList(
             items(state.sales, key = { it.id }) { sale ->
                 SaleRow(
                     sale = sale,
-                    tab = state.tab,
-                    sunatEnabled = state.sunatEnabled,
                     currency = currency,
                     selected = sale.id == selectedSaleId,
                     onClick = { onSaleClick(sale.id) },
@@ -573,8 +584,6 @@ private fun VentasSalesList(
 @Composable
 private fun SaleRow(
     sale: SaleSummary,
-    tab: VentasTab,
-    sunatEnabled: Boolean,
     currency: NumberFormat,
     selected: Boolean = false,
     onClick: () -> Unit,
@@ -614,7 +623,16 @@ private fun SaleRow(
                     style = MaterialTheme.typography.labelSmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
-                if (tab == VentasTab.NOTAS && sale.isConverted()) {
+                // Como se atendio: en una lista que junta notas de venta y comprobantes, saber si
+                // fue mesa, delivery o mostrador es lo que le da contexto a la fila.
+                Text(
+                    atencionConMesa(sale.orderType, sale.tableName),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (isNotaVenta(sale.docType, sale.sunatCode) && sale.isConverted()) {
                     convertedToLabel(sale.convertedTo, sale.electronicIssueSaleId)?.let { ref ->
                         BendeyStatusChip(
                             label = "Convertida a $ref",
@@ -647,14 +665,15 @@ private fun SaleRow(
                     fontWeight = FontWeight.Bold,
                     color = BendeyColors.Primary,
                 )
-                when (tab) {
-                    VentasTab.NOTAS -> notaVentaListStatusLabel(sale.status)?.let { label ->
-                        BendeyStatusChip(
-                            label = label,
-                            accentColor = BendeyColors.Error,
-                        )
-                    }
-                    VentasTab.CREDITOS -> BendeyStatusChip(
+                // EL ESTADO ES DEL DOCUMENTO, NO DEL FILTRO. Una nota de venta no va a SUNAT, asi
+                // que solo se avisa si esta anulada; el comprobante si muestra en que quedo alla.
+                // La nota de credito tiene estado propio y no arrastra el de la venta que anula.
+                when {
+                    isNotaVenta(sale.docType, sale.sunatCode) ->
+                        notaVentaListStatusLabel(sale.status)?.let { label ->
+                            BendeyStatusChip(label = label, accentColor = BendeyColors.Error)
+                        }
+                    isCreditNoteDoc(sale.docType) -> BendeyStatusChip(
                         label = saleStatusDisplayLabel(sale.status, null),
                         accentColor = saleStatusAccentColor(sale.status, null),
                     )
@@ -671,7 +690,6 @@ private fun SaleRow(
 @Composable
 private fun SaleDetailContent(
     modifier: Modifier = Modifier,
-    tab: VentasTab,
     sunatEnabled: Boolean,
     loading: Boolean,
     detail: SaleDetail?,
@@ -705,7 +723,9 @@ private fun SaleDetailContent(
                 Text(detail.displayNumber, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text("${detail.docType} · ${detail.issueDate}", color = BendeyColors.OnSurfaceVariant)
                 detail.billingStatus?.let {
-                    if (tab == VentasTab.FACTURACION) {
+                    // Una nota de venta no va a SUNAT: mostrarle un estado seria inventarle un
+                    // trámite que no tiene.
+                    if (!isNotaVenta(detail.docType, detail.sunatCode) && sunatEnabled) {
                         Text("Estado SUNAT: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
                     }
                 }
@@ -781,91 +801,63 @@ private fun SaleDetailContent(
                 ) {
                     Text(if (billingBusy == "pdf") "Guardando PDF…" else "Descargar PDF")
                 }
-                when (tab) {
-                    VentasTab.NOTAS -> {
-                        if (detail.canIssueElectronicFromNota(sunatEnabled)) {
-                            BendeyPrimaryButton(
-                                text = "Emitir boleta o factura",
-                                onClick = onEmitElectronic,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        if (detail.canCancelNotaVenta()) {
-                            OutlinedButton(onClick = onCancelNota, modifier = Modifier.fillMaxWidth()) {
-                                Text("Anular nota de venta", color = BendeyColors.Error)
-                            }
+                // LAS ACCIONES SON DEL DOCUMENTO ABIERTO, NO DEL FILTRO ELEGIDO. La lista ahora mezcla
+                // notas de venta y comprobantes, asi que preguntarle a la pestana que ofrecer daria
+                // botones equivocados: «emitir boleta» sobre una boleta ya emitida, o el envio a
+                // SUNAT sobre una nota de venta que nunca va a ir.
+                if (isNotaVenta(detail.docType, detail.sunatCode)) {
+                    if (detail.canIssueElectronicFromNota(sunatEnabled)) {
+                        BendeyPrimaryButton(
+                            text = "Emitir boleta o factura",
+                            onClick = onEmitElectronic,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (detail.canCancelNotaVenta()) {
+                        OutlinedButton(onClick = onCancelNota, modifier = Modifier.fillMaxWidth()) {
+                            Text("Anular nota de venta", color = BendeyColors.Error)
                         }
                     }
-                    VentasTab.FACTURACION -> {
-                        if (canSendToSunat(detail.billingStatus)) {
-                            BendeyPrimaryButton(
-                                text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
-                                onClick = onSendSunat,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        if (canResendToSunat(detail.billingStatus)) {
-                            OutlinedButton(
-                                onClick = onResendSunat,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    if (billingBusy == "resend") "Reenviando…" else sunatSendActionLabel(detail.billingStatus),
-                                )
-                            }
-                        }
-                        SunatDocumentActions(
-                            billingStatus = detail.billingStatus,
-                            billingBusy = billingBusy,
-                            showXmlViewers = true,
-                            onViewXmlSent = onViewXmlSent,
-                            onViewXmlGenerated = onViewXmlGenerated,
-                            onDownloadXmlSent = onDownloadXmlSent,
-                            onDownloadXmlGenerated = onDownloadXmlGenerated,
-                            onDownloadCdr = onDownloadCdr,
+                } else {
+                    if (canSendToSunat(detail.billingStatus)) {
+                        BendeyPrimaryButton(
+                            text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
+                            onClick = onSendSunat,
+                            enabled = billingBusy == null,
+                            modifier = Modifier.fillMaxWidth(),
                         )
-                        if (detail.canVoidWithCreditNote()) {
-                            OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
-                                Text("Anular con nota de crédito", color = BendeyColors.Error)
-                            }
+                    }
+                    if (canResendToSunat(detail.billingStatus)) {
+                        OutlinedButton(
+                            onClick = onResendSunat,
+                            enabled = billingBusy == null,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                if (billingBusy == "resend") "Reenviando…" else sunatSendActionLabel(detail.billingStatus),
+                            )
                         }
                     }
-                    VentasTab.CREDITOS -> {
-                        if (canSendToSunat(detail.billingStatus)) {
-                            BendeyPrimaryButton(
-                                text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
-                                onClick = onSendSunat,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                    // Los visores de XML son para el comprobante de venta; en una nota de credito
+                    // sobran, que era la unica diferencia entre las dos ramas viejas.
+                    SunatDocumentActions(
+                        billingStatus = detail.billingStatus,
+                        billingBusy = billingBusy,
+                        showXmlViewers = !isCreditNoteDoc(detail.docType),
+                        onViewXmlSent = onViewXmlSent,
+                        onViewXmlGenerated = onViewXmlGenerated,
+                        onDownloadXmlSent = onDownloadXmlSent,
+                        onDownloadXmlGenerated = onDownloadXmlGenerated,
+                        onDownloadCdr = onDownloadCdr,
+                    )
+                    if (detail.canVoidWithCreditNote()) {
+                        OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
+                            Text("Anular con nota de crédito", color = BendeyColors.Error)
                         }
-                        if (canResendToSunat(detail.billingStatus)) {
-                            OutlinedButton(
-                                onClick = onResendSunat,
-                                enabled = billingBusy == null,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    if (billingBusy == "resend") "Reenviando…" else sunatSendActionLabel(detail.billingStatus),
-                                )
-                            }
-                        }
-                        SunatDocumentActions(
-                            billingStatus = detail.billingStatus,
-                            billingBusy = billingBusy,
-                            showXmlViewers = false,
-                            onViewXmlSent = onViewXmlSent,
-                            onViewXmlGenerated = onViewXmlGenerated,
-                            onDownloadXmlSent = onDownloadXmlSent,
-                            onDownloadXmlGenerated = onDownloadXmlGenerated,
-                            onDownloadCdr = onDownloadCdr,
-                        )
                     }
                 }
-                // Devolver el dinero vale para las tres pestanas: una venta anulada por cualquier via
-                // puede tener plata pendiente de entregar. Anular y devolver son cosas distintas.
+                // Devolver el dinero vale para cualquier venta: una anulada por cualquier via puede
+                // tener plata pendiente de entregar. Anular y devolver son cosas distintas.
                 if (detail.canRegisterRefund()) {
                     OutlinedButton(onClick = onRefund, modifier = Modifier.fillMaxWidth()) {
                         Text("Registrar devolucion", color = BendeyColors.Error)

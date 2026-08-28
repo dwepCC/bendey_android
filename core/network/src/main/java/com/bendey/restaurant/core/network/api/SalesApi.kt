@@ -27,6 +27,8 @@ interface SalesApi {
         @Query("doc_type") docType: String? = null,
         @Query("billing_status") billingStatus: String? = null,
         @Query("payment_method") paymentMethod: String? = null,
+        // dine_in | takeaway | delivery | quick_sale — se aceptan varios separados por coma.
+        @Query("order_type") orderType: String? = null,
         @Query("export_all") exportAll: Int? = null,
     ): SalesListResponseDto
 

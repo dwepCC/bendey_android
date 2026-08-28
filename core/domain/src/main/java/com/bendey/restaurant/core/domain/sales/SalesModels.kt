@@ -25,6 +25,10 @@ data class SaleSummary(
     val refundable: Boolean = false,
     val refundableAmount: Double = 0.0,
     val refundedAmount: Double = 0.0,
+    // Mesa de la que salio la venta y como se atendio (dine_in, takeaway, delivery, quick_sale).
+    // Vacio cuando la venta no salio del POS de restaurante.
+    val tableName: String? = null,
+    val orderType: String? = null,
 ) {
     val displayNumber: String get() = formatSaleDocumentNumber(number)
 }
@@ -151,12 +155,13 @@ interface SalesRepository {
     suspend fun listSales(
         from: String?,
         to: String?,
-        tab: VentasTab = VentasTab.NOTAS,
+        tab: VentasTab = VentasTab.TODAS,
         page: Int = 1,
         perPage: Int = 25,
         query: String? = null,
         paymentMethod: String? = null,
         billingStatus: String? = null,
+        orderType: String? = null,
     ): AppResult<SalesListPage>
 
     suspend fun listAllSalesForExport(
@@ -166,6 +171,7 @@ interface SalesRepository {
         query: String? = null,
         paymentMethod: String? = null,
         billingStatus: String? = null,
+        orderType: String? = null,
     ): AppResult<List<SaleSummary>>
 
     suspend fun getSaleDetail(saleId: Int): AppResult<SaleDetail>

@@ -29,6 +29,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.SaleDetail
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 import com.bendey.restaurant.core.domain.sales.VentasTab
+import com.bendey.restaurant.core.domain.sales.incluyeElectronicos
 import com.bendey.restaurant.core.domain.sales.canCancelNotaVenta
 import com.bendey.restaurant.core.domain.sales.canRegisterRefund
 import com.bendey.restaurant.core.domain.sales.canIssueElectronicFromNota
@@ -76,7 +77,7 @@ enum class VentasDatePreset(val label: String) {
 
 data class VentasUiState(
     val loading: Boolean = false,
-    val tab: VentasTab = VentasTab.NOTAS,
+    val tab: VentasTab = VentasTab.TODAS,
     val sales: List<com.bendey.restaurant.core.domain.sales.SaleSummary> = emptyList(),
     val total: Int = 0,
     val page: Int = 1,
@@ -86,6 +87,8 @@ data class VentasUiState(
     val datePreset: VentasDatePreset = VentasDatePreset.MONTH,
     val paymentMethodFilter: String = "",
     val billingStatusFilter: String = "",
+    // Como se atendio la venta: mesa, para llevar, delivery o directa. Vacio = todas.
+    val orderTypeFilter: String = "",
     val checkoutMeta: CheckoutMeta? = null,
     val sunatEnabled: Boolean = false,
     val selectedSaleId: Int? = null,
@@ -128,8 +131,10 @@ data class VentasUiState(
     val xmlViewContent: String = "",
     val listSummary: com.bendey.restaurant.core.domain.sales.SaleListSummary = com.bendey.restaurant.core.domain.sales.SaleListSummary(),
 ) {
+    // «Todas» y «Solo notas de venta» se piden siempre: traen notas de venta, que no dependen de
+    // SUNAT. Los filtros que solo traen comprobantes electronicos necesitan la facturacion activa.
     val canFetchList: Boolean
-        get() = tab == VentasTab.NOTAS || sunatEnabled
+        get() = tab == VentasTab.NOTAS || tab == VentasTab.TODAS || sunatEnabled
     val hasMore: Boolean get() = sales.size < total
 
     val electronicSeries: List<DocumentSeries>
@@ -217,6 +222,13 @@ class VentasViewModel @Inject constructor(
         refresh()
     }
 
+    /** Filtra por como se atendio la venta. Es transversal: sobrevive al cambio de documento. */
+    fun selectOrderType(codigo: String) {
+        if (_uiState.value.orderTypeFilter == codigo) return
+        _uiState.update { it.copy(orderTypeFilter = codigo, page = 1, sales = emptyList()) }
+        refresh()
+    }
+
     fun setSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query, page = 1) }
         searchJob?.cancel()
@@ -270,7 +282,7 @@ class VentasViewModel @Inject constructor(
     }
 
     private fun syncBillingStream(tab: VentasTab) {
-        if (tab == VentasTab.FACTURACION || tab == VentasTab.CREDITOS) {
+        if (tab.incluyeElectronicos()) {
             billingEventsClient.connect()
         } else {
             billingEventsClient.disconnect()
@@ -329,6 +341,7 @@ class VentasViewModel @Inject constructor(
                     query = state.searchQuery,
                     paymentMethod = state.paymentMethodFilter,
                     billingStatus = state.billingStatusFilter,
+                    orderType = state.orderTypeFilter,
                 )
             ) {
                 is AppResult.Success -> _uiState.update {
@@ -364,6 +377,7 @@ class VentasViewModel @Inject constructor(
                     query = state.searchQuery,
                     paymentMethod = state.paymentMethodFilter,
                     billingStatus = state.billingStatusFilter,
+                    orderType = state.orderTypeFilter,
                 )
             ) {
                 is AppResult.Success -> _uiState.update {
@@ -1060,6 +1074,7 @@ class VentasViewModel @Inject constructor(
                     query = state.searchQuery,
                     paymentMethod = state.paymentMethodFilter,
                     billingStatus = state.billingStatusFilter,
+                    orderType = state.orderTypeFilter,
                 )
             ) {
                 is AppResult.Success -> {

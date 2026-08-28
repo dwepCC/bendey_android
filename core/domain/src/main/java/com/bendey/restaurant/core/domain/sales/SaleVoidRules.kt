@@ -1,11 +1,28 @@
 package com.bendey.restaurant.core.domain.sales
 
-/** Pestañas del listado de ventas (paridad web). */
-enum class VentasTab(val label: String) {
-    NOTAS("Notas venta"),
-    FACTURACION("Boletas/Facturas"),
-    CREDITOS("Notas crédito"),
+/**
+ * FILTRO DE DOCUMENTO DEL LISTADO DE VENTAS (paridad web).
+ *
+ * Eran tres pestañas estancas y no había forma de ver el día completo: un negocio que emite boleta a
+ * quien la pide y nota de venta al resto tenía que sumar dos pantallas a mano.
+ *
+ * «Todas» son las VENTAS, no todos los documentos: la nota de crédito no es una venta sino su
+ * anulación, y mezclarla haría que el total del listado no cuadre con lo que entró a caja. Por eso
+ * tiene su propia opción y queda fuera del resto.
+ *
+ * `sunatCodes` viaja tal cual al backend en `sunat_code`: 00 nota de venta, 01 factura, 03 boleta.
+ */
+enum class VentasTab(val label: String, val sunatCodes: String) {
+    TODAS("Todas las ventas", "00,01,03"),
+    NOTAS("Solo notas de venta", "00"),
+    BOLETAS("Solo boletas", "03"),
+    FACTURAS("Solo facturas", "01"),
+    FACTURACION("Facturas y boletas", "01,03"),
+    CREDITOS("Notas de crédito", ""),
 }
+
+/** Si el filtro puede traer comprobantes electrónicos, y con ellos el estado de SUNAT. */
+fun VentasTab.incluyeElectronicos(): Boolean = this != VentasTab.NOTAS
 
 fun isSaleCancelled(status: String): Boolean =
     status.equals("cancelled", ignoreCase = true)

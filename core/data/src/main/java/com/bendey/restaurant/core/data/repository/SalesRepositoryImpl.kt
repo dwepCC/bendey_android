@@ -18,6 +18,7 @@ import com.bendey.restaurant.core.domain.sales.SalesListPage
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.SalesRepository
 import com.bendey.restaurant.core.domain.sales.VentasTab
+import com.bendey.restaurant.core.domain.sales.incluyeElectronicos
 import com.bendey.restaurant.core.network.api.SalesApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.CancelSaleRequestDto
@@ -45,6 +46,7 @@ class SalesRepositoryImpl @Inject constructor(
         query: String?,
         paymentMethod: String?,
         billingStatus: String?,
+        orderType: String?,
     ): AppResult<SalesListPage> = apiCall {
         val filters = tab.toListFilters()
         val response = tenantRetrofitProvider.create<SalesApi>().listSales(
@@ -55,8 +57,9 @@ class SalesRepositoryImpl @Inject constructor(
             perPage = perPage,
             sunatCode = filters.sunatCode,
             docType = filters.docType,
-            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab == VentasTab.FACTURACION },
+            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab.incluyeElectronicos() },
             paymentMethod = paymentMethod?.trim()?.takeIf { it.isNotEmpty() },
+            orderType = orderType?.trim()?.takeIf { it.isNotEmpty() },
         )
         SalesListPage(
             sales = response.data.map { it.toDomain() },
@@ -72,6 +75,7 @@ class SalesRepositoryImpl @Inject constructor(
         query: String?,
         paymentMethod: String?,
         billingStatus: String?,
+        orderType: String?,
     ): AppResult<List<SaleSummary>> = apiCall {
         val filters = tab.toListFilters()
         tenantRetrofitProvider.create<SalesApi>().listSales(
@@ -81,8 +85,9 @@ class SalesRepositoryImpl @Inject constructor(
             exportAll = 1,
             sunatCode = filters.sunatCode,
             docType = filters.docType,
-            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab == VentasTab.FACTURACION },
+            billingStatus = billingStatus?.trim()?.takeIf { it.isNotEmpty() && tab.incluyeElectronicos() },
             paymentMethod = paymentMethod?.trim()?.takeIf { it.isNotEmpty() },
+            orderType = orderType?.trim()?.takeIf { it.isNotEmpty() },
         ).data.map { it.toDomain() }
     }
 
@@ -177,11 +182,11 @@ private data class ListFilters(
     val docType: String? = null,
 )
 
-private fun VentasTab.toListFilters(): ListFilters = when (this) {
-    VentasTab.NOTAS -> ListFilters(sunatCode = "00")
-    VentasTab.FACTURACION -> ListFilters(sunatCode = "01,03")
-    VentasTab.CREDITOS -> ListFilters(docType = "NOTA_CREDITO")
-}
+// La nota de credito se pide por doc_type porque su serie no comparte los codigos de venta; el
+// resto sale de `sunatCodes`, que ya viene en el propio filtro.
+private fun VentasTab.toListFilters(): ListFilters =
+    if (this == VentasTab.CREDITOS) ListFilters(docType = "NOTA_CREDITO")
+    else ListFilters(sunatCode = sunatCodes)
 
 private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
     AppResult.Success(block())
@@ -219,6 +224,8 @@ private fun SaleDto.toDomain() = SaleSummary(
     refundable = refundable,
     refundableAmount = refundableAmount,
     refundedAmount = refundedAmount,
+    tableName = tableName,
+    orderType = orderType,
 )
 
 private fun formatSaleNumber(series: String, number: String): String {
