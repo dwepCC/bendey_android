@@ -113,10 +113,12 @@ fun RecipeEditorSheet(
             )
             if (state.cost == 0.0) {
                 Text(
-                    "El costo guardado es S/ 0.00 porque " +
+                    "El costo es S/ 0.00 porque " +
                         (if (state.hasSavedRecipe) "estos insumos" else "los insumos") +
-                        " aún no tienen compras registradas — el costo se calcula del costo promedio " +
-                        "de sus compras, no del precio de venta.",
+                        " no tienen de dónde costearse. Cada insumo se valoriza con el promedio de sus " +
+                        "compras registradas y, si no tiene compras, con el precio de compra de su ficha " +
+                        "de producto — escribir ahí cuánto te cuesta ya alcanza para que el plato deje " +
+                        "de costar cero.",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.Warning,
                 )
