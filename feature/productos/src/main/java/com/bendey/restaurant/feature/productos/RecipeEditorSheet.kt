@@ -59,7 +59,19 @@ fun RecipeEditorSheet(
         loading = state.loading,
         enableContentScroll = true,
         validationError = state.error,
-        footerSummary = state.cost?.let { "Costo guardado: ${formatSoles(it)}" },
+        // `state` viene de un `collectAsState` delegado, así que el compilador no puede afinar el
+        // tipo dentro del `when`: se copia a un local para poder leerlo sin repetir el `!!`.
+        footerSummary = state.costeo.let { costeo ->
+            when {
+                costeo != null -> buildString {
+                    append("Costo del plato: ")
+                    append(formatSoles(costeo.total))
+                    if (costeo.sinCostear > 0) append(" (${costeo.sinCostear} sin costear)")
+                }
+                state.costeando -> "Costo del plato: …"
+                else -> null
+            }
+        },
         onConfirm = { viewModel.confirm(onConfirmed = { draft -> onSave(draft); onDismiss() }) },
         onDismiss = onDismiss,
     ) {
@@ -77,54 +89,68 @@ fun RecipeEditorSheet(
                 )
             }
             state.items.forEach { row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    BendeySearchableSelect(
-                        options = ingredientOptions,
-                        selectedId = row.productId,
-                        onSelect = { id -> viewModel.setIngredientProduct(row.key, id) },
-                        label = "Insumo",
-                        placeholder = "Buscar producto…",
-                        modifier = Modifier.weight(1f),
-                    )
-                    BendeyTextField(
-                        value = row.quantity,
-                        onValueChange = { value -> viewModel.setIngredientQuantity(row.key, value) },
-                        label = "Cant.",
-                        modifier = Modifier.weight(0.4f),
-                    )
-                    IconButton(onClick = { viewModel.removeIngredient(row.key) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Quitar ingrediente")
+                val linea = state.costeo?.items?.firstOrNull { it.productId == row.productId }
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    ) {
+                        BendeySearchableSelect(
+                            options = ingredientOptions,
+                            selectedId = row.productId,
+                            onSelect = { id -> viewModel.setIngredientProduct(row.key, id) },
+                            label = "Insumo",
+                            placeholder = "Buscar producto…",
+                            modifier = Modifier.weight(1f),
+                        )
+                        BendeyTextField(
+                            value = row.quantity,
+                            onValueChange = { value -> viewModel.setIngredientQuantity(row.key, value) },
+                            // LA UNIDAD EN LA ETIQUETA DEL CAMPO, no en un párrafo al pie: es donde
+                            // se decide si se escribe 1 o 0.3, y ahí es donde hay que leerla.
+                            label = row.productId
+                                ?.let { id -> ingredientOptions.firstOrNull { it.id == id }?.label }
+                                ?.let(::unidadDe)
+                                ?.let { u -> "Cant. ($u)" }
+                                ?: "Cant.",
+                            modifier = Modifier.weight(0.4f),
+                        )
+                        IconButton(onClick = { viewModel.removeIngredient(row.key) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Quitar ingrediente")
+                        }
+                    }
+                    // EL UNITARIO AL LADO DEL SUBTOTAL, y no solo el subtotal: es lo que deshace el
+                    // malentendido de leer «aceite S/8» y esperar S/8 en el plato. Si la receta usa
+                    // 0.05, acá se lee «S/8.00 × 0.05 = S/0.40».
+                    if (linea != null) {
+                        if (linea.sinCostear) {
+                            Text(
+                                "Sin costo — cárgale el precio de compra en su ficha",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BendeyColors.Warning,
+                            )
+                        } else {
+                            Text(
+                                "${formatSoles(linea.unitCost)} × ${formatQty(linea.quantity)} = " +
+                                    formatSoles(linea.subtotal),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }
             BendeyTextButton(text = "Agregar ingrediente", onClick = viewModel::addIngredient)
-            Text(
-                "La cantidad se expresa en la misma unidad de stock del insumo (ej. si la Papa se " +
-                    "controla en kg, escribe 0.3 para 300 g).",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                "\"Usar esta receta\" no la guarda todavía — se registra recién cuando confirmes el " +
-                    "formulario del producto. Si lo cancelas, la receta no se modifica.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            if (state.cost == 0.0) {
-                Text(
-                    "El costo es S/ 0.00 porque " +
-                        (if (state.hasSavedRecipe) "estos insumos" else "los insumos") +
-                        " no tienen de dónde costearse. Cada insumo se valoriza con el promedio de sus " +
-                        "compras registradas y, si no tiene compras, con el precio de compra de su ficha " +
-                        "de producto — escribir ahí cuánto te cuesta ya alcanza para que el plato deje " +
-                        "de costar cero.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.Warning,
-                )
-            }
         }
     }
+}
+
+/** Saca la unidad del rótulo del insumo — viene como "PAPA · insumo (kg)". */
+private fun unidadDe(label: String): String? =
+    Regex("""\(([^)]+)\)\s*$""").find(label)?.groupValues?.get(1)
+
+private fun formatQty(value: Double): String {
+    val rounded = kotlin.math.round(value * 1000.0) / 1000.0
+    return if (rounded % 1.0 == 0.0) rounded.toLong().toString() else rounded.toString()
 }
 
 private fun formatSoles(value: Double): String {

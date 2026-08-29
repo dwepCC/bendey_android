@@ -53,6 +53,38 @@ data class RecipeCostResponseDto(
     val data: RecipeCostDto,
 )
 
+/** Costeo de una receta que todavía no se guardó — espejo de service.BorradorCosteado.
+ *
+ *  El cálculo vive en el backend a propósito: el costo de un insumo es el promedio de sus compras y,
+ *  solo si no tiene ninguna, el precio declarado en su ficha. Repetir esa regla aquí y en Tauri daría
+ *  dos oportunidades de mostrar un costo distinto al que el sistema usa para el margen.
+ */
+@Serializable
+data class RecipeDraftCostItemDto(
+    @SerialName("product_id") val productId: Int,
+    val quantity: Double = 0.0,
+    @SerialName("unit_cost") val unitCost: Double = 0.0,
+    val subtotal: Double = 0.0,
+    @SerialName("sin_costear") val sinCostear: Boolean = false,
+)
+
+@Serializable
+data class RecipeDraftCostDto(
+    val total: Double = 0.0,
+    val items: List<RecipeDraftCostItemDto> = emptyList(),
+    @SerialName("sin_costear") val sinCostear: Int = 0,
+)
+
+@Serializable
+data class RecipeDraftCostResponseDto(
+    val data: RecipeDraftCostDto,
+)
+
+@Serializable
+data class CostDraftRequestDto(
+    val items: List<RecipeItemDto> = emptyList(),
+)
+
 @Serializable
 data class LowStockInsumoDto(
     @SerialName("product_id") val productId: Int,

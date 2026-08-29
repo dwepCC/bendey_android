@@ -5,6 +5,8 @@ import com.bendey.restaurant.core.domain.production.LowStockInsumo
 import com.bendey.restaurant.core.domain.production.PlateMarginRow
 import com.bendey.restaurant.core.domain.production.Recipe
 import com.bendey.restaurant.core.domain.production.RecipeDetail
+import com.bendey.restaurant.core.domain.production.RecipeDraftCost
+import com.bendey.restaurant.core.domain.production.RecipeDraftCostItem
 import com.bendey.restaurant.core.domain.production.RecipeItem
 import com.bendey.restaurant.core.domain.production.ProductionRepository
 import com.bendey.restaurant.core.network.api.ProductionApi
@@ -13,6 +15,7 @@ import com.bendey.restaurant.core.network.dto.LowStockInsumoDto
 import com.bendey.restaurant.core.network.dto.PlateMarginRowDto
 import com.bendey.restaurant.core.network.dto.RecipeDetailDto
 import com.bendey.restaurant.core.network.dto.RecipeDto
+import com.bendey.restaurant.core.network.dto.CostDraftRequestDto
 import com.bendey.restaurant.core.network.dto.RecipeItemDto
 import com.bendey.restaurant.core.network.dto.UpsertRecipeRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
@@ -49,6 +52,27 @@ class ProductionRepositoryImpl @Inject constructor(
     override suspend fun getRecipeCost(productId: Int, branchId: Int?): AppResult<Double> = apiCall {
         api.getRecipeCost(productId, branchId).data.cost
     }
+
+    override suspend fun costDraft(items: List<RecipeItem>, branchId: Int?): AppResult<RecipeDraftCost> =
+        apiCall {
+            val dto = api.costDraft(
+                CostDraftRequestDto(items = items.map { RecipeItemDto(productId = it.productId, quantity = it.quantity) }),
+                branchId,
+            ).data
+            RecipeDraftCost(
+                total = dto.total,
+                sinCostear = dto.sinCostear,
+                items = dto.items.map {
+                    RecipeDraftCostItem(
+                        productId = it.productId,
+                        quantity = it.quantity,
+                        unitCost = it.unitCost,
+                        subtotal = it.subtotal,
+                        sinCostear = it.sinCostear,
+                    )
+                },
+            )
+        }
 
     override suspend fun lowStockInsumos(branchId: Int?): AppResult<List<LowStockInsumo>> = apiCall {
         api.lowStockInsumos(branchId).data.map { it.toDomain() }
