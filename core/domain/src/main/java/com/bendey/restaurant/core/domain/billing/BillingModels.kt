@@ -109,6 +109,9 @@ data class BillingActionResult(
 data class SalePrintData(
     val docType: String,
     val sunatCode: String = "",
+    val series: String,
+    /** Entero reservado al emitir. Con `series` compone el numero a mostrar. */
+    val correlative: Int,
     val number: String,
     val issueDate: String,
     val issueTime: String? = null,

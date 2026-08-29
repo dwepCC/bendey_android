@@ -49,6 +49,8 @@ data class PrintDataDto(
     @SerialName("doc_type") val docType: String = "",
     @SerialName("sunat_code") val sunatCode: String = "",
     val series: String = "",
+    /** Entero reservado al emitir. Con `series` compone el numero a mostrar. */
+    val correlative: Int = 0,
     val number: String = "",
     @SerialName("issue_date") val issueDate: String = "",
     @SerialName("issue_time") val issueTime: String? = null,
@@ -252,6 +254,9 @@ data class SaleDto(
     val id: Int,
     @SerialName("doc_type") val docType: String = "",
     val series: String = "",
+    /** Entero que el backend reserva al emitir. Con `series` compone el numero a mostrar; `number`
+     *  es la concatenacion de ambos y no debe usarse para eso. */
+    val correlative: Int = 0,
     val number: String = "",
     @SerialName("issue_date") val issueDate: String = "",
     @SerialName("contact_name") val contactName: String? = null,

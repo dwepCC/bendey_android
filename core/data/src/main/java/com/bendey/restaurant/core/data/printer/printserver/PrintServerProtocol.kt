@@ -87,6 +87,10 @@ data class RemoteDocumentJobRequest(
     val jobId: String,
     val docType: String,
     val sunatCode: String = "",
+    /** Serie y correlativo viajan por separado: son la fuente para componer el numero en el PC, que
+     *  antes lo partia con split("-") sobre el texto ya compuesto. */
+    val series: String = "",
+    val correlative: Int = 0,
     val number: String,
     val issueDate: String,
     val issueTime: String? = null,
@@ -148,6 +152,8 @@ fun SalePrintData.toRemoteJob(jobId: String) = RemoteDocumentJobRequest(
     jobId = jobId,
     docType = docType,
     sunatCode = sunatCode,
+    series = series,
+    correlative = correlative,
     number = number,
     issueDate = issueDate,
     issueTime = issueTime,

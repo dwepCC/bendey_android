@@ -11,7 +11,9 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
     return SalePrintData(
         docType = docType.ifBlank { "NOTA DE VENTA" },
         sunatCode = sunatCode,
-        number = formatPrintNumber(series, number),
+        series = series,
+        correlative = correlative,
+        number = numeroDeComprobante(series, correlative),
         issueDate = issueDate,
         issueTime = issueTime?.takeIf { it.isNotBlank() },
         companyName = names.commercial,
@@ -49,10 +51,15 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
     )
 }
 
-private fun formatPrintNumber(series: String, number: String): String {
-    val n = number.trim()
-    if (n.isBlank()) return series.trim()
-    val s = series.trim()
-    if (s.isNotBlank() && !n.startsWith(s)) return "$s-$n"
-    return n
-}
+/** Cuantos digitos lleva el correlativo impreso: el largo que exige SUNAT. */
+private const val DIGITOS_DEL_CORRELATIVO = 8
+
+/**
+ * El numero de un comprobante, compuesto SIEMPRE igual: serie y correlativo.
+ *
+ * Aqui vivia `formatPrintNumber`, que comparaba si `number` ya empezaba por la serie para decidir si
+ * anteponerla. Esa duda venia de que `number` la incluye en `tenant_sales` y no en otras tablas con
+ * los mismos nombres de campo, y de ella salian los «NV001-NV001-00000133».
+ */
+private fun numeroDeComprobante(series: String, correlative: Int): String =
+    "$series-${correlative.toString().padStart(DIGITOS_DEL_CORRELATIVO, '0')}"

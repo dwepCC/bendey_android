@@ -132,8 +132,8 @@ class SalesRepositoryImpl @Inject constructor(
         IssueElectronicResult(
             saleId = sale.id,
             docType = sale.docType,
-            number = formatSaleNumber(sale.series, sale.number),
-            message = "Comprobante generado: ${sale.docType} ${formatSaleNumber(sale.series, sale.number)}",
+            number = numeroDeComprobante(sale.series, sale.correlative),
+            message = "Comprobante generado: ${sale.docType} ${numeroDeComprobante(sale.series, sale.correlative)}",
         )
     }
 
@@ -207,7 +207,7 @@ private fun SaleListSummaryDto.toDomain() = SaleListSummary(
 private fun SaleDto.toDomain() = SaleSummary(
     id = id,
     docType = docType,
-    number = formatSaleNumber(series, number),
+    number = numeroDeComprobante(series, correlative),
     issueDate = issueDate,
     contactName = contactName,
     total = total,
@@ -228,14 +228,26 @@ private fun SaleDto.toDomain() = SaleSummary(
     orderType = orderType,
 )
 
-private fun formatSaleNumber(series: String, number: String): String {
-    val s = series.trim()
-    val n = number.trim()
-    if (n.isBlank()) return s
-    if (n.contains("-")) return n
-    if (s.isBlank()) return n
-    return "$s-$n"
-}
+/** Cuantos digitos lleva el correlativo impreso: el largo que exige SUNAT y el que usa el backend al
+ *  componer el numero al emitir. */
+private const val DIGITOS_DEL_CORRELATIVO = 8
+
+/**
+ * El numero de un comprobante, compuesto SIEMPRE igual: serie y correlativo.
+ *
+ * NO MIRA EL CONTENIDO PARA DECIDIR QUE HACER, y esa es toda la diferencia con lo que habia antes.
+ *
+ * Aqui vivia `formatSaleNumber`, que recibia `series` y `number` y tenia que averiguar si `number` ya
+ * traia la serie dentro («si contiene un guion, ya viene completo»). Esa duda no era un capricho:
+ * `number` guarda «NV001-00000133» en `tenant_sales` y «00000002» en `tenant_quotations`, con los
+ * mismos nombres de campo, asi que quien lo recibia no podia saber cual convencion le tocaba. De esa
+ * adivinanza salian los «NV001-NV001-00000133».
+ *
+ * `series` y `correlative` no admiten esa duda: uno es el codigo de la serie, el otro un entero que el
+ * backend reserva de forma transaccional al emitir.
+ */
+private fun numeroDeComprobante(series: String, correlative: Int): String =
+    "$series-${correlative.toString().padStart(DIGITOS_DEL_CORRELATIVO, '0')}"
 
 private fun SaleContactDto.toDomain() = SaleContactBrief(
     id = id,
@@ -248,7 +260,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
     val saleDto = sale ?: error("Venta no encontrada")
     return SaleDetail(
         id = saleDto.id,
-        number = formatSaleNumber(saleDto.series, saleDto.number),
+        number = numeroDeComprobante(saleDto.series, saleDto.correlative),
         docType = saleDto.docType,
         issueDate = saleDto.issueDate,
         contactName = saleDto.contactName,

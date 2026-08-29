@@ -30,7 +30,9 @@ data class SaleSummary(
     val tableName: String? = null,
     val orderType: String? = null,
 ) {
-    val displayNumber: String get() = formatSaleDocumentNumber(number)
+    /** El repositorio ya lo compuso desde `series` y `correlative` al mapear la respuesta; aqui no
+     *  queda nada que formatear. */
+    val displayNumber: String get() = number
 }
 
 data class RefundResult(
@@ -103,7 +105,9 @@ data class SaleDetail(
     val payments: List<SaleDetailPayment>,
     val printData: SalePrintData?,
 ) {
-    val displayNumber: String get() = formatSaleDocumentNumber(number)
+    /** El repositorio ya lo compuso desde `series` y `correlative` al mapear la respuesta; aqui no
+     *  queda nada que formatear. */
+    val displayNumber: String get() = number
 }
 
 data class SalePaymentTotal(
@@ -199,7 +203,3 @@ interface SalesRepository {
     ): AppResult<SalesByProductPage>
 }
 
-fun formatSaleDocumentNumber(number: String): String {
-    val num = number.trim()
-    return if (num.isBlank()) "—" else num
-}
