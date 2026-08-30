@@ -46,6 +46,7 @@ data class SubscriptionUiState(
     val paymentForm: PaymentFormState = PaymentFormState(),
     val submitting: Boolean = false,
     val renovando: Boolean = false,
+    val confirmarRenovacion: Boolean = false,
 )
 
 @HiltViewModel
@@ -202,8 +203,17 @@ class SubscriptionViewModel @Inject constructor(
      * Renovar y pagar son dos cosas distintas: esto crea la obligacion, y el modal que se abre
      * despues presenta el comprobante contra ella.
      */
+    fun pedirConfirmacionDeRenovacion() {
+        _uiState.update { it.copy(confirmarRenovacion = true) }
+    }
+
+    fun cancelarRenovacion() {
+        _uiState.update { it.copy(confirmarRenovacion = false) }
+    }
+
     fun renovar() {
         if (_uiState.value.renovando) return
+        _uiState.update { it.copy(confirmarRenovacion = false) }
         viewModelScope.launch {
             _uiState.update { it.copy(renovando = true, error = null) }
             when (val result = repository.renovar(null)) {

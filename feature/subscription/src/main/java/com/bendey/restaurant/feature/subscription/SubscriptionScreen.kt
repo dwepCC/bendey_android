@@ -40,6 +40,8 @@ import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.SubscriptionPayment
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
@@ -160,7 +162,7 @@ fun SubscriptionScreen(
                             } else if (hub.subscription.hasSubscription) {
                                 BendeyPrimaryButton(
                                     text = "Contratar próximo período",
-                                    onClick = viewModel::renovar,
+                                    onClick = viewModel::pedirConfirmacionDeRenovacion,
                                     loading = state.renovando,
                                     modifier = Modifier.padding(top = BendeySpacing.sm),
                                 )
@@ -247,6 +249,49 @@ fun SubscriptionScreen(
                 }
             }
         }
+    }
+
+    // CONTRATAR UN PERIODO ES UNA COMPRA, Y UNA COMPRA SE CONFIRMA.
+    //
+    // El boton ya se bloqueaba mientras respondia el servidor, pero eso no evita el segundo toque de
+    // quien no vio pasar nada: cada confirmacion agrega OTRO mes, porque adelantarse varios periodos
+    // es legitimo y el backend no puede distinguirlo de un descuido.
+    if (state.confirmarRenovacion) {
+        val sub = state.hub?.subscription
+        BendeyAlertDialog(
+            onDismissRequest = viewModel::cancelarRenovacion,
+            title = { Text("¿Contratar el siguiente período?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    Text(
+                        buildString {
+                            append("Se agregará un período de ")
+                            append(sub?.planName?.ifBlank { "tu plan" } ?: "tu plan")
+                            val monto = state.hub?.billingContext?.planAmount ?: 0.0
+                            if (monto > 0) append(" por S/ " + "%.2f".format(monto))
+                            append(". Empieza cuando termina el que tienes ahora")
+                            sub?.nextBillingDate?.takeIf { it.isNotBlank() }?.let {
+                                append(" (vence el " + it + ")")
+                            }
+                            append(", así que no pierdes los días que ya pagaste.")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "Si ya lo contrataste hace un momento, revisa tu estado de cuenta antes de " +
+                            "seguir: cada confirmación agrega un período más.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                BendeyTextButton(text = "Sí, contratar", onClick = viewModel::renovar)
+            },
+            dismissButton = {
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::cancelarRenovacion)
+            },
+        )
     }
 
     if (state.paymentDialogOpen) {
