@@ -145,15 +145,30 @@ fun SubscriptionScreen(
                                     modifier = Modifier.padding(top = BendeySpacing.xxs),
                                 )
                             }
-                            // CON DEUDA SE PAGA; SIN DEUDA SE CONTRATA EL PROXIMO PERIODO.
+                            // CON DEUDA SE PAGA; SIN DEUDA SE CONTRATA EL PROXIMO PERIODO; EN PRUEBA SE ELIGE UN PLAN.
                             //
-                            // Estar al día era un callejón sin salida: la pantalla no ofrecía nada y
-                            // quien entraba a adelantar el mes siguiente no tenía por dónde. Renovar
-                            // crea el período; el comprobante se presenta después, en el mismo paso.
+                            // La prueba gratuita no se renueva (el backend bloquea re-emitir el plan
+                            // gratis) ni genera deuda: el camino adelante es elegir un plan de la lista
+                            // "Planes disponibles" de abajo. Los tiers los resuelve el backend
+                            // (pkg/saas/billing_ux.go) para que web, Tauri y Android digan lo mismo.
+                            val tier = hub.billingContext.urgencyTier
+                            val isTrialExpired = tier == "trial_expired"
+                            val isTrial = isTrialExpired || tier == "trial"
                             val porPagar = hub.invoices.count {
                                 it.status == "pending" || it.status == "overdue"
                             }
-                            if (hub.subscription.canSubmitPayment && porPagar > 0) {
+                            if (isTrial) {
+                                Text(
+                                    if (isTrialExpired) {
+                                        "Tu prueba gratuita terminó. Elige un plan abajo para seguir usando el sistema."
+                                    } else {
+                                        "Estás en tu prueba gratuita. Elige un plan abajo para continuar sin cortes al terminar."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isTrialExpired) BendeyColors.Error else BendeyColors.OnSurfaceVariant,
+                                    modifier = Modifier.padding(top = BendeySpacing.sm),
+                                )
+                            } else if (hub.subscription.canSubmitPayment && porPagar > 0) {
                                 BendeyPrimaryButton(
                                     text = "Reportar pago",
                                     onClick = viewModel::openPaymentDialog,
@@ -624,6 +639,7 @@ private fun paymentStatusLabel(status: String) = when (status.lowercase()) {
 
 private fun subscriptionStatusLabel(status: String) = when (status.lowercase()) {
     "active" -> "Activo"
+    "trial" -> "Prueba"
     "grace" -> "Periodo de gracia"
     "suspended" -> "Suspendido"
     "blocked" -> "Bloqueado"
