@@ -53,6 +53,9 @@ data class PaymentConfig(
     val bankAccounts: List<BankAccountOption> = emptyList(),
     val yapeQrUrl: String = "",
     val plinQrUrl: String = "",
+    /** Nombre y numero del titular, escritos en el Panel Central. Admite *negritas* con asteriscos. */
+    val yapeInfo: String = "",
+    val plinInfo: String = "",
 )
 
 data class SupportContact(
@@ -78,6 +81,19 @@ data class DocumentUsage(
     val canEmit: Boolean = true,
 )
 
+/** Un periodo del estado de cuenta: lo que se debe o se pago, con su fecha. */
+data class BillingInvoice(
+    val id: Int,
+    val amount: Double,
+    val reconnectionFee: Double,
+    val status: String,
+    val dueDate: String,
+    val periodStart: String,
+    val periodEnd: String,
+    val paidAt: String,
+    val paymentId: Int?,
+)
+
 data class SubscriptionPayment(
     val id: Int,
     val amount: Double,
@@ -88,6 +104,8 @@ data class SubscriptionPayment(
     val reference: String?,
     val rejectReason: String?,
     val createdAt: String,
+    val receiptUrl: String = "",
+    val billingCycleId: Int? = null,
 )
 
 data class SubscriptionTimelineEvent(
@@ -104,6 +122,7 @@ data class BillingHub(
     val support: SupportContact = SupportContact(),
     val statusBanner: StatusBanner = StatusBanner(),
     val documents: DocumentUsage? = null,
+    val invoices: List<BillingInvoice> = emptyList(),
     val payments: List<SubscriptionPayment> = emptyList(),
     val events: List<SubscriptionTimelineEvent> = emptyList(),
 )

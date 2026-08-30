@@ -41,6 +41,14 @@ object NetworkErrorMapper {
         return IllegalStateException(message, error)
     }
 
+    /**
+     * Si el servidor respondió 409 (conflicto).
+     *
+     * Vive aquí porque Retrofit no cruza a `core:data`: sin esto, distinguir un conflicto obligaría a
+     * comparar el texto del mensaje, que cambia en cuanto alguien reescribe el error del backend.
+     */
+    fun esConflicto(error: Throwable): Boolean = error is HttpException && error.code() == 409
+
     private fun subscriptionBlockedMessage(blocked: Boolean): String = if (blocked) {
         "Tu cuenta está bloqueada. Comunícate con soporte para reactivar el servicio."
     } else {

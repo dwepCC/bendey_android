@@ -1,10 +1,12 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.network.BuildConfig
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BankAccountOption
 import com.bendey.restaurant.core.domain.subscription.BillingContext
 import com.bendey.restaurant.core.domain.subscription.BillingHub
+import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.DocumentUsage
 import com.bendey.restaurant.core.domain.subscription.PaymentConfig
 import com.bendey.restaurant.core.domain.subscription.PaymentMethodOption
@@ -41,6 +43,9 @@ class SubscriptionRepositoryImpl @Inject constructor(
 
     private val api: SubscriptionApi
         get() = tenantRetrofitProvider.create()
+
+    override fun assetsBaseUrl(): String? =
+        BuildConfig.CENTRAL_API_URL.trim().trimEnd('/').removeSuffix("/api")
 
     override suspend fun getHub(): AppResult<BillingHub> = apiCall {
         api.getSummary().toDomain()
@@ -90,6 +95,37 @@ class SubscriptionRepositoryImpl @Inject constructor(
             receiptMimeType = input.receiptMimeType,
             receiptFileName = input.receiptFileName,
         )
+
+    /**
+     * Contrata el proximo periodo.
+     *
+     * UN 409 NO ES UN FALLO. Significa que ese periodo ya estaba contratado —el cliente toco dos
+     * veces, o renovo desde otro dispositivo— y lo unico que le queda por hacer es pagarlo. Tratarlo
+     * como error lo dejaria mirando una alerta roja frente a algo que ya estaba bien.
+     */
+    override suspend fun renovar(planId: Int?): AppResult<SubscriptionActionResult> = try {
+        val res = api.renovar(planId)
+        AppResult.Success(
+            SubscriptionActionResult(
+                success = true,
+                message = res.message.ifBlank { "Periodo contratado" },
+                hub = res.hub?.toDomain(),
+            ),
+        )
+    } catch (e: Exception) {
+        if (NetworkErrorMapper.esConflicto(e)) {
+            AppResult.Success(
+                SubscriptionActionResult(
+                    success = true,
+                    message = "Ya tienes ese periodo contratado. Registra tu pago para confirmarlo.",
+                    hub = null,
+                ),
+            )
+        } else {
+            val mapped = NetworkErrorMapper.map(e)
+            AppResult.Error(mapped.message ?: "No se pudo renovar", mapped)
+        }
+    }
 
     private suspend fun postMultipart(
         path: String,
@@ -174,6 +210,8 @@ private fun BillingHubDto.toDomain(): BillingHub = BillingHub(
         },
         yapeQrUrl = paymentConfig.yapeQrUrl,
         plinQrUrl = paymentConfig.plinQrUrl,
+        yapeInfo = paymentConfig.yapeInfo,
+        plinInfo = paymentConfig.plinInfo,
     ),
     support = SupportContact(support.whatsapp, support.email, support.phone),
     statusBanner = StatusBanner(statusBanner.variant, statusBanner.message),
@@ -190,6 +228,19 @@ private fun BillingHubDto.toDomain(): BillingHub = BillingHub(
             canEmit = it.canEmit,
         )
     },
+    invoices = invoices.map {
+        BillingInvoice(
+            id = it.id,
+            amount = it.amount,
+            reconnectionFee = it.reconnectionFee,
+            status = it.status,
+            dueDate = it.dueDate,
+            periodStart = it.periodStart,
+            periodEnd = it.periodEnd,
+            paidAt = it.paidAt,
+            paymentId = it.paymentId,
+        )
+    },
     payments = payments.map {
         SubscriptionPayment(
             id = it.id,
@@ -201,6 +252,8 @@ private fun BillingHubDto.toDomain(): BillingHub = BillingHub(
             reference = it.reference,
             rejectReason = it.rejectReason,
             createdAt = it.createdAt,
+            receiptUrl = it.receiptUrl,
+            billingCycleId = it.billingCycleId,
         )
     },
     events = events.map { SubscriptionTimelineEvent(it.id, it.label, it.reason, it.createdAt) },

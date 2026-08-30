@@ -28,8 +28,12 @@ import kotlinx.coroutines.launch
 /** Cada cuánto se revisa el estado de la suscripción con la app abierta. */
 private const val SUBSCRIPTION_REFRESH_MS = 30 * 60 * 1000L
 
-/** Estados donde el aviso ya no es recordatorio sino bloqueo: se muestra siempre. */
-private val ALWAYS_SHOW_TIERS = setOf("suspended", "blocked")
+// ESTADOS EN LOS QUE EL AVISO VUELVE A SALIR AL REABRIR LA APP.
+//
+// No son estados donde el aviso sea incerrable: cerrar siempre cierra. Lo que cambia es que aquí el
+// cierre no se recuerda, así que reaparece al volver a entrar — la insistencia que corresponde
+// cuando el acceso ya está restringido, sin dejar al usuario atrapado en un diálogo.
+private val REAPARECE_AL_REABRIR = setOf("suspended", "blocked")
 
 @HiltViewModel
 class SubscriptionExpiryViewModel @Inject constructor(
@@ -69,25 +73,36 @@ fun SubscriptionExpiryDialog(
     val context by viewModel.context.collectAsStateWithLifecycleCompat()
     var dismissedOn by remember { mutableStateOf<LocalDate?>(null) }
 
+    var cerrado by remember { mutableStateOf(false) }
+
     val ctx = context ?: return
     if (!ctx.showExpiryModal) return
 
-    val alwaysShow = ctx.urgencyTier in ALWAYS_SHOW_TIERS
+    // CERRAR SIEMPRE CIERRA. Antes, con el plan suspendido, ni «Ahora no» ni «Ver mi plan» tenían
+    // efecto: el aviso se volvía a dibujar encima y dejaba la app inutilizable.
+    if (cerrado) return
+
+    val reapareceAlReabrir = ctx.urgencyTier in REAPARECE_AL_REABRIR
     val today = LocalDate.now()
-    if (!alwaysShow && dismissedOn == today) return
+    if (!reapareceAlReabrir && dismissedOn == today) return
+
+    val cerrar = {
+        cerrado = true
+        if (!reapareceAlReabrir) dismissedOn = today
+    }
 
     AlertDialog(
-        onDismissRequest = { dismissedOn = today },
+        onDismissRequest = cerrar,
         title = { Text(ctx.expiryModalTitle.ifBlank { "Tu plan está por vencer" }) },
         text = { Text(ctx.expiryModalMessage) },
         confirmButton = {
             TextButton(onClick = {
-                dismissedOn = today
+                cerrar()
                 onGoToSubscription()
             }) { Text("Ver mi plan") }
         },
         dismissButton = {
-            TextButton(onClick = { dismissedOn = today }) { Text("Ahora no") }
+            TextButton(onClick = cerrar) { Text("Ahora no") }
         },
     )
 }

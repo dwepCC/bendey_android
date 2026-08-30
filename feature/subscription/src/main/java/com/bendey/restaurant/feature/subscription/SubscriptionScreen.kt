@@ -3,6 +3,7 @@ package com.bendey.restaurant.feature.subscription
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +36,9 @@ import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
+import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.SubscriptionPayment
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
@@ -137,10 +143,25 @@ fun SubscriptionScreen(
                                     modifier = Modifier.padding(top = BendeySpacing.xxs),
                                 )
                             }
-                            if (hub.subscription.canSubmitPayment) {
+                            // CON DEUDA SE PAGA; SIN DEUDA SE CONTRATA EL PROXIMO PERIODO.
+                            //
+                            // Estar al día era un callejón sin salida: la pantalla no ofrecía nada y
+                            // quien entraba a adelantar el mes siguiente no tenía por dónde. Renovar
+                            // crea el período; el comprobante se presenta después, en el mismo paso.
+                            val porPagar = hub.invoices.count {
+                                it.status == "pending" || it.status == "overdue"
+                            }
+                            if (hub.subscription.canSubmitPayment && porPagar > 0) {
                                 BendeyPrimaryButton(
                                     text = "Reportar pago",
                                     onClick = viewModel::openPaymentDialog,
+                                    modifier = Modifier.padding(top = BendeySpacing.sm),
+                                )
+                            } else if (hub.subscription.hasSubscription) {
+                                BendeyPrimaryButton(
+                                    text = "Contratar próximo período",
+                                    onClick = viewModel::renovar,
+                                    loading = state.renovando,
                                     modifier = Modifier.padding(top = BendeySpacing.sm),
                                 )
                             }
@@ -192,6 +213,24 @@ fun SubscriptionScreen(
                             )
                         }
                     }
+                    // EL ESTADO DE CUENTA: un renglón por período contratado.
+                    //
+                    // Es lo que vuelve legible el modelo nuevo —cada período es una obligación con su
+                    // propio estado—. Sin esto, un cliente que renovó por adelantado veía dos pagos en
+                    // el historial y ninguna forma de saber qué mes cubrió cada uno.
+                    if (hub.invoices.isNotEmpty()) {
+                        item(key = "invoices-title") {
+                            Text(
+                                "Estado de cuenta",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = BendeySpacing.xs),
+                            )
+                        }
+                        items(hub.invoices, key = { "invoice-${it.id}" }) { inv ->
+                            InvoiceRow(inv)
+                        }
+                    }
                     if (hub.payments.isNotEmpty()) {
                         item(key = "payments-title") {
                             Text(
@@ -202,7 +241,7 @@ fun SubscriptionScreen(
                             )
                         }
                         items(hub.payments, key = { "payment-${it.id}" }) { payment ->
-                            PaymentRow(payment)
+                            PaymentRow(payment, viewModel.assetsBaseUrl)
                         }
                     }
                 }
@@ -214,6 +253,10 @@ fun SubscriptionScreen(
         PaymentFormDialog(
             title = "Reportar pago",
             state = state,
+            periodos = state.hub?.invoices.orEmpty()
+                .filter { it.status == "pending" || it.status == "overdue" },
+            onPeriodoChange = viewModel::elegirPeriodo,
+            assetsBaseUrl = viewModel.assetsBaseUrl,
             onDismiss = viewModel::dismissPaymentDialog,
             onConfirm = viewModel::submitPayment,
             onAmountChange = { v -> viewModel.updatePaymentForm { it.copy(amount = v) } },
@@ -228,6 +271,10 @@ fun SubscriptionScreen(
         PaymentFormDialog(
             title = "Cambiar a ${state.planChangeTarget?.name.orEmpty()}",
             state = state,
+            // Un cambio de plan no se cobra contra un período existente: lo aprueba el Panel Central.
+            periodos = emptyList(),
+            onPeriodoChange = {},
+            assetsBaseUrl = viewModel.assetsBaseUrl,
             onDismiss = viewModel::dismissPlanChangeDialog,
             onConfirm = viewModel::submitPlanChange,
             onAmountChange = { v -> viewModel.updatePaymentForm { it.copy(amount = v) } },
@@ -290,7 +337,40 @@ private fun PlanCard(plan: AvailablePlan, isCurrent: Boolean, onSelect: () -> Un
 }
 
 @Composable
-private fun PaymentRow(payment: SubscriptionPayment) {
+private fun InvoiceRow(inv: BillingInvoice) {
+    BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text(
+                    inv.periodStart + " → " + inv.periodEnd,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    // Pagado dice CUANDO; pendiente dice HASTA CUANDO. Es la pregunta distinta que
+                    // tiene el cliente en cada caso.
+                    if (inv.paidAt.isNotBlank()) "Pagado el " + inv.paidAt else "Vence " + inv.dueDate,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                Text(
+                    "S/ " + "%.2f".format(inv.amount),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                BendeyStatusChip(
+                    label = invoiceStatusLabel(inv.status),
+                    accentColor = invoiceStatusColor(inv.status),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentRow(payment: SubscriptionPayment, assetsBaseUrl: String?) {
+    var verComprobante by remember { mutableStateOf(false) }
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
@@ -321,7 +401,36 @@ private fun PaymentRow(payment: SubscriptionPayment) {
                 modifier = Modifier.padding(top = BendeySpacing.xxs),
             )
         }
+        // EL COMPROBANTE ES SUYO y tiene derecho a volver a verlo sin pedirlo por WhatsApp. Solo se
+        // ofrece para imágenes: un PDF no se puede dibujar aquí, y un enlace que no abre nada es peor
+        // que no tener enlace.
+        if (esImagen(payment.receiptUrl)) {
+            Text(
+                "Ver mi comprobante",
+                style = MaterialTheme.typography.labelLarge,
+                color = BendeyColors.Primary,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .padding(top = BendeySpacing.xs)
+                    .clickable { verComprobante = true },
+            )
+        }
     }
+
+    if (verComprobante) {
+        VisorDeImagen(
+            url = resolvePublicAssetUrl(assetsBaseUrl, payment.receiptUrl),
+            titulo = "Comprobante enviado",
+            onClose = { verComprobante = false },
+        )
+    }
+}
+
+/** Los formatos que el visor puede dibujar. El backend acepta además PDF. */
+private fun esImagen(url: String): Boolean {
+    val limpia = url.substringBefore('?').lowercase()
+    return limpia.endsWith(".jpg") || limpia.endsWith(".jpeg") ||
+        limpia.endsWith(".png") || limpia.endsWith(".webp")
 }
 
 private val PAYMENT_METHOD_OPTIONS = listOf(
@@ -335,6 +444,9 @@ private val PAYMENT_METHOD_OPTIONS = listOf(
 private fun PaymentFormDialog(
     title: String,
     state: SubscriptionUiState,
+    periodos: List<BillingInvoice>,
+    onPeriodoChange: (Int) -> Unit,
+    assetsBaseUrl: String?,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onAmountChange: (String) -> Unit,
@@ -365,19 +477,47 @@ private fun PaymentFormDialog(
         onConfirm = onConfirm,
         onDismiss = onDismiss,
     ) {
+        // QUE PERIODO SE ESTA PAGANDO. Es el dato que convierte el comprobante en algo
+        // aprobable: sin él el pago queda sin obligación que cerrar y el Panel Central lo rechaza.
+        if (periodos.isNotEmpty()) {
+            BendeySimpleSelect(
+                options = periodos.map {
+                    BendeyOption(it.id.toString(), "Vence " + it.periodEnd + " · S/ " + "%.2f".format(it.amount))
+                },
+                selectedValue = form.cicloId?.toString(),
+                onSelect = { v -> v.toIntOrNull()?.let(onPeriodoChange) },
+                label = "Período que estás pagando",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         BendeyTextField(
             value = form.amount,
             onValueChange = onAmountChange,
             label = "Monto (S/)",
             modifier = Modifier.fillMaxWidth(),
         )
+        // Los métodos activos salen del Panel Central: si allá se apaga Plin, aquí deja de ofrecerse.
+        // La lista fija queda solo por si el hub todavía no cargó.
+        val metodos = state.hub?.paymentConfig?.methods.orEmpty()
+            .filter { it.enabled }
+            .map { BendeyOption(it.key, it.label) }
+            .ifEmpty { PAYMENT_METHOD_OPTIONS }
         BendeySimpleSelect(
-            options = PAYMENT_METHOD_OPTIONS,
+            options = metodos,
             selectedValue = form.paymentMethod,
             onSelect = onMethodChange,
             label = "Método de pago",
             modifier = Modifier.fillMaxWidth(),
         )
+        // El QR o las cuentas del método recién elegido, justo entre elegirlo y adjuntar la captura,
+        // que es el momento en que hacen falta.
+        state.hub?.paymentConfig?.let { cfg ->
+            MetodoDePagoElegido(
+                metodo = form.paymentMethod,
+                cfg = cfg,
+                assetsBaseUrl = assetsBaseUrl,
+            )
+        }
         BendeyTextField(
             value = form.reference,
             onValueChange = onReferenceChange,
@@ -431,7 +571,9 @@ private fun paymentStatusColor(status: String) = when (status.lowercase()) {
 private fun paymentStatusLabel(status: String) = when (status.lowercase()) {
     "approved" -> "Aprobado"
     "rejected" -> "Rechazado"
-    "pending" -> "En revisión"
+    // `pending_review` es el estado real de todo comprobante que sube el cliente; sin este caso la
+    // ficha mostraba la cadena cruda del backend.
+    "pending_review", "pending" -> "En revisión"
     else -> status.ifBlank { "—" }
 }
 
@@ -441,5 +583,20 @@ private fun subscriptionStatusLabel(status: String) = when (status.lowercase()) 
     "suspended" -> "Suspendido"
     "blocked" -> "Bloqueado"
     "provisional_active" -> "Provisional"
+    else -> status.ifBlank { "—" }
+}
+
+private fun invoiceStatusColor(status: String) = when (status.lowercase()) {
+    "paid" -> BendeyColors.Success
+    "overdue" -> BendeyColors.Error
+    "cancelled" -> BendeyColors.OnSurfaceVariant
+    else -> BendeyColors.Warning
+}
+
+private fun invoiceStatusLabel(status: String) = when (status.lowercase()) {
+    "paid" -> "Pagado"
+    "pending" -> "Por pagar"
+    "overdue" -> "Vencido"
+    "cancelled" -> "Anulado"
     else -> status.ifBlank { "—" }
 }

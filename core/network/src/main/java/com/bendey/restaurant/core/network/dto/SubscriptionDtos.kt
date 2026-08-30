@@ -76,6 +76,8 @@ data class PaymentConfigViewDto(
     @SerialName("bank_accounts") val bankAccounts: List<BankAccountConfigDto> = emptyList(),
     @SerialName("yape_qr_url") val yapeQrUrl: String = "",
     @SerialName("plin_qr_url") val plinQrUrl: String = "",
+    @SerialName("yape_info") val yapeInfo: String = "",
+    @SerialName("plin_info") val plinInfo: String = "",
     @SerialName("use_internal_hub") val useInternalHub: Boolean = true,
 )
 
@@ -119,6 +121,9 @@ data class InvoiceViewDto(
     @SerialName("due_date") val dueDate: String = "",
     @SerialName("period_start") val periodStart: String = "",
     @SerialName("period_end") val periodEnd: String = "",
+    @SerialName("provisional_used") val provisionalUsed: Boolean = false,
+    @SerialName("paid_at") val paidAt: String = "",
+    @SerialName("payment_id") val paymentId: Int? = null,
 )
 
 @Serializable
@@ -134,6 +139,8 @@ data class PaymentViewDto(
     @SerialName("payment_date") val paymentDate: String? = null,
     @SerialName("reject_reason") val rejectReason: String? = null,
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("receipt_url") val receiptUrl: String = "",
+    @SerialName("billing_cycle_id") val billingCycleId: Int? = null,
 )
 
 @Serializable
@@ -177,5 +184,14 @@ data class AvailablePlansResponseDto(
 data class SubscriptionActionResponseDto(
     val success: Boolean = false,
     val message: String? = null,
+    val hub: BillingHubDto? = null,
+)
+
+/** Respuesta de `POST /api/subscription/renew`: el período recién contratado y el hub ya actualizado. */
+@Serializable
+data class RenewResponseDto(
+    val success: Boolean = false,
+    @SerialName("subscription_id") val subscriptionId: Int = 0,
+    val message: String = "",
     val hub: BillingHubDto? = null,
 )

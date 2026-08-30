@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BillingHub
+import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.PlanChangeInput
 import com.bendey.restaurant.core.domain.subscription.SubmitPaymentInput
 import com.bendey.restaurant.core.domain.subscription.SubscriptionRepository
@@ -23,6 +24,8 @@ data class ReceiptDraft(
 )
 
 data class PaymentFormState(
+    /** A que periodo se aplica el pago. Sin esto el comprobante nace huerfano y NO se puede aprobar. */
+    val cicloId: Int? = null,
     val amount: String = "",
     val paymentMethod: String = "yape",
     val reference: String = "",
@@ -42,12 +45,17 @@ data class SubscriptionUiState(
     val planChangeTarget: AvailablePlan? = null,
     val paymentForm: PaymentFormState = PaymentFormState(),
     val submitting: Boolean = false,
+    val renovando: Boolean = false,
 )
 
 @HiltViewModel
 class SubscriptionViewModel @Inject constructor(
     private val repository: SubscriptionRepository,
 ) : ViewModel() {
+
+    /** Para resolver el QR: vive en el panel central, no en el backend del tenant. */
+    val assetsBaseUrl: String?
+        get() = repository.assetsBaseUrl()
 
     private val _uiState = MutableStateFlow(SubscriptionUiState())
     val uiState: StateFlow<SubscriptionUiState> = _uiState.asStateFlow()
@@ -79,14 +87,39 @@ class SubscriptionViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Abre el pago con el periodo mas urgente ya elegido.
+     *
+     * ANTES EL PAGO SALIA SIN PERIODO: se enviaba `billing_cycle_id` vacio siempre, el backend lo
+     * guardaba sin obligacion que cerrar y al revisarlo el Panel Central lo rechazaba —"el pago no
+     * tiene periodo asignado"—. Es decir: todo comprobante enviado desde el celular era inaprobable.
+     */
     fun openPaymentDialog() {
-        val amount = _uiState.value.hub?.subscription?.pendingAmount
-            ?: _uiState.value.hub?.billingContext?.planAmount
+        val hub = _uiState.value.hub
+        val pendiente = hub?.invoices?.firstOrNull { it.status == "pending" || it.status == "overdue" }
+        val monto = pendiente?.let { totalDelPeriodo(it, hub) }
+            ?: hub?.subscription?.pendingAmount
+            ?: hub?.billingContext?.planAmount
             ?: 0.0
         _uiState.update {
             it.copy(
                 paymentDialogOpen = true,
-                paymentForm = PaymentFormState(amount = if (amount > 0) formatAmount(amount) else ""),
+                paymentForm = PaymentFormState(
+                    cicloId = pendiente?.id,
+                    amount = if (monto > 0) formatAmount(monto) else "",
+                ),
+            )
+        }
+    }
+
+    /** Al cambiar de periodo se recalcula el monto: cada uno debe lo suyo. */
+    fun elegirPeriodo(id: Int) {
+        val hub = _uiState.value.hub
+        val inv = hub?.invoices?.firstOrNull { it.id == id }
+        updatePaymentForm {
+            it.copy(
+                cicloId = id,
+                amount = if (inv != null && hub != null) formatAmount(totalDelPeriodo(inv, hub)) else it.amount,
             )
         }
     }
@@ -136,7 +169,7 @@ class SubscriptionViewModel @Inject constructor(
             _uiState.update { it.copy(submitting = true, error = null) }
             val result = repository.submitPayment(
                 SubmitPaymentInput(
-                    billingCycleId = null,
+                    billingCycleId = form.cicloId,
                     amount = amount,
                     paymentMethod = form.paymentMethod,
                     reference = form.reference,
@@ -158,6 +191,40 @@ class SubscriptionViewModel @Inject constructor(
                     )
                 }
                 is AppResult.Error -> _uiState.update { it.copy(submitting = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Contrata el proximo periodo y deja el pago listo para reportarse.
+     *
+     * Renovar y pagar son dos cosas distintas: esto crea la obligacion, y el modal que se abre
+     * despues presenta el comprobante contra ella.
+     */
+    fun renovar() {
+        if (_uiState.value.renovando) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(renovando = true, error = null) }
+            when (val result = repository.renovar(null)) {
+                is AppResult.Success -> {
+                    // Sin hub en la respuesta (el caso del 409) hay que releerlo AQUI, y esperarlo:
+                    // el periodo nuevo tiene que estar en la lista antes de abrir el pago, o el
+                    // cliente veria el formulario sin el periodo que acaba de contratar.
+                    val hub = result.data.hub
+                        ?: (repository.getHub() as? AppResult.Success)?.data
+                    _uiState.update {
+                        it.copy(
+                            renovando = false,
+                            hub = hub ?: it.hub,
+                            snackMessage = result.data.message,
+                        )
+                    }
+                    openPaymentDialog()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(renovando = false, error = result.message, snackMessage = result.message)
+                }
                 AppResult.Loading -> Unit
             }
         }
@@ -206,6 +273,17 @@ class SubscriptionViewModel @Inject constructor(
             }
         }
     }
+}
+
+/**
+ * Lo que cuesta pagar ese periodo hoy.
+ *
+ * A un tenant suspendido se le suma la reconexion: es lo mismo que calcula el backend, y proponer el
+ * monto sin ella haria que el cliente transfiera de menos y el pago quede corto.
+ */
+private fun totalDelPeriodo(inv: BillingInvoice, hub: BillingHub): Double {
+    val suspendido = hub.subscription.isSuspended || hub.subscription.tenantStatus == "suspended"
+    return inv.amount + if (suspendido) inv.reconnectionFee else 0.0
 }
 
 private fun formatAmount(value: Double): String = if (value == value.toLong().toDouble()) {
