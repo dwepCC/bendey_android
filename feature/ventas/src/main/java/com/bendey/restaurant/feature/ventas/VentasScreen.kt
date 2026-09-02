@@ -173,25 +173,6 @@ fun VentasScreen(
                     sunatEnabled = state.sunatEnabled,
                     onSelect = viewModel::selectTab,
                 )
-                VentasFiltersSection(
-                    state = state,
-                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                    onSearchChange = viewModel::setSearchQuery,
-                    onDatePreset = viewModel::setDatePreset,
-                    onFromDateChange = viewModel::setFromDate,
-                    onToDateChange = viewModel::setToDate,
-                    onPaymentMethodChange = viewModel::setPaymentMethodFilter,
-                    onOrderTypeChange = viewModel::selectOrderType,
-                    onBillingStatusChange = viewModel::setBillingStatusFilter,
-                    onExportPdf = { viewModel.exportListPdf(context) },
-                    onExportExcel = { viewModel.exportListExcel(context) },
-                    onLockedExportClick = onNavigateToSubscription,
-                )
-                VentasListHintsAndSummary(
-                    state = state,
-                    paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
-                    currency = currency,
-                )
             },
         ) { contentModifier ->
             VentasSalesList(
@@ -201,6 +182,30 @@ fun VentasScreen(
                 selectedSaleId = state.selectedSaleId,
                 onSaleClick = viewModel::openSaleDetail,
                 modifier = contentModifier,
+                // Filtros + resumen ya NO son header fijo (ocupaban toda la pantalla y tapaban la lista):
+                // van como primer ítem del LazyColumn para que TODO scrollee junto y la lista sea
+                // alcanzable. Las pestañas (Todas/Notas/Boletas) siguen fijas arriba.
+                leadingContent = {
+                    VentasFiltersSection(
+                        state = state,
+                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                        onSearchChange = viewModel::setSearchQuery,
+                        onDatePreset = viewModel::setDatePreset,
+                        onFromDateChange = viewModel::setFromDate,
+                        onToDateChange = viewModel::setToDate,
+                        onPaymentMethodChange = viewModel::setPaymentMethodFilter,
+                        onOrderTypeChange = viewModel::selectOrderType,
+                        onBillingStatusChange = viewModel::setBillingStatusFilter,
+                        onExportPdf = { viewModel.exportListPdf(context) },
+                        onExportExcel = { viewModel.exportListExcel(context) },
+                        onLockedExportClick = onNavigateToSubscription,
+                    )
+                    VentasListHintsAndSummary(
+                        state = state,
+                        paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),
+                        currency = currency,
+                    )
+                },
             )
         }
 
@@ -536,45 +541,59 @@ private fun VentasSalesList(
     selectedSaleId: Int?,
     onSaleClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    leadingContent: @Composable () -> Unit = {},
 ) {
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
-    if (state.error != null && state.sales.isEmpty() && selectedSaleId == null) {
-        Text(
-            state.error.orEmpty(),
-            color = BendeyColors.Error,
-            modifier = Modifier.padding(BendeySpacing.md),
-        )
-    } else if (!state.canFetchList) {
-        BendeyEmptyState(title = "No hay comprobantes en esta sección", inline = true, modifier = modifier)
-    } else if (state.sales.isEmpty() && !state.loading) {
-        BendeyEmptyState(title = "No hay comprobantes en esta sección", inline = true, modifier = modifier)
-    } else {
-        BendeyLazyColumn(
-            modifier = modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(
-                start = BendeySpacing.md,
-                end = BendeySpacing.md,
-                top = BendeySpacing.md,
-                bottom = BendeySpacing.md + bottomScrollPadding,
-            ),
-            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            items(state.sales, key = { it.id }) { sale ->
-                SaleRow(
-                    sale = sale,
-                    currency = currency,
-                    selected = sale.id == selectedSaleId,
-                    onClick = { onSaleClick(sale.id) },
+    // UN SOLO SCROLL: los filtros/resumen (leadingContent) van como primer ítem, y debajo la lista o el
+    // estado vacío/error — también como ítems. Así los filtros SIEMPRE se ven (aunque no haya ventas) y la
+    // lista es alcanzable scrolleando. Antes el estado vacío/error hacía return temprano y, con los filtros
+    // en un header fijo, la lista nunca aparecía.
+    BendeyLazyColumn(
+        modifier = modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(
+            start = BendeySpacing.md,
+            end = BendeySpacing.md,
+            top = BendeySpacing.md,
+            bottom = BendeySpacing.md + bottomScrollPadding,
+        ),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+    ) {
+        item(key = "ventas-header") { leadingContent() }
+
+        val showError = state.error != null && state.sales.isEmpty() && selectedSaleId == null
+        when {
+            showError -> item(key = "ventas-error") {
+                Text(
+                    state.error.orEmpty(),
+                    color = BendeyColors.Error,
+                    modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
                 )
             }
-            if (state.loading && state.sales.isNotEmpty()) {
-                item {
-                    Text(
-                        "Cargando más…",
-                        modifier = Modifier.fillMaxWidth().padding(BendeySpacing.sm),
-                        color = BendeyColors.OnSurfaceVariant,
+            !state.canFetchList || (state.sales.isEmpty() && !state.loading) -> item(key = "ventas-empty") {
+                BendeyEmptyState(
+                    title = "No hay comprobantes en esta sección",
+                    inline = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            else -> {
+                items(state.sales, key = { it.id }) { sale ->
+                    SaleRow(
+                        sale = sale,
+                        currency = currency,
+                        selected = sale.id == selectedSaleId,
+                        onClick = { onSaleClick(sale.id) },
                     )
+                }
+                if (state.loading && state.sales.isNotEmpty()) {
+                    item(key = "ventas-loading-more") {
+                        Text(
+                            "Cargando más…",
+                            modifier = Modifier.fillMaxWidth().padding(BendeySpacing.sm),
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
