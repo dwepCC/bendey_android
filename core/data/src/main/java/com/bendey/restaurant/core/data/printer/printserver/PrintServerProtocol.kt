@@ -124,6 +124,34 @@ data class RemoteTestJobRequest(
 
 fun newPrintJobId(): String = UUID.randomUUID().toString()
 
+/**
+ * Job id DETERMINÍSTICO para precuenta: colapsa reimpresiones accidentales de la MISMA precuenta.
+ *
+ * El servidor de impresión deduplica por job_id. Con el id aleatorio (UUID) cada disparo era un trabajo
+ * distinto, así que taps repetidos / reenvíos de la misma mesa imprimían la precuenta varias veces
+ * ("se imprimen varias precuentas a la vez de una misma mesa"). Derivando el id del CONTENIDO (pedido +
+ * líneas + total) dentro de una ventana corta, N envíos idénticos => UN solo impreso, porque el segundo
+ * y siguientes chocan con el dedup y vuelven como "duplicado".
+ *
+ * La ventana (windowMs) evita bloquear reimpresiones DELIBERADas: un reenvío pasada la ventana, o con el
+ * contenido cambiado (se agregó un ítem), genera un id nuevo y sí imprime.
+ */
+fun PrecuentaData.deterministicJobId(windowMs: Long = 30_000L): String {
+    val key = buildString {
+        append(orderCode ?: tableName ?: "sin-pedido")
+        append('|').append(total)
+        lines.forEach { line ->
+            append('|').append(line.productName)
+                .append('#').append(line.quantity)
+                .append('@').append(line.unitPrice)
+        }
+    }
+    val bucket = System.currentTimeMillis() / windowMs
+    val hash = Integer.toHexString(key.hashCode())
+    val scope = (orderCode ?: tableName ?: "s").filter { it.isLetterOrDigit() }.take(24)
+    return "precuenta:$scope:$hash:$bucket"
+}
+
 fun ComandaLine.toRemoteDto() = RemoteComandaLineDto(
     id = id,
     productName = productName,

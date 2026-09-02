@@ -63,7 +63,9 @@ class PrintServerClient @Inject constructor(
     }
 
     suspend fun printPrecuenta(server: PrintServerSelection, precuenta: PrecuentaData): RemotePrintResult {
-        val jobId = newPrintJobId()
+        // Id determinístico (contenido + ventana corta): el servidor deduplica y así una misma precuenta
+        // no se imprime varias veces aunque se dispare/reenvíe repetido. Ver deterministicJobId.
+        val jobId = precuenta.deterministicJobId()
         val body = precuenta.toRemoteJob(jobId)
         return postWithRetry(server, "/v1/print/precuenta", json.encodeToString(RemotePrecuentaJobRequest.serializer(), body))
     }
