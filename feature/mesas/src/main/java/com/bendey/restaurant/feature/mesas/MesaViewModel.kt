@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.feedback.CartFeedback
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
+import com.bendey.restaurant.core.data.printer.PrecuentaPrintOutcome
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
@@ -805,14 +806,16 @@ class MesaViewModel @Inject constructor(
             _uiState.update { it.copy(printingPrecuenta = true, error = null) }
             when (val result = mesasRepository.getPrecuenta(sessionId)) {
                 is AppResult.Success -> {
-                    val printed = kitchenPrintService.printPrecuenta(result.data)
+                    val outcome = kitchenPrintService.printPrecuenta(result.data)
                     _uiState.update {
                         it.copy(
                             printingPrecuenta = false,
-                            snackMessage = when (printed) {
-                                true -> "Precuenta enviada a impresora"
-                                false -> "Error al imprimir precuenta"
-                                null -> "Configura impresora en Ajustes"
+                            snackMessage = when (outcome) {
+                                PrecuentaPrintOutcome.Success -> "Precuenta enviada a impresora"
+                                PrecuentaPrintOutcome.Skipped -> "Configura impresora en Ajustes"
+                                // Mensaje real del servidor/impresora en vez del genérico de
+                                // siempre — así el mozo sabe qué pasó sin tener que adivinar.
+                                is PrecuentaPrintOutcome.Failed -> outcome.message
                             },
                         )
                     }

@@ -26,6 +26,18 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** Resultado de imprimir precuenta. A diferencia de comandas (Boolean?/tri-estado simple), acá
+ *  interesa propagar el motivo real del error hasta la UI — antes se perdía en un `false` plano
+ *  y el mozo veía siempre el mismo mensaje genérico sin importar la causa (impresora sin
+ *  configurar, servidor caído, etc). Ver incidente El Braserito, 2026-09-07. */
+sealed class PrecuentaPrintOutcome {
+    data object Success : PrecuentaPrintOutcome()
+    /** Nada que hacer: precuenta sin líneas, o sin impresora/servidor configurado — mismos casos
+     *  que antes colapsaban en `null`. */
+    data object Skipped : PrecuentaPrintOutcome()
+    data class Failed(val message: String) : PrecuentaPrintOutcome()
+}
+
 @Singleton
 class KitchenPrintService @Inject constructor(
     private val printerRepository: PrinterRepository,
@@ -141,22 +153,25 @@ class KitchenPrintService @Inject constructor(
         }
     }
 
-    /** null = sin impresora; true = OK; false = error. */
-    suspend fun printPrecuenta(precuenta: PrecuentaData): Boolean? {
-        if (precuenta.lines.isEmpty()) return null
+    suspend fun printPrecuenta(precuenta: PrecuentaData): PrecuentaPrintOutcome {
+        if (precuenta.lines.isEmpty()) return PrecuentaPrintOutcome.Skipped
         val settings = printerPreferencesStore.settings.first()
         if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
-            val server = printServerConnectionManager.resolveServer(settings) ?: return null
-            return when (printServerClient.printPrecuenta(server, precuenta)) {
-                RemotePrintResult.Success -> true
-                is RemotePrintResult.Error -> false
+            val server = printServerConnectionManager.resolveServer(settings)
+                ?: return PrecuentaPrintOutcome.Skipped
+            return when (val result = printServerClient.printPrecuenta(server, precuenta)) {
+                RemotePrintResult.Success -> PrecuentaPrintOutcome.Success
+                // El servidor (PC con Tauri) ya manda el motivo real ("Impresora de precuenta no
+                // configurada", etc.) — antes se descartaba acá y el mozo siempre veía el mismo
+                // genérico sin importar la causa. Ver incidente El Braserito, 2026-09-07.
+                is RemotePrintResult.Error -> PrecuentaPrintOutcome.Failed(result.message)
             }
         }
         val target = settings.targetFor(PrinterSlot.PRECUENTA)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
-            ?: return null
+            ?: return PrecuentaPrintOutcome.Skipped
         return when (
-            printerRepository.printPrecuenta(
+            val result = printerRepository.printPrecuenta(
                 target,
                 PrecuentaPrintInput(
                     tableName = precuenta.tableName,
@@ -171,8 +186,8 @@ class KitchenPrintService @Inject constructor(
                 ),
             )
         ) {
-            is PrintResult.Success -> true
-            is PrintResult.Error -> false
+            is PrintResult.Success -> PrecuentaPrintOutcome.Success
+            is PrintResult.Error -> PrecuentaPrintOutcome.Failed(result.message)
         }
     }
 
