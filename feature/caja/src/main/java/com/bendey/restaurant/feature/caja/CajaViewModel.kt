@@ -54,6 +54,18 @@ enum class CajaTab(val label: String) {
     CONFIG("Config"),
 }
 
+/**
+ * Filtro rápido de fecha para el Historial de cierres. `listSessions` no acepta rango de
+ * fechas (ver [com.bendey.restaurant.core.domain.cash.CashRepository]), así que esto filtra
+ * en el cliente sobre lo que ya se cargó — no dispara una nueva petición.
+ */
+enum class HistoryDateFilter(val label: String, val days: Long?) {
+    TODAY("Hoy", 0),
+    LAST_7_DAYS("7 días", 7),
+    LAST_30_DAYS("30 días", 30),
+    ALL("Todo", null),
+}
+
 data class OpenCashForm(
     val openingBalance: String = "0",
     val notes: String = "",
@@ -155,6 +167,9 @@ data class CajaUiState(
     val reportComboComponents: List<CashSessionComboComponent> = emptyList(),
     val movementsExportBusy: Boolean = false,
     val sessionReportExportBusy: Boolean = false,
+    /** Habilita "Imprimir" en el Reporte de caja — solo hay impresora directa configurada. */
+    val canPrintSessionReport: Boolean = false,
+    val sessionReportPrintBusy: Boolean = false,
     val showOpenDialog: Boolean = false,
     val showMovementDialog: Boolean = false,
     val showCloseDialog: Boolean = false,
@@ -171,6 +186,10 @@ data class CajaUiState(
     val error: String? = null,
     val snackMessage: String? = null,
     val allowsReportExport: Boolean = false,
+    val historySearchQuery: String = "",
+    val historyDateFilter: HistoryDateFilter = HistoryDateFilter.ALL,
+    val reportPickerOpen: Boolean = false,
+    val reportPickerQuery: String = "",
 ) {
     val currentBalance: Double get() = session?.expectedBalance ?: 0.0
 }
@@ -233,6 +252,32 @@ class CajaViewModel @Inject constructor(
             CajaTab.MOVEMENTS -> loadMovementsReportData()
             else -> Unit
         }
+    }
+
+    fun setHistorySearchQuery(query: String) {
+        _uiState.update { it.copy(historySearchQuery = query) }
+    }
+
+    fun setHistoryDateFilter(filter: HistoryDateFilter) {
+        _uiState.update { it.copy(historyDateFilter = filter) }
+    }
+
+    fun showReportSessionPicker() {
+        _uiState.update { it.copy(reportPickerOpen = true, reportPickerQuery = "") }
+    }
+
+    fun dismissReportSessionPicker() {
+        _uiState.update { it.copy(reportPickerOpen = false) }
+    }
+
+    fun setReportPickerQuery(query: String) {
+        _uiState.update { it.copy(reportPickerQuery = query) }
+    }
+
+    /** Elegir sesión desde el buscador del Reporte: carga el reporte y cierra la hoja. */
+    fun selectReportSession(sessionId: Int) {
+        loadReport(sessionId)
+        _uiState.update { it.copy(reportPickerOpen = false) }
     }
 
     private fun loadConfig() {
@@ -669,6 +714,10 @@ class CajaViewModel @Inject constructor(
                             tab = CajaTab.REPORT,
                         )
                     }
+                    // Igual que en el Arqueo: "Imprimir" solo aparece si hay una impresora de
+                    // documentos directa configurada (el servidor de impresión no acepta texto libre).
+                    val canPrint = documentPrintService.hasConfiguredPrinter()
+                    _uiState.update { it.copy(canPrintSessionReport = canPrint) }
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(reportLoading = false, error = result.message)
@@ -827,6 +876,39 @@ class CajaViewModel @Inject constructor(
                     snackMessage = when (shareResult) {
                         ExportShareResult.Success -> "Reporte PDF exportado"
                         is ExportShareResult.Failure -> shareResult.userMessage
+                    },
+                )
+            }
+        }
+    }
+
+    /**
+     * Imprime el Reporte de caja en la ticketera de documentos — igual mecanismo que el Arqueo.
+     * Solo funciona con impresora directa (BT/USB/red); si el modo de entrega es "servidor de
+     * impresión" (relay a una PC), [DocumentPrintService.printReportTicket] devuelve null porque
+     * ese servidor solo expone endpoints estructurados de documento/comanda, no texto libre — en
+     * ese caso el mensaje se lo dice al usuario en vez de fallar en silencio.
+     */
+    fun printSessionReport() {
+        val report = _uiState.value.report ?: return
+        if (_uiState.value.sessionReportPrintBusy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(sessionReportPrintBusy = true) }
+            val lines = formatSessionReportLines(
+                report,
+                _uiState.value.reportProducts,
+                _uiState.value.reportComboComponents,
+            )
+            // title = null: `formatSessionReportLines` ya empieza con "Reporte sesión #N".
+            val ok = documentPrintService.printReportTicket(null, lines, force = true)
+            _uiState.update {
+                it.copy(
+                    sessionReportPrintBusy = false,
+                    snackMessage = when (ok) {
+                        true -> "Reporte enviado a la impresora"
+                        false -> "No se pudo imprimir el reporte"
+                        null -> "Configura una impresora directa (BT/USB/red) para imprimir el reporte — " +
+                            "el servidor de impresión no imprime texto libre"
                     },
                 )
             }

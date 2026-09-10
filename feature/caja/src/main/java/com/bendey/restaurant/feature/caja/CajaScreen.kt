@@ -2,15 +2,24 @@ package com.bendey.restaurant.feature.caja
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
+import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.layout.adaptive.BendeyWidthTier
+import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveInfo
+import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
@@ -35,8 +45,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +96,9 @@ fun CajaScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     val context = LocalContext.current
+    // En tablet (ancho Expanded, ~840dp+) Historial y Reporte se ven juntos en dos paneles, sin
+    // saltar de pestaña para ver un cierre. En teléfono (Compact/Medium) sigue igual que siempre.
+    val showHistoryReportTwoPane = rememberBendeyAdaptiveInfo().widthTier == BendeyWidthTier.Expanded
 
     BendeySnackMessage(
         message = state.snackMessage,
@@ -136,6 +151,9 @@ fun CajaScreen(
             }
             state.tab == CajaTab.MOVEMENTS -> {
                 MovementsTab(state, currency, viewModel, context, onNavigateToSubscription, contentModifier)
+            }
+            showHistoryReportTwoPane && (state.tab == CajaTab.REPORT || state.tab == CajaTab.HISTORY) -> {
+                HistoryReportTwoPane(state, currency, viewModel, context, onNavigateToSubscription, contentModifier)
             }
             state.tab == CajaTab.REPORT -> {
                 ReportTab(state, currency, viewModel, context, onNavigateToSubscription, contentModifier)
@@ -557,20 +575,72 @@ private fun ReportTab(
     onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val sessions = buildList {
-        state.session?.let { add(it.id) }
-        addAll(state.historySessions.map { it.id })
-    }.distinct()
+    val hasSessions = state.session != null || state.historySessions.isNotEmpty()
 
-    @Composable
-    fun ReportDetailContent(modifier: Modifier = Modifier) {
-        Column(modifier = modifier) {
-            if (state.reportLoading) {
-                CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
-            } else {
-                state.report?.let { report ->
+    Column(modifier = modifier.fillMaxSize().padding(BendeySpacing.md)) {
+        if (hasSessions) {
+            ReportSessionPickerField(
+                state = state,
+                onOpen = viewModel::showReportSessionPicker,
+                modifier = Modifier.padding(bottom = BendeySpacing.sm),
+            )
+        }
+        // CON `weight`, NO SIN EL. El reporte tiene su propio `verticalScroll`, pero dentro de esta
+        // Column sin peso recibia altura SIN LIMITE: un contenedor con scroll y altura libre crece hasta
+        // el tamano de su contenido y nunca desplaza nada — se ve el principio y el resto queda fuera de
+        // la pantalla, sin forma de bajar. Con el peso toma la altura que sobra, que es finita, y ahi el
+        // scroll empieza a funcionar.
+        //
+        // Se nota recien cuando el contenido pasa de una pantalla, y el bloque que lo delata es
+        // "Productos vendidos": va ultimo y no tiene tope de filas.
+        ReportDetailContent(state, currency, viewModel, context, onNavigateToSubscription, Modifier.weight(1f))
+    }
+
+    if (state.reportPickerOpen) {
+        ReportSessionPickerSheet(
+            state = state,
+            onDismiss = viewModel::dismissReportSessionPicker,
+            onQueryChange = viewModel::setReportPickerQuery,
+            onSelect = viewModel::selectReportSession,
+        )
+    }
+}
+
+/** Contenido del reporte de una sesión — compartido por la pestaña Reporte y el panel de tablet. */
+@Composable
+private fun ReportDetailContent(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    context: android.content.Context,
+    onNavigateToSubscription: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        if (state.reportLoading) {
+            CircularProgressIndicator(modifier = Modifier.padding(BendeySpacing.lg))
+        } else {
+            state.report?.let { report ->
+                // TODO EL CONTENIDO EN UN SOLO SCROLL, botones incluidos.
+                //
+                // `ReportContent` tenía su propio `verticalScroll` y esta Column (sin scroll propio)
+                // ponía la fila de Compartir/Exportar PDF COMO HERMANA, después de él. Con `weight`
+                // acotando la altura, esa Column interna llenaba todo el espacio disponible con el
+                // reporte y la fila de botones quedaba empujada fuera — nunca se veía, ni con scroll,
+                // porque el scroll de adentro no la incluía y esta Column de afuera no tenía scroll
+                // propio. Un cliente probó en celular real: ni los botones ni el final de la lista de
+                // productos aparecían, tapados por el menú inferior.
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = rememberBendeyBottomBarScrollPadding()),
+                ) {
                     ReportContent(report, state.reportProducts, state.reportComboComponents, currency)
-                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.sm)) {
+                    BendeyHorizontalScrollRow(
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                        modifier = Modifier.padding(top = BendeySpacing.sm),
+                    ) {
                         OutlinedButton(
                             onClick = {
                                 val text = formatSessionReportText(report, currency, state.reportComboComponents)
@@ -589,6 +659,20 @@ private fun ReportTab(
                             Icon(Icons.Default.Share, contentDescription = null)
                             Text("Compartir", modifier = Modifier.padding(start = BendeySpacing.xs))
                         }
+                        // Tauri imprime este mismo reporte en la ticketera — acá faltaba el botón.
+                        // Solo aparece con impresora directa configurada (ver printSessionReport).
+                        if (state.canPrintSessionReport) {
+                            OutlinedButton(
+                                onClick = viewModel::printSessionReport,
+                                enabled = !state.sessionReportPrintBusy,
+                            ) {
+                                Icon(Icons.Default.Print, contentDescription = null)
+                                Text(
+                                    if (state.sessionReportPrintBusy) "Imprimiendo…" else "Imprimir",
+                                    modifier = Modifier.padding(start = BendeySpacing.xs),
+                                )
+                            }
+                        }
                         if (state.allowsReportExport) {
                             OutlinedButton(
                                 onClick = { viewModel.exportSessionReportPdf(context) },
@@ -603,35 +687,228 @@ private fun ReportTab(
                             }
                         }
                     }
-                } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
-            }
+                }
+            } ?: Text("Selecciona una sesión para ver el reporte", color = BendeyColors.OnSurfaceVariant)
         }
     }
+}
 
-    Column(modifier = modifier.fillMaxSize().padding(BendeySpacing.md)) {
-        if (sessions.isNotEmpty()) {
+/** Fila que resume la sesión elegida y abre el buscador — reemplaza la fila de 10 chips como tope. */
+@Composable
+private fun ReportSessionPickerField(
+    state: CajaUiState,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val selectedId = state.reportSessionId
+    val selected = state.report?.session?.takeIf { it.id == selectedId }
+        ?: state.historySessions.firstOrNull { it.id == selectedId }
+    BendeyManagementCard(onClick = onOpen, modifier = modifier) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text(
+                    selected?.let { "Sesión #${it.id}" } ?: "Elegir sesión",
+                    fontWeight = FontWeight.Bold,
+                )
+                val subtitle = sessionMomentAndOperator(selected)
+                if (!subtitle.isNullOrBlank()) {
+                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                }
+            }
+            Text("Cambiar", color = BendeyColors.Primary, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+/** Hoja de búsqueda sin tope — reemplaza al selector de 10 chips del Reporte. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReportSessionPickerSheet(
+    state: CajaUiState,
+    onDismiss: () -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    val candidates = remember(state.session, state.historySessions) {
+        buildList {
+            state.session?.let { s ->
+                add(
+                    CashSessionBrief(
+                        id = s.id,
+                        branchName = s.branchName,
+                        openedByName = s.openedByName,
+                        openingBalance = s.openingBalance,
+                        closingBalance = s.closingBalance,
+                        expectedBalance = s.expectedBalance,
+                        status = s.status,
+                        openedAt = s.openedAt,
+                        closedAt = s.closedAt,
+                    ),
+                )
+            }
+            addAll(state.historySessions)
+        }.distinctBy { it.id }.sortedByDescending { it.openedAt.orEmpty() }
+    }
+    val filtered = remember(candidates, state.reportPickerQuery) {
+        CajaHistoryFilters.apply(candidates, state.reportPickerQuery, HistoryDateFilter.ALL)
+    }
+    BendeyBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md)) {
+            Text("Elegir sesión", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            BendeyTextField(
+                value = state.reportPickerQuery,
+                onValueChange = onQueryChange,
+                label = "Buscar",
+                placeholder = "N.° de sesión u operador",
+                modifier = Modifier.padding(top = BendeySpacing.sm, bottom = BendeySpacing.xs),
+            )
+            BendeyLazyColumn(
+                state = rememberLazyListState(),
+                modifier = Modifier.heightIn(max = 420.dp),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+            ) {
+                if (filtered.isEmpty()) {
+                    item {
+                        Text(
+                            "Sin resultados",
+                            color = BendeyColors.OnSurfaceVariant,
+                            modifier = Modifier.padding(vertical = BendeySpacing.sm),
+                        )
+                    }
+                }
+                items(filtered, key = { it.id }) { session ->
+                    ReportPickerRow(
+                        session = session,
+                        selected = state.reportSessionId == session.id,
+                        onClick = { onSelect(session.id) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(BendeySpacing.md))
+        }
+    }
+}
+
+@Composable
+private fun ReportPickerRow(
+    session: CashSessionBrief,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(BendeyShapeTokens.sm)
+            .then(if (selected) Modifier.background(BendeyColors.PrimaryContainer) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.sm),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Text("Sesión #${session.id}", fontWeight = FontWeight.SemiBold)
+            val subtitle = sessionMomentAndOperator(session)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            }
+        }
+        BendeyStatusChip(
+            label = if (session.status == CashSessionStatus.OPEN) "Abierta" else "Cerrada",
+            accentColor = if (session.status == CashSessionStatus.OPEN) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
+        )
+    }
+}
+
+/** "9 sep, 08:10 – 22:38 · María Torres" — o solo lo que haya disponible. */
+private fun sessionMomentAndOperator(session: CashSessionBrief?): String? {
+    if (session == null) return null
+    val opened = formatSessionMoment(session.openedAt)
+    val closed = formatSessionMoment(session.closedAt)
+    val moment = when {
+        opened != null && closed != null -> "$opened – $closed"
+        opened != null -> "Abrió $opened"
+        else -> null
+    }
+    return listOfNotNull(moment, session.openedByName?.takeIf { it.isNotBlank() }).joinToString(" · ").ifBlank { null }
+}
+
+/** Historial (izquierda) y Reporte (derecha) a la vez — solo en tablet ancho Expanded. */
+@Composable
+private fun HistoryReportTwoPane(
+    state: CajaUiState,
+    currency: NumberFormat,
+    viewModel: CajaViewModel,
+    context: android.content.Context,
+    onNavigateToSubscription: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val filtered = remember(state.historySessions, state.historySearchQuery, state.historyDateFilter) {
+        CajaHistoryFilters.apply(state.historySessions, state.historySearchQuery, state.historyDateFilter)
+    }
+    Row(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .width(340.dp)
+                .fillMaxHeight()
+                .padding(BendeySpacing.sm),
+        ) {
+            BendeyTextField(
+                value = state.historySearchQuery,
+                onValueChange = viewModel::setHistorySearchQuery,
+                label = "Buscar",
+                placeholder = "N.° de sesión u operador",
+            )
             BendeyHorizontalScrollRow(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.padding(top = BendeySpacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
-                sessions.take(10).forEach { id ->
+                HistoryDateFilter.entries.forEach { filter ->
                     BendeyFilterChip(
-                        selected = state.reportSessionId == id,
-                        onClick = { viewModel.loadReport(id) },
-                        text = "Sesión #$id",
+                        selected = state.historyDateFilter == filter,
+                        onClick = { viewModel.setHistoryDateFilter(filter) },
+                        text = filter.label,
+                    )
+                }
+            }
+            BendeyLazyColumn(
+                state = rememberLazyListState(),
+                contentPadding = rememberBendeyLazyListContentPadding(horizontal = 0.dp, top = BendeySpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                modifier = Modifier.weight(1f),
+            ) {
+                if (filtered.isEmpty()) {
+                    item {
+                        Text(
+                            if (state.historySessions.isEmpty()) "Sin historial de sesiones" else "Sin resultados para este filtro",
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                    }
+                }
+                items(filtered, key = { it.id }) { session ->
+                    ReportPickerRow(
+                        session = session,
+                        selected = state.reportSessionId == session.id,
+                        onClick = { viewModel.loadReport(session.id) },
                     )
                 }
             }
         }
-        // CON `weight`, NO SIN EL. El reporte tiene su propio `verticalScroll`, pero dentro de esta
-        // Column sin peso recibia altura SIN LIMITE: un contenedor con scroll y altura libre crece hasta
-        // el tamano de su contenido y nunca desplaza nada — se ve el principio y el resto queda fuera de
-        // la pantalla, sin forma de bajar. Con el peso toma la altura que sobra, que es finita, y ahi el
-        // scroll empieza a funcionar.
-        //
-        // Se nota recien cuando el contenido pasa de una pantalla, y el bloque que lo delata es
-        // "Productos vendidos": va ultimo y no tiene tope de filas.
-        ReportDetailContent(Modifier.weight(1f))
+        VerticalDivider()
+        ReportDetailContent(
+            state = state,
+            currency = currency,
+            viewModel = viewModel,
+            context = context,
+            onNavigateToSubscription = onNavigateToSubscription,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(BendeySpacing.md),
+        )
     }
 }
 
@@ -643,10 +920,12 @@ private fun ReportContent(
     currency: NumberFormat,
 ) {
     val session = report.session
+    // SIN `verticalScroll` propio — el scroll vive en el contenedor de ReportDetailContent, que
+    // también incluye los botones de Compartir/Exportar PDF. Si este Column vuelve a scrollear
+    // por su cuenta, esos botones quedan afuera del scroll otra vez (ver el comentario ahí).
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .background(BendeyColors.Surface, BendeyShapeTokens.md)
             .padding(BendeySpacing.sm),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
@@ -787,15 +1066,44 @@ private fun HistoryTab(
     viewModel: CajaViewModel,
     modifier: Modifier = Modifier,
 ) {
+    val filtered = remember(state.historySessions, state.historySearchQuery, state.historyDateFilter) {
+        CajaHistoryFilters.apply(state.historySessions, state.historySearchQuery, state.historyDateFilter)
+    }
     BendeyLazyColumn(state = rememberLazyListState(),
         contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         modifier = modifier.fillMaxSize(),
     ) {
-        if (state.historySessions.isEmpty()) {
-            item { Text("Sin historial de sesiones", color = BendeyColors.OnSurfaceVariant) }
+        if (state.historySessions.isNotEmpty()) {
+            item {
+                BendeyTextField(
+                    value = state.historySearchQuery,
+                    onValueChange = viewModel::setHistorySearchQuery,
+                    label = "Buscar",
+                    placeholder = "N.° de sesión u operador",
+                )
+            }
+            item {
+                BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    HistoryDateFilter.entries.forEach { filter ->
+                        BendeyFilterChip(
+                            selected = state.historyDateFilter == filter,
+                            onClick = { viewModel.setHistoryDateFilter(filter) },
+                            text = filter.label,
+                        )
+                    }
+                }
+            }
         }
-        items(state.historySessions, key = { it.id }) { session ->
+        if (filtered.isEmpty()) {
+            item {
+                Text(
+                    if (state.historySessions.isEmpty()) "Sin historial de sesiones" else "Sin resultados para este filtro",
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+        items(filtered, key = { it.id }) { session ->
             HistorySessionCard(session, currency, onOpenReport = { viewModel.loadReport(session.id) })
         }
     }
@@ -816,11 +1124,15 @@ private fun HistorySessionCard(
                     accentColor = if (session.status == CashSessionStatus.OPEN) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
                 )
             }
-            session.openedAt?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant) }
-            session.openedByName?.let { Text("Operador: $it", style = MaterialTheme.typography.bodySmall) }
+            val moment = sessionMomentAndOperator(session)
+            if (!moment.isNullOrBlank()) {
+                Text(moment, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            }
             Text("Apertura: ${currency.format(session.openingBalance)}", style = MaterialTheme.typography.bodySmall)
             session.closingBalance?.let { Text("Cierre: ${currency.format(it)}", style = MaterialTheme.typography.bodySmall) }
-            OutlinedButton(onClick = onOpenReport, modifier = Modifier.padding(top = BendeySpacing.xs)) { Text("Ver reporte") }
+            OutlinedButton(onClick = onOpenReport, modifier = Modifier.padding(top = BendeySpacing.xs)) {
+                Text(if (session.status == CashSessionStatus.OPEN) "Ver estado" else "Ver cierre")
+            }
         }
     }
 }
