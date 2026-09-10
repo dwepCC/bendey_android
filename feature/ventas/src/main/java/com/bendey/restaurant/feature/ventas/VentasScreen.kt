@@ -781,6 +781,14 @@ private fun SaleDetailContent(
                         Text(currency.format(detail.taxAmount))
                     }
                 }
+                // Recargo al Consumo: monto YA CALCULADO por el backend — nunca se recalcula acá.
+                // Se omite si es 0 (sucursal sin RC), así el detalle no cambia para quien no lo activó.
+                if (detail.serviceChargeAmount > 0) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Recargo al Consumo")
+                        Text(currency.format(detail.serviceChargeAmount))
+                    }
+                }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Total", fontWeight = FontWeight.Bold)
                     Text(currency.format(detail.total), fontWeight = FontWeight.Bold, color = BendeyColors.Primary)

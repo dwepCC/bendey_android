@@ -267,6 +267,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         subtotal = saleDto.subtotal.takeIf { it > 0 } ?: saleDto.total,
         taxAmount = saleDto.taxAmount,
         total = saleDto.total,
+        serviceChargeAmount = saleDto.serviceChargeAmount,
         currency = saleDto.currency,
         status = saleDto.status,
         billingStatus = saleDto.billingStatus,

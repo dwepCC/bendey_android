@@ -40,6 +40,7 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         subtotal = subtotal,
         taxAmount = taxAmount,
         total = total,
+        serviceChargeAmount = serviceChargeAmount,
         currency = currency,
         payments = payments.map { SalePrintPayment(method = it.method, amount = it.amount) },
         amountPaid = amountPaid,

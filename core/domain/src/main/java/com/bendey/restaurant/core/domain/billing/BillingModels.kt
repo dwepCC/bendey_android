@@ -130,6 +130,12 @@ data class SalePrintData(
     val subtotal: Double,
     val taxAmount: Double,
     val total: Double,
+    /**
+     * Recargo al Consumo YA CALCULADO Y CONGELADO por el backend (TenantSaleCharge) — nunca se
+     * recalcula acá. 0 cuando la venta no tiene RC. `total` ya lo incluye; este campo es solo
+     * para desglosarlo en pantalla/ticket.
+     */
+    val serviceChargeAmount: Double = 0.0,
     val currency: String,
     val payments: List<SalePrintPayment>,
     /** Solo con valor cuando hubo vuelto: efectivo entregado y cambio devuelto. */

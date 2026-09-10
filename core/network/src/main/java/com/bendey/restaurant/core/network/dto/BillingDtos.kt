@@ -66,6 +66,8 @@ data class PrintDataDto(
     val subtotal: Double = 0.0,
     @SerialName("tax_amount") val taxAmount: Double = 0.0,
     val total: Double = 0.0,
+    /** Recargo al Consumo YA CALCULADO por el backend — nunca se recalcula en el cliente. */
+    @SerialName("service_charge_amount") val serviceChargeAmount: Double = 0.0,
     val payments: List<PrintPaymentDto> = emptyList(),
     @SerialName("seller_name") val sellerName: String? = null,
     @SerialName("qr_data") val qrData: String = "",
@@ -263,6 +265,8 @@ data class SaleDto(
     val subtotal: Double = 0.0,
     @SerialName("tax_amount") val taxAmount: Double = 0.0,
     val total: Double = 0.0,
+    /** Recargo al Consumo YA CALCULADO por el backend — nunca se recalcula en el cliente. */
+    @SerialName("service_charge_amount") val serviceChargeAmount: Double = 0.0,
     val currency: String = "PEN",
     val status: String = "",
     @SerialName("billing_status") val billingStatus: String? = null,

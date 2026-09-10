@@ -109,6 +109,8 @@ data class RemoteDocumentJobRequest(
     val subtotal: Double,
     val taxAmount: Double,
     val total: Double,
+    /** Recargo al Consumo YA CALCULADO por el backend — viaja tal cual, nunca se recalcula acá. */
+    val serviceChargeAmount: Double = 0.0,
     val currency: String,
     val payments: List<RemoteDocumentPaymentDto>,
     val legendText: String? = null,
@@ -207,6 +209,7 @@ fun SalePrintData.toRemoteJob(jobId: String) = RemoteDocumentJobRequest(
     subtotal = subtotal,
     taxAmount = taxAmount,
     total = total,
+    serviceChargeAmount = serviceChargeAmount,
     currency = currency,
     payments = payments.map { RemoteDocumentPaymentDto(method = it.method, amount = it.amount) },
     legendText = legendText,

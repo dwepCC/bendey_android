@@ -69,6 +69,9 @@ internal object ReceiptTicketLayout {
 
         divider()
         if (data.taxAmount > 0) right("IGV: ${money.format(data.taxAmount)}")
+        // Recargo al Consumo: monto YA CALCULADO por el backend — nunca se recalcula acá. Se omite
+        // si es 0 (sucursal sin RC), así el ticket no cambia en absoluto para quien no lo activó.
+        if (data.serviceChargeAmount > 0) right("Recargo Consumo: ${money.format(data.serviceChargeAmount)}")
         right("TOTAL A PAGAR: ${money.format(data.total)}", bold = true)
 
         data.legendText?.takeIf { it.isNotBlank() }?.let { legend ->
