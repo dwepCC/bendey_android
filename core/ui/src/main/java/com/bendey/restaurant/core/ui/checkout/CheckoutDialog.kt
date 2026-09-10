@@ -103,6 +103,7 @@ fun CheckoutDialog(
     onDismiss: () -> Unit,
     onSeriesChange: (Int, String) -> Unit,
     onContactChange: (Int) -> Unit,
+    onAddContact: (() -> Unit)? = null,
     onDiscountModeChange: (CheckoutDiscountMode) -> Unit,
     onDiscountValueChange: (String) -> Unit,
     onPaymentsChange: (List<CheckoutPaymentDraft>) -> Unit,
@@ -191,6 +192,7 @@ fun CheckoutDialog(
                                         contacts = meta?.contacts.orEmpty(),
                                         selectedId = contactId,
                                         onSelect = onContactChange,
+                                        onAddContact = onAddContact,
                                         modifier = Modifier.weight(1f),
                                     )
                                     Column(modifier = Modifier.weight(1f)) {
@@ -225,6 +227,7 @@ fun CheckoutDialog(
                                         contacts = meta?.contacts.orEmpty(),
                                         selectedId = contactId,
                                         onSelect = onContactChange,
+                                        onAddContact = onAddContact,
                                     )
                                 }
                             }
@@ -884,21 +887,33 @@ private fun ContactSelector(
     contacts: List<ContactBrief>,
     selectedId: Int?,
     onSelect: (Int) -> Unit,
+    onAddContact: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (contacts.isEmpty()) {
-        CheckoutFieldLabel("Cliente")
-        Text("Sin clientes", color = BendeyColors.OnSurfaceVariant, modifier = modifier)
-        return
+    Column(modifier = modifier) {
+        if (contacts.isEmpty()) {
+            CheckoutFieldLabel("Cliente")
+            Text("Sin clientes", color = BendeyColors.OnSurfaceVariant)
+        } else {
+            BendeySearchableSelect(
+                options = contacts.map { BendeySelectOption(it.id, it.displayLabel) },
+                selectedId = selectedId,
+                onSelect = onSelect,
+                label = "Cliente",
+                placeholder = "Buscar cliente…",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        // Sin esto había que salir de la venta a Clientes y volver — un tenant nuevo sin
+        // clientes cargados todavía no podía ni empezar a cobrar. Igual que "Nuevo" en Tauri.
+        if (onAddContact != null) {
+            BendeyTextButton(
+                text = "+ Nuevo cliente",
+                onClick = onAddContact,
+                modifier = Modifier.padding(top = BendeySpacing.xxs),
+            )
+        }
     }
-    BendeySearchableSelect(
-        options = contacts.map { BendeySelectOption(it.id, it.displayLabel) },
-        selectedId = selectedId,
-        onSelect = onSelect,
-        label = "Cliente",
-        placeholder = "Buscar cliente…",
-        modifier = modifier.fillMaxWidth(),
-    )
 }
 
 @Composable

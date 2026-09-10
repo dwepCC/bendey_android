@@ -83,6 +83,7 @@ import com.bendey.restaurant.core.domain.billing.isComandaBillable
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.ui.checkout.CheckoutSplitBillControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
+import com.bendey.restaurant.core.ui.checkout.ClientQuickAddDialog
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
@@ -368,10 +369,23 @@ fun MesaScreen(
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,
+        onAddContact = viewModel::openClientQuickAdd,
         onDiscountModeChange = viewModel::setCheckoutDiscountMode,
         onDiscountValueChange = viewModel::setCheckoutDiscountValue,
         onPaymentsChange = viewModel::setCheckoutPayments,
         onConfirm = viewModel::confirmCheckout,
+    )
+
+    ClientQuickAddDialog(
+        open = state.clientQuickAddOpen,
+        form = state.clientQuickAddForm,
+        saving = state.clientQuickAddSaving,
+        consulting = state.clientQuickAddConsulting,
+        error = state.clientQuickAddError,
+        onDismiss = viewModel::dismissClientQuickAdd,
+        onFormChange = viewModel::updateClientQuickAddForm,
+        onConsult = viewModel::consultClientQuickAdd,
+        onSave = viewModel::saveClientQuickAdd,
     )
 
     val context = LocalContext.current

@@ -45,6 +45,11 @@ import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.subscription.BILLING_MODULE_KEY
 import com.bendey.restaurant.core.domain.subscription.hasModule
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
+import com.bendey.restaurant.core.domain.billing.ContactBrief
+import com.bendey.restaurant.core.domain.contacts.ContactDocType
+import com.bendey.restaurant.core.domain.contacts.ContactFormInput
+import com.bendey.restaurant.core.domain.contacts.ContactsRepository
+import com.bendey.restaurant.core.domain.contacts.sanitizeDocNumber
 import com.bendey.restaurant.core.domain.pos.comboComponentModifiersList
 import com.bendey.restaurant.core.domain.pos.loadComboComponentMetadata
 import com.bendey.restaurant.core.domain.pos.resolveComboComponentProductNames
@@ -199,6 +204,13 @@ data class PosUiState(
     val canAnularComanda: Boolean = false,
     val canOperateCash: Boolean = false,
     val billingModuleEnabled: Boolean = false,
+    /** Alta rápida de cliente sin salir del cobro — ver [ClientQuickAddDialog]. */
+    val clientQuickAddOpen: Boolean = false,
+    val clientQuickAddForm: ContactFormInput = ContactFormInput(),
+    val clientQuickAddSaving: Boolean = false,
+    val clientQuickAddConsulting: Boolean = false,
+    val clientQuickAddError: String? = null,
+    val tenantRuc: String = "",
 ) {
     val isDirectSale: Boolean get() = orderType == PosOrderType.QUICK_SALE
     val isRestaurantOrder: Boolean get() = !isDirectSale
@@ -243,6 +255,7 @@ class PosViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val restaurantHydrators: RestaurantHydrators,
     private val ordersStore: OrdersStore,
+    private val contactsRepository: ContactsRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -274,6 +287,11 @@ class PosViewModel @Inject constructor(
                         billingModuleEnabled = hasModule(session?.modules.orEmpty(), BILLING_MODULE_KEY),
                     )
                 }
+            }
+        }
+        viewModelScope.launch {
+            sessionStore.tenantFlow.collect { tenant ->
+                _uiState.update { it.copy(tenantRuc = tenant?.ruc.orEmpty()) }
             }
         }
     }
@@ -1138,6 +1156,147 @@ class PosViewModel @Inject constructor(
 
     fun setCheckoutContact(contactId: Int) {
         _uiState.update { it.copy(checkoutContactId = contactId) }
+    }
+
+    /** Abre el alta rápida de cliente — igual que el botón "Nuevo" en Bendey Resto Tauri. */
+    fun openClientQuickAdd() {
+        _uiState.update {
+            it.copy(
+                clientQuickAddOpen = true,
+                clientQuickAddForm = ContactFormInput(),
+                clientQuickAddError = null,
+            )
+        }
+    }
+
+    fun dismissClientQuickAdd() {
+        _uiState.update { it.copy(clientQuickAddOpen = false) }
+    }
+
+    fun updateClientQuickAddForm(transform: (ContactFormInput) -> ContactFormInput) {
+        _uiState.update { it.copy(clientQuickAddForm = transform(it.clientQuickAddForm)) }
+    }
+
+    /** Autocompleta razón social/dirección vía RENIEC/SUNAT — mismo flujo que Clientes. */
+    fun consultClientQuickAdd() {
+        val state = _uiState.value
+        val form = state.clientQuickAddForm
+        if (!ContactDocType.supportsConsulta(form.docType.code)) return
+        val num = sanitizeDocNumber(form.docType, form.docNumber)
+        val tenantRuc = state.tenantRuc.filter { it.isDigit() }
+        if (tenantRuc.length != 11) {
+            _uiState.update { it.copy(clientQuickAddError = "No se pudo obtener el RUC de la empresa") }
+            return
+        }
+        when (form.docType) {
+            ContactDocType.RUC -> if (num.length != 11) {
+                _uiState.update { it.copy(clientQuickAddError = "Ingresa un RUC de 11 dígitos") }
+                return
+            }
+            ContactDocType.DNI -> if (num.length != 8) {
+                _uiState.update { it.copy(clientQuickAddError = "Ingresa un DNI de 8 dígitos") }
+                return
+            }
+            else -> return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(clientQuickAddConsulting = true, clientQuickAddError = null) }
+            when (form.docType) {
+                ContactDocType.RUC -> when (val result = contactsRepository.consultRuc(tenantRuc, num)) {
+                    is AppResult.Success -> {
+                        val data = result.data
+                        val razonSocial = data.razonSocial
+                        if (!data.success || razonSocial.isNullOrBlank()) {
+                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el RUC") }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    clientQuickAddConsulting = false,
+                                    clientQuickAddForm = it.clientQuickAddForm.copy(
+                                        docNumber = num,
+                                        businessName = razonSocial,
+                                        address = data.direccion.orEmpty(),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    is AppResult.Error -> _uiState.update {
+                        it.copy(clientQuickAddConsulting = false, clientQuickAddError = result.message)
+                    }
+                    AppResult.Loading -> Unit
+                }
+                ContactDocType.DNI -> when (val result = contactsRepository.consultDni(tenantRuc, num)) {
+                    is AppResult.Success -> {
+                        val data = result.data
+                        val nombreCompleto = data.nombreCompleto
+                        if (!data.success || nombreCompleto.isNullOrBlank()) {
+                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el DNI") }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    clientQuickAddConsulting = false,
+                                    clientQuickAddForm = it.clientQuickAddForm.copy(
+                                        docNumber = num,
+                                        businessName = nombreCompleto,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    is AppResult.Error -> _uiState.update {
+                        it.copy(clientQuickAddConsulting = false, clientQuickAddError = result.message)
+                    }
+                    AppResult.Loading -> Unit
+                }
+                else -> _uiState.update { it.copy(clientQuickAddConsulting = false) }
+            }
+        }
+    }
+
+    /**
+     * Crea el cliente y lo deja elegido en el cobro — sin recargar `checkoutMeta` (eso perdería
+     * la serie/pagos que el usuario ya haya llenado); solo se agrega el contacto nuevo a la lista
+     * que ya está en memoria. Mismo patrón que `onCreated` en `ClientQuickAddModal.tsx` de Tauri.
+     */
+    fun saveClientQuickAdd() {
+        val state = _uiState.value
+        val form = state.clientQuickAddForm
+        if (form.businessName.trim().isEmpty() || form.docNumber.trim().isEmpty()) {
+            _uiState.update { it.copy(clientQuickAddError = "Nombre y documento son obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(clientQuickAddSaving = true, clientQuickAddError = null) }
+            val normalized = form.copy(docNumber = sanitizeDocNumber(form.docType, form.docNumber))
+            when (val result = contactsRepository.createCustomer(normalized)) {
+                is AppResult.Success -> {
+                    val created = result.data
+                    val brief = ContactBrief(
+                        id = created.id,
+                        docType = created.docType,
+                        docNumber = created.docNumber,
+                        businessName = created.businessName,
+                        active = created.active,
+                    )
+                    _uiState.update {
+                        it.copy(
+                            clientQuickAddSaving = false,
+                            clientQuickAddOpen = false,
+                            checkoutContactId = created.id,
+                            checkoutMeta = it.checkoutMeta?.copy(
+                                contacts = it.checkoutMeta.contacts.filterNot { c -> c.id == brief.id } + brief,
+                            ),
+                            snackMessage = "Cliente creado",
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(clientQuickAddSaving = false, clientQuickAddError = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     fun setCheckoutDiscountMode(mode: CheckoutDiscountMode) {

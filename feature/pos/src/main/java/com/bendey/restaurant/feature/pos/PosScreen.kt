@@ -88,6 +88,7 @@ import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.billing.lockedCheckoutSeries
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
+import com.bendey.restaurant.core.ui.checkout.ClientQuickAddDialog
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
@@ -466,10 +467,23 @@ fun PosScreen(
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,
+        onAddContact = viewModel::openClientQuickAdd,
         onDiscountModeChange = viewModel::setCheckoutDiscountMode,
         onDiscountValueChange = viewModel::setCheckoutDiscountValue,
         onPaymentsChange = viewModel::setCheckoutPayments,
         onConfirm = viewModel::confirmCheckout,
+    )
+
+    ClientQuickAddDialog(
+        open = state.clientQuickAddOpen,
+        form = state.clientQuickAddForm,
+        saving = state.clientQuickAddSaving,
+        consulting = state.clientQuickAddConsulting,
+        error = state.clientQuickAddError,
+        onDismiss = viewModel::dismissClientQuickAdd,
+        onFormChange = viewModel::updateClientQuickAddForm,
+        onConsult = viewModel::consultClientQuickAdd,
+        onSave = viewModel::saveClientQuickAdd,
     )
 
     val context = LocalContext.current
