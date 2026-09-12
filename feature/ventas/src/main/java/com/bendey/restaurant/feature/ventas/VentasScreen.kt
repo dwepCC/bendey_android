@@ -228,20 +228,46 @@ fun VentasScreen(
                 billingBusy = state.billingBusy,
                 currency = currency,
                 error = detailError,
-                onReprint = viewModel::reprintSelectedSale,
+                // Estas acciones no abren ningún diálogo propio — terminan siempre en un
+                // snackMessage (éxito o error de SUNAT/impresión/descarga). Sin cerrar esta hoja,
+                // ese snackbar se dibuja detrás del ModalBottomSheet y nunca se ve — mismo bug que
+                // en Caja/POS/Mesas. (onOpenPdf/onViewXml*/onEmitElectronic sí abren su propio
+                // diálogo en el camino feliz, por eso esos se dejan intactos.)
+                onReprint = {
+                    viewModel.reprintSelectedSale()
+                    viewModel.dismissSaleDetail()
+                },
                 onOpenPdf = viewModel::openReceiptModal,
                 onVoidCreditNote = viewModel::openVoidCreditNote,
                 onCancelNota = viewModel::openCancelNota,
                 onRefund = viewModel::openRefund,
                 onEmitElectronic = viewModel::openEmitElectronic,
-                onSendSunat = viewModel::sendToSunat,
-                onResendSunat = viewModel::resendToSunat,
-                onDownloadPdf = { viewModel.downloadReceiptPdf(ReceiptPdfFormat.A4) },
+                onSendSunat = {
+                    viewModel.sendToSunat()
+                    viewModel.dismissSaleDetail()
+                },
+                onResendSunat = {
+                    viewModel.resendToSunat()
+                    viewModel.dismissSaleDetail()
+                },
+                onDownloadPdf = {
+                    viewModel.downloadReceiptPdf(ReceiptPdfFormat.A4)
+                    viewModel.dismissSaleDetail()
+                },
                 onViewXmlSent = viewModel::viewXmlSent,
                 onViewXmlGenerated = viewModel::viewXmlGenerated,
-                onDownloadXmlSent = { viewModel.downloadXmlSent(context) },
-                onDownloadXmlGenerated = { viewModel.downloadXmlGenerated(context) },
-                onDownloadCdr = { viewModel.downloadCdr(context) },
+                onDownloadXmlSent = {
+                    viewModel.downloadXmlSent(context)
+                    viewModel.dismissSaleDetail()
+                },
+                onDownloadXmlGenerated = {
+                    viewModel.downloadXmlGenerated(context)
+                    viewModel.dismissSaleDetail()
+                },
+                onDownloadCdr = {
+                    viewModel.downloadCdr(context)
+                    viewModel.dismissSaleDetail()
+                },
                 )
             }
         }

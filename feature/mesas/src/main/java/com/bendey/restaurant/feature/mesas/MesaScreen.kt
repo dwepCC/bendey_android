@@ -90,6 +90,7 @@ import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
 import com.bendey.restaurant.core.ui.components.BendeyPosCatalogPane
@@ -149,11 +150,14 @@ fun MesaScreen(
     }
     val compactMesaBarHeight = rememberCompactMesaBarHeight(workspaceMode)
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) {
-            viewModel.consumeSnackMessage()
-        }
-    }
+    // Antes este LaunchedEffect solo hacía consumeSnackMessage() — nunca llamaba a onShowMessage.
+    // El mensaje se BORRABA sin mostrarse jamás: "Precuenta enviada", "Comanda reimpresa", etc.
+    // desaparecían en silencio. Mismo patrón roto en PosScreen.kt.
+    BendeySnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
 
@@ -468,8 +472,16 @@ fun MesaScreen(
                 orders = orders,
                 reprintingOrderId = state.reprintingOrderId,
                 reprintingAll = state.reprintingAll,
-                onReprint = viewModel::reprintComanda,
-                onReprintAll = viewModel::reprintAllComandas,
+                // Sin cerrar la hoja, el snackbar de reimpresión queda detrás del
+                // ModalBottomSheet y nunca se ve — mismo bug que en Caja/POS.
+                onReprint = {
+                    viewModel.reprintComanda(it)
+                    showOrdersSheet = false
+                },
+                onReprintAll = {
+                    viewModel.reprintAllComandas()
+                    showOrdersSheet = false
+                },
                 onVoidComanda = viewModel::openVoidComanda,
                 onEditComandaNotes = viewModel::openComandaNoteEditor,
                 canAnularComanda = state.canAnularComanda,

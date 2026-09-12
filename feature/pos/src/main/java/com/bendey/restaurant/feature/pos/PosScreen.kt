@@ -101,6 +101,7 @@ import com.bendey.restaurant.core.ui.pos.ComboConfigureDialog
 import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
 import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
@@ -153,11 +154,14 @@ fun PosScreen(
     }
     val overlayError = state.error?.takeIf { !state.checkoutOpen && state.voidTarget == null }
 
-    LaunchedEffect(state.snackMessage) {
-        if (state.snackMessage != null) {
-            viewModel.consumeSnackMessage()
-        }
-    }
+    // Antes este LaunchedEffect solo hacía consumeSnackMessage() — nunca llamaba a onShowMessage.
+    // El mensaje se BORRABA sin mostrarse jamás: "Precuenta enviada", "Comanda reimpresa", errores
+    // de SUNAT o de impresión, todo desaparecía en silencio. Mismo patrón roto en MesaScreen.kt.
+    BendeySnackMessage(
+        message = state.snackMessage,
+        onShow = onShowMessage,
+        onConsume = viewModel::consumeSnackMessage,
+    )
 
     val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
 
@@ -378,11 +382,25 @@ fun PosScreen(
                 },
                 onManualProduct = { showManualProduct = true },
                 onSaveDraft = viewModel::saveDraftOrder,
-                onReprint = viewModel::reprintComanda,
-                onReprintAll = viewModel::reprintAllComandas,
+                // Sin cerrar la hoja, el snackbar del resultado (éxito, error, o el mensaje real
+                // del servidor de impresión) se dibuja DETRÁS del ModalBottomSheet — que abre su
+                // propia ventana por encima de todo — y el mozo nunca lo ve. Reimprimir comanda y
+                // precuenta terminan igual (un snackMessage async), así que ambos necesitan cerrar
+                // la hoja al disparar, igual que onSend/onCheckout acá arriba.
+                onReprint = {
+                    viewModel.reprintComanda(it)
+                    showCartSheet = false
+                },
+                onReprintAll = {
+                    viewModel.reprintAllComandas()
+                    showCartSheet = false
+                },
                 onVoidComanda = viewModel::openVoidComanda,
                 onEditComandaNotes = viewModel::openComandaNoteEditor,
-                onPrintPrecuenta = viewModel::printPrecuenta,
+                onPrintPrecuenta = {
+                    viewModel.printPrecuenta()
+                    showCartSheet = false
+                },
                 onCartLineNotesChange = { line, notes -> viewModel.updateCartLineNotes(line.key, notes) },
                 onCartLineUnitPriceChange = { line, price -> viewModel.updateCartLineUnitPrice(line.key, price) },
                 canCheckout = state.canCheckout,
