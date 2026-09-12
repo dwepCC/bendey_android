@@ -139,6 +139,16 @@ fun newPrintJobId(): String = UUID.randomUUID().toString()
  * contenido cambiado (se agregó un ítem), genera un id nuevo y sí imprime.
  */
 fun PrecuentaData.deterministicJobId(windowMs: Long = 30_000L): String {
+    // DEBE parecer un UUID real: el servidor de impresión (Rust) valida jobId con
+    // `Uuid::parse_str` y rechaza cualquier otra cosa con "jobId debe ser UUID válido" — el
+    // formato anterior ("precuenta:mesa:hash:bucket") nunca pasó esa validación, así que la
+    // precuenta jamás llegaba a la cola de impresión desde que existe este dedup (comandas y
+    // documentos usan newPrintJobId(), un UUID real, por eso a esos nunca les pasó). Reportado
+    // por un tenant: la precuenta no imprimía por servidor local, sin ningún error visible.
+    // UUID.nameUUIDFromBytes genera un UUID v3 determinístico a partir del contenido — mismo
+    // pedido + misma ventana de tiempo => mismo UUID, y sigue siendo un UUID válido, así que ya
+    // no choca con esa validación.
+    val bucket = System.currentTimeMillis() / windowMs
     val key = buildString {
         append(orderCode ?: tableName ?: "sin-pedido")
         append('|').append(total)
@@ -147,11 +157,9 @@ fun PrecuentaData.deterministicJobId(windowMs: Long = 30_000L): String {
                 .append('#').append(line.quantity)
                 .append('@').append(line.unitPrice)
         }
+        append('|').append(bucket)
     }
-    val bucket = System.currentTimeMillis() / windowMs
-    val hash = Integer.toHexString(key.hashCode())
-    val scope = (orderCode ?: tableName ?: "s").filter { it.isLetterOrDigit() }.take(24)
-    return "precuenta:$scope:$hash:$bucket"
+    return UUID.nameUUIDFromBytes(key.toByteArray(Charsets.UTF_8)).toString()
 }
 
 fun ComandaLine.toRemoteDto() = RemoteComandaLineDto(
