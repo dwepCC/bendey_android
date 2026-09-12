@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.domain.cash.CashSessionReport
+import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -193,6 +196,8 @@ fun CloseCashDialog(
     loading: Boolean,
     currency: NumberFormat,
     operationalStatus: com.bendey.restaurant.core.domain.restaurant.BranchOperationalStatus? = null,
+    salesSummary: CashSessionReport? = null,
+    salesSummaryLoading: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((CloseCashForm) -> CloseCashForm) -> Unit,
@@ -202,12 +207,40 @@ fun CloseCashDialog(
         onDismissRequest = onDismiss,
         title = { Text("Cerrar caja") },
         text = {
+            // Column simple, igual que antes: ArqueoDialogContent ya trae su propio
+            // BendeyVerticalScrollColumn interno (fillMaxSize()) — envolver esto en OTRO scroll
+            // anidaría dos contenedores con scroll y rompería el que ya funciona.
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     "Revise el resumen. Puede cerrar con arqueo para registrar el efectivo contado.",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
+                // Sin esto el cajero cerraba a ciegas: el diálogo solo mostraba el saldo esperado,
+                // nunca cuánto se vendió ni por qué método — justo lo que un tenant reportó que
+                // faltaba al cerrar.
+                if (salesSummaryLoading) {
+                    CircularProgressIndicator(modifier = Modifier.padding(vertical = 4.dp))
+                } else salesSummary?.let { report ->
+                    Text("Ventas de esta sesión", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Ventas netas", style = MaterialTheme.typography.bodySmall)
+                        Text(currency.format(report.totalNetSales), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (report.totalVoidedSales > 0) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Ventas anuladas", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                            Text(currency.format(report.totalVoidedSales), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        }
+                    }
+                    report.salesByMethod.forEach { row ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(salePaymentMethodLabelEs(row.method), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                            Text(currency.format(row.total), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
+                }
                 operationalStatus?.takeIf { it.hasActiveOperations }?.let { op ->
                     Text(
                         buildString {

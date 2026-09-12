@@ -243,6 +243,8 @@ fun CajaScreen(
             loading = state.actionLoading,
             currency = currency,
             operationalStatus = state.operationalStatus,
+            salesSummary = state.closeSummary,
+            salesSummaryLoading = state.closeSummaryLoading,
             onDismiss = viewModel::dismissCloseDialog,
             onConfirm = viewModel::requestCloseSession,
             onFormChange = viewModel::updateCloseForm,

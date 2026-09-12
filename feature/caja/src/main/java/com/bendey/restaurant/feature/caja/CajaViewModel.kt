@@ -173,6 +173,11 @@ data class CajaUiState(
     val showOpenDialog: Boolean = false,
     val showMovementDialog: Boolean = false,
     val showCloseDialog: Boolean = false,
+    /** Ventas de la sesión (netas + por método) para revisar ANTES de confirmar el cierre — campo
+     *  propio, separado de `report`/`reportLoading` (los de la pestaña Reporte), para no pisar lo
+     *  que el usuario tenga abierto ahí si es una sesión distinta. */
+    val closeSummary: CashSessionReport? = null,
+    val closeSummaryLoading: Boolean = false,
     val showCloseForceConfirm: Boolean = false,
     val showArqueoDialog: Boolean = false,
     val openForm: OpenCashForm = OpenCashForm(),
@@ -608,6 +613,8 @@ class CajaViewModel @Inject constructor(
                 it.copy(
                     showCloseDialog = true,
                     operationalStatus = operational,
+                    closeSummary = null,
+                    closeSummaryLoading = true,
                     closeForm = CloseCashForm(
                         closingBalance = session.expectedBalance.toString(),
                         useArqueo = true,
@@ -616,10 +623,27 @@ class CajaViewModel @Inject constructor(
                 )
             }
         }
+        // Ventas netas y por método de ESTA sesión, para revisar antes de confirmar el cierre.
+        // Antes el diálogo solo mostraba el saldo esperado — sin ningún detalle de lo vendido, el
+        // cajero cerraba a ciegas. Va en un launch aparte (no dentro de loadReport, que además
+        // cambia la pestaña a Reporte — algo que no queremos disparar solo por abrir este diálogo).
+        viewModelScope.launch {
+            when (val result = cashRepository.getSessionReport(session.id)) {
+                is AppResult.Success -> _uiState.update { it.copy(closeSummary = result.data, closeSummaryLoading = false) }
+                else -> _uiState.update { it.copy(closeSummaryLoading = false) }
+            }
+        }
     }
 
     fun dismissCloseDialog() {
-        _uiState.update { it.copy(showCloseDialog = false, showCloseForceConfirm = false) }
+        _uiState.update {
+            it.copy(
+                showCloseDialog = false,
+                showCloseForceConfirm = false,
+                closeSummary = null,
+                closeSummaryLoading = false,
+            )
+        }
     }
 
     fun updateCloseForm(transform: (CloseCashForm) -> CloseCashForm) {
