@@ -63,6 +63,7 @@ import com.bendey.restaurant.feature.proveedores.navigation.proveedoresGraph
 import com.bendey.restaurant.feature.compras.navigation.comprasGraph
 import com.bendey.restaurant.feature.combos.navigation.combosGraph
 import com.bendey.restaurant.feature.configuracion.navigation.configuracionGraph
+import com.bendey.restaurant.feature.configuracion.navigation.perfilGraph
 import com.bendey.restaurant.feature.areaspreparacion.navigation.areasPreparacionGraph
 import com.bendey.restaurant.feature.modificadores.navigation.modificadoresGraph
 import com.bendey.restaurant.feature.productos.navigation.productosGraph
@@ -287,6 +288,7 @@ private fun MainShell(
                                     }
                                 }
                         },
+                        onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
                     )
                 }
@@ -295,6 +297,7 @@ private fun MainShell(
                         state = headerState,
                         isDrawerOpen = drawerOpen,
                         onMenuClick = toggleDrawer,
+                        onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
                     )
                 }
@@ -424,6 +427,10 @@ private fun MainShell(
                 onNavigateToSubscription = {
                     mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
                 },
+            )
+            perfilGraph(
+                onBack = { mainNavController.popBackStack() },
+                onShowMessage = onShowMessage,
             )
             repartidoresGraph(onBack = { mainNavController.popBackStack() })
             clientesGraph(onShowMessage = onShowMessage)

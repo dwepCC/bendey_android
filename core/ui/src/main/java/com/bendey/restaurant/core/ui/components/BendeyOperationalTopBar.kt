@@ -65,6 +65,7 @@ fun BendeyOperationalTopBar(
     isDrawerOpen: Boolean = false,
     onMenuClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     val barHeight = OperationalTopBarTokens.barHeight(profile)
@@ -122,6 +123,7 @@ fun BendeyOperationalTopBar(
                 showSyncIndicator = true,
                 compactOnlineIndicator = true,
                 onNotificationsClick = onNotificationsClick,
+                onOpenProfile = onOpenProfile,
                 onLogout = onLogout,
             )
         }

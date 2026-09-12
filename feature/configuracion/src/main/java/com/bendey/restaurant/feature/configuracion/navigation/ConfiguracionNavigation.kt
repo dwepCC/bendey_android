@@ -4,6 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.configuracion.ConfiguracionScreen
+import com.bendey.restaurant.feature.configuracion.perfil.PerfilScreen
 
 fun NavGraphBuilder.configuracionGraph(
     onBack: () -> Unit = {},
@@ -15,6 +16,18 @@ fun NavGraphBuilder.configuracionGraph(
             onBack = onBack,
             onOpenPrinting = onOpenPrinting,
             onNavigateToSubscription = onNavigateToSubscription,
+        )
+    }
+}
+
+fun NavGraphBuilder.perfilGraph(
+    onBack: () -> Unit = {},
+    onShowMessage: (String) -> Unit = {},
+) {
+    composable(BendeyRoutes.PERFIL) {
+        PerfilScreen(
+            onBack = onBack,
+            onShowMessage = onShowMessage,
         )
     }
 }

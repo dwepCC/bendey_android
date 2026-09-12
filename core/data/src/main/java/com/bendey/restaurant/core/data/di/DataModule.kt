@@ -13,6 +13,7 @@ import com.bendey.restaurant.core.data.repository.MesasRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ModifiersRepositoryImpl
 import com.bendey.restaurant.core.data.repository.PreparationAreasRepositoryImpl
 import com.bendey.restaurant.core.data.repository.PosRepositoryImpl
+import com.bendey.restaurant.core.data.repository.ProfileRepositoryImpl
 import com.bendey.restaurant.core.data.repository.PurchasesRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ProductImageRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ProductImportRepositoryImpl
@@ -43,6 +44,7 @@ import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
 import com.bendey.restaurant.core.domain.production.ProductionRepository
+import com.bendey.restaurant.core.domain.profile.ProfileRepository
 import com.bendey.restaurant.core.domain.subscription.SubscriptionRepository
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.purchases.PurchasesRepository
@@ -120,6 +122,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindContactsRepository(impl: ContactsRepositoryImpl): ContactsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
 
     @Binds
     @Singleton

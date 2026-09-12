@@ -77,6 +77,7 @@ class AppHeaderViewModel @Inject constructor(
             userInitials = initials,
             isOnline = true,
             notificationCount = 0,
+            isAdmin = user?.isPinSession == false,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BendeyAppHeaderState())
 }

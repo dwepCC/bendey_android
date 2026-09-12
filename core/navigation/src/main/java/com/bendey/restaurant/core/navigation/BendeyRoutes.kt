@@ -23,6 +23,7 @@ object BendeyRoutes {
     const val AREAS_PREPARACION = "areas_preparacion"
     const val COMBOS = "combos"
     const val CONFIGURACION = "configuracion"
+    const val PERFIL = "perfil"
     const val REPARTIDORES = "repartidores"
     const val REPORTES = "reportes"
     const val PRINTING_TEST = "printing_test"

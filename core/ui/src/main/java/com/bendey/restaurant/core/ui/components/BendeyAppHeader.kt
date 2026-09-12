@@ -31,6 +31,8 @@ data class BendeyAppHeaderState(
     val userInitials: String = "",
     val isOnline: Boolean = true,
     val notificationCount: Int = 0,
+    /** Solo el login completo (email/contraseña) puede editar su perfil — un turno por PIN no. */
+    val isAdmin: Boolean = false,
 )
 
 /** Header global móvil (Compact*) — sin cambios visuales respecto a producción. */
@@ -41,6 +43,7 @@ fun BendeyAppHeader(
     isDrawerOpen: Boolean = false,
     onMenuClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     Row(
@@ -79,6 +82,7 @@ fun BendeyAppHeader(
             state = state,
             showSyncIndicator = false,
             onNotificationsClick = onNotificationsClick,
+            onOpenProfile = onOpenProfile,
             onLogout = onLogout,
         )
     }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenu
@@ -53,6 +54,7 @@ fun BendeyHeaderActions(
     showSyncIndicator: Boolean = false,
     compactOnlineIndicator: Boolean = false,
     onNotificationsClick: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     Row(
@@ -87,6 +89,7 @@ fun BendeyHeaderActions(
         }
         BendeyHeaderUserMenu(
             state = state,
+            onOpenProfile = onOpenProfile,
             onLogout = onLogout,
         )
     }
@@ -138,6 +141,7 @@ private fun BendeyHeaderSyncIndicator(
 @Composable
 private fun BendeyHeaderUserMenu(
     state: BendeyAppHeaderState,
+    onOpenProfile: () -> Unit,
     onLogout: () -> Unit,
 ) {
     var showUserMenu by remember { mutableStateOf(false) }
@@ -226,6 +230,43 @@ private fun BendeyHeaderUserMenu(
                         }
                     }
                     HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
+                    // Solo el login completo (email/contraseña) tiene datos/contraseña propios
+                    // que editar — un turno abierto por PIN no es una cuenta separada.
+                    if (state.isAdmin) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(BendeyShapeTokens.md)
+                                .clickable {
+                                    showUserMenu = false
+                                    onOpenProfile()
+                                },
+                            shape = BendeyShapeTokens.md,
+                            color = BendeyColors.SurfaceVariant.copy(alpha = 0.55f),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = BendeySpacing.xs)
+                                        .size(18.dp),
+                                    tint = BendeyColors.OnSurfaceVariant,
+                                )
+                                Text(
+                                    text = "Mi perfil",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = BendeyColors.OnSurface,
+                                )
+                            }
+                        }
+                    }
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
