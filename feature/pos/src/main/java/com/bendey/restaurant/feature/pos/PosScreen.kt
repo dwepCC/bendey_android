@@ -86,6 +86,9 @@ import com.bendey.restaurant.core.domain.restaurant.PosCartLine
 import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
+import com.bendey.restaurant.core.domain.billing.DEFAULT_TAX_RATE_PERCENT
+import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
+import com.bendey.restaurant.core.domain.billing.calcServiceChargePreview
 import com.bendey.restaurant.core.domain.billing.lockedCheckoutSeries
 import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
@@ -464,6 +467,25 @@ fun PosScreen(
         onBarcodeDetected = viewModel::addProductByBarcode,
     )
 
+    val checkoutServiceChargeAmount = remember(
+        state.checkoutRawTotal,
+        state.checkoutDiscountMode,
+        state.checkoutDiscountValue,
+        state.serviceChargeEnabled,
+        state.serviceChargeRate,
+        state.checkoutMeta?.taxRate,
+    ) {
+        val discountNumeric = state.checkoutDiscountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
+        val discountAmount = calcCheckoutDiscountAmount(state.checkoutRawTotal, state.checkoutDiscountMode, discountNumeric)
+        calcServiceChargePreview(
+            total = state.checkoutRawTotal,
+            discountAmount = discountAmount,
+            rate = state.serviceChargeRate,
+            enabled = state.serviceChargeEnabled,
+            taxRatePercent = state.checkoutMeta?.taxRate ?: DEFAULT_TAX_RATE_PERCENT,
+        )
+    }
+
     CheckoutDialog(
         open = state.checkoutOpen,
         title = "Cobrar venta",
@@ -474,6 +496,8 @@ fun PosScreen(
         discountMode = state.checkoutDiscountMode,
         discountValue = state.checkoutDiscountValue,
         allowDiscount = state.allowCheckoutDiscount,
+        serviceChargeAmount = checkoutServiceChargeAmount,
+        serviceChargeRate = state.serviceChargeRate,
         payments = state.checkoutPayments,
         seriesId = state.checkoutSeriesId,
         docType = state.checkoutDocType,

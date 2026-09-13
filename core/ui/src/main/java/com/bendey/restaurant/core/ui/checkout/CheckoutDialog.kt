@@ -60,10 +60,12 @@ import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
 import com.bendey.restaurant.core.domain.billing.calcPayableTotal
 import com.bendey.restaurant.core.domain.billing.firstSeriesForDocTypeKey
+import com.bendey.restaurant.core.domain.billing.formatServiceChargeLabel
 import com.bendey.restaurant.core.domain.billing.groupCheckoutDocTypesWithLocked
 import com.bendey.restaurant.core.domain.billing.normalizeDocTypeKey
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundDisplay
+import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.billing.seriesForDocType
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -96,6 +98,15 @@ fun CheckoutDialog(
     docType: String,
     contactId: Int?,
     error: String?,
+    /**
+     * Recargo al Consumo (RC) YA CALCULADO por el llamador (ver `calcServiceChargePreview`) —
+     * este diálogo solo lo suma al total a cobrar y lo muestra. El backend vuelve a calcularlo y
+     * a congelarlo al crear la venta; esto es solo una previsualización para que el cajero cobre
+     * el monto correcto.
+     */
+    serviceChargeAmount: Double = 0.0,
+    /** Porcentaje configurado de RC (ej. 5 para 5%), solo para el label ("RC 5%"). */
+    serviceChargeRate: Double = 0.0,
     confirmLabel: String = "Confirmar cobro",
     lockedSeries: List<DocumentSeries> = emptyList(),
     onLockedDocTypeSelect: () -> Unit = {},
@@ -120,7 +131,7 @@ fun CheckoutDialog(
     val series = meta?.series.orEmpty()
     val discountNumeric = discountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
     val discountAmount = calcCheckoutDiscountAmount(rawTotal, discountMode, discountNumeric)
-    val payableTotal = calcPayableTotal(rawTotal, discountMode, discountNumeric)
+    val payableTotal = roundSunat(calcPayableTotal(rawTotal, discountMode, discountNumeric) + serviceChargeAmount)
     val paidTotal = payments.sumOf { it.amount.replace(',', '.').trim().toDoubleOrNull() ?: 0.0 }
     val remaining = (payableTotal - paidTotal).coerceAtLeast(0.0)
     val change = (paidTotal - payableTotal).coerceAtLeast(0.0)
@@ -179,6 +190,8 @@ fun CheckoutDialog(
                             payableTotal = payableTotal,
                             rawTotal = rawTotal,
                             discountAmount = discountAmount,
+                            serviceChargeAmount = serviceChargeAmount,
+                            serviceChargeRate = serviceChargeRate,
                             tablet = tabletLandscape,
                         )
                         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -755,6 +768,8 @@ private fun CheckoutHeroTotal(
     payableTotal: Double,
     rawTotal: Double,
     discountAmount: Double,
+    serviceChargeAmount: Double = 0.0,
+    serviceChargeRate: Double = 0.0,
     tablet: Boolean = false,
 ) {
     Column(
@@ -795,6 +810,25 @@ private fun CheckoutHeroTotal(
                 )
                 Text(
                     "− ${currency.format(discountAmount)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+        if (serviceChargeAmount > 0) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = BendeySpacing.xs),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    formatServiceChargeLabel(serviceChargeRate),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                Text(
+                    currency.format(serviceChargeAmount),
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )

@@ -196,6 +196,11 @@ data class PosUiState(
     // backend igual revalida siempre — este ViewModel no decide nada por su cuenta.
     val saleDetailEnabled: Boolean = false,
     val consumptionMode: Boolean = false,
+    // Recargo al Consumo (RC): solo para previsualizar y sumar al total a cobrar en el checkout
+    // — el backend es quien lo calcula y congela de verdad al crear la venta (ver
+    // core/domain/billing/ServiceChargePreview.kt).
+    val serviceChargeEnabled: Boolean = false,
+    val serviceChargeRate: Double = 0.0,
     val receiptHasPrinter: Boolean = false,
     val receiptBusy: String? = null,
     val error: String? = null,
@@ -316,6 +321,27 @@ class PosViewModel @Inject constructor(
                     applyCheckoutDefaults(result.data)
                 }
                 else -> Unit
+            }
+            // "Por consumo" y RC: van acá y NO solo en loadCheckoutMeta() porque warmCheckoutMeta()
+            // se dispara primero (al abrir la pantalla) y deja checkoutMeta != null — el guard de
+            // loadCheckoutMeta() ("if checkoutMeta == null") nunca corría, así que estos ajustes
+            // nunca se cargaban aunque la sucursal los tuviera activados (bug 2026-09-14).
+            loadBranchCheckoutConfigs(branchId)
+        }
+    }
+
+    /** Config de "por consumo" y Recargo al Consumo de la sucursal, para el checkout. */
+    private fun loadBranchCheckoutConfigs(branchId: Int) {
+        viewModelScope.launch {
+            when (val cfg = settingsRepository.getSaleDetailConfig(branchId)) {
+                is AppResult.Success -> _uiState.update { it.copy(saleDetailEnabled = cfg.data.enabled) }
+                else -> _uiState.update { it.copy(saleDetailEnabled = false) }
+            }
+            when (val cfg = settingsRepository.getServiceChargeConfig(branchId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(serviceChargeEnabled = cfg.data.enabled, serviceChargeRate = cfg.data.rate)
+                }
+                else -> _uiState.update { it.copy(serviceChargeEnabled = false, serviceChargeRate = 0.0) }
             }
         }
     }
@@ -1819,10 +1845,7 @@ class PosViewModel @Inject constructor(
                 }
                 AppResult.Loading -> Unit
             }
-            when (val cfg = settingsRepository.getSaleDetailConfig(branchId)) {
-                is AppResult.Success -> _uiState.update { it.copy(saleDetailEnabled = cfg.data.enabled) }
-                else -> _uiState.update { it.copy(saleDetailEnabled = false) }
-            }
+            loadBranchCheckoutConfigs(branchId)
         }
     }
 

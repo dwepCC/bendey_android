@@ -79,6 +79,8 @@ import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
+import com.bendey.restaurant.core.domain.billing.calcServiceChargePreview
 import com.bendey.restaurant.core.domain.billing.isComandaBillable
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
@@ -337,6 +339,25 @@ fun MesaScreen(
         )
     }
 
+    val checkoutServiceChargeAmount = remember(
+        state.checkoutRawTotal,
+        state.checkoutDiscountMode,
+        state.checkoutDiscountValue,
+        state.serviceChargeEnabled,
+        state.serviceChargeRate,
+        state.checkoutMeta?.taxRate,
+    ) {
+        val discountNumeric = state.checkoutDiscountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
+        val discountAmount = calcCheckoutDiscountAmount(state.checkoutRawTotal, state.checkoutDiscountMode, discountNumeric)
+        calcServiceChargePreview(
+            total = state.checkoutRawTotal,
+            discountAmount = discountAmount,
+            rate = state.serviceChargeRate,
+            enabled = state.serviceChargeEnabled,
+            taxRatePercent = resolveTaxRatePercent(state.checkoutMeta?.taxRate),
+        )
+    }
+
     CheckoutDialog(
         open = state.checkoutOpen,
         title = "Cobrar y cerrar mesa",
@@ -347,6 +368,8 @@ fun MesaScreen(
         discountMode = state.checkoutDiscountMode,
         discountValue = state.checkoutDiscountValue,
         allowDiscount = state.allowDiscountInCheckout,
+        serviceChargeAmount = checkoutServiceChargeAmount,
+        serviceChargeRate = state.serviceChargeRate,
         payments = state.checkoutPayments,
         seriesId = state.checkoutSeriesId,
         docType = state.checkoutDocType,
