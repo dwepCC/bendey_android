@@ -37,6 +37,31 @@ fun calcPayableTotal(
     return roundSunat((roundSunat(rawTotal) - discount).coerceAtLeast(0.0))
 }
 
+/**
+ * `calcPayableTotal` + RC (ver [calcServiceChargePreview]) — el monto que de verdad hay que cobrar.
+ * Única función para esta suma: antes Pos y Mesa la repetían cada uno por su lado en su
+ * `checkoutPayableTotal`, y el diálogo de cobro la repetía una tercera vez solo para pintar el
+ * total — cualquier cambio futuro a esta fórmula (ej. redondeo) tenía que tocarse en 3 sitios.
+ */
+fun calcPayableTotalWithServiceCharge(
+    rawTotal: Double,
+    mode: CheckoutDiscountMode,
+    value: Double,
+    serviceChargeRate: Double,
+    serviceChargeEnabled: Boolean,
+    taxRatePercent: Double,
+): Double {
+    val discountAmount = calcCheckoutDiscountAmount(rawTotal, mode, value)
+    val serviceCharge = calcServiceChargePreview(
+        total = rawTotal,
+        discountAmount = discountAmount,
+        rate = serviceChargeRate,
+        enabled = serviceChargeEnabled,
+        taxRatePercent = taxRatePercent,
+    )
+    return roundSunat(calcPayableTotal(rawTotal, mode, value) + serviceCharge)
+}
+
 fun paidCoversTotal(paid: Double, expected: Double): Boolean =
     roundDisplay(paid) + 0.009 >= roundDisplay(expected)
 

@@ -357,12 +357,12 @@ class CajaViewModel @Inject constructor(
     }
 
     fun showOpenDialog() {
-        _uiState.update { it.copy(showOpenDialog = true, openForm = OpenCashForm()) }
+        _uiState.update { it.copy(showOpenDialog = true, openForm = OpenCashForm(), error = null) }
     }
 
     fun dismissOpenDialog() {
         if (_uiState.value.session == null) return
-        _uiState.update { it.copy(showOpenDialog = false) }
+        _uiState.update { it.copy(showOpenDialog = false, error = null) }
     }
 
     fun updateOpenForm(transform: (OpenCashForm) -> OpenCashForm) {
@@ -423,13 +423,14 @@ class CajaViewModel @Inject constructor(
                 it.copy(
                     showMovementDialog = true,
                     movementForm = MovementForm(type = type, category = category, paymentMethod = method),
+                    error = null,
                 )
             }
         }
     }
 
     fun dismissMovementDialog() {
-        _uiState.update { it.copy(showMovementDialog = false) }
+        _uiState.update { it.copy(showMovementDialog = false, error = null) }
     }
 
     fun updateMovementForm(transform: (MovementForm) -> MovementForm) {
@@ -495,7 +496,7 @@ class CajaViewModel @Inject constructor(
     }
 
     fun dismissArqueoDialog() {
-        _uiState.update { it.copy(showArqueoDialog = false) }
+        _uiState.update { it.copy(showArqueoDialog = false, error = null) }
     }
 
     /**
@@ -612,6 +613,7 @@ class CajaViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     showCloseDialog = true,
+                    error = null,
                     operationalStatus = operational,
                     closeSummary = null,
                     closeSummaryLoading = true,
@@ -642,6 +644,7 @@ class CajaViewModel @Inject constructor(
                 showCloseForceConfirm = false,
                 closeSummary = null,
                 closeSummaryLoading = false,
+                error = null,
             )
         }
     }
@@ -957,7 +960,7 @@ class CajaViewModel @Inject constructor(
 
     fun showCreatePaymentMethod() {
         if (!requireManageCashSettings()) return
-        _uiState.update { it.copy(showPaymentMethodDialog = true, paymentMethodForm = PaymentMethodForm()) }
+        _uiState.update { it.copy(showPaymentMethodDialog = true, paymentMethodForm = PaymentMethodForm(), error = null) }
     }
 
     fun showEditPaymentMethod(pm: CashPaymentMethod) {
@@ -973,12 +976,13 @@ class CajaViewModel @Inject constructor(
                     bankAccountId = pm.bankAccountId,
                     active = pm.active,
                 ),
+                error = null,
             )
         }
     }
 
     fun dismissPaymentMethodDialog() {
-        _uiState.update { it.copy(showPaymentMethodDialog = false) }
+        _uiState.update { it.copy(showPaymentMethodDialog = false, error = null) }
     }
 
     fun updatePaymentMethodForm(transform: (PaymentMethodForm) -> PaymentMethodForm) {
@@ -1044,7 +1048,7 @@ class CajaViewModel @Inject constructor(
 
     fun showCreateBankAccount() {
         if (!requireManageCashSettings()) return
-        _uiState.update { it.copy(showBankAccountDialog = true, bankAccountForm = BankAccountForm()) }
+        _uiState.update { it.copy(showBankAccountDialog = true, bankAccountForm = BankAccountForm(), error = null) }
     }
 
     fun showEditBankAccount(acc: CashBankAccount) {
@@ -1062,12 +1066,13 @@ class CajaViewModel @Inject constructor(
                     paymentMethod = acc.paymentMethod,
                     active = acc.active,
                 ),
+                error = null,
             )
         }
     }
 
     fun dismissBankAccountDialog() {
-        _uiState.update { it.copy(showBankAccountDialog = false) }
+        _uiState.update { it.copy(showBankAccountDialog = false, error = null) }
     }
 
     fun updateBankAccountForm(transform: (BankAccountForm) -> BankAccountForm) {
@@ -1125,13 +1130,14 @@ class CajaViewModel @Inject constructor(
                 bankMovementsAccountId = acc.id,
                 bankMovementsAccountName = acc.name,
                 bankMovementForm = BankMovementForm(),
+                error = null,
             )
         }
         loadBankMovements(acc.id)
     }
 
     fun dismissBankMovementsDialog() {
-        _uiState.update { it.copy(showBankMovementsDialog = false) }
+        _uiState.update { it.copy(showBankMovementsDialog = false, error = null) }
     }
 
     fun updateBankMovementForm(transform: (BankMovementForm) -> BankMovementForm) {

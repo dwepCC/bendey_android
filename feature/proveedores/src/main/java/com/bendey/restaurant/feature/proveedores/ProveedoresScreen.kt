@@ -121,6 +121,7 @@ fun ProveedoresScreen(
             message = "¿Eliminar este proveedor del catálogo?",
             onConfirm = viewModel::confirmDelete,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
 }
@@ -286,6 +287,10 @@ private fun ProveedorFormDialog(
         confirmEnabled = !loading && !consulting,
         loading = loading,
         enableContentScroll = true,
+        // Mismo hallazgo que CloseCashDialog (feature:caja): el parámetro `error` llegaba hasta acá
+        // y se descartaba — nunca se conectaba a `validationError`, así que un rechazo del backend
+        // (RUC duplicado, etc.) quedaba invisible.
+        validationError = error,
     ) {
         BendeySimpleSelect(
             options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },

@@ -60,4 +60,50 @@ class ServiceChargePreviewTest {
     fun `formatServiceChargeLabel sin tasa cae al label generico`() {
         assertEquals("Recargo al Consumo", formatServiceChargeLabel(0.0))
     }
+
+    // `checkoutPayableTotal` en PosViewModel/MesaViewModel (el que prellena el monto de pago y
+    // valida el cobro) ignoraba el RC — solo `CheckoutDialog` lo sumaba para PINTAR el total. El
+    // cajero veía "S/13.55" en el diálogo pero el campo de pago traía "S/13.00": tenía que sumar el
+    // RC a mano o el backend rechazaba el cobro por insuficiente. Ver PosViewModel/MesaViewModel
+    // `checkoutPayableTotal` y `calcPayableTotalWithServiceCharge`.
+    @Test
+    fun `calcPayableTotalWithServiceCharge suma el RC al total a cobrar, no solo a lo que se pinta`() {
+        val payable = calcPayableTotalWithServiceCharge(
+            rawTotal = 13.0,
+            mode = CheckoutDiscountMode.PERCENT,
+            value = 0.0,
+            serviceChargeRate = 5.0,
+            serviceChargeEnabled = true,
+            taxRatePercent = 18.0,
+        )
+        assertEquals(13.55, payable, 0.01)
+    }
+
+    @Test
+    fun `calcPayableTotalWithServiceCharge con RC apagado es igual al total sin descuento`() {
+        val payable = calcPayableTotalWithServiceCharge(
+            rawTotal = 100.0,
+            mode = CheckoutDiscountMode.AMOUNT,
+            value = 0.0,
+            serviceChargeRate = 5.0,
+            serviceChargeEnabled = false,
+            taxRatePercent = 18.0,
+        )
+        assertEquals(100.0, payable, 0.0)
+    }
+
+    @Test
+    fun `calcPayableTotalWithServiceCharge aplica el descuento antes del RC`() {
+        // Total 118 (100 + 18% IGV), descuento 10% (11.8) -> subtotal neto 90, RC 10% = 9.
+        // Total a cobrar: 118 - 11.8 + 9 = 115.2.
+        val payable = calcPayableTotalWithServiceCharge(
+            rawTotal = 118.0,
+            mode = CheckoutDiscountMode.PERCENT,
+            value = 10.0,
+            serviceChargeRate = 10.0,
+            serviceChargeEnabled = true,
+            taxRatePercent = 18.0,
+        )
+        assertEquals(115.2, payable, 0.01)
+    }
 }

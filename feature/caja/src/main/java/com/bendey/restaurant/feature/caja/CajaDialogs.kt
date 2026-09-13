@@ -1,13 +1,17 @@
 package com.bendey.restaurant.feature.caja
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -27,15 +33,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
-import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
-import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import java.text.NumberFormat
 
+/**
+ * Contenido del arqueo — SIN su propio scroll: quien lo use (ArqueoDialog, CloseCashDialog) ya
+ * vive dentro del área de scroll de un BendeyFormDialog; anidar otro scroll adentro rompía el
+ * gesto (el cajero arrastraba y no se sabía qué contenedor se movía).
+ */
 @Composable
 fun ArqueoDialogContent(
     values: Map<String, Int>,
@@ -46,9 +58,9 @@ fun ArqueoDialogContent(
 ) {
     val total = sumArqueo(values)
     val diff = total - expectedBalance
-    BendeyVerticalScrollColumn(
+    Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Saldo sistema", color = BendeyColors.OnSurfaceVariant)
@@ -72,6 +84,13 @@ fun ArqueoDialogContent(
     }
 }
 
+/**
+ * Fila DENOMINACIÓN | CANTIDAD | SUBTOTAL — antes cada fila repetía un BendeyTextField completo
+ * con su propia etiqueta flotante "Cant.", 13 veces: pesado para una interfaz que un cajero usa
+ * para contar dinero rápido. Ahora la columna se rotula una sola vez (encabezado de sección) y
+ * cada fila solo lleva la caja de cantidad — compacta, claramente editable — y el subtotal como
+ * texto plano, sin borde, para que no se confunda con otro campo.
+ */
 @Composable
 private fun ArqueoSection(
     title: String,
@@ -80,45 +99,75 @@ private fun ArqueoSection(
     currency: NumberFormat,
     onQtyChange: (String, Int) -> Unit,
 ) {
-    Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-    items.forEach { denom ->
-        val qty = values[denom.value] ?: 0
-        val subtotal = denom.value.toDouble() * qty
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(denom.label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-            // Ancho fijo (no weight): con proporciones el campo quedaba tan angosto que
-            // la etiqueta "Cant." se partía en dos líneas y desalineaba todo lo demás.
-            ArqueoQtyField(qty = qty, onCommit = { n -> onQtyChange(denom.value, n) })
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("", modifier = Modifier.weight(1f))
             Text(
-                currency.format(subtotal),
-                modifier = Modifier.weight(0.7f),
-                textAlign = TextAlign.End,
-                fontWeight = FontWeight.Medium,
+                "Cant.",
+                style = MaterialTheme.typography.labelSmall,
+                color = BendeyColors.OnSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.width(ArqueoQtyFieldWidth),
             )
+            Text(
+                "Subtotal",
+                style = MaterialTheme.typography.labelSmall,
+                color = BendeyColors.OnSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(84.dp).padding(start = BendeySpacing.xs),
+            )
+        }
+        items.forEach { denom ->
+            val qty = values[denom.value] ?: 0
+            val subtotal = denom.value.toDouble() * qty
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(denom.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                ArqueoQtyField(qty = qty, onCommit = { n -> onQtyChange(denom.value, n) })
+                Text(
+                    currency.format(subtotal),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (qty > 0) BendeyColors.OnSurface else BendeyColors.OnSurfaceVariant,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.width(84.dp).padding(start = BendeySpacing.xs),
+                )
+            }
         }
     }
 }
 
+private val ArqueoQtyFieldWidth = 56.dp
+
 /**
- * Campo de cantidad del arqueo. Al enfocar limpia el valor para escribir libremente (sin pelear
- * con el 0). Al salir: si escribió algo lo guarda; si lo dejó vacío, restaura el valor anterior.
+ * Campo de cantidad del arqueo — una caja numérica compacta con borde propio en vez de un
+ * BendeyTextField completo (que trae una etiqueta flotante y ~56dp de alto pensados para un
+ * formulario normal, no para 13 filas repetidas). Es una excepción documentada: el patrón oficial
+ * de campo de texto sigue siendo BendeyTextField, este es el caso "fila muy densa, repetida
+ * muchas veces" donde ese patrón se vuelve pesado.
+ *
+ * Al enfocar limpia el valor para escribir libremente (sin pelear con el 0). Al salir: si
+ * escribió algo lo guarda; si lo dejó vacío, restaura el valor anterior.
  */
 @Composable
 private fun ArqueoQtyField(qty: Int, onCommit: (Int) -> Unit) {
     var text by remember(qty) { mutableStateOf(qty.toString()) }
     var focused by remember { mutableStateOf(false) }
-    BendeyTextField(
+    BasicTextField(
         value = text,
-        onValueChange = { v -> text = v.filter { it.isDigit() } },
-        label = "Cant.",
+        onValueChange = { v -> text = v.filter { it.isDigit() }.take(4) },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = BendeyColors.OnSurface,
+            textAlign = TextAlign.Center,
+        ),
+        cursorBrush = SolidColor(BendeyColors.Primary),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-        fillWidth = false,
         modifier = Modifier
-            .width(90.dp)
+            .width(ArqueoQtyFieldWidth)
+            .height(40.dp)
             .onFocusChanged { focusState ->
                 if (focusState.isFocused && !focused) {
                     focused = true
@@ -132,6 +181,19 @@ private fun ArqueoQtyField(qty: Int, onCommit: (Int) -> Unit) {
                     }
                 }
             },
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .clip(BendeyShapeTokens.sm)
+                    .border(1.dp, if (focused) BendeyColors.Primary else BendeyColors.Outline, BendeyShapeTokens.sm)
+                    .background(BendeyColors.Surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                innerTextField()
+            }
+        },
     )
 }
 
@@ -144,6 +206,7 @@ fun ArqueoDialog(
     currency: NumberFormat,
     canPrint: Boolean,
     docBusy: Boolean,
+    error: String? = null,
     onQtyChange: (String, Int) -> Unit,
     onExportPdf: () -> Unit,
     onPrint: () -> Unit,
@@ -151,42 +214,38 @@ fun ArqueoDialog(
     onConfirm: () -> Unit,
 ) {
     if (!open) return
-    BendeyAlertDialog(
+    // Antes: BendeyAlertDialog (AlertDialog de Material3, ancho angosto de diálogo estándar) —
+    // demasiado angosto para un formulario de 13 filas de denominaciones. BendeyFormDialog usa
+    // ~94% del ancho por defecto, exactamente el rango que pidió la prueba manual.
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Arqueo de caja") },
-        text = {
-            Column {
-                ArqueoDialogContent(values, expectedBalance, currency, onQtyChange)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    BendeyTextButton(
-                        text = if (docBusy) "Generando…" else "Descargar PDF",
-                        onClick = onExportPdf,
-                        enabled = !docBusy,
-                    )
-                    if (canPrint) {
-                        BendeyTextButton(
-                            text = "Imprimir",
-                            onClick = onPrint,
-                            enabled = !docBusy,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Guardando…" else "Guardar arqueo",
-                onClick = onConfirm,
-                enabled = !loading,
+        title = "Arqueo de caja",
+        confirmText = if (loading) "Guardando…" else "Guardar",
+        confirmEnabled = !loading,
+        enableContentScroll = true,
+        validationError = error,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    ) {
+        ArqueoDialogContent(values, expectedBalance, currency, onQtyChange)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        ) {
+            BendeyTextButton(
+                text = if (docBusy) "Generando…" else "Descargar PDF",
+                onClick = onExportPdf,
+                enabled = !docBusy,
             )
-        },
-        dismissButton = {
-            BendeyTextButton(text = "Cancelar", onClick = onDismiss)
-        },
-    )
+            if (canPrint) {
+                BendeyTextButton(
+                    text = "Imprimir",
+                    onClick = onPrint,
+                    enabled = !docBusy,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -198,19 +257,33 @@ fun CloseCashDialog(
     operationalStatus: com.bendey.restaurant.core.domain.restaurant.BranchOperationalStatus? = null,
     salesSummary: CashSessionReport? = null,
     salesSummaryLoading: Boolean = false,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((CloseCashForm) -> CloseCashForm) -> Unit,
     onArqueoQtyChange: (String, Int) -> Unit,
 ) {
-    BendeyAlertDialog(
+    // Antes: BendeyAlertDialog (ancho angosto de diálogo estándar) con todo el contenido — resumen
+    // de ventas, alerta operativa, arqueo completo — apretado en ese ancho. BendeyFormDialog da el
+    // mismo ~94% de ancho que ArqueoDialog, con scroll propio (por eso el contenido ya no necesita
+    // su propio Column envolvente con scroll anidado).
+    //
+    // `error` viajaba en el uiState pero nunca llegaba a este diálogo — cuando el cierre fallaba
+    // (backend rechaza, sesión con arqueo inválido, etc.) el ViewModel sí guardaba el mensaje, pero
+    // el único lugar que lo pintaba era un Text() en el fondo de la pantalla, TAPADO por este mismo
+    // Dialog. El cajero veía el botón volver a "Cerrar" sin ninguna explicación — parecía que la
+    // app se quedó pegada. Con `validationError` el mensaje aparece dentro del propio modal.
+    BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cerrar caja") },
-        text = {
-            // Column simple, igual que antes: ArqueoDialogContent ya trae su propio
-            // BendeyVerticalScrollColumn interno (fillMaxSize()) — envolver esto en OTRO scroll
-            // anidaría dos contenedores con scroll y rompería el que ya funciona.
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        title = "Cerrar caja",
+        confirmText = if (loading) "Cerrando…" else "Cerrar",
+        confirmEnabled = !loading,
+        enableContentScroll = true,
+        validationError = error,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 Text(
                     "Revise el resumen. Puede cerrar con arqueo para registrar el efectivo contado.",
                     style = MaterialTheme.typography.bodySmall,
@@ -288,17 +361,6 @@ fun CloseCashDialog(
                     label = "Notas de cierre",
                     singleLine = false,
                 )
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Cerrando…" else "Cerrar caja",
-                onClick = onConfirm,
-                enabled = !loading,
-            )
-        },
-        dismissButton = {
-            BendeyTextButton(text = "Cancelar", onClick = onDismiss)
-        },
-    )
+        }
+    }
 }

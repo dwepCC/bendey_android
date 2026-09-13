@@ -79,8 +79,6 @@ import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.billing.TaxConfig
-import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
-import com.bendey.restaurant.core.domain.billing.calcServiceChargePreview
 import com.bendey.restaurant.core.domain.billing.isComandaBillable
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
@@ -92,6 +90,7 @@ import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
@@ -339,24 +338,9 @@ fun MesaScreen(
         )
     }
 
-    val checkoutServiceChargeAmount = remember(
-        state.checkoutRawTotal,
-        state.checkoutDiscountMode,
-        state.checkoutDiscountValue,
-        state.serviceChargeEnabled,
-        state.serviceChargeRate,
-        state.checkoutMeta?.taxRate,
-    ) {
-        val discountNumeric = state.checkoutDiscountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
-        val discountAmount = calcCheckoutDiscountAmount(state.checkoutRawTotal, state.checkoutDiscountMode, discountNumeric)
-        calcServiceChargePreview(
-            total = state.checkoutRawTotal,
-            discountAmount = discountAmount,
-            rate = state.serviceChargeRate,
-            enabled = state.serviceChargeEnabled,
-            taxRatePercent = resolveTaxRatePercent(state.checkoutMeta?.taxRate),
-        )
-    }
+    // Única fuente de verdad: `MesaUiState.checkoutServiceChargeAmount` — ver la misma nota en
+    // PosScreen. `checkoutPayableTotal` (el que prellena el pago y valida el cobro) ya lo incluye.
+    val checkoutServiceChargeAmount = state.checkoutServiceChargeAmount
 
     CheckoutDialog(
         open = state.checkoutOpen,
@@ -990,29 +974,19 @@ private fun OrdersSection(
                     reprintEnabled = reprintingOrderId != order.id && !reprintingAll,
                     onReprint = { onReprint(order) },
                     comandaActions = { comanda ->
-                        BendeyIconButton(
+                        BendeyCompactIconButton(
                             onClick = { onEditComandaNotes(comanda) },
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Editar notas",
-                                tint = BendeyColors.Primary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                            icon = Icons.Default.Edit,
+                            contentDescription = "Editar notas",
+                            tint = BendeyColors.Primary,
+                        )
                         if (canAnularComanda && comanda.isComandaBillable()) {
-                            BendeyIconButton(
+                            BendeyCompactIconButton(
                                 onClick = { onVoidComanda(comanda) },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Anular línea",
-                                    tint = BendeyColors.Error,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                                icon = Icons.Default.Delete,
+                                contentDescription = "Anular línea",
+                                tint = BendeyColors.Error,
+                            )
                         }
                     },
                 )

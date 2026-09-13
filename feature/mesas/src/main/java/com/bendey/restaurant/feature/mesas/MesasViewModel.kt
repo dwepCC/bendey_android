@@ -275,6 +275,7 @@ class MesasViewModel @Inject constructor(
                 moveTargetId = null,
                 freeTablesForMove = emptyList(),
                 loadingFreeForMove = true,
+                error = null,
             )
         }
         viewModelScope.launch {
@@ -314,6 +315,7 @@ class MesasViewModel @Inject constructor(
                 moveTargetId = null,
                 freeTablesForMove = emptyList(),
                 loadingFreeForMove = false,
+                error = null,
             )
         }
     }
@@ -328,7 +330,7 @@ class MesasViewModel @Inject constructor(
         val sessionId = source.sessionId ?: return
         val targetId = state.moveTargetId ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(movingTable = true) }
+            _uiState.update { it.copy(movingTable = true, error = null) }
             when (val result = mesasRepository.moveSessionTable(sessionId, targetId)) {
                 is AppResult.Success -> {
                     _uiState.update {
@@ -344,10 +346,14 @@ class MesasViewModel @Inject constructor(
                     refresh()
                 }
                 is AppResult.Error -> {
+                    // Antes esto solo dejaba un `snackMessage` — invisible porque el propio
+                    // MoveTableDialog (Dialog en su propia Window de Android) se pinta ENCIMA del
+                    // snackbar del shell. El mozo veía "Moviendo…" volver a "Mover" sin explicación
+                    // y el diálogo seguía abierto, pero sin decir por qué falló.
                     _uiState.update {
                         it.copy(
                             movingTable = false,
-                            snackMessage = result.message ?: "Error al mover mesa",
+                            error = result.message ?: "Error al mover mesa",
                         )
                     }
                 }

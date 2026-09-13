@@ -254,6 +254,7 @@ fun MesasScreen(
             loadingFree = state.loadingFreeForMove,
             selectedTargetId = state.moveTargetId,
             submitting = state.movingTable,
+            error = state.error,
             onSelectTarget = viewModel::selectMoveTarget,
             onDismiss = viewModel::dismissMoveDialog,
             onConfirm = viewModel::confirmMoveTable,

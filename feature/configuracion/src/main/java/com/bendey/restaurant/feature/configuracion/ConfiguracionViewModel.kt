@@ -303,7 +303,7 @@ class ConfiguracionViewModel @Inject constructor(
         _uiState.update { it.copy(configForm = it.configForm.copy(ubigeo = distritoId)) }
     }
 
-    fun dismissEditConfig() { _uiState.update { it.copy(configFormOpen = false) } }
+    fun dismissEditConfig() { _uiState.update { it.copy(configFormOpen = false, error = null) } }
     fun updateConfigForm(transform: (CompanyConfigFormInput) -> CompanyConfigFormInput) {
         _uiState.update { it.copy(configForm = transform(it.configForm)) }
     }
@@ -336,7 +336,7 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun dismissEditSunat() { _uiState.update { it.copy(sunatFormOpen = false) } }
+    fun dismissEditSunat() { _uiState.update { it.copy(sunatFormOpen = false, error = null) } }
     fun updateSunatForm(transform: (SunatConfigFormInput) -> SunatConfigFormInput) {
         _uiState.update { it.copy(sunatForm = transform(it.sunatForm)) }
     }
@@ -409,7 +409,7 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun dismissBranchForm() { _uiState.update { it.copy(branchFormOpen = false) } }
+    fun dismissBranchForm() { _uiState.update { it.copy(branchFormOpen = false, error = null) } }
     fun updateBranchForm(transform: (BranchFormInput) -> BranchFormInput) {
         _uiState.update { it.copy(branchForm = transform(it.branchForm)) }
     }
@@ -609,7 +609,7 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    fun dismissSeriesForm() { _uiState.update { it.copy(seriesFormOpen = false) } }
+    fun dismissSeriesForm() { _uiState.update { it.copy(seriesFormOpen = false, error = null) } }
     fun updateSeriesForm(transform: (SeriesFormInput) -> SeriesFormInput) {
         _uiState.update { it.copy(seriesForm = transform(it.seriesForm)) }
     }

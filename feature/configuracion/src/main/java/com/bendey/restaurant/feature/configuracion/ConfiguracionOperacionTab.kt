@@ -161,6 +161,9 @@ fun StaffCreateDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewM
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
         enableContentScroll = true,
+        // Mismo hallazgo que CloseCashDialog/ProveedorFormDialog: un rechazo del backend (PIN
+        // duplicado, email inválido, etc.) se guardaba en `state.error` pero nunca se pintaba acá.
+        validationError = state.error,
     ) {
         StaffCreateFields(state, viewModel)
     }
@@ -178,6 +181,7 @@ fun StaffEditDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewMod
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
         enableContentScroll = true,
+        validationError = state.error,
     ) {
         StaffEditFields(state, viewModel)
     }

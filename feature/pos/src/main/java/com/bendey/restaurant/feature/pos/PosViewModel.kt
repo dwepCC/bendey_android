@@ -23,8 +23,10 @@ import com.bendey.restaurant.core.domain.billing.CheckoutDiscountMode
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentDraft
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
-import com.bendey.restaurant.core.domain.billing.calcPayableTotal
+import com.bendey.restaurant.core.domain.billing.calcPayableTotalWithServiceCharge
+import com.bendey.restaurant.core.domain.billing.calcServiceChargePreview
 import com.bendey.restaurant.core.domain.billing.partitionComandasFromSession
+import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.pos.ComboConfigureState
 import com.bendey.restaurant.core.domain.pos.ProductConfigureState
@@ -236,8 +238,31 @@ data class PosUiState(
     val checkoutDiscountAmount: Double
         get() = calcCheckoutDiscountAmount(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
 
+    /**
+     * Única fuente de verdad del RC en el ViewModel — antes SOLO existía como un `remember` local
+     * en PosScreen (para pintar la línea "RC 5%"), mientras este estado seguía sin saberlo. Con
+     * eso, `checkoutPayableTotal` (usado para precargar el monto de pago y para validar antes de
+     * cobrar) nunca incluía el RC: el cajero veía el total correcto en el hero del diálogo pero el
+     * campo de pago se prellenaba corto, y tenía que sumar el RC a mano — el síntoma reportado.
+     */
+    val checkoutServiceChargeAmount: Double
+        get() = calcServiceChargePreview(
+            total = checkoutRawTotal,
+            discountAmount = checkoutDiscountAmount,
+            rate = serviceChargeRate,
+            enabled = serviceChargeEnabled,
+            taxRatePercent = resolveTaxRatePercent(checkoutMeta?.taxRate),
+        )
+
     val checkoutPayableTotal: Double
-        get() = calcPayableTotal(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
+        get() = calcPayableTotalWithServiceCharge(
+            rawTotal = checkoutRawTotal,
+            mode = checkoutDiscountMode,
+            value = discountNumeric,
+            serviceChargeRate = serviceChargeRate,
+            serviceChargeEnabled = serviceChargeEnabled,
+            taxRatePercent = resolveTaxRatePercent(checkoutMeta?.taxRate),
+        )
 
     val canCheckout: Boolean get() = canChargeOrders && checkoutRawTotal > 0 && !checkoutSubmitting && !sending
     val hasMoreProducts: Boolean get() = products.size < productsTotal

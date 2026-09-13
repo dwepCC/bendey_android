@@ -115,6 +115,22 @@ fun BendeySessionOrderCard(
                         color = BendeyColors.OnSurfaceVariant,
                     )
                 }
+                // La nota de la línea ya viaja en `comanda.notes` desde la API (se ve bien en el
+                // editor de "Editar notas") pero esta card nunca la pintaba — el mozo tenía que
+                // abrir el editor para enterarse de que un plato llevaba una nota. Igual que
+                // comboPlatos: solo ocupa espacio si hay algo que mostrar.
+                val noteText = comanda.notes?.trim().orEmpty()
+                if (noteText.isNotEmpty()) {
+                    Text(
+                        text = "Nota: $noteText",
+                        modifier = Modifier.padding(start = BendeySpacing.md),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
               }
             }
         }

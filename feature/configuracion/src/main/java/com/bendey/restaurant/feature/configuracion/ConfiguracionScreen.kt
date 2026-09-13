@@ -133,6 +133,7 @@ fun ConfiguracionScreen(
             onConfirm = viewModel::confirmDeleteBranch,
             confirmEnabled = !state.actionLoading,
             onDismiss = viewModel::dismissDeleteBranch,
+            destructive = true,
         )
     }
     state.deleteSeriesId?.let {
@@ -144,6 +145,7 @@ fun ConfiguracionScreen(
             onConfirm = viewModel::confirmDeleteSeries,
             confirmEnabled = !state.actionLoading,
             onDismiss = viewModel::dismissDeleteSeries,
+            destructive = true,
         )
     }
 }
@@ -411,6 +413,7 @@ private fun SeriesCard(
         onDismiss = viewModel::dismissEditConfig,
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
+        validationError = state.error,
     ) {
         BendeyTextField(state.configForm.tradeName, { v -> viewModel.updateConfigForm { it.copy(tradeName = v) } }, "Nombre comercial")
         BendeyTextField(state.configForm.address, { v -> viewModel.updateConfigForm { it.copy(address = v) } }, "Dirección", singleLine = false)
@@ -451,6 +454,7 @@ private fun SeriesCard(
         onDismiss = viewModel::dismissEditSunat,
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
+        validationError = state.error,
     ) {
         BendeySimpleSelect(
             options = igvOptions,
@@ -483,6 +487,7 @@ private fun SeriesCard(
         onDismiss = viewModel::dismissPinDialog,
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
+        validationError = state.error,
     ) {
         BendeyTextField(state.pinValue, { v -> viewModel.setPinValue(v.filter { it.isDigit() }.take(6)) }, "Nuevo PIN (4-6 dígitos)")
     }
@@ -517,6 +522,7 @@ private fun SeriesCard(
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
         enableContentScroll = true,
+        validationError = state.error,
     ) {
         BranchFormFields(state, viewModel)
     }
@@ -669,6 +675,7 @@ private fun SeriesCard(
         confirmEnabled = !state.actionLoading,
         loading = state.actionLoading,
         enableContentScroll = true,
+        validationError = state.error,
     ) {
         SeriesFormFields(state, viewModel)
     }

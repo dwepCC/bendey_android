@@ -30,11 +30,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -45,7 +48,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +62,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.components.BendeyBadge
+import com.bendey.restaurant.core.designsystem.components.BendeyBadgeVariant
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyKpiCard
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
@@ -73,9 +80,16 @@ import com.bendey.restaurant.core.domain.cash.CashSessionBrief
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSessionStatus
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
+import com.bendey.restaurant.core.ui.components.BendeyActiveFilter
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
+import com.bendey.restaurant.core.ui.components.BendeyDestructiveButton
+import com.bendey.restaurant.core.ui.components.BendeyOutlinedButton
+import com.bendey.restaurant.core.ui.components.BendeyDateField
+import com.bendey.restaurant.core.ui.components.BendeyFilterSheet
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyListRow
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
@@ -175,6 +189,7 @@ fun CajaScreen(
             form = state.openForm,
             loading = state.actionLoading,
             mandatory = state.session == null,
+            error = state.error,
             onDismiss = viewModel::dismissOpenDialog,
             onConfirm = viewModel::confirmOpenSession,
             onFormChange = viewModel::updateOpenForm,
@@ -185,6 +200,7 @@ fun CajaScreen(
             form = state.movementForm,
             paymentMethods = state.paymentMethods,
             loading = state.actionLoading,
+            error = state.error,
             onDismiss = viewModel::dismissMovementDialog,
             onConfirm = viewModel::confirmMovement,
             onFormChange = viewModel::updateMovementForm,
@@ -195,6 +211,7 @@ fun CajaScreen(
             form = state.paymentMethodForm,
             bankAccounts = state.bankAccounts,
             loading = state.actionLoading,
+            error = state.error,
             onDismiss = viewModel::dismissPaymentMethodDialog,
             onConfirm = viewModel::confirmPaymentMethod,
             onFormChange = viewModel::updatePaymentMethodForm,
@@ -205,6 +222,7 @@ fun CajaScreen(
             form = state.bankAccountForm,
             paymentMethods = state.paymentMethods,
             loading = state.actionLoading,
+            error = state.error,
             onDismiss = viewModel::dismissBankAccountDialog,
             onConfirm = viewModel::confirmBankAccount,
             onFormChange = viewModel::updateBankAccountForm,
@@ -217,6 +235,7 @@ fun CajaScreen(
             form = state.bankMovementForm,
             loading = state.bankMovementsLoading || state.actionLoading,
             currency = currency,
+            error = state.error,
             onDismiss = viewModel::dismissBankMovementsDialog,
             onConfirm = viewModel::confirmBankMovement,
             onFormChange = viewModel::updateBankMovementForm,
@@ -227,6 +246,7 @@ fun CajaScreen(
         values = state.arqueoDraft,
         expectedBalance = state.currentBalance,
         loading = state.actionLoading,
+        error = state.error,
         currency = currency,
         canPrint = state.canPrintArqueo,
         docBusy = state.arqueoDocBusy,
@@ -245,6 +265,7 @@ fun CajaScreen(
             operationalStatus = state.operationalStatus,
             salesSummary = state.closeSummary,
             salesSummaryLoading = state.closeSummaryLoading,
+            error = state.error,
             onDismiss = viewModel::dismissCloseDialog,
             onConfirm = viewModel::requestCloseSession,
             onFormChange = viewModel::updateCloseForm,
@@ -352,6 +373,7 @@ private fun SessionTab(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MovementsTab(
     state: CajaUiState,
@@ -361,6 +383,45 @@ private fun MovementsTab(
     onNavigateToSubscription: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Antes: 4 filas de BendeyTextField (8 campos) SIEMPRE visibles antes de cualquier búsqueda —
+    // la auditoría de 2026 midió esto consumiendo ~51% de la pantalla, más que la propia lista de
+    // movimientos. Es un formulario de consulta de reporte (se aplica recién al tocar "Buscar",
+    // no en vivo), así que el patrón correcto no es un buscador con chips en vivo sino el mismo
+    // "Más filtros" colapsado por defecto — el sheet reemplaza directamente al botón "Buscar".
+    var filterSheetOpen by remember { mutableStateOf(false) }
+    val filter = state.movementsFilter
+    val activeFilters = buildList {
+        if (filter.dateFrom.isNotBlank() || filter.dateTo.isNotBlank()) {
+            add(BendeyActiveFilter("dates", "Fecha: ${filter.dateFrom.ifBlank { "…" }} → ${filter.dateTo.ifBlank { "…" }}") {
+                viewModel.updateMovementsFilter { it.copy(dateFrom = "", dateTo = "") }
+                viewModel.searchMovementsReport()
+            })
+        }
+        filter.sessionId?.let { id ->
+            add(BendeyActiveFilter("session", "Sesión #$id") {
+                viewModel.updateMovementsFilter { it.copy(sessionId = null) }
+                viewModel.searchMovementsReport()
+            })
+        }
+        if (filter.paymentMethod.isNotBlank()) {
+            add(BendeyActiveFilter("method", "Método: ${filter.paymentMethod}") {
+                viewModel.updateMovementsFilter { it.copy(paymentMethod = "") }
+                viewModel.searchMovementsReport()
+            })
+        }
+        filter.userId?.let { id ->
+            add(BendeyActiveFilter("user", "Usuario #$id") {
+                viewModel.updateMovementsFilter { it.copy(userId = null) }
+                viewModel.searchMovementsReport()
+            })
+        }
+        if (filter.type.isNotBlank()) {
+            add(BendeyActiveFilter("type", "Tipo: ${filter.type}") {
+                viewModel.updateMovementsFilter { it.copy(type = "") }
+                viewModel.searchMovementsReport()
+            })
+        }
+    }
     BendeyLazyColumn(state = rememberLazyListState(),
         contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.md, top = BendeySpacing.md),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
@@ -375,71 +436,58 @@ private fun MovementsTab(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                BendeyTextField(
-                    value = state.movementsFilter.dateFrom,
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(dateFrom = v) } },
-                    label = "Desde",
-                    modifier = Modifier.weight(1f),
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BendeyFilterChip(
+                    selected = activeFilters.isNotEmpty(),
+                    onClick = { filterSheetOpen = true },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
+                            Icon(Icons.Default.Tune, contentDescription = null)
+                            Text("Filtros del reporte", style = MaterialTheme.typography.labelLarge)
+                            if (activeFilters.isNotEmpty()) {
+                                BendeyBadge(
+                                    text = activeFilters.size.toString(),
+                                    color = BendeyColors.OnPrimary,
+                                    containerColor = BendeyColors.Primary,
+                                    variant = BendeyBadgeVariant.Filled,
+                                )
+                            }
+                        }
+                    },
                 )
-                BendeyTextField(
-                    value = state.movementsFilter.dateTo,
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(dateTo = v) } },
-                    label = "Hasta",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                BendeyTextField(
-                    value = state.movementsFilter.sessionId?.toString().orEmpty(),
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(sessionId = v.trim().toIntOrNull()) } },
-                    label = "Sesión #",
-                    modifier = Modifier.weight(1f),
-                )
-                BendeyTextField(
-                    value = state.movementsFilter.paymentMethod,
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(paymentMethod = v) } },
-                    label = "Método pago",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                BendeyTextField(
-                    value = state.movementsFilter.userId?.toString().orEmpty(),
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(userId = v.trim().toIntOrNull()) } },
-                    label = "Usuario #",
-                    modifier = Modifier.weight(1f),
-                )
-                BendeyTextField(
-                    value = state.movementsFilter.type,
-                    onValueChange = { v -> viewModel.updateMovementsFilter { it.copy(type = v) } },
-                    label = "Tipo (income/expense)",
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                BendeyPrimaryButton("Buscar", viewModel::searchMovementsReport, Modifier.weight(1f))
                 if (state.allowsReportExport) {
-                    OutlinedButton(
+                    BendeyCompactIconButton(
                         onClick = { viewModel.exportMovementsReport(context) },
                         enabled = !state.movementsExportBusy,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(if (state.movementsExportBusy) "Exportando…" else "Exportar Excel")
-                    }
+                        icon = Icons.Default.Download,
+                        contentDescription = if (state.movementsExportBusy) "Exportando…" else "Exportar Excel",
+                    )
                 } else {
-                    OutlinedButton(
+                    BendeyCompactIconButton(
                         onClick = onNavigateToSubscription,
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(Icons.Default.Lock, contentDescription = null)
-                        Text("Excel (Pro)", modifier = Modifier.padding(start = BendeySpacing.xs))
+                        icon = Icons.Default.Lock,
+                        contentDescription = "Excel (Pro)",
+                    )
+                }
+            }
+        }
+        if (activeFilters.isNotEmpty()) {
+            item {
+                BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    activeFilters.forEach { active ->
+                        BendeyFilterChip(
+                            selected = true,
+                            onClick = active.onRemove,
+                            label = {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
+                                    Text(active.label, style = MaterialTheme.typography.labelLarge)
+                                    Icon(Icons.Default.Close, contentDescription = "Quitar filtro ${active.label}")
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -563,6 +611,76 @@ private fun MovementsTab(
                         Text(currency.format(row.amount), fontWeight = FontWeight.Bold)
                     }
                 }
+            }
+        }
+    }
+    if (filterSheetOpen) {
+        var dateFromDraft by remember(filter.dateFrom) { mutableStateOf(filter.dateFrom) }
+        var dateToDraft by remember(filter.dateTo) { mutableStateOf(filter.dateTo) }
+        var sessionIdDraft by remember(filter.sessionId) { mutableStateOf(filter.sessionId?.toString().orEmpty()) }
+        var paymentMethodDraft by remember(filter.paymentMethod) { mutableStateOf(filter.paymentMethod) }
+        var userIdDraft by remember(filter.userId) { mutableStateOf(filter.userId?.toString().orEmpty()) }
+        var typeDraft by remember(filter.type) { mutableStateOf(filter.type) }
+        BendeyFilterSheet(
+            onDismissRequest = { filterSheetOpen = false },
+            onApply = {
+                viewModel.updateMovementsFilter {
+                    it.copy(
+                        dateFrom = dateFromDraft.trim(),
+                        dateTo = dateToDraft.trim(),
+                        sessionId = sessionIdDraft.trim().toIntOrNull(),
+                        paymentMethod = paymentMethodDraft.trim(),
+                        userId = userIdDraft.trim().toIntOrNull(),
+                        type = typeDraft.trim(),
+                    )
+                }
+                viewModel.searchMovementsReport()
+            },
+            title = "Filtros del reporte",
+            applyText = "Buscar",
+            onClear = if (activeFilters.isNotEmpty()) {
+                {
+                    viewModel.updateMovementsFilter {
+                        it.copy(dateFrom = "", dateTo = "", sessionId = null, paymentMethod = "", userId = null, type = "")
+                    }
+                    viewModel.searchMovementsReport()
+                    filterSheetOpen = false
+                }
+            } else {
+                null
+            },
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeyDateField(value = dateFromDraft, onValueChange = { dateFromDraft = it }, label = "Desde", modifier = Modifier.weight(1f))
+                BendeyDateField(value = dateToDraft, onValueChange = { dateToDraft = it }, label = "Hasta", modifier = Modifier.weight(1f))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeyTextField(
+                    value = sessionIdDraft,
+                    onValueChange = { sessionIdDraft = it },
+                    label = "Sesión #",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = paymentMethodDraft,
+                    onValueChange = { paymentMethodDraft = it },
+                    label = "Método pago",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeyTextField(
+                    value = userIdDraft,
+                    onValueChange = { userIdDraft = it },
+                    label = "Usuario #",
+                    modifier = Modifier.weight(1f),
+                )
+                BendeyTextField(
+                    value = typeDraft,
+                    onValueChange = { typeDraft = it },
+                    label = "Tipo (income/expense)",
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -1156,7 +1274,7 @@ private fun ClosedCashCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 private fun MovementCard(movement: CashMovement, currency: NumberFormat) {
     val isIncome = movement.type == CashMovementType.INCOME
     val accent = if (isIncome) BendeyColors.Success else BendeyColors.Error
-    BendeyManagementCard {
+    BendeyListRow {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1184,6 +1302,7 @@ private fun OpenCashDialog(
     form: OpenCashForm,
     loading: Boolean,
     mandatory: Boolean,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((OpenCashForm) -> OpenCashForm) -> Unit,
@@ -1196,6 +1315,10 @@ private fun OpenCashDialog(
                 Text("Monto inicial en efectivo para iniciar el turno.")
                 BendeyTextField(form.openingBalance, { v -> onFormChange { it.copy(openingBalance = v) } }, "Monto de apertura (S/)")
                 BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas (opcional)", singleLine = false)
+                // Mismo hallazgo que en CloseCashDialog: `error` vivía en el uiState pero nunca
+                // llegaba a este diálogo — un rechazo del backend (ej. "ya hay una sesión abierta")
+                // quedaba invisible detrás del propio modal.
+                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Abriendo…" else "Abrir caja", onConfirm, enabled = !loading) },
@@ -1212,6 +1335,7 @@ private fun MovementDialog(
     form: MovementForm,
     paymentMethods: List<CashPaymentMethod>,
     loading: Boolean,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((MovementForm) -> MovementForm) -> Unit,
@@ -1251,6 +1375,7 @@ private fun MovementDialog(
                 )
                 BendeyTextField(form.reference, { v -> onFormChange { it.copy(reference = v) } }, "Referencia")
                 BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas", singleLine = false)
+                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
@@ -1280,7 +1405,10 @@ private fun ConfigTab(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Cuentas bancarias", fontWeight = FontWeight.Bold)
                 if (state.canManageCashSettings) {
-                    BendeyPrimaryButton("+ Cuenta", viewModel::showCreateBankAccount)
+                    // fillWidth=false: por defecto BendeyPrimaryButton ocupa todo el ancho, y
+                    // acá vive junto a un título en una fila — sin esto se comía casi media
+                    // pantalla para un botón de "+ Cuenta".
+                    BendeyPrimaryButton("+ Cuenta", viewModel::showCreateBankAccount, fillWidth = false)
                 }
             }
         }
@@ -1300,7 +1428,7 @@ private fun ConfigTab(
             Row(Modifier.fillMaxWidth().padding(top = BendeySpacing.xs), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Métodos de pago", fontWeight = FontWeight.Bold)
                 if (state.canManageCashSettings) {
-                    BendeyPrimaryButton("+ Método", viewModel::showCreatePaymentMethod)
+                    BendeyPrimaryButton("+ Método", viewModel::showCreatePaymentMethod, fillWidth = false)
                 }
             }
         }
@@ -1342,8 +1470,8 @@ private fun BankAccountCard(
             Text("Saldo: ${currency.format(acc.balance)}", style = MaterialTheme.typography.bodySmall)
             if (canManage) {
                 Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.xs)) {
-                    OutlinedButton(onClick = onEdit) { Text("Editar") }
-                    OutlinedButton(onClick = onMovements) { Text("Movimientos") }
+                    BendeyOutlinedButton(text = "Editar", onClick = onEdit)
+                    BendeyOutlinedButton(text = "Movimientos", onClick = onMovements)
                 }
             }
         }
@@ -1376,8 +1504,11 @@ private fun PaymentMethodCard(
             Text("Destino: $destLabel", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
             if (canManage) {
                 Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = BendeySpacing.xs)) {
-                    OutlinedButton(onClick = onEdit) { Text("Editar") }
-                    OutlinedButton(onClick = onDelete) { Text("Eliminar") }
+                    // Antes: dos OutlinedButton idénticos — "Eliminar" se veía exactamente igual
+                    // a "Editar", sin ninguna señal de que es una acción irreversible (hallazgo
+                    // explícito de la auditoría 2026 en esta misma tarjeta).
+                    BendeyOutlinedButton(text = "Editar", onClick = onEdit)
+                    BendeyDestructiveButton(text = "Eliminar", onClick = onDelete, fillWidth = false)
                 }
             }
         }
@@ -1389,6 +1520,7 @@ private fun PaymentMethodDialog(
     form: PaymentMethodForm,
     bankAccounts: List<CashBankAccount>,
     loading: Boolean,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((PaymentMethodForm) -> PaymentMethodForm) -> Unit,
@@ -1397,7 +1529,7 @@ private fun PaymentMethodDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (form.id != null) "Editar método" else "Nuevo método de pago") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre")
                 BendeyTextField(form.code, { v -> onFormChange { it.copy(code = v) } }, "Código")
                 Text("Destino", style = MaterialTheme.typography.labelMedium)
@@ -1431,6 +1563,7 @@ private fun PaymentMethodDialog(
                         text = if (form.active) "Activo" else "Inactivo",
                     )
                 }
+                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
@@ -1443,6 +1576,7 @@ private fun BankAccountDialog(
     form: BankAccountForm,
     paymentMethods: List<CashPaymentMethod>,
     loading: Boolean,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((BankAccountForm) -> BankAccountForm) -> Unit,
@@ -1451,7 +1585,7 @@ private fun BankAccountDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (form.id != null) "Editar cuenta" else "Nueva cuenta bancaria") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre")
                 BendeyTextField(form.bankName, { v -> onFormChange { it.copy(bankName = v) } }, "Banco")
                 BendeyTextField(form.accountNumber, { v -> onFormChange { it.copy(accountNumber = v) } }, "Número de cuenta")
@@ -1477,6 +1611,7 @@ private fun BankAccountDialog(
                         text = if (form.active) "Activa" else "Inactiva",
                     )
                 }
+                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Guardar", onConfirm, enabled = !loading) },
@@ -1491,6 +1626,7 @@ private fun BankMovementsDialog(
     form: BankMovementForm,
     loading: Boolean,
     currency: NumberFormat,
+    error: String? = null,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onFormChange: ((BankMovementForm) -> BankMovementForm) -> Unit,
@@ -1537,6 +1673,7 @@ private fun BankMovementsDialog(
                         }
                     }
                 }
+                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { BendeyPrimaryButton(if (loading) "Guardando…" else "Registrar", onConfirm, enabled = !loading) },

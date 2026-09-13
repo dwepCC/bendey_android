@@ -35,6 +35,7 @@ fun MoveTableDialog(
     loadingFree: Boolean,
     selectedTargetId: Int?,
     submitting: Boolean,
+    error: String? = null,
     onSelectTarget: (Int) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -49,6 +50,9 @@ fun MoveTableDialog(
         confirmText = if (submitting) "Moviendo…" else "Mover",
         confirmEnabled = selectedTargetId != null && !submitting && !loadingFree,
         loading = submitting,
+        // Antes el rechazo del backend (mesa destino ya no libre, etc.) solo llegaba a un
+        // `snackMessage` — invisible detrás de este mismo Dialog.
+        validationError = error,
         onConfirm = onConfirm,
         onDismiss = {
             if (!submitting) onDismiss()

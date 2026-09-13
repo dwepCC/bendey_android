@@ -29,7 +29,8 @@ import com.bendey.restaurant.core.domain.billing.sumComandasPayableTotal
 import com.bendey.restaurant.core.domain.billing.TaxConfig
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
 import com.bendey.restaurant.core.domain.billing.calcCheckoutDiscountAmount
-import com.bendey.restaurant.core.domain.billing.calcPayableTotal
+import com.bendey.restaurant.core.domain.billing.calcPayableTotalWithServiceCharge
+import com.bendey.restaurant.core.domain.billing.calcServiceChargePreview
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.billing.ContactBrief
@@ -218,8 +219,29 @@ data class MesaUiState(
     val checkoutDiscountAmount: Double
         get() = calcCheckoutDiscountAmount(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
 
+    /**
+     * Única fuente de verdad del RC en el ViewModel — ver la misma nota en `PosUiState`. Antes
+     * MesaScreen calculaba esto por su cuenta (solo para pintar "RC 5%") mientras
+     * `checkoutPayableTotal` —el que de verdad prellena el pago y valida el cobro— lo ignoraba.
+     */
+    val checkoutServiceChargeAmount: Double
+        get() = calcServiceChargePreview(
+            total = checkoutRawTotal,
+            discountAmount = checkoutDiscountAmount,
+            rate = serviceChargeRate,
+            enabled = serviceChargeEnabled,
+            taxRatePercent = resolveTaxRatePercent(checkoutMeta?.taxRate),
+        )
+
     val checkoutPayableTotal: Double
-        get() = calcPayableTotal(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
+        get() = calcPayableTotalWithServiceCharge(
+            rawTotal = checkoutRawTotal,
+            mode = checkoutDiscountMode,
+            value = discountNumeric,
+            serviceChargeRate = serviceChargeRate,
+            serviceChargeEnabled = serviceChargeEnabled,
+            taxRatePercent = resolveTaxRatePercent(checkoutMeta?.taxRate),
+        )
 
     val sessionOrders: List<SessionOrderSummary> get() = session?.orders.orEmpty()
     val hasSentComandas: Boolean get() = sessionOrders.any { it.comandas.isNotEmpty() }
