@@ -20,7 +20,11 @@ class ReceiptTicketLayoutServiceChargeTest {
 
     private val money: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
 
-    private fun boleta(serviceChargeAmount: Double = 0.0, total: Double = 16.0): SalePrintData = SalePrintData(
+    private fun boleta(
+        serviceChargeAmount: Double = 0.0,
+        serviceChargeRate: Double = 0.0,
+        total: Double = 16.0,
+    ): SalePrintData = SalePrintData(
         docType = "BOLETA",
         sunatCode = "03",
         series = "B001",
@@ -40,6 +44,7 @@ class ReceiptTicketLayoutServiceChargeTest {
         taxAmount = 2.44,
         total = total,
         serviceChargeAmount = serviceChargeAmount,
+        serviceChargeRate = serviceChargeRate,
         currency = "PEN",
         payments = listOf(SalePrintPayment(method = "cash", amount = total)),
         legendText = null,
@@ -52,12 +57,22 @@ class ReceiptTicketLayoutServiceChargeTest {
         assertFalse(lines.any { it.contains("Recargo") })
     }
 
-    // RC ON: subtotal 100, IGV 18, RC 5, total 123 — el ticket debe mostrar exactamente esos valores.
+    // RC ON sin tasa conocida (comprobante viejo): mantiene el label genérico de siempre.
     @Test
-    fun `imprime el Recargo al Consumo cuando la venta lo trae`() {
+    fun `imprime el Recargo al Consumo generico cuando no se conoce la tasa`() {
         val data = boleta().copy(subtotal = 100.0, taxAmount = 18.0, serviceChargeAmount = 5.0, total = 123.0)
         val lines = ReceiptTicketLayout.build(data, money).map { it.text }
         assertTrue(lines.any { it.contains("Recargo Consumo") && it.contains(money.format(5.0)) })
         assertTrue(lines.any { it.contains("TOTAL A PAGAR") && it.contains(money.format(123.0)) })
+    }
+
+    // RC ON con tasa congelada: el label corto reemplaza al genérico.
+    @Test
+    fun `imprime RC con el porcentaje cuando se conoce la tasa`() {
+        val data = boleta(serviceChargeAmount = 5.0, serviceChargeRate = 5.0, total = 123.0)
+            .copy(subtotal = 100.0, taxAmount = 18.0)
+        val lines = ReceiptTicketLayout.build(data, money).map { it.text }
+        assertTrue(lines.any { it.contains("RC 5%") && it.contains(money.format(5.0)) })
+        assertFalse(lines.any { it.contains("Recargo Consumo") })
     }
 }

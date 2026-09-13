@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
+import com.bendey.restaurant.core.data.receipt.formatServiceChargeLabel
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -95,6 +96,7 @@ import com.bendey.restaurant.core.domain.sales.isConverted
 import com.bendey.restaurant.core.domain.sales.notaVentaListStatusLabel
 import com.bendey.restaurant.core.domain.sales.saleStatusDisplayLabel
 import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
+import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
@@ -312,10 +314,13 @@ fun VentasScreen(
             sunatLimitWarning = sunatLimitWarning,
             loading = state.emitSubmitting,
             error = state.error,
+            saleDetailEnabled = state.emitSaleDetailEnabled,
+            consumptionMode = state.emitConsumptionMode,
             onDocKindChange = viewModel::setEmitDocKind,
             onSeriesChange = viewModel::setEmitSeriesId,
             onIssueDateChange = viewModel::setEmitIssueDate,
             onContactChange = viewModel::setEmitContactId,
+            onConsumptionModeChange = viewModel::setEmitConsumptionMode,
             onAddClient = viewModel::openEmitClientForm,
             onDismiss = viewModel::dismissEmitDialog,
             onConfirm = viewModel::confirmEmitElectronic,
@@ -811,7 +816,7 @@ private fun SaleDetailContent(
                 // Se omite si es 0 (sucursal sin RC), así el detalle no cambia para quien no lo activó.
                 if (detail.serviceChargeAmount > 0) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Recargo al Consumo")
+                        Text(formatServiceChargeLabel(detail.serviceChargeRate, fallback = "Recargo al Consumo"))
                         Text(currency.format(detail.serviceChargeAmount))
                     }
                 }
@@ -973,10 +978,13 @@ private fun EmitElectronicDialog(
     sunatLimitWarning: String?,
     loading: Boolean,
     error: String?,
+    saleDetailEnabled: Boolean,
+    consumptionMode: Boolean,
     onDocKindChange: (String) -> Unit,
     onSeriesChange: (Int) -> Unit,
     onIssueDateChange: (String) -> Unit,
     onContactChange: (Int?) -> Unit,
+    onConsumptionModeChange: (Boolean) -> Unit,
     onAddClient: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -1053,6 +1061,20 @@ private fun EmitElectronicDialog(
                         DropdownMenuItem(
                             text = { Text("Factura (01)") },
                             onClick = { onDocKindChange("01"); kindExpanded = false },
+                        )
+                    }
+                }
+                if (saleDetailEnabled) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        CheckoutDetailModeControl(
+                            enabled = consumptionMode,
+                            onEnabledChange = onConsumptionModeChange,
+                            showOption = true,
+                        )
+                        Text(
+                            "Prellenado según el modo actual de la nota; puede cambiarlo antes de emitir.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
                         )
                     }
                 }

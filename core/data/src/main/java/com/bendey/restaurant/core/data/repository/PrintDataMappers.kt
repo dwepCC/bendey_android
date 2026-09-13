@@ -41,6 +41,7 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         taxAmount = taxAmount,
         total = total,
         serviceChargeAmount = serviceChargeAmount,
+        serviceChargeRate = serviceChargeRate,
         currency = currency,
         payments = payments.map { SalePrintPayment(method = it.method, amount = it.amount) },
         amountPaid = amountPaid,

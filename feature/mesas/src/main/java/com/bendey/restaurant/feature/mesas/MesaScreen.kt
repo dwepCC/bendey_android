@@ -81,6 +81,7 @@ import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.billing.TaxConfig
 import com.bendey.restaurant.core.domain.billing.isComandaBillable
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
+import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutSplitBillControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
 import com.bendey.restaurant.core.ui.checkout.ClientQuickAddDialog
@@ -358,17 +359,24 @@ fun MesaScreen(
                 isNRUS = state.checkoutMeta?.isNRUS ?: false,
                 hasAmazonBenefit = state.checkoutMeta?.hasAmazonBenefit ?: false,
             )
-            CheckoutSplitBillControl(
-                enabled = state.splitBillEnabled,
-                onEnabledChange = viewModel::setSplitBillEnabled,
-                showOption = state.showSplitBillOption,
-                pending = state.pendingComandaRows,
-                billed = state.billedComandaRows,
-                selectedIds = state.selectedComandaIds,
-                onSelectionChange = viewModel::setSelectedComandaIds,
-                taxRatePercent = taxRate,
-                taxConfig = taxConfig,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                CheckoutSplitBillControl(
+                    enabled = state.splitBillEnabled,
+                    onEnabledChange = viewModel::setSplitBillEnabled,
+                    showOption = state.showSplitBillOption,
+                    pending = state.pendingComandaRows,
+                    billed = state.billedComandaRows,
+                    selectedIds = state.selectedComandaIds,
+                    onSelectionChange = viewModel::setSelectedComandaIds,
+                    taxRatePercent = taxRate,
+                    taxConfig = taxConfig,
+                )
+                CheckoutDetailModeControl(
+                    enabled = state.consumptionMode,
+                    onEnabledChange = viewModel::setConsumptionMode,
+                    showOption = state.saleDetailEnabled,
+                )
+            }
         },
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,

@@ -14,6 +14,8 @@ data class BillSessionRequestDto(
     @SerialName("comanda_ids") val comandaIds: List<Int>,
     @SerialName("discount_amount") val discountAmount: Double? = null,
     val payments: List<BillPaymentDto>,
+    // "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal.
+    @SerialName("detail_mode") val detailMode: String? = null,
 )
 
 @Serializable
@@ -27,6 +29,8 @@ data class BillQuickSaleRequestDto(
     val notes: String? = null,
     val items: List<OrderItemInputDto>,
     val payments: List<BillPaymentDto>,
+    // "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal.
+    @SerialName("detail_mode") val detailMode: String? = null,
 )
 
 @Serializable
@@ -68,6 +72,8 @@ data class PrintDataDto(
     val total: Double = 0.0,
     /** Recargo al Consumo YA CALCULADO por el backend — nunca se recalcula en el cliente. */
     @SerialName("service_charge_amount") val serviceChargeAmount: Double = 0.0,
+    /** Porcentaje de RC YA CONGELADO (ver serviceChargeAmount) — solo para el label ("RC 5%"). */
+    @SerialName("service_charge_rate") val serviceChargeRate: Double = 0.0,
     val payments: List<PrintPaymentDto> = emptyList(),
     @SerialName("seller_name") val sellerName: String? = null,
     @SerialName("qr_data") val qrData: String = "",
@@ -227,6 +233,9 @@ data class IssueElectronicRequestDto(
     @SerialName("series_id") val seriesId: Int,
     @SerialName("issue_date") val issueDate: String? = null,
     @SerialName("contact_id") val contactId: Int? = null,
+    // "detailed" | "consumption" — elección del usuario, no el modo de la nota (solo sugerencia
+    // prellenada en la UI). El backend revalida contra la sucursal igual que en una venta nueva.
+    @SerialName("detail_mode") val detailMode: String? = null,
 )
 
 @Serializable
@@ -267,6 +276,8 @@ data class SaleDto(
     val total: Double = 0.0,
     /** Recargo al Consumo YA CALCULADO por el backend — nunca se recalcula en el cliente. */
     @SerialName("service_charge_amount") val serviceChargeAmount: Double = 0.0,
+    /** Porcentaje de RC YA CONGELADO (ver serviceChargeAmount) — solo para el label ("RC 5%"). */
+    @SerialName("service_charge_rate") val serviceChargeRate: Double = 0.0,
     val currency: String = "PEN",
     val status: String = "",
     @SerialName("billing_status") val billingStatus: String? = null,
@@ -286,6 +297,10 @@ data class SaleDto(
     val refundable: Boolean = false,
     @SerialName("refundable_amount") val refundableAmount: Double = 0.0,
     @SerialName("refunded_amount") val refundedAmount: Double = 0.0,
+    // "detailed" (default) | "consumption" — como se representa esta venta en el comprobante.
+    // NUNCA cambia productos, stock, costos, caja ni Ledger. Ver internal/saledetail (backend).
+    @SerialName("detail_mode") val detailMode: String? = null,
+    @SerialName("detail_mode_description") val detailModeDescription: String? = null,
 )
 
 @Serializable

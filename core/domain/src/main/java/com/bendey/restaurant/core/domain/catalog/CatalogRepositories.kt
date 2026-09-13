@@ -59,6 +59,10 @@ interface SettingsRepository {
     suspend fun createBranch(input: BranchFormInput): AppResult<Unit>
     suspend fun updateBranch(id: Int, input: BranchFormInput): AppResult<Unit>
     suspend fun deleteBranch(id: Int): AppResult<Unit>
+    suspend fun getSaleDetailConfig(branchId: Int): AppResult<SaleDetailConfig>
+    suspend fun updateSaleDetailConfig(branchId: Int, enabled: Boolean, defaultText: String): AppResult<SaleDetailConfig>
+    suspend fun getServiceChargeConfig(branchId: Int): AppResult<ServiceChargeConfig>
+    suspend fun updateServiceChargeConfig(branchId: Int, enabled: Boolean, rate: Double): AppResult<ServiceChargeConfig>
     suspend fun listSeries(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.billing.DocumentSeries>>
     suspend fun createSeries(input: SeriesFormInput): AppResult<Unit>
     suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit>

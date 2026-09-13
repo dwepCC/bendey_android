@@ -110,6 +110,10 @@ data class VentasUiState(
     val emitContactId: Int? = null,
     val emitCheckoutMeta: CheckoutMeta? = null,
     val emitMetaLoading: Boolean = false,
+    // "Venta por consumo" al convertir: checkbox solo si la sucursal lo tiene habilitado. Se
+    // prellena con el modo ACTUAL de la nota (sugerencia editable) — ver §6/§7 del diseño.
+    val emitSaleDetailEnabled: Boolean = false,
+    val emitConsumptionMode: Boolean = false,
     // Alta rápida de cliente desde el diálogo de conversión (sin salir de la vista).
     val emitClientFormOpen: Boolean = false,
     val emitClientForm: ContactFormInput = ContactFormInput(),
@@ -606,12 +610,20 @@ class VentasViewModel @Inject constructor(
                 emitContactId = null,
                 emitCheckoutMeta = null,
                 emitMetaLoading = true,
+                emitSaleDetailEnabled = false,
+                emitConsumptionMode = detail.detailMode == "consumption",
                 error = null,
             )
         }
         viewModelScope.launch {
             val branchId = detail.branchId
                 ?: sessionStore.userSessionFlow.first()?.activeBranch?.id
+            if (branchId != null) {
+                when (val cfg = settingsRepository.getSaleDetailConfig(branchId)) {
+                    is AppResult.Success -> _uiState.update { it.copy(emitSaleDetailEnabled = cfg.data.enabled) }
+                    else -> _uiState.update { it.copy(emitSaleDetailEnabled = false) }
+                }
+            }
             val meta = if (branchId != null) {
                 when (val result = billingRepository.loadCheckoutMeta(branchId)) {
                     is AppResult.Success -> result.data
@@ -804,6 +816,10 @@ class VentasViewModel @Inject constructor(
         _uiState.update { it.copy(emitIssueDate = date) }
     }
 
+    fun setEmitConsumptionMode(enabled: Boolean) {
+        _uiState.update { it.copy(emitConsumptionMode = enabled) }
+    }
+
     fun confirmEmitElectronic() {
         val state = _uiState.value
         val detail = state.detail ?: return
@@ -849,6 +865,7 @@ class VentasViewModel @Inject constructor(
                     seriesId = seriesId,
                     issueDate = state.emitIssueDate,
                     contactId = state.emitContactId?.takeIf { it > 0 },
+                    detailMode = if (state.emitSaleDetailEnabled && state.emitConsumptionMode) "consumption" else "detailed",
                 )
             ) {
                 is AppResult.Success -> {

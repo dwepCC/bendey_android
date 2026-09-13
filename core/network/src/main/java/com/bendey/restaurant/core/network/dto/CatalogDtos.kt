@@ -331,6 +331,53 @@ data class RestaurantSettingsDto(
     @SerialName("has_deletion_pin") val hasDeletionPin: Boolean = false,
 )
 
+/**
+ * "Venta por consumo" — configuracion de UNA sucursal. Se puede administrar desde cualquier
+ * frontend (ERP o Bendey Resto): no todos los restaurantes usan el ERP. Habilitarla NO obliga a
+ * que las ventas salgan agrupadas — solo permite elegirlo al vender; el backend revalida siempre
+ * contra esta misma configuracion al crear la venta.
+ */
+@Serializable
+data class SaleDetailConfigDto(
+    @SerialName("branch_id") val branchId: Int = 0,
+    val enabled: Boolean = false,
+    @SerialName("default_text") val defaultText: String = "Por consumo",
+)
+
+@Serializable
+data class SaleDetailConfigResponseDto(
+    val data: SaleDetailConfigDto? = null,
+)
+
+@Serializable
+data class SaleDetailConfigUpdateRequestDto(
+    val enabled: Boolean,
+    @SerialName("default_text") val defaultText: String,
+)
+
+/**
+ * Recargo al Consumo (RC) — configuracion de UNA sucursal. Mismo criterio que arriba:
+ * administrable desde cualquier frontend, el backend valida el rango (0-13%) y es quien realmente
+ * aplica el RC al facturar.
+ */
+@Serializable
+data class ServiceChargeConfigDto(
+    @SerialName("branch_id") val branchId: Int = 0,
+    val enabled: Boolean = false,
+    val rate: Double = 0.0,
+)
+
+@Serializable
+data class ServiceChargeConfigResponseDto(
+    val data: ServiceChargeConfigDto? = null,
+)
+
+@Serializable
+data class ServiceChargeUpdateRequestDto(
+    val enabled: Boolean,
+    val rate: Double,
+)
+
 @Serializable
 data class RestaurantSettingsUpdateRequestDto(
     @SerialName("deletion_pin") val deletionPin: String,

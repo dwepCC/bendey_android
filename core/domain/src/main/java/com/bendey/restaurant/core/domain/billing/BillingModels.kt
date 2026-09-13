@@ -86,6 +86,8 @@ data class BillSessionInput(
     val comandaIds: List<Int>,
     val discountAmount: Double? = null,
     val payments: List<CheckoutPaymentLine>,
+    /** "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal. */
+    val detailMode: String? = null,
 )
 
 data class BillSessionResult(
@@ -136,6 +138,8 @@ data class SalePrintData(
      * para desglosarlo en pantalla/ticket.
      */
     val serviceChargeAmount: Double = 0.0,
+    /** Porcentaje de RC YA CONGELADO (ver serviceChargeAmount) — solo para el label ("RC 5%"). */
+    val serviceChargeRate: Double = 0.0,
     val currency: String,
     val payments: List<SalePrintPayment>,
     /** Solo con valor cuando hubo vuelto: efectivo entregado y cambio devuelto. */
@@ -182,6 +186,8 @@ data class BillQuickSaleInput(
     val notes: String? = null,
     val items: List<com.bendey.restaurant.core.domain.restaurant.OrderItemInput>,
     val payments: List<CheckoutPaymentLine>,
+    /** "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal. */
+    val detailMode: String? = null,
 )
 
 interface BillingRepository {

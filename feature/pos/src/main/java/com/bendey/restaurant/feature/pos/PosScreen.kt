@@ -87,6 +87,7 @@ import com.bendey.restaurant.core.domain.restaurant.PosProduct
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.billing.lockedCheckoutSeries
+import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
 import com.bendey.restaurant.core.ui.checkout.CheckoutDialog
 import com.bendey.restaurant.core.ui.checkout.ClientQuickAddDialog
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
@@ -489,6 +490,13 @@ fun PosScreen(
         onDiscountModeChange = viewModel::setCheckoutDiscountMode,
         onDiscountValueChange = viewModel::setCheckoutDiscountValue,
         onPaymentsChange = viewModel::setCheckoutPayments,
+        extraBeforePayments = {
+            CheckoutDetailModeControl(
+                enabled = state.consumptionMode,
+                onEnabledChange = viewModel::setConsumptionMode,
+                showOption = state.saleDetailEnabled,
+            )
+        },
         onConfirm = viewModel::confirmCheckout,
     )
 

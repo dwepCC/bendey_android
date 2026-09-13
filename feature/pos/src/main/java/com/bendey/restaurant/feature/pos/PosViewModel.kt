@@ -192,6 +192,10 @@ data class PosUiState(
     val allowCheckoutDiscount: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
     val checkoutPrintNote: String? = null,
+    // "Venta por consumo": el checkbox solo aparece si la sucursal lo tiene habilitado. El
+    // backend igual revalida siempre — este ViewModel no decide nada por su cuenta.
+    val saleDetailEnabled: Boolean = false,
+    val consumptionMode: Boolean = false,
     val receiptHasPrinter: Boolean = false,
     val receiptBusy: String? = null,
     val error: String? = null,
@@ -1158,6 +1162,10 @@ class PosViewModel @Inject constructor(
         _uiState.update { it.copy(checkoutContactId = contactId) }
     }
 
+    fun setConsumptionMode(enabled: Boolean) {
+        _uiState.update { it.copy(consumptionMode = enabled) }
+    }
+
     /** Abre el alta rápida de cliente — igual que el botón "Nuevo" en Bendey Resto Tauri. */
     fun openClientQuickAdd() {
         _uiState.update {
@@ -1398,6 +1406,7 @@ class PosViewModel @Inject constructor(
             } else {
                 null
             }
+            val detailMode = if (state.saleDetailEnabled && state.consumptionMode) "consumption" else "detailed"
 
             val result = if (state.isDirectSale) {
                 if (state.cart.isEmpty()) {
@@ -1414,6 +1423,7 @@ class PosViewModel @Inject constructor(
                         notes = "Venta directa",
                         items = state.cart.map { it.toOrderItemInput() },
                         payments = paymentLines,
+                        detailMode = detailMode,
                     ),
                 )
             } else {
@@ -1448,6 +1458,7 @@ class PosViewModel @Inject constructor(
                         comandaIds = comandaIds,
                         discountAmount = discountAmount,
                         payments = paymentLines,
+                        detailMode = detailMode,
                     ),
                 )
             }
@@ -1807,6 +1818,10 @@ class PosViewModel @Inject constructor(
                     it.copy(checkoutMetaLoading = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
+            }
+            when (val cfg = settingsRepository.getSaleDetailConfig(branchId)) {
+                is AppResult.Success -> _uiState.update { it.copy(saleDetailEnabled = cfg.data.enabled) }
+                else -> _uiState.update { it.copy(saleDetailEnabled = false) }
             }
         }
     }

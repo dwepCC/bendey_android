@@ -6,6 +6,10 @@ import com.bendey.restaurant.core.domain.catalog.BranchFormInput
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.domain.catalog.TenantSettingsSnapshot
 import com.bendey.restaurant.core.domain.catalog.SeriesFormInput
+import com.bendey.restaurant.core.domain.catalog.SaleDetailConfig
+import com.bendey.restaurant.core.domain.catalog.ServiceChargeConfig
+import com.bendey.restaurant.core.network.dto.SaleDetailConfigUpdateRequestDto
+import com.bendey.restaurant.core.network.dto.ServiceChargeUpdateRequestDto
 import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.network.api.CompanyApi
 import com.bendey.restaurant.core.network.dto.BranchUpsertRequestDto
@@ -364,6 +368,48 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun deleteBranch(id: Int): AppResult<Unit> = catalogApiCall {
         tenantRetrofitProvider.create<CompanyApi>().deleteBranch(id)
     }
+
+    override suspend fun getSaleDetailConfig(branchId: Int): AppResult<SaleDetailConfig> = catalogApiCall {
+        val dto = tenantRetrofitProvider.create<CompanyApi>().getSaleDetailConfig(branchId).data
+        SaleDetailConfig(
+            branchId = dto?.branchId ?: branchId,
+            enabled = dto?.enabled ?: false,
+            defaultText = dto?.defaultText?.takeIf { it.isNotBlank() } ?: "Por consumo",
+        )
+    }
+
+    override suspend fun updateSaleDetailConfig(branchId: Int, enabled: Boolean, defaultText: String): AppResult<SaleDetailConfig> =
+        catalogApiCall {
+            val dto = tenantRetrofitProvider.create<CompanyApi>()
+                .updateSaleDetailConfig(branchId, SaleDetailConfigUpdateRequestDto(enabled = enabled, defaultText = defaultText))
+                .data
+            SaleDetailConfig(
+                branchId = dto?.branchId ?: branchId,
+                enabled = dto?.enabled ?: enabled,
+                defaultText = dto?.defaultText?.takeIf { it.isNotBlank() } ?: defaultText,
+            )
+        }
+
+    override suspend fun getServiceChargeConfig(branchId: Int): AppResult<ServiceChargeConfig> = catalogApiCall {
+        val dto = tenantRetrofitProvider.create<CompanyApi>().getServiceCharge(branchId).data
+        ServiceChargeConfig(
+            branchId = dto?.branchId ?: branchId,
+            enabled = dto?.enabled ?: false,
+            rate = dto?.rate ?: 0.0,
+        )
+    }
+
+    override suspend fun updateServiceChargeConfig(branchId: Int, enabled: Boolean, rate: Double): AppResult<ServiceChargeConfig> =
+        catalogApiCall {
+            val dto = tenantRetrofitProvider.create<CompanyApi>()
+                .updateServiceCharge(branchId, ServiceChargeUpdateRequestDto(enabled = enabled, rate = rate))
+                .data
+            ServiceChargeConfig(
+                branchId = dto?.branchId ?: branchId,
+                enabled = dto?.enabled ?: enabled,
+                rate = dto?.rate ?: rate,
+            )
+        }
 
     override suspend fun listSeries(branchId: Int?): AppResult<List<DocumentSeries>> = catalogApiCall {
         tenantRetrofitProvider.create<CompanyApi>()

@@ -21,6 +21,7 @@ import com.bendey.restaurant.core.domain.billing.BillSessionResult
 import com.bendey.restaurant.core.domain.billing.BillingRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutDiscountMode
 import com.bendey.restaurant.core.domain.billing.CheckoutMeta
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentDraft
 import com.bendey.restaurant.core.domain.billing.ComandaCheckoutRow
 import com.bendey.restaurant.core.domain.billing.partitionComandasFromSession
@@ -135,6 +136,10 @@ data class MesaUiState(
     val checkoutPrintNote: String? = null,
     val selectedComandaIds: List<Int> = emptyList(),
     val splitBillEnabled: Boolean = false,
+    // "Venta por consumo": el checkbox solo aparece si la sucursal lo tiene habilitado. El
+    // backend igual revalida siempre — este ViewModel no decide nada por su cuenta.
+    val saleDetailEnabled: Boolean = false,
+    val consumptionMode: Boolean = false,
     val receiptHasPrinter: Boolean = false,
     val receiptBusy: String? = null,
     val reprintingOrderId: Int? = null,
@@ -240,6 +245,7 @@ class MesaViewModel @Inject constructor(
     private val restaurantHydrators: RestaurantHydrators,
     private val sessionsStore: SessionsStore,
     private val contactsRepository: ContactsRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -1165,6 +1171,7 @@ class MesaViewModel @Inject constructor(
                         comandaIds = idsToBill,
                         discountAmount = discountAmount,
                         payments = paymentLines,
+                        detailMode = if (state.saleDetailEnabled && state.consumptionMode) "consumption" else "detailed",
                     ),
                 )
             ) {
@@ -1373,7 +1380,15 @@ class MesaViewModel @Inject constructor(
                 }
                 AppResult.Loading -> Unit
             }
+            when (val cfg = settingsRepository.getSaleDetailConfig(branchId)) {
+                is AppResult.Success -> _uiState.update { it.copy(saleDetailEnabled = cfg.data.enabled) }
+                else -> _uiState.update { it.copy(saleDetailEnabled = false) }
+            }
         }
+    }
+
+    fun setConsumptionMode(enabled: Boolean) {
+        _uiState.update { it.copy(consumptionMode = enabled) }
     }
 
     private fun applyCheckoutDefaults(meta: CheckoutMeta?) {

@@ -67,6 +67,21 @@ data class ConfiguracionUiState(
     val branchFormOpen: Boolean = false,
     val branchForm: BranchFormInput = BranchFormInput(),
     val deleteBranchId: Int? = null,
+    // Recargo al Consumo (RC) — no todos los restaurantes usan el ERP, así que esto también se
+    // configura desde acá. serviceChargeDialogBranchId != null abre el diálogo para esa sucursal.
+    val serviceChargeDialogBranchId: Int? = null,
+    val serviceChargeDialogLoading: Boolean = false,
+    val serviceChargeDialogSaving: Boolean = false,
+    val serviceChargeDialogEnabled: Boolean = false,
+    val serviceChargeDialogRate: String = "0.00",
+    val serviceChargeDialogError: String? = null,
+    // "Venta por consumo" — mismo criterio que RC arriba.
+    val saleDetailDialogBranchId: Int? = null,
+    val saleDetailDialogLoading: Boolean = false,
+    val saleDetailDialogSaving: Boolean = false,
+    val saleDetailDialogEnabled: Boolean = false,
+    val saleDetailDialogText: String = "Por consumo",
+    val saleDetailDialogError: String? = null,
     val seriesFormOpen: Boolean = false,
     val seriesForm: SeriesFormInput = SeriesFormInput(),
     val deleteSeriesId: Int? = null,
@@ -416,6 +431,106 @@ class ConfiguracionViewModel @Inject constructor(
                     refresh()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openServiceChargeDialog(branchId: Int) {
+        if (!requireManageSettings()) return
+        _uiState.update {
+            it.copy(serviceChargeDialogBranchId = branchId, serviceChargeDialogLoading = true, serviceChargeDialogError = null)
+        }
+        viewModelScope.launch {
+            when (val result = repository.getServiceChargeConfig(branchId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        serviceChargeDialogLoading = false,
+                        serviceChargeDialogEnabled = result.data.enabled,
+                        serviceChargeDialogRate = String.format("%.2f", result.data.rate),
+                    )
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(serviceChargeDialogLoading = false, serviceChargeDialogError = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissServiceChargeDialog() { _uiState.update { it.copy(serviceChargeDialogBranchId = null) } }
+    fun setServiceChargeDialogEnabled(enabled: Boolean) { _uiState.update { it.copy(serviceChargeDialogEnabled = enabled) } }
+    fun setServiceChargeDialogRate(rate: String) {
+        _uiState.update { it.copy(serviceChargeDialogRate = rate, serviceChargeDialogError = null) }
+    }
+
+    fun saveServiceChargeDialog() {
+        val state = _uiState.value
+        val branchId = state.serviceChargeDialogBranchId ?: return
+        val rate = state.serviceChargeDialogRate.toDoubleOrNull()
+        if (state.serviceChargeDialogEnabled && (rate == null || rate < 0.0 || rate > 13.0)) {
+            _uiState.update { it.copy(serviceChargeDialogError = "El porcentaje debe estar entre 0% y 13%") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(serviceChargeDialogSaving = true, serviceChargeDialogError = null) }
+            when (val result = repository.updateServiceChargeConfig(branchId, state.serviceChargeDialogEnabled, rate ?: 0.0)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(serviceChargeDialogSaving = false, serviceChargeDialogBranchId = null)
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(serviceChargeDialogSaving = false, serviceChargeDialogError = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openSaleDetailDialog(branchId: Int) {
+        if (!requireManageSettings()) return
+        _uiState.update {
+            it.copy(saleDetailDialogBranchId = branchId, saleDetailDialogLoading = true, saleDetailDialogError = null)
+        }
+        viewModelScope.launch {
+            when (val result = repository.getSaleDetailConfig(branchId)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        saleDetailDialogLoading = false,
+                        saleDetailDialogEnabled = result.data.enabled,
+                        saleDetailDialogText = result.data.defaultText,
+                    )
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(saleDetailDialogLoading = false, saleDetailDialogError = result.message)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun dismissSaleDetailDialog() { _uiState.update { it.copy(saleDetailDialogBranchId = null) } }
+    fun setSaleDetailDialogEnabled(enabled: Boolean) { _uiState.update { it.copy(saleDetailDialogEnabled = enabled) } }
+    fun setSaleDetailDialogText(text: String) {
+        _uiState.update { it.copy(saleDetailDialogText = text, saleDetailDialogError = null) }
+    }
+
+    fun saveSaleDetailDialog() {
+        val state = _uiState.value
+        val branchId = state.saleDetailDialogBranchId ?: return
+        val text = state.saleDetailDialogText.trim()
+        if (state.saleDetailDialogEnabled && text.isEmpty()) {
+            _uiState.update { it.copy(saleDetailDialogError = "El texto no puede quedar vacío") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(saleDetailDialogSaving = true, saleDetailDialogError = null) }
+            when (val result = repository.updateSaleDetailConfig(branchId, state.saleDetailDialogEnabled, text)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(saleDetailDialogSaving = false, saleDetailDialogBranchId = null)
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(saleDetailDialogSaving = false, saleDetailDialogError = result.message)
+                }
                 AppResult.Loading -> Unit
             }
         }

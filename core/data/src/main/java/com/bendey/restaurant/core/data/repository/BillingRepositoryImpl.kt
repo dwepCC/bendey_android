@@ -111,6 +111,7 @@ class BillingRepositoryImpl @Inject constructor(
                         reference = it.reference,
                     )
                 },
+                detailMode = input.detailMode,
             ),
         )
         val data = response.data ?: error("Venta no generada")
@@ -141,6 +142,7 @@ class BillingRepositoryImpl @Inject constructor(
                         reference = it.reference,
                     )
                 },
+                detailMode = input.detailMode,
             ),
         )
         val data = response.data ?: error("Venta no generada")

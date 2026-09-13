@@ -16,6 +16,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Percent
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Refresh
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
@@ -119,6 +121,8 @@ fun ConfiguracionScreen(
     StaffCreateDialog(state, viewModel)
     StaffEditDialog(state, viewModel)
     if (state.branchFormOpen) BranchFormDialog(state, viewModel)
+    if (state.serviceChargeDialogBranchId != null) ServiceChargeFormDialog(state, viewModel)
+    if (state.saleDetailDialogBranchId != null) SaleDetailFormDialog(state, viewModel)
     if (state.seriesFormOpen) SeriesFormDialog(state, viewModel)
     state.deleteBranchId?.let {
         BendeyAlertDialog(
@@ -257,6 +261,16 @@ private fun BranchCard(
                 }
             }
             if (canManage) {
+                BendeyIconButton(
+                    onClick = { viewModel.openServiceChargeDialog(branch.id) },
+                    icon = Icons.Default.Percent,
+                    contentDescription = "Recargo al Consumo",
+                )
+                BendeyIconButton(
+                    onClick = { viewModel.openSaleDetailDialog(branch.id) },
+                    icon = Icons.Default.Receipt,
+                    contentDescription = "Venta por consumo",
+                )
                 BendeyIconButton(
                     onClick = { viewModel.openEditBranch(branch) },
                     icon = Icons.Default.Edit,
@@ -505,6 +519,97 @@ private fun SeriesCard(
         enableContentScroll = true,
     ) {
         BranchFormFields(state, viewModel)
+    }
+}
+
+/**
+ * Recargo al Consumo (RC) de una sucursal, desde Bendey Resto Android.
+ *
+ * No todos los restaurantes usan el ERP — esta pantalla existe para que un tenant que solo
+ * trabaja con Bendey Resto también pueda activarlo/configurarlo. Mismo endpoint que el ERP; el
+ * backend es quien valida el rango (0-13%) y quien realmente aplica el RC al facturar.
+ */
+@Composable private fun ServiceChargeFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
+    BendeyFormDialog(
+        onDismissRequest = viewModel::dismissServiceChargeDialog,
+        title = "Recargo al Consumo",
+        confirmText = if (state.serviceChargeDialogSaving) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveServiceChargeDialog,
+        onDismiss = viewModel::dismissServiceChargeDialog,
+        confirmEnabled = !state.serviceChargeDialogSaving && !state.serviceChargeDialogLoading,
+        loading = state.serviceChargeDialogSaving,
+        enableContentScroll = true,
+    ) {
+        if (state.serviceChargeDialogLoading) {
+            Text("Cargando…", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        } else {
+            BendeySwitchRow(
+                label = "Activar Recargo al Consumo",
+                checked = state.serviceChargeDialogEnabled,
+                onCheckedChange = viewModel::setServiceChargeDialogEnabled,
+            )
+            BendeyTextField(
+                state.serviceChargeDialogRate,
+                viewModel::setServiceChargeDialogRate,
+                "Porcentaje",
+                enabled = state.serviceChargeDialogEnabled,
+            )
+            Text("Máximo permitido: 13%", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            state.serviceChargeDialogError?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.Error)
+            }
+        }
+    }
+}
+
+/**
+ * "Venta por consumo" de una sucursal, desde Bendey Resto Android.
+ *
+ * Mismo criterio que RC arriba: administrable desde cualquier frontend. Habilitarla acá NO obliga
+ * a que las ventas salgan agrupadas — solo permite elegirlo al vender; el backend revalida todo al
+ * crear cada venta.
+ */
+@Composable private fun SaleDetailFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
+    BendeyFormDialog(
+        onDismissRequest = viewModel::dismissSaleDetailDialog,
+        title = "Venta por consumo",
+        confirmText = if (state.saleDetailDialogSaving) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveSaleDetailDialog,
+        onDismiss = viewModel::dismissSaleDetailDialog,
+        confirmEnabled = !state.saleDetailDialogSaving && !state.saleDetailDialogLoading,
+        loading = state.saleDetailDialogSaving,
+        enableContentScroll = true,
+    ) {
+        if (state.saleDetailDialogLoading) {
+            Text("Cargando…", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        } else {
+            BendeySwitchRow(
+                label = "Permitir venta por consumo",
+                checked = state.saleDetailDialogEnabled,
+                onCheckedChange = viewModel::setSaleDetailDialogEnabled,
+            )
+            Text(
+                "Al vender, se podrá elegir mostrar el detalle normal o un solo concepto agrupado " +
+                    "(ej. \"Consumo restaurante — S/85.00\") en la Nota de Venta, Boleta o Factura. " +
+                    "Detallado sigue siendo lo predeterminado.",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            BendeyTextField(
+                state.saleDetailDialogText,
+                viewModel::setSaleDetailDialogText,
+                "Texto del concepto agrupado",
+                enabled = state.saleDetailDialogEnabled,
+            )
+            Text(
+                "Se congela en cada venta al crearla: cambiarlo aquí no altera las ventas ya emitidas.",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            state.saleDetailDialogError?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.Error)
+            }
+        }
     }
 }
 

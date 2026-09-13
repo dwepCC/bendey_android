@@ -15,6 +15,16 @@ internal data class ReceiptTextLine(
     val bold: Boolean = false,
 )
 
+/**
+ * Label corto del Recargo al Consumo para el ticket: "RC 5%" con el porcentaje YA CONGELADO, o
+ * [fallback] genérico si no se conoce la tasa (ticket viejo, antes de que el backend la expusiera).
+ */
+fun formatServiceChargeLabel(rate: Double, fallback: String = "Recargo Consumo"): String {
+    if (rate <= 0) return fallback
+    val trimmed = "%.2f".format(rate).trimEnd('0').trimEnd('.')
+    return "RC $trimmed%"
+}
+
 /** Líneas de ticket alineadas con [com.bendey.restaurant.platform.printing.escpos.DocumentLayoutBuilder]. */
 internal object ReceiptTicketLayout {
     private val cols = columnsForPaper(PaperWidthMm.W80)
@@ -71,7 +81,9 @@ internal object ReceiptTicketLayout {
         if (data.taxAmount > 0) right("IGV: ${money.format(data.taxAmount)}")
         // Recargo al Consumo: monto YA CALCULADO por el backend — nunca se recalcula acá. Se omite
         // si es 0 (sucursal sin RC), así el ticket no cambia en absoluto para quien no lo activó.
-        if (data.serviceChargeAmount > 0) right("Recargo Consumo: ${money.format(data.serviceChargeAmount)}")
+        if (data.serviceChargeAmount > 0) {
+            right("${formatServiceChargeLabel(data.serviceChargeRate)}: ${money.format(data.serviceChargeAmount)}")
+        }
         right("TOTAL A PAGAR: ${money.format(data.total)}", bold = true)
 
         data.legendText?.takeIf { it.isNotBlank() }?.let { legend ->

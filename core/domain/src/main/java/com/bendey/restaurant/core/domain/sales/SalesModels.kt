@@ -29,6 +29,9 @@ data class SaleSummary(
     // Vacio cuando la venta no salio del POS de restaurante.
     val tableName: String? = null,
     val orderType: String? = null,
+    // "detailed" (default) | "consumption" — como se representa esta venta en el comprobante.
+    // NUNCA cambia productos, stock, costos, caja ni Ledger. Ver internal/saledetail (backend).
+    val detailMode: String? = null,
 ) {
     /** El repositorio ya lo compuso desde `series` y `correlative` al mapear la respuesta; aqui no
      *  queda nada que formatear. */
@@ -95,6 +98,8 @@ data class SaleDetail(
      * para desglosarlo en pantalla.
      */
     val serviceChargeAmount: Double = 0.0,
+    /** Porcentaje de RC YA CONGELADO (ver serviceChargeAmount) — solo para el label ("RC 5%"). */
+    val serviceChargeRate: Double = 0.0,
     val currency: String,
     val status: String,
     val billingStatus: String?,
@@ -110,6 +115,9 @@ data class SaleDetail(
     val items: List<SaleDetailLine>,
     val payments: List<SaleDetailPayment>,
     val printData: SalePrintData?,
+    // "detailed" (default) | "consumption" — como se representa esta venta en el comprobante.
+    // NUNCA cambia productos, stock, costos, caja ni Ledger. Ver internal/saledetail (backend).
+    val detailMode: String? = null,
 ) {
     /** El repositorio ya lo compuso desde `series` y `correlative` al mapear la respuesta; aqui no
      *  queda nada que formatear. */
@@ -199,6 +207,9 @@ interface SalesRepository {
         seriesId: Int,
         issueDate: String?,
         contactId: Int? = null,
+        // "detailed" | "consumption" — eleccion del usuario, no el modo de la nota. El backend
+        // revalida contra la sucursal igual que en una venta nueva.
+        detailMode: String? = null,
     ): AppResult<IssueElectronicResult>
 
     suspend fun listSalesByProduct(

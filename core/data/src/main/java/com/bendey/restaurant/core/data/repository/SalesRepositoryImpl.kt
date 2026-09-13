@@ -119,6 +119,7 @@ class SalesRepositoryImpl @Inject constructor(
         seriesId: Int,
         issueDate: String?,
         contactId: Int?,
+        detailMode: String?,
     ): AppResult<IssueElectronicResult> = apiCall {
         val response = tenantRetrofitProvider.create<SalesApi>().issueElectronicFromNota(
             saleId = saleId,
@@ -126,6 +127,7 @@ class SalesRepositoryImpl @Inject constructor(
                 seriesId = seriesId,
                 issueDate = issueDate?.trim()?.takeIf { it.isNotEmpty() },
                 contactId = contactId?.takeIf { it > 0 },
+                detailMode = detailMode,
             ),
         )
         val sale = response.sale ?: error("Comprobante no generado")
@@ -226,6 +228,7 @@ private fun SaleDto.toDomain() = SaleSummary(
     refundedAmount = refundedAmount,
     tableName = tableName,
     orderType = orderType,
+    detailMode = detailMode,
 )
 
 /** Cuantos digitos lleva el correlativo impreso: el largo que exige SUNAT y el que usa el backend al
@@ -268,6 +271,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         taxAmount = saleDto.taxAmount,
         total = saleDto.total,
         serviceChargeAmount = saleDto.serviceChargeAmount,
+        serviceChargeRate = saleDto.serviceChargeRate,
         currency = saleDto.currency,
         status = saleDto.status,
         billingStatus = saleDto.billingStatus,
@@ -279,6 +283,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         refundable = saleDto.refundable,
         refundableAmount = saleDto.refundableAmount,
         refundedAmount = saleDto.refundedAmount,
+        detailMode = saleDto.detailMode,
         contact = contact?.toDomain(),
         items = items.map {
             SaleDetailLine(

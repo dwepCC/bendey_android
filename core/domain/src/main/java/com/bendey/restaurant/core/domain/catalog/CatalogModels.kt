@@ -226,6 +226,27 @@ data class BranchFormInput(
     val active: Boolean = true,
 )
 
+/**
+ * "Venta por consumo" de UNA sucursal. Administrable desde cualquier frontend (ERP o Bendey
+ * Resto): no todos los restaurantes usan el ERP. Habilitarla NO obliga a que las ventas salgan
+ * agrupadas — el backend revalida siempre contra esta misma configuracion al crear cada venta.
+ */
+data class SaleDetailConfig(
+    val branchId: Int,
+    val enabled: Boolean,
+    val defaultText: String,
+)
+
+/**
+ * Recargo al Consumo (RC) de UNA sucursal. Mismo criterio que arriba: administrable desde
+ * cualquier frontend; el backend valida el rango (0-13%) y es quien realmente aplica el RC.
+ */
+data class ServiceChargeConfig(
+    val branchId: Int,
+    val enabled: Boolean,
+    val rate: Double,
+)
+
 data class SeriesFormInput(
     val id: Int? = null,
     val branchId: Int? = null,
