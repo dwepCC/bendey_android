@@ -912,7 +912,6 @@ class MesaViewModel @Inject constructor(
                 session?.restaurantPermissions.orEmpty(),
                 session?.user?.employeeType,
             )
-            val initialTotal = roundMoney(state.sessionTotal + state.cartTotal)
             val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty())
             _uiState.update {
                 it.copy(
@@ -922,10 +921,22 @@ class MesaViewModel @Inject constructor(
                     checkoutDiscountValue = "0",
                     splitBillEnabled = false,
                     selectedComandaIds = emptyList(),
+                    // Antes: `roundMoney(state.sessionTotal + state.cartTotal)` — el subtotal PELADO,
+                    // sin pasar por `checkoutPayableTotal` (el que sí suma el RC). El total del hero
+                    // del diálogo sí mostraba el RC bien (lo calcula CheckoutDialog aparte, a partir
+                    // de `checkoutServiceChargeAmount`), pero el campo de pago se prellenaba corto —
+                    // mismo síntoma que ya se había corregido en Pos, que sí usa
+                    // `checkoutPayableTotal` acá. Se recalcula con discountMode/Value YA reseteados a
+                    // 0 (no los de una venta anterior) para no arrastrar un descuento viejo.
                     checkoutPayments = listOf(
                         CheckoutPaymentDraft(
                             method = method,
-                            amount = formatAmount(initialTotal),
+                            amount = formatAmount(
+                                it.copy(
+                                    checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
+                                    checkoutDiscountValue = "0",
+                                ).checkoutPayableTotal,
+                            ),
                         ),
                     ),
                     error = null,
