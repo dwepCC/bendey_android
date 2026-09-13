@@ -1609,10 +1609,13 @@ class PosViewModel @Inject constructor(
             PosUiState(
                 loading = it.loading,
                 products = it.products,
+                productsTotal = it.productsTotal,
+                productsPage = it.productsPage,
                 categories = it.categories,
                 selectedCategoryId = it.selectedCategoryId,
                 searchQuery = it.searchQuery,
                 preparationAreaFilter = it.preparationAreaFilter,
+                preparationAreas = it.preparationAreas,
                 catalogTab = it.catalogTab,
                 combos = it.combos,
                 orderType = newType,
@@ -1628,6 +1631,18 @@ class PosViewModel @Inject constructor(
                 canAnularComanda = it.canAnularComanda,
                 canOperateCash = it.canOperateCash,
                 allowCheckoutDiscount = it.allowCheckoutDiscount,
+                // Config de sucursal/tenant cargada UNA sola vez al entrar a Pos (warmCheckoutMeta /
+                // loadBranchCheckoutConfigs / el collector de sessionStore en init{}) — nada la vuelve
+                // a pedir después. Al reconstruir `PosUiState` desde cero para la siguiente venta, si
+                // no se preservan acá explícitamente, se pierden en silencio y quedan en su default:
+                // RC y "por consumo" dejan de calcularse/mostrarse desde la SEGUNDA venta en adelante
+                // (exactamente lo reportado), factura deja de ofrecerse si el plan la habilita, y la
+                // consulta de RUC/DNI del alta rápida de cliente se rompe al perder tenantRuc.
+                saleDetailEnabled = it.saleDetailEnabled,
+                serviceChargeEnabled = it.serviceChargeEnabled,
+                serviceChargeRate = it.serviceChargeRate,
+                billingModuleEnabled = it.billingModuleEnabled,
+                tenantRuc = it.tenantRuc,
             )
         }
     }
