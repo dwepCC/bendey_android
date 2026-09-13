@@ -697,6 +697,14 @@ class CajaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Indica el efectivo contado") }
             return
         }
+        // `sumArqueo` de un arqueo vacío da 0.0 (no null), así que el guard de arriba nunca
+        // atrapaba "toqué Cerrar sin contar nada" en el modo por defecto (con arqueo) — el cierre
+        // se enviaba igual con S/0 contado. Si el sistema espera un saldo real, se bloquea antes
+        // de golpear la red; si de verdad se espera S/0 (sesión sin movimientos), se deja pasar.
+        if (form.useArqueo && form.arqueo.values.all { it <= 0 } && session.expectedBalance > 0.009) {
+            _uiState.update { it.copy(error = "Ingresa el conteo de efectivo (arqueo) antes de cerrar") }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             val arqueo = if (form.useArqueo && form.arqueo.values.any { it > 0 }) form.arqueo else null
@@ -715,8 +723,27 @@ class CajaViewModel @Inject constructor(
                     }
                     loadHistory(silent = true)
                 }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(actionLoading = false, error = result.message)
+                is AppResult.Error -> {
+                    // "La sesión ya está cerrada" (backend, CashBankService.CloseSession) significa
+                    // que el cierre SÍ se aplicó del lado del servidor — típicamente un intento previo
+                    // cuya respuesta se perdió por timeout/red, o se cerró desde otro dispositivo. Sin
+                    // esto, la pantalla se queda mostrando "Cerrar caja" sobre una caja que el
+                    // servidor ya dio por cerrada, y el cajero no tiene forma de salir de ahí.
+                    val alreadyClosed = result.message?.contains("ya está cerrada", ignoreCase = true) == true ||
+                        result.message?.contains("ya esta cerrada", ignoreCase = true) == true
+                    if (alreadyClosed) {
+                        _uiState.update {
+                            it.copy(
+                                actionLoading = false,
+                                showCloseDialog = false,
+                                error = null,
+                                snackMessage = "La caja ya estaba cerrada — actualizando…",
+                            )
+                        }
+                        refresh()
+                    } else {
+                        _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                    }
                 }
                 AppResult.Loading -> Unit
             }
