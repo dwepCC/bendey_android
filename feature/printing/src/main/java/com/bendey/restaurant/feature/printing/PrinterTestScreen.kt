@@ -9,10 +9,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,14 +24,12 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +46,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.data.printer.PrinterSlot
 import com.bendey.restaurant.core.data.printer.PrinterSlotConfig
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
+import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
+import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyCardDefaults
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -57,6 +58,8 @@ import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.catalog.normalizedName
 import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
+import com.bendey.restaurant.core.ui.components.BendeyOutlinedButton
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
@@ -135,41 +138,28 @@ fun PrinterTestScreen(
                 .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
+            // Nivel 1 — qué se está configurando (comandas / precuenta / documentos).
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                 PrinterSlot.entries.forEach { slot ->
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.selectedSlot == slot,
                         onClick = {
                             areasExpanded = false
                             viewModel.selectSlot(slot)
                         },
-                        label = {
-                            Text(
-                                when (slot) {
-                                    PrinterSlot.COMANDAS -> "Comandas"
-                                    PrinterSlot.PRECUENTA -> "Precuenta"
-                                    PrinterSlot.DOCUMENTOS -> "Documentos"
-                                },
-                                style = MaterialTheme.typography.labelMedium,
-                            )
+                        text = when (slot) {
+                            PrinterSlot.COMANDAS -> "Comandas"
+                            PrinterSlot.PRECUENTA -> "Precuenta"
+                            PrinterSlot.DOCUMENTOS -> "Documentos"
                         },
                     )
                 }
             }
 
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey != null) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = BendeyColors.PrimaryContainer),
-                    shape = BendeyShapeTokens.lg,
-                    elevation = BendeyCardDefaults.elevation(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                ) {
+                BendeyManagementCard(contentPadding = PaddingValues(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs)) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -185,13 +175,12 @@ fun PrinterTestScreen(
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        TextButton(onClick = viewModel::backToDefaultComandaPrinter) {
-                            Text("Volver al default")
-                        }
+                        BendeyTextButton(text = "Volver al default", onClick = viewModel::backToDefaultComandaPrinter)
                     }
                 }
             }
 
+            // Nivel 2 — dónde imprime (local / servidor de impresión).
             PrintServerModeCard(
                 deliveryMode = state.deliveryMode,
                 onDeliveryMode = viewModel::setDeliveryMode,
@@ -214,6 +203,7 @@ fun PrinterTestScreen(
             )
 
             if (state.deliveryMode == PrintDeliveryMode.LOCAL) {
+            // Nivel 2 (modo local) — cómo conecta (Bluetooth / Red) + qué papel usa.
             PrinterConfigCard(
                 title = when {
                     state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null ->
@@ -246,75 +236,58 @@ fun PrinterTestScreen(
                 onPaperWidth = viewModel::setPaperWidth,
             )
 
+            // Nivel 3 (solo comandas, impresora por defecto) — cómo se ve: tamaño de texto.
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                    shape = BendeyShapeTokens.lg,
-                    colors = BendeyCardDefaults.colors(),
-                    elevation = BendeyCardDefaults.elevation(),
-                ) {
-                    Column(
-                        Modifier.padding(BendeySpacing.sm),
-                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    ) {
-                        Text("Tamaño texto comanda", style = MaterialTheme.typography.titleSmall)
+                BendeyManagementCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                        BendeySectionTitle(text = "Tamaño texto comanda", style = MaterialTheme.typography.titleSmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                            FilterChip(
+                            BendeyFilterChip(
                                 selected = state.comandaTextSize == ComandaTextSize.DEFAULT,
                                 onClick = { viewModel.setComandaTextSize(ComandaTextSize.DEFAULT) },
-                                label = { Text("Grande", style = MaterialTheme.typography.labelMedium) },
+                                text = "Grande",
                             )
-                            FilterChip(
+                            BendeyFilterChip(
                                 selected = state.comandaTextSize == ComandaTextSize.MEDIANO,
                                 onClick = { viewModel.setComandaTextSize(ComandaTextSize.MEDIANO) },
-                                label = { Text("Mediano", style = MaterialTheme.typography.labelMedium) },
+                                text = "Mediano",
                             )
                         }
                     }
                 }
             }
 
+            // Nivel 3 (solo comandas, impresora por defecto) — cómo se ve: combos en comanda.
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                    shape = BendeyShapeTokens.lg,
-                    colors = BendeyCardDefaults.colors(),
-                    elevation = BendeyCardDefaults.elevation(),
-                ) {
-                    Column(
-                        Modifier.padding(BendeySpacing.sm),
-                        verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                    ) {
-                        Text("Combos en la comanda", style = MaterialTheme.typography.titleSmall)
+                BendeyManagementCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                        BendeySectionTitle(text = "Combos en la comanda", style = MaterialTheme.typography.titleSmall)
                         Text(
                             "Cómo se imprimen los combos en cocina. Solo productos muestra únicamente " +
                                 "los platos a preparar, sin el nombre del combo. La pantalla de cocina " +
                                 "y el carrito no cambian.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = BendeyColors.OnSurfaceVariant,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                             COMBO_DISPLAY_OPTIONS.forEach { (value, label) ->
-                                FilterChip(
+                                BendeyFilterChip(
                                     selected = state.comandaComboDisplay == value,
                                     onClick = { viewModel.setComandaComboDisplay(value) },
-                                    label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                                    text = label,
                                 )
                             }
                         }
                         Text(
                             COMBO_DISPLAY_HINTS.getValue(state.comandaComboDisplay),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = BendeyColors.OnSurfaceVariant,
                         )
                     }
                 }
             }
 
+            // Nivel 2 (modo local, comandas por defecto) — impresora dedicada por área.
             if (state.selectedSlot == PrinterSlot.COMANDAS && state.editingAreaKey == null) {
                 ComandaAreasCard(
                     expanded = areasExpanded,
@@ -337,105 +310,67 @@ fun PrinterTestScreen(
             }
             }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                shape = BendeyShapeTokens.lg,
-                colors = BendeyCardDefaults.colors(),
-                elevation = BendeyCardDefaults.elevation(),
-            ) {
-                Column(
-                    Modifier.padding(BendeySpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    Text("Auto-impresión", style = MaterialTheme.typography.titleSmall)
+            // Nivel 2 — qué imprime automáticamente.
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    BendeySectionTitle(text = "Auto-impresión", style = MaterialTheme.typography.titleSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.autoPrintComandas,
                             onClick = { viewModel.setAutoPrintComandas(!state.autoPrintComandas) },
-                            label = { Text("Comandas", style = MaterialTheme.typography.labelMedium) },
+                            text = "Comandas",
                         )
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.autoPrintDocuments,
                             onClick = { viewModel.setAutoPrintDocuments(!state.autoPrintDocuments) },
-                            label = { Text("Documentos", style = MaterialTheme.typography.labelMedium) },
+                            text = "Documentos",
                         )
                     }
                 }
             }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                shape = BendeyShapeTokens.lg,
-                colors = BendeyCardDefaults.colors(),
-                elevation = BendeyCardDefaults.elevation(),
-            ) {
-                Column(
-                    Modifier.padding(BendeySpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    Text("Tamaño del logo en comprobantes", style = MaterialTheme.typography.titleSmall)
+            // Nivel 2 — cómo se ve: tamaño del logo en comprobantes.
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    BendeySectionTitle(text = "Tamaño del logo en comprobantes", style = MaterialTheme.typography.titleSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.documentLogoSize == LogoSize.SMALL,
                             onClick = { viewModel.setDocumentLogoSize(LogoSize.SMALL) },
-                            label = { Text("Pequeño", style = MaterialTheme.typography.labelMedium) },
+                            text = "Pequeño",
                         )
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.documentLogoSize == LogoSize.MEDIUM,
                             onClick = { viewModel.setDocumentLogoSize(LogoSize.MEDIUM) },
-                            label = { Text("Mediano", style = MaterialTheme.typography.labelMedium) },
+                            text = "Mediano",
                         )
-                        FilterChip(
+                        BendeyFilterChip(
                             selected = state.documentLogoSize == LogoSize.LARGE,
                             onClick = { viewModel.setDocumentLogoSize(LogoSize.LARGE) },
-                            label = { Text("Grande", style = MaterialTheme.typography.labelMedium) },
+                            text = "Grande",
                         )
                     }
                 }
             }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                shape = BendeyShapeTokens.lg,
-                colors = BendeyCardDefaults.colors(),
-                elevation = BendeyCardDefaults.elevation(),
-            ) {
-                Column(
-                    Modifier.padding(BendeySpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    Text("Gaveta de caja", style = MaterialTheme.typography.titleSmall)
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    BendeySectionTitle(text = "Gaveta de caja", style = MaterialTheme.typography.titleSmall)
                     Text(
                         "Abre el cajón de dinero al imprimir el comprobante (solo documentos, no comandas ni precuenta). Requiere una gaveta conectada a la impresora.",
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    FilterChip(
+                    BendeyFilterChip(
                         selected = state.openCashDrawerOnDocument,
                         onClick = { viewModel.setOpenCashDrawerOnDocument(!state.openCashDrawerOnDocument) },
-                        label = { Text("Abrir gaveta al imprimir", style = MaterialTheme.typography.labelMedium) },
+                        text = "Abrir gaveta al imprimir",
                     )
                 }
             }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-                shape = BendeyShapeTokens.lg,
-                colors = BendeyCardDefaults.colors(),
-                elevation = BendeyCardDefaults.elevation(),
-            ) {
-                Column(
-                    Modifier.padding(BendeySpacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-                ) {
-                    Text("Impresión de prueba", style = MaterialTheme.typography.titleSmall)
+            BendeyManagementCard {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    BendeySectionTitle(text = "Impresión de prueba", style = MaterialTheme.typography.titleSmall)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
@@ -465,7 +400,7 @@ fun PrinterTestScreen(
             AnimatedVisibility(visible = state.error != null, enter = fadeIn(), exit = fadeOut()) {
                 Text(
                     text = state.error.orEmpty(),
-                    color = MaterialTheme.colorScheme.error,
+                    color = BendeyColors.Error,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -491,34 +426,24 @@ private fun PrinterConfigCard(
     paperWidth: PaperWidthMm,
     onPaperWidth: (PaperWidthMm) -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-        shape = BendeyShapeTokens.lg,
-        colors = BendeyCardDefaults.colors(),
-        elevation = BendeyCardDefaults.elevation(),
-    ) {
-        Column(
-            Modifier.padding(BendeySpacing.sm),
-            verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-        ) {
+    BendeyManagementCard {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
                 Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
             }
 
-            Text("Conexión", style = MaterialTheme.typography.labelLarge)
+            BendeySectionTitle(text = "Conexión")
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = connectionType == PrinterConnectionType.BLUETOOTH,
                     onClick = { onConnectionType(PrinterConnectionType.BLUETOOTH) },
-                    label = { Text("Bluetooth", style = MaterialTheme.typography.labelMedium) },
+                    text = "Bluetooth",
                 )
-                FilterChip(
+                BendeyFilterChip(
                     selected = connectionType == PrinterConnectionType.TCP,
                     onClick = { onConnectionType(PrinterConnectionType.TCP) },
-                    label = { Text("Red / IP", style = MaterialTheme.typography.labelMedium) },
+                    text = "Red / IP",
                 )
             }
 
@@ -529,7 +454,7 @@ private fun PrinterConfigCard(
                         Text(
                             "Empareja la impresora en Ajustes de Android.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = BendeyColors.OnSurfaceVariant,
                         )
                     } else {
                         pairedDevices.forEach { device ->
@@ -540,13 +465,12 @@ private fun PrinterConfigCard(
                             )
                         }
                     }
-                    OutlinedButton(
+                    BendeyOutlinedButton(
+                        text = "Conectar Bluetooth",
                         onClick = onConnectBluetooth,
                         enabled = bluetoothAddress.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Conectar Bluetooth", style = MaterialTheme.typography.labelMedium)
-                    }
+                        fillWidth = true,
+                    )
                 }
                 PrinterConnectionType.TCP -> {
                     BendeyTextField(
@@ -564,17 +488,17 @@ private fun PrinterConfigCard(
 
             HorizontalDivider()
 
-            Text("Papel", style = MaterialTheme.typography.labelLarge)
+            BendeySectionTitle(text = "Papel")
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = paperWidth == PaperWidthMm.W58,
                     onClick = { onPaperWidth(PaperWidthMm.W58) },
-                    label = { Text("58 mm", style = MaterialTheme.typography.labelMedium) },
+                    text = "58 mm",
                 )
-                FilterChip(
+                BendeyFilterChip(
                     selected = paperWidth == PaperWidthMm.W80,
                     onClick = { onPaperWidth(PaperWidthMm.W80) },
-                    label = { Text("80 mm", style = MaterialTheme.typography.labelMedium) },
+                    text = "80 mm",
                 )
             }
         }
@@ -599,10 +523,10 @@ private fun ComandaAreasCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize()
-            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
+            .animateContentSize(),
         shape = BendeyShapeTokens.lg,
-        colors = BendeyCardDefaults.colors(),
+        colors = CardDefaults.cardColors(containerColor = BendeyColors.Surface),
+        border = BendeyCardDefaults.border,
         elevation = BendeyCardDefaults.elevation(),
     ) {
         Column {
@@ -626,13 +550,13 @@ private fun ComandaAreasCard(
                             "Opcional — cocina, bar, postres… Si no configuras, usa la impresora por defecto"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = BendeyColors.OnSurfaceVariant,
                     )
                 }
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (expanded) "Ocultar áreas" else "Ver áreas",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = BendeyColors.OnSurfaceVariant,
                 )
             }
 
@@ -643,7 +567,7 @@ private fun ComandaAreasCard(
                         "Toca un área para asignar impresora. Sin configurar → impresora por defecto.",
                         modifier = Modifier.padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = BendeyColors.OnSurfaceVariant,
                     )
                     preparationAreas.forEachIndexed { index, area ->
                         val areaKey = area.normalizedName()
@@ -683,7 +607,7 @@ private fun ComandaAreaRow(
     val statusColor = when {
         hasCustom -> BendeyColors.AccentTeal
         defaultConfigured -> BendeyColors.OnSurfaceVariant
-        else -> MaterialTheme.colorScheme.error
+        else -> BendeyColors.Error
     }
 
     Row(
@@ -705,22 +629,18 @@ private fun ComandaAreaRow(
                 Text(
                     printerSummary(customConfig),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = BendeyColors.OnSurfaceVariant,
                 )
             }
         }
         if (hasCustom) {
-            TextButton(onClick = onClear) {
-                Text("Quitar", style = MaterialTheme.typography.labelMedium)
-            }
-            OutlinedButton(onClick = onTest) {
-                Text("Probar", style = MaterialTheme.typography.labelMedium)
-            }
+            BendeyTextButton(text = "Quitar", onClick = onClear)
+            BendeyOutlinedButton(text = "Probar", onClick = onTest)
         } else {
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = BendeyColors.OnSurfaceVariant,
             )
         }
     }
@@ -740,9 +660,7 @@ private fun CompactTestButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(onClick = onClick, modifier = modifier) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
-    }
+    BendeyOutlinedButton(text = label, onClick = onClick, modifier = modifier)
 }
 
 @Composable
@@ -760,29 +678,19 @@ private fun PrintServerModeCard(
     onToggleAdvanced: () -> Unit,
     onTestServer: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(BendeyCardDefaults.border, BendeyShapeTokens.lg),
-        shape = BendeyShapeTokens.lg,
-        colors = BendeyCardDefaults.colors(),
-        elevation = BendeyCardDefaults.elevation(),
-    ) {
-        Column(
-            Modifier.padding(BendeySpacing.sm),
-            verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            Text("Modo de impresión", style = MaterialTheme.typography.titleSmall)
+    BendeyManagementCard {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeySectionTitle(text = "Modo de impresión", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                FilterChip(
+                BendeyFilterChip(
                     selected = deliveryMode == PrintDeliveryMode.LOCAL,
                     onClick = { onDeliveryMode(PrintDeliveryMode.LOCAL) },
-                    label = { Text("Local", style = MaterialTheme.typography.labelMedium) },
+                    text = "Local",
                 )
-                FilterChip(
+                BendeyFilterChip(
                     selected = deliveryMode == PrintDeliveryMode.SERVER,
                     onClick = { onDeliveryMode(PrintDeliveryMode.SERVER) },
-                    label = { Text("Servidor de impresión", style = MaterialTheme.typography.labelMedium) },
+                    text = "Servidor de impresión",
                 )
             }
 
@@ -790,15 +698,18 @@ private fun PrintServerModeCard(
                 Text(
                     "Las tablets envían trabajos a la PC Windows configurada en la red. La configuración local se conserva al volver al modo local.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = BendeyColors.OnSurfaceVariant,
                 )
-                OutlinedButton(onClick = onScan, enabled = !scanning, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (scanning) "Buscando en la red…" else "Buscar servidores en la red")
-                }
+                BendeyOutlinedButton(
+                    text = if (scanning) "Buscando en la red…" else "Buscar servidores en la red",
+                    onClick = onScan,
+                    enabled = !scanning,
+                    fillWidth = true,
+                )
                 Text(
                     "Si no aparece, use IP manual (misma IP que funciona en Chrome). El escaneo puede tardar ~15 s.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = BendeyColors.OnSurfaceVariant,
                 )
                 selectedServer?.let { server ->
                     Text(
@@ -816,6 +727,7 @@ private fun PrintServerModeCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelectServer(server) },
+                        shape = BendeyShapeTokens.md,
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedServer?.serverId == server.serverId) {
                                 BendeyColors.PrimaryContainer.copy(alpha = 0.45f)
@@ -831,9 +743,10 @@ private fun PrintServerModeCard(
                         }
                     }
                 }
-                TextButton(onClick = onToggleAdvanced) {
-                    Text(if (showAdvanced) "Ocultar IP manual" else "IP manual (avanzado)")
-                }
+                BendeyTextButton(
+                    text = if (showAdvanced) "Ocultar IP manual" else "IP manual (avanzado)",
+                    onClick = onToggleAdvanced,
+                )
                 if (showAdvanced) {
                     BendeyTextField(
                         value = manualHost,
@@ -845,12 +758,10 @@ private fun PrintServerModeCard(
                     Text(
                         "Solo la IP (ej. 192.168.1.20). Puerto por defecto: 19280.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = BendeyColors.OnSurfaceVariant,
                     )
                 }
-                OutlinedButton(onClick = onTestServer, modifier = Modifier.fillMaxWidth()) {
-                    Text("Probar servidor")
-                }
+                BendeyOutlinedButton(text = "Probar servidor", onClick = onTestServer, fillWidth = true)
             }
         }
     }
@@ -874,10 +785,17 @@ private fun DeviceRow(
             .padding(vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = onSelect)
+        // RadioButton (no BendeyFilterChip) a propósito: esto es una lista de dispositivos
+        // emparejados con selección única real, no un ajuste on/off — el control semánticamente
+        // correcto de Material sigue siendo el radio, solo se tiñe con el color de marca.
+        RadioButton(
+            selected = selected,
+            onClick = onSelect,
+            colors = RadioButtonDefaults.colors(selectedColor = BendeyColors.Primary),
+        )
         Column {
             Text(device.name, style = MaterialTheme.typography.bodyMedium)
-            Text(device.address, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(device.address, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
         }
     }
 }

@@ -15,7 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.bendey.restaurant.core.designsystem.components.BendeyCard
+import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.billing.TaxConfig
@@ -40,11 +40,18 @@ import com.bendey.restaurant.core.domain.billing.calcItem
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.purchases.Purchase
 import com.bendey.restaurant.core.domain.purchases.PurchaseItem
+import com.bendey.restaurant.core.ui.components.BendeyActiveFilter
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
-import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
+import com.bendey.restaurant.core.ui.components.BendeyDateField
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyFilterBar
+import com.bendey.restaurant.core.ui.components.BendeyFilterSheet
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyListRow
+import com.bendey.restaurant.core.ui.components.BendeyListRowSubtitle
+import com.bendey.restaurant.core.ui.components.BendeyListRowTitle
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -137,10 +144,12 @@ fun ComprasScreen(
             message = "Se revertirá el stock y el costo promedio del producto. ¿Continuar?",
             onConfirm = viewModel::confirmVoid,
             confirmText = if (state.voiding) "Anulando…" else "Anular",
+            destructive = true,
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComprasListPane(
     state: ComprasUiState,
@@ -152,37 +161,42 @@ private fun ComprasListPane(
 ) {
     val listState = rememberLazyListState()
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
-    var showDateRangeDialog by remember { mutableStateOf(false) }
+    var filterSheetOpen by remember { mutableStateOf(false) }
+    val hasDateRange = state.dateFrom.isNotBlank() || state.dateTo.isNotBlank()
     Column(modifier = modifier.fillMaxSize()) {
-        BendeyTextField(
-            value = state.searchQuery,
-            onValueChange = onSearchChange,
-            label = "Buscar por comprobante o proveedor",
+        // Antes: buscador + botón de fecha + BendeySimpleSelect "Estado" fijos, cada uno con su
+        // propia fila — la auditoría de 2026 midió esto consumiendo ~23% de la pantalla. Estado
+        // solo tiene 2 valores reales (Recibidas/Anuladas) — caben como chips primarios; el rango
+        // de fechas (la única elección que de verdad necesita más espacio) se movió a "Más
+        // filtros". El filtro activo de fecha queda visible como chip removible.
+        BendeyFilterBar(
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
+            searchQuery = state.searchQuery,
+            onSearchQueryChange = onSearchChange,
+            searchPlaceholder = "Buscar por comprobante o proveedor",
+            primaryFilters = {
+                state.statusFilterOptions.filter { (value, _) -> value.isNotEmpty() }.forEach { (value, label) ->
+                    BendeyFilterChip(
+                        selected = state.statusFilter == value,
+                        onClick = { onSetStatusFilter(if (state.statusFilter == value) "" else value) },
+                        text = label,
+                    )
+                }
+            },
+            onMoreFiltersClick = { filterSheetOpen = true },
+            moreFiltersActiveCount = if (hasDateRange) 1 else 0,
+            activeFilters = if (hasDateRange) {
+                listOf(
+                    BendeyActiveFilter(
+                        key = "dateRange",
+                        label = "Fecha: ${state.dateFrom.ifBlank { "…" }} → ${state.dateTo.ifBlank { "…" }}",
+                        onRemove = { onSetDateRange("", "") },
+                    ),
+                )
+            } else {
+                emptyList()
+            },
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = BendeySpacing.md),
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BendeyTextButton(
-                text = if (state.dateFrom.isBlank() && state.dateTo.isBlank()) {
-                    "Filtrar por fecha"
-                } else {
-                    "${state.dateFrom.ifBlank { "…" }} → ${state.dateTo.ifBlank { "…" }}"
-                },
-                onClick = { showDateRangeDialog = true },
-            )
-            BendeySimpleSelect(
-                options = state.statusFilterOptions.map { (value, label) -> BendeyOption(value, label) },
-                selectedValue = state.statusFilter,
-                onSelect = onSetStatusFilter,
-                label = "Estado",
-                modifier = Modifier.weight(1f),
-            )
-        }
         state.error?.takeIf { !state.formOpen }?.let { error ->
             Text(error, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
@@ -213,58 +227,43 @@ private fun ComprasListPane(
             }
         }
     }
-    if (showDateRangeDialog) {
-        CustomDateRangeDialog(
-            from = state.dateFrom,
-            to = state.dateTo,
-            onDismiss = { showDateRangeDialog = false },
-            onApply = { from, to ->
-                showDateRangeDialog = false
-                onSetDateRange(from, to)
+    if (filterSheetOpen) {
+        var fromDraft by remember(state.dateFrom) { mutableStateOf(state.dateFrom) }
+        var toDraft by remember(state.dateTo) { mutableStateOf(state.dateTo) }
+        BendeyFilterSheet(
+            onDismissRequest = { filterSheetOpen = false },
+            onApply = { onSetDateRange(fromDraft.trim(), toDraft.trim()) },
+            title = "Más filtros",
+            onClear = if (hasDateRange) {
+                {
+                    onSetDateRange("", "")
+                    filterSheetOpen = false
+                }
+            } else {
+                null
             },
-        )
+        ) {
+            BendeyDateField(value = fromDraft, onValueChange = { fromDraft = it }, label = "Desde")
+            BendeyDateField(value = toDraft, onValueChange = { toDraft = it }, label = "Hasta")
+        }
     }
 }
 
-@Composable
-private fun CustomDateRangeDialog(from: String, to: String, onDismiss: () -> Unit, onApply: (String, String) -> Unit) {
-    var fromValue by remember(from) { mutableStateOf(from) }
-    var toValue by remember(to) { mutableStateOf(to) }
-    BendeyFormDialog(
-        onDismissRequest = onDismiss,
-        title = "Rango de fechas",
-        confirmText = "Aplicar",
-        onConfirm = { onApply(fromValue.trim(), toValue.trim()) },
-        onDismiss = onDismiss,
-    ) {
-        BendeyTextField(value = fromValue, onValueChange = { fromValue = it }, label = "Desde (AAAA-MM-DD)")
-        BendeyTextField(value = toValue, onValueChange = { toValue = it }, label = "Hasta (AAAA-MM-DD)")
-    }
-}
-
+// Antes tenía un BendeyIconButton "Ver detalle" al final de la fila; ahora toda la fila es
+// clickeable (patrón de lista estándar, hit target más grande) y el monto queda junto al nombre
+// del proveedor — misma información, un toque menos.
 @Composable
 private fun PurchaseRow(purchase: Purchase, paymentLabel: String, onOpenDetail: () -> Unit) {
-    BendeyCard(contentPadding = PaddingValues(BendeySpacing.cardPadding)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(purchase.supplierName ?: "Sin proveedor", fontWeight = FontWeight.SemiBold)
-                Text(
-                    "${purchase.docType} · ${purchase.documentLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-                Text(purchase.issueDate, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-                Text(
-                    paymentLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-                if (purchase.isCancelled) {
-                    BendeyStatusChip(label = "Anulada", accentColor = BendeyColors.Error)
-                }
-            }
+    BendeyListRow(onClick = onOpenDetail) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BendeyListRowTitle(purchase.supplierName ?: "Sin proveedor", modifier = Modifier.weight(1f))
             Text(currency.format(purchase.total), fontWeight = FontWeight.Bold)
-            BendeyIconButton(onClick = onOpenDetail, icon = Icons.Default.Visibility, contentDescription = "Ver detalle")
+        }
+        BendeyListRowSubtitle("${purchase.docType} · ${purchase.documentLabel}")
+        Text(purchase.issueDate, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+        Text(paymentLabel, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+        if (purchase.isCancelled) {
+            BendeyStatusChip(label = "Anulada", accentColor = BendeyColors.Error)
         }
     }
 }
@@ -331,7 +330,7 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
             Text("Detalle de la compra", fontWeight = FontWeight.SemiBold)
             BendeyTextButton(text = "Agregar ítem", onClick = viewModel::openProductPicker)
         }
-        BendeyCheckboxRow(
+        BendeySwitchRow(
             label = "Los precios que agregue ya incluyen IGV (ítems nuevos; cada fila se ajusta aparte)",
             checked = form.defaultPriceIncludesIgv,
             onCheckedChange = viewModel::setDefaultPriceIncludesIgv,
@@ -400,7 +399,7 @@ private fun PurchaseItemRow(
                     modifier = Modifier.weight(1f),
                 )
             }
-            BendeyCheckboxRow(
+            BendeySwitchRow(
                 label = "Incluye IGV",
                 checked = item.priceIncludesIgv,
                 onCheckedChange = onPriceIncludesIgvChange,

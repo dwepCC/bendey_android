@@ -28,12 +28,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +62,8 @@ import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyOption
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
@@ -250,7 +247,13 @@ fun OrderDetailsDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+private const val DRIVER_UNASSIGNED = ""
+
+// Antes: ExposedDropdownMenuBox propio — select fijo con una opción explícita "Sin asignar" (no
+// solo un estado vacío: hay que poder volver a "Sin asignar" después de haber elegido a alguien),
+// sin búsqueda. BendeySimpleSelect ya soporta `enabled` (se sumó justo para poder migrar este
+// caso sin perder el bloqueo mientras carga), así que encaja igual que los demás — "Sin asignar"
+// se modela como el valor "" en la propia lista de opciones, no como un placeholder.
 @Composable
 private fun DriverDropdown(
     drivers: List<DeliveryDriverBrief>,
@@ -258,46 +261,16 @@ private fun DriverDropdown(
     selectedId: Int?,
     onSelect: (Int?) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = drivers.find { it.id == selectedId }?.name ?: "Sin asignar"
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (!loading) expanded = it },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = if (loading) "Cargando…" else selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Repartidor") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !loading),
-            shape = MaterialTheme.shapes.large,
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            DropdownMenuItem(
-                text = { Text("Sin asignar") },
-                onClick = {
-                    onSelect(null)
-                    expanded = false
-                },
-            )
-            drivers.forEach { driver ->
-                DropdownMenuItem(
-                    text = { Text(driver.name) },
-                    onClick = {
-                        onSelect(driver.id)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
+    val options = listOf(BendeyOption(DRIVER_UNASSIGNED, "Sin asignar")) +
+        drivers.map { BendeyOption(it.id.toString(), it.name) }
+    BendeySimpleSelect(
+        options = options,
+        selectedValue = selectedId?.toString() ?: DRIVER_UNASSIGNED,
+        onSelect = { value -> onSelect(value.toIntOrNull()) },
+        label = "Repartidor",
+        placeholder = if (loading) "Cargando…" else "Sin asignar",
+        enabled = !loading,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

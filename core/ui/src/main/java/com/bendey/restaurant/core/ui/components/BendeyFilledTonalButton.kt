@@ -32,7 +32,7 @@ fun BendeyFilledTonalButton(
             defaultElevation = 0.dp,
             pressedElevation = 0.dp,
         ),
-        colors = ButtonDefaults.filledTonalButtonColors(),
+        colors = BendeyButtonDefaults.filledTonalColors(),
     ) {
         Text(
             text = text,

@@ -1,52 +1,24 @@
 package com.bendey.restaurant.core.ui.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -75,6 +47,10 @@ fun BendeyFormDialog(
     footerSummary: String? = null,
     validationError: String? = null,
     loadingMessage: String = "Cargando…",
+    // Anular/Eliminar/Revocar: el botón de confirmar pasa de BendeyPrimaryButton a
+    // BendeyDestructiveButton (color Error) — misma semántica que el resto del sistema para una
+    // operación irreversible, en vez de cada flujo decidiendo su propio color a mano.
+    destructive: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit = onDismissRequest,
     content: @Composable () -> Unit,
@@ -215,19 +191,34 @@ fun BendeyFormDialog(
                         enabled = !loading,
                         modifier = Modifier.weight(1f),
                     )
-                    BendeyPrimaryButton(
-                        text = if (loading) "Procesando…" else confirmText,
-                        onClick = onConfirm,
-                        enabled = confirmEnabled && !loading,
-                        fillWidth = true,
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (destructive) {
+                        BendeyDestructiveButton(
+                            text = if (loading) "Procesando…" else confirmText,
+                            onClick = onConfirm,
+                            enabled = confirmEnabled && !loading,
+                            fillWidth = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        BendeyPrimaryButton(
+                            text = if (loading) "Procesando…" else confirmText,
+                            onClick = onConfirm,
+                            enabled = confirmEnabled && !loading,
+                            fillWidth = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * Wrapper delgado sobre [BendeySelect] (`searchable = true`) — misma firma pública de siempre,
+ * ningún call site cambia. Antes tenía su propia implementación completa de Popup+búsqueda,
+ * copiada casi idéntica en [BendeySimpleSelect]; ahora ambas comparten una sola implementación.
+ */
 @Composable
 fun BendeySearchableSelect(
     options: List<BendeySelectOption>,
@@ -236,124 +227,20 @@ fun BendeySearchableSelect(
     label: String,
     placeholder: String = "Buscar…",
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var query by remember { mutableStateOf("") }
-    val selectedLabel = options.firstOrNull { it.id == selectedId }?.label.orEmpty()
-    val filtered = remember(options, query) {
-        if (query.isBlank()) options
-        else options.filter { it.label.contains(query, ignoreCase = true) }
-    }
-
-    Column(modifier = modifier) {
-        if (label.isNotBlank()) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = BendeyColors.OnSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
-        }
-        var triggerWidthPx by remember { mutableStateOf(0) }
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onSizeChanged { triggerWidthPx = it.width }
-                        .clip(BendeyShapeTokens.md)
-                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
-                        .background(BendeyColors.Surface)
-                        .clickable { expanded = !expanded }
-                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = selectedLabel.ifBlank { "Seleccionar" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selectedLabel.isBlank()) BendeyColors.OnSurfaceVariant else BendeyColors.OnSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = BendeyColors.OnSurfaceVariant,
-                    )
-                }
-                // Flota sobre el contenido (no empuja layout): esta fila puede vivir dentro
-                // de un header de altura fija cuyo hermano usa weight(1f) para la lista;
-                // si el desplegable creciera inline, le robaría espacio a esa lista.
-                if (expanded) {
-                    Popup(
-                        popupPositionProvider = remember {
-                            object : PopupPositionProvider {
-                                override fun calculatePosition(
-                                    anchorBounds: IntRect,
-                                    windowSize: IntSize,
-                                    layoutDirection: LayoutDirection,
-                                    popupContentSize: IntSize,
-                                ): IntOffset = IntOffset(anchorBounds.left, anchorBounds.bottom + 4)
-                            }
-                        },
-                        onDismissRequest = { expanded = false },
-                        properties = PopupProperties(focusable = true),
-                    ) {
-                        val triggerWidthDp = with(LocalDensity.current) { triggerWidthPx.toDp() }
-                        Surface(
-                            modifier = Modifier.width(triggerWidthDp),
-                            shape = BendeyShapeTokens.md,
-                            color = BendeyColors.Surface,
-                            border = BorderStroke(1.dp, BendeyColors.Outline),
-                            shadowElevation = 8.dp,
-                        ) {
-                            Column {
-                                BendeyTextField(
-                                    value = query,
-                                    onValueChange = { query = it },
-                                    label = placeholder,
-                                    modifier = Modifier.padding(8.dp),
-                                )
-                                HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.5f))
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 180.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                ) {
-                                    if (filtered.isEmpty()) {
-                                        Text(
-                                            text = "Sin resultados",
-                                            modifier = Modifier.padding(12.dp),
-                                            color = BendeyColors.OnSurfaceVariant,
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                    } else {
-                                        filtered.forEach { option ->
-                                            Text(
-                                                text = option.label,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        onSelect(option.id)
-                                                        expanded = false
-                                                        query = ""
-                                                    }
-                                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = if (option.id == selectedId) BendeyColors.Primary else BendeyColors.OnSurface,
-                                                fontWeight = if (option.id == selectedId) FontWeight.SemiBold else FontWeight.Normal,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    BendeySelect(
+        options = options,
+        selectedOption = options.firstOrNull { it.id == selectedId },
+        onSelect = { onSelect(it.id) },
+        optionLabel = { it.label },
+        label = label,
+        modifier = modifier,
+        searchable = true,
+        placeholder = placeholder,
+        isOptionSelected = { it.id == selectedId },
+        enabled = enabled,
+    )
 }
 
 data class BendeyOption(
@@ -361,7 +248,10 @@ data class BendeyOption(
     val label: String,
 )
 
-/** Select compacto (valor texto) — categorías, roles, IGV, etc. */
+/**
+ * Select compacto (valor texto) — categorías, roles, IGV, etc.
+ * Wrapper delgado sobre [BendeySelect] (`searchable = false`) — ver nota en [BendeySearchableSelect].
+ */
 @Composable
 fun BendeySimpleSelect(
     options: List<BendeyOption>,
@@ -370,69 +260,18 @@ fun BendeySimpleSelect(
     label: String,
     modifier: Modifier = Modifier,
     placeholder: String = "Seleccionar",
+    enabled: Boolean = true,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = options.firstOrNull { it.value == selectedValue }?.label.orEmpty()
-
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = BendeyColors.OnSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp),
-        )
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(BendeyShapeTokens.md)
-                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
-                        .background(BendeyColors.Surface)
-                        .clickable { expanded = !expanded }
-                        .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = selectedLabel.ifBlank { placeholder },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selectedLabel.isBlank()) BendeyColors.OnSurfaceVariant else BendeyColors.OnSurface,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = BendeyColors.OnSurfaceVariant,
-                    )
-                }
-                if (expanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                        .clip(BendeyShapeTokens.md)
-                        .border(1.dp, BendeyColors.Outline, BendeyShapeTokens.md)
-                        .background(BendeyColors.Surface),
-                    ) {
-                    options.forEach { option ->
-                        Text(
-                            text = option.label,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onSelect(option.value)
-                                    expanded = false
-                                }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (option.value == selectedValue) BendeyColors.Primary else BendeyColors.OnSurface,
-                            fontWeight = if (option.value == selectedValue) FontWeight.SemiBold else FontWeight.Normal,
-                        )
-                    }
-                    }
-                }
-            }
-        }
-    }
+    BendeySelect(
+        options = options,
+        selectedOption = options.firstOrNull { it.value == selectedValue },
+        onSelect = { onSelect(it.value) },
+        optionLabel = { it.label },
+        label = label,
+        modifier = modifier,
+        searchable = false,
+        placeholder = placeholder,
+        isOptionSelected = { it.value == selectedValue },
+        enabled = enabled,
+    )
 }

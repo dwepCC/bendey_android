@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.pos.ManualProductInput
-import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
@@ -124,7 +124,7 @@ fun ManualProductDialog(
             }
         }
         if (isGravadoIgv(form.igvAffectationType)) {
-            BendeyCheckboxRow(
+            BendeySwitchRow(
                 label = "Precio incluye IGV",
                 checked = form.priceIncludesIgv,
                 onCheckedChange = { checked -> form = form.copy(priceIncludesIgv = checked) },

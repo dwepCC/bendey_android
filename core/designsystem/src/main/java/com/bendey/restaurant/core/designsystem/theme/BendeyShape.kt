@@ -20,7 +20,11 @@ object BendeyShapeTokens {
 
     val sheet = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     val pill = RoundedCornerShape(20.dp)
-    val chip = RoundedCornerShape(20.dp)
+
+    /** Alias de [pill] — mismo radio (20dp), dos nombres para el mismo shape. Preferir `pill`
+     * en código nuevo; se mantiene por compatibilidad con los sitios que ya llaman `chip`. */
+    @Deprecated("Usar BendeyShapeTokens.pill — mismo valor, un solo nombre.", ReplaceWith("pill"))
+    val chip get() = pill
     /** Barras de progreso / mini indicadores */
     val bar = RoundedCornerShape(4.dp)
     /** Punto de estado (mesas, badges) */

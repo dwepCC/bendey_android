@@ -26,12 +26,16 @@ fun BendeySecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    // Antes, un BendeySecondaryButton deshabilitado no cambiaba fondo ni borde — solo el texto
+    // se atenuaba, así que un botón "apagado" seguía viéndose clickeable. Ahora fondo/borde/texto
+    // bajan juntos al mismo alpha que el resto de los botones (BendeyButtonDefaults).
+    val disabledAlpha = if (enabled) 1f else BendeyButtonDefaults.DisabledContentAlpha
     Row(
         modifier = modifier
             .heightIn(min = BendeySpacing.buttonHeight)
             .clip(BendeyShapeTokens.md)
-            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.75f), BendeyShapeTokens.md)
-            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f))
+            .border(1.dp, BendeyColors.Outline.copy(alpha = 0.75f * disabledAlpha), BendeyShapeTokens.md)
+            .background(BendeyColors.SurfaceVariant.copy(alpha = 0.45f * disabledAlpha))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -40,7 +44,7 @@ fun BendeySecondaryButton(
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) BendeyColors.OnSurface else BendeyColors.OnSurfaceVariant,
+            color = BendeyColors.OnSurface.copy(alpha = disabledAlpha),
             fontWeight = FontWeight.Medium,
         )
     }

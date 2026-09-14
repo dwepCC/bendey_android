@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
@@ -50,7 +52,13 @@ import com.bendey.restaurant.core.domain.restaurant.Floor
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyDestructiveButton
+import com.bendey.restaurant.core.ui.components.BendeyFilterBar
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
+import com.bendey.restaurant.core.ui.components.BendeyListRow
+import com.bendey.restaurant.core.ui.components.BendeyListRowAction
+import com.bendey.restaurant.core.ui.components.BendeyListRowSubtitle
+import com.bendey.restaurant.core.ui.components.BendeyListRowTitle
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
@@ -98,33 +106,28 @@ fun MesasAdminScreen(
         state.error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
-        BendeyTextField(
-            value = state.searchQuery,
-            onValueChange = viewModel::setSearchQuery,
-            label = "Buscar mesa",
+        // Único filtro real (ambiente) además del buscador: cabe entero como chips primarios,
+        // sin necesitar "Más filtros" — esa capa solo se justifica cuando hay algo que ocultar.
+        BendeyFilterBar(
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
-        )
-        BendeyHorizontalScrollRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(
-                horizontal = BendeySpacing.md,
-                vertical = BendeySpacing.xxs,
-            ),
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            BendeyFilterChip(
-                selected = state.floorFilterId == null,
-                onClick = { viewModel.setFloorFilter(null) },
-                text = "Todos",
-            )
-            state.floors.forEach { floor ->
+            searchQuery = state.searchQuery,
+            onSearchQueryChange = viewModel::setSearchQuery,
+            searchPlaceholder = "Buscar mesa",
+            primaryFilters = {
                 BendeyFilterChip(
-                    selected = state.floorFilterId == floor.id,
-                    onClick = { viewModel.setFloorFilter(floor.id) },
-                    text = floor.name,
+                    selected = state.floorFilterId == null,
+                    onClick = { viewModel.setFloorFilter(null) },
+                    text = "Todos",
                 )
-            }
-        }
+                state.floors.forEach { floor ->
+                    BendeyFilterChip(
+                        selected = state.floorFilterId == floor.id,
+                        onClick = { viewModel.setFloorFilter(floor.id) },
+                        text = floor.name,
+                    )
+                }
+            },
+        )
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
             horizontalArrangement = Arrangement.End,
@@ -347,7 +350,7 @@ fun MesasAdminScreen(
                 Text(blocked ?: "¿Eliminar la mesa ${table?.name.orEmpty()}?")
             },
             confirmButton = {
-                BendeyPrimaryButton(
+                BendeyDestructiveButton(
                     text = "Eliminar",
                     onClick = viewModel::confirmDeleteTable,
                     enabled = blocked == null && !state.saving,
@@ -366,7 +369,7 @@ fun MesasAdminScreen(
             title = { Text("Eliminar ambiente") },
             text = { Text("¿Eliminar este ambiente? Debe estar vacío de mesas activas.") },
             confirmButton = {
-                BendeyPrimaryButton(
+                BendeyDestructiveButton(
                     text = "Eliminar",
                     onClick = viewModel::confirmDeleteFloor,
                     enabled = !state.saving,
@@ -430,6 +433,9 @@ private fun AdminTableCard(
     }
 }
 
+// Fila de lista real (no la tarjeta de grilla — esa es AdminTableCard, una celda con más
+// contenido apilado, un patrón distinto que se queda como está): caso "acción de menú" de
+// BendeyListRow, un solo botón "⋮" en vez del ícono+menú armado a mano de TableContextMenu.
 @Composable
 private fun AdminTableListRow(
     table: RestaurantTable,
@@ -441,26 +447,19 @@ private fun AdminTableListRow(
     onOpenSession: (() -> Unit)?,
     onShowMenuQr: () -> Unit,
 ) {
-    BendeyManagementCard {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(table.name, fontWeight = FontWeight.SemiBold)
-                Text(
-                    listOfNotNull(floorName, "Cap. ${table.capacity}", table.status.label).joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-            }
-            TableContextMenu(
-                table,
-                deleteBlocked,
-                canManageDigitalMenu,
-                onEdit,
-                onDelete,
-                onOpenSession,
-                onShowMenuQr,
-            )
+    val overflowActions = buildList {
+        add(BendeyListRowAction(Icons.Default.Edit, "Editar", onEdit))
+        onOpenSession?.let { go -> add(BendeyListRowAction(Icons.AutoMirrored.Filled.ArrowForward, "Ir a mesa", go)) }
+        if (canManageDigitalMenu) {
+            add(BendeyListRowAction(Icons.Default.QrCode, "QR menú digital", onShowMenuQr))
         }
+        add(BendeyListRowAction(Icons.Default.Delete, "Eliminar", onDelete, destructive = true, enabled = deleteBlocked == null))
+    }
+    BendeyListRow(overflowActions = overflowActions) {
+        BendeyListRowTitle(table.name)
+        BendeyListRowSubtitle(
+            listOfNotNull(floorName, "Cap. ${table.capacity}", table.status.label).joinToString(" · "),
+        )
     }
 }
 
@@ -481,18 +480,31 @@ private fun TableContextMenu(
         contentDescription = "Menú",
     )
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        DropdownMenuItem(text = { Text("Editar") }, onClick = { open = false; onEdit() })
+        DropdownMenuItem(
+            text = { Text("Editar") },
+            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+            onClick = { open = false; onEdit() },
+        )
         onOpenSession?.let { go ->
-            DropdownMenuItem(text = { Text("Ir a mesa") }, onClick = { open = false; go() })
+            DropdownMenuItem(
+                text = { Text("Ir a mesa") },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) },
+                onClick = { open = false; go() },
+            )
         }
         if (canManageDigitalMenu) {
             DropdownMenuItem(
                 text = { Text("QR menú digital") },
+                leadingIcon = { Icon(Icons.Default.QrCode, contentDescription = null) },
                 onClick = { open = false; onShowMenuQr() },
             )
         }
+        // Mismo tratamiento que BendeyListRow.overflowActions(destructive = true): icono y
+        // texto en color Error — antes esta versión (la del card de grilla) no tenía ninguna
+        // señal visual de que "Eliminar" es irreversible.
         DropdownMenuItem(
-            text = { Text("Eliminar") },
+            text = { Text("Eliminar", color = BendeyColors.Error) },
+            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error) },
             onClick = { open = false; onDelete() },
             enabled = deleteBlocked == null,
         )

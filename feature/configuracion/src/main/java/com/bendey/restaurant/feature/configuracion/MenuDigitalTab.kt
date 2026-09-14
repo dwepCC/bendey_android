@@ -310,11 +310,13 @@ fun MenuDigitalTab(
                                 enabled = state.canManage,
                             )
                             if (state.heroImageBase64.isNotBlank()) {
-                                Text(
-                                    "Quitar",
-                                    color = BendeyColors.Error,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.clickable(enabled = state.canManage) { viewModel.clearHeroImage() },
+                                // Antes: Text con .clickable a mano — un botón improvisado en vez
+                                // de un componente Bendey.
+                                BendeyTextButton(
+                                    text = "Quitar",
+                                    onClick = viewModel::clearHeroImage,
+                                    enabled = state.canManage,
+                                    textColor = BendeyColors.Error,
                                 )
                             }
                         }

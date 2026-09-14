@@ -8,7 +8,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
-import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 
 data class MenuChannelForm(
@@ -40,7 +40,7 @@ fun MenuChannelDialog(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            BendeyCheckboxRow(
+            BendeySwitchRow(
                 label = "Visible en menú digital",
                 checked = form.enabled,
                 onCheckedChange = { checked -> onFormChange { it.copy(enabled = checked) } },

@@ -132,7 +132,7 @@ internal fun ConfigureSelectionChip(
             .fillMaxWidth()
             .heightIn(min = BendeySpacing.touchTarget),
         colors = BendeyChipDefaults.posFilterChipColors(),
-        shape = BendeyShapeTokens.chip,
+        shape = BendeyShapeTokens.pill,
         border = null,
     )
 }

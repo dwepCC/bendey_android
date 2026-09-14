@@ -46,6 +46,11 @@ fun BendeyAlertDialog(
     onDismiss: () -> Unit = onDismissRequest,
     confirmEnabled: Boolean = true,
     confirmLoading: Boolean = false,
+    // Eliminar/Anular/Borrar/Revocar — barrido de la segunda pasada: antes TODA confirmación de
+    // este overload (el que usan la mayoría de los "¿Eliminar X?" de la app) dibujaba el botón de
+    // confirmar en Primary, sin importar si la acción era irreversible. Con esto en `true` pasa a
+    // BendeyDestructiveButton (Error) — mismo cambio que ya recibió BendeyFormDialog.
+    destructive: Boolean = false,
 ) {
     BendeyAlertDialog(
         onDismissRequest = onDismissRequest,
@@ -65,13 +70,23 @@ fun BendeyAlertDialog(
             )
         },
         confirmButton = {
-            BendeyPrimaryButton(
-                text = confirmText,
-                onClick = onConfirm,
-                enabled = confirmEnabled,
-                loading = confirmLoading,
-                fillWidth = false,
-            )
+            if (destructive) {
+                BendeyDestructiveButton(
+                    text = confirmText,
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                    loading = confirmLoading,
+                    fillWidth = false,
+                )
+            } else {
+                BendeyPrimaryButton(
+                    text = confirmText,
+                    onClick = onConfirm,
+                    enabled = confirmEnabled,
+                    loading = confirmLoading,
+                    fillWidth = false,
+                )
+            }
         },
         dismissButton = {
             BendeyTextButton(text = dismissText, onClick = onDismiss)

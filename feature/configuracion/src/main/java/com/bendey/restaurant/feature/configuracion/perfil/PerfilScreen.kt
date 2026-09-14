@@ -111,7 +111,7 @@ fun PerfilScreen(
                             Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
                         }
                         BendeyPrimaryButton(
-                            text = if (state.saving) "Guardando…" else "Guardar cambios",
+                            text = if (state.saving) "Guardando…" else "Guardar",
                             onClick = viewModel::saveProfile,
                             enabled = !state.saving,
                         )

@@ -23,6 +23,10 @@ import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyListRow
+import com.bendey.restaurant.core.ui.components.BendeyListRowAction
+import com.bendey.restaurant.core.ui.components.BendeyListRowSubtitle
+import com.bendey.restaurant.core.ui.components.BendeyListRowTitle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,11 +38,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
@@ -132,6 +134,7 @@ fun ClientesScreen(
             message = "¿Eliminar este cliente del catálogo?",
             onConfirm = viewModel::confirmDelete,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
 }
@@ -347,6 +350,7 @@ private fun ContactFormFields(
     }
 }
 
+// Patrón de referencia usado para diseñar BendeyListRow — ahora lo consume directamente.
 @Composable
 private fun ContactRow(
     contact: CustomerContact,
@@ -355,55 +359,33 @@ private fun ContactRow(
     onDelete: () -> Unit,
     onToggle: () -> Unit,
 ) {
-    BendeyCard(
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
-        contentPadding = PaddingValues(BendeySpacing.cardPadding),
+    BendeyListRow(
+        selected = selected,
+        actions = listOf(
+            BendeyListRowAction(
+                icon = if (contact.active) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
+                contentDescription = "Cambiar estado",
+                onClick = onToggle,
+            ),
+            BendeyListRowAction(Icons.Default.Edit, "Editar", onEdit),
+            BendeyListRowAction(Icons.Default.Delete, "Eliminar", onDelete, destructive = true),
+        ),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(contact.displayName, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    "${contact.docLabel}: ${contact.docNumber}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                )
-                contact.tradeName?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                    contact.phone?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-                    }
-                    contact.email?.let {
-                        Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
-                    }
-                }
-                if (!contact.active) {
-                    BendeyStatusChip(label = "Inactivo", accentColor = BendeyColors.Warning)
-                }
+        BendeyListRowTitle(contact.displayName, maxLines = 2)
+        BendeyListRowSubtitle("${contact.docLabel}: ${contact.docNumber}")
+        contact.tradeName?.let {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            contact.phone?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
             }
-            BendeyIconButton(onClick = onToggle) {
-                Icon(
-                    if (contact.active) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
-                    contentDescription = "Cambiar estado",
-                    tint = if (contact.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
-                )
+            contact.email?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
             }
-            BendeyIconButton(
-                onClick = onEdit,
-                icon = Icons.Default.Edit,
-                contentDescription = "Editar",
-            )
-            BendeyIconButton(
-                onClick = onDelete,
-                icon = Icons.Default.Delete,
-                contentDescription = "Eliminar",
-                tint = BendeyColors.Error,
-            )
+        }
+        if (!contact.active) {
+            BendeyStatusChip(label = "Inactivo", accentColor = BendeyColors.Warning)
         }
     }
 }

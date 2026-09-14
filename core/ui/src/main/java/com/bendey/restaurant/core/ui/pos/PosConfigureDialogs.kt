@@ -54,7 +54,7 @@ fun PosCatalogTabRow(
                 onClick = { onSelect(tab) },
                 label = { Text(tab.label) },
                 colors = BendeyChipDefaults.posFilterChipColors(),
-                shape = BendeyShapeTokens.chip,
+                shape = BendeyShapeTokens.pill,
                 border = null,
             )
         }

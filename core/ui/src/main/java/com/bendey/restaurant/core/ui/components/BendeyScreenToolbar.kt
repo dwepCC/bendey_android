@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -69,16 +70,18 @@ fun BendeyScreenToolbar(
     onBack: (() -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
+    // Piso de altura consistente entre pantallas — antes cada BendeyScreenToolbar tomaba lo que
+    // su propio contenido (título con o sin subtítulo) necesitara, sin un mínimo común, a
+    // diferencia de BendeyAppHeader/BendeyOperationalTopBar que sí lo tienen.
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = BendeySpacing.touchTarget)
             .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-            }
+            BendeyIconButton(onClick = onBack, icon = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -371,46 +374,15 @@ private fun BendeyCompactSearchInput(
     modifier: Modifier = Modifier,
     fieldHeight: Dp = 38.dp,
 ) {
-    BasicTextField(
+    // Delega en BendeySearchField (core/ui/components) — antes esta era una implementación
+    // completa duplicada, solo usada por POS. Se mantiene esta función privada como adaptador
+    // (misma firma, mismo default de 38dp) para no tocar ningún call site dentro de este archivo.
+    BendeySearchField(
         value = value,
         onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = BendeyColors.OnSurface),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = {}),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(fieldHeight),
-        decorationBox = { innerTextField ->
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(BendeyShapeTokens.sm)
-                    .border(1.dp, BendeyColors.Outline.copy(alpha = 0.45f), BendeyShapeTokens.sm)
-                    .background(BendeyColors.Surface)
-                    .padding(horizontal = BendeySpacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = null,
-                    tint = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
-                )
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                    if (value.isEmpty()) {
-                        Text(
-                            text = placeholder,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = BendeyColors.OnSurfaceVariant.copy(alpha = 0.75f),
-                            maxLines = 1,
-                        )
-                    }
-                    innerTextField()
-                }
-            }
-        },
+        placeholder = placeholder,
+        modifier = modifier,
+        fieldHeight = fieldHeight,
     )
 }
 

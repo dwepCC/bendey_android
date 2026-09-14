@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeySessionOrderCard
@@ -96,29 +97,19 @@ fun PosSentOrdersSection(
                     reprintEnabled = reprintingOrderId != order.id && !reprintingAll,
                     onReprint = { onReprint(order) },
                     comandaActions = { comanda ->
-                        BendeyIconButton(
+                        BendeyCompactIconButton(
                             onClick = { onEditComandaNotes(comanda) },
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Editar notas",
-                                tint = BendeyColors.Primary,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                            icon = Icons.Default.Edit,
+                            contentDescription = "Editar notas",
+                            tint = BendeyColors.Primary,
+                        )
                         if (canAnularComanda) {
-                            BendeyIconButton(
+                            BendeyCompactIconButton(
                                 onClick = { onVoidComanda(comanda) },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Anular línea",
-                                    tint = BendeyColors.Error,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
+                                icon = Icons.Default.Delete,
+                                contentDescription = "Anular línea",
+                                tint = BendeyColors.Error,
+                            )
                         }
                     },
                 )

@@ -24,21 +24,15 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 
 import androidx.compose.material3.CircularProgressIndicator
 
-import androidx.compose.material3.DropdownMenuItem
-
 import androidx.compose.material3.ExperimentalMaterial3Api
-
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-
-import androidx.compose.material3.ExposedDropdownMenuBox
-
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 
 import androidx.compose.material3.MaterialTheme
 
-import androidx.compose.material3.OutlinedTextField
-
 import androidx.compose.material3.Text
+
+import com.bendey.restaurant.core.ui.components.BendeyOption
+
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 
 import androidx.compose.runtime.Composable
 
@@ -869,88 +863,23 @@ private fun SalesReportFilters(
 
 @Composable
 
+// Antes: ExposedDropdownMenuBox propio, mismo caso exacto que el FilterDropdown que ya se migró
+// en Ventas — select fijo sin búsqueda, encaja directo en BendeySimpleSelect.
 private fun ReportFilterDropdown(
-
     label: String,
-
     value: String,
-
     options: List<Pair<String, String>>,
-
     onSelect: (String) -> Unit,
-
     modifier: Modifier = Modifier,
-
 ) {
-
-    var expanded by remember { mutableStateOf(false) }
-
-    val selectedLabel = options.firstOrNull { it.first == value }?.second ?: label
-
-
-
-    ExposedDropdownMenuBox(
-
-        expanded = expanded,
-
-        onExpandedChange = { expanded = it },
-
+    BendeySimpleSelect(
+        options = options.map { (code, text) -> BendeyOption(code, text) },
+        selectedValue = value,
+        onSelect = onSelect,
+        label = label,
+        placeholder = label,
         modifier = modifier,
-
-    ) {
-
-        OutlinedTextField(
-
-            value = selectedLabel,
-
-            onValueChange = {},
-
-            readOnly = true,
-
-            singleLine = true,
-
-            label = { Text(label) },
-
-            modifier = Modifier
-
-                .fillMaxWidth()
-
-                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
-
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-
-        )
-
-        ExposedDropdownMenu(
-
-            expanded = expanded,
-
-            onDismissRequest = { expanded = false },
-
-        ) {
-
-            options.forEach { (code, text) ->
-
-                DropdownMenuItem(
-
-                    text = { Text(text) },
-
-                    onClick = {
-
-                        onSelect(code)
-
-                        expanded = false
-
-                    },
-
-                )
-
-            }
-
-        }
-
-    }
-
+    )
 }
 
 

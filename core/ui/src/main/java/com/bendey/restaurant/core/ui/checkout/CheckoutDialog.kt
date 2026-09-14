@@ -22,19 +22,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
+import com.bendey.restaurant.core.ui.components.BendeyOption
+import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -664,9 +662,12 @@ private fun PaymentLineEditor(
                 modifier = Modifier.weight(1f),
             )
             if (canRemove) {
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Delete, contentDescription = "Quitar", tint = BendeyColors.Error)
-                }
+                BendeyCompactIconButton(
+                    onClick = onRemove,
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Quitar método de pago",
+                    tint = BendeyColors.Error,
+                )
             }
         }
         Row(
@@ -690,7 +691,9 @@ private fun PaymentLineEditor(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Antes: ExposedDropdownMenuBox propio, sin búsqueda ni anclaje especial — mismo caso que los
+// demás select simples migrados a BendeySimpleSelect. Sin `label` (label = "") a propósito: en
+// checkout esta fila ya tiene poco alto y el campo original tampoco llevaba etiqueta flotante.
 @Composable
 private fun PaymentMethodDropdown(
     methods: List<PaymentMethodOption>,
@@ -698,41 +701,13 @@ private fun PaymentMethodDropdown(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = methods.firstOrNull { it.code == selectedCode }?.name ?: selectedCode
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
+    BendeySimpleSelect(
+        options = methods.map { BendeyOption(it.code, it.name) },
+        selectedValue = selectedCode,
+        onSelect = onSelect,
+        label = "",
         modifier = modifier,
-    ) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            textStyle = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
-                .fillMaxWidth(),
-            shape = BendeyShapeTokens.sm,
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            methods.forEach { method ->
-                DropdownMenuItem(
-                    text = { Text(method.name) },
-                    onClick = {
-                        onSelect(method.code)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable

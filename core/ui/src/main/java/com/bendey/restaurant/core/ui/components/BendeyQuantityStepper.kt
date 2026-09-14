@@ -107,7 +107,7 @@ fun BendeyQuantityStepper(
         BendeyStepperButton(
             onClick = onIncrease,
             enabled = increaseEnabled,
-            backgroundColor = Color(0xFF1A1A1A),
+            backgroundColor = BendeyColors.OnSurface,
             size = buttonSize,
             contentDescription = "Aumentar cantidad",
         ) {

@@ -34,12 +34,7 @@ fun BendeyFilledCartButton(
             defaultElevation = 0.dp,
             pressedElevation = 1.dp,
         ),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-            disabledContainerColor = containerColor.copy(alpha = 0.38f),
-            disabledContentColor = contentColor.copy(alpha = 0.55f),
-        ),
+        colors = BendeyButtonDefaults.filledColors(containerColor = containerColor, contentColor = contentColor),
     ) {
         Text(
             text = text,

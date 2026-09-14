@@ -58,6 +58,7 @@ import com.bendey.restaurant.core.designsystem.theme.accentColor
 import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
@@ -218,7 +219,7 @@ fun CocinaScreen(
                             containerColor = accent.copy(alpha = 0.12f),
                             labelColor = accent,
                         ),
-                        shape = BendeyShapeTokens.chip,
+                        shape = BendeyShapeTokens.pill,
                         border = null,
                     )
                 }
@@ -393,9 +394,8 @@ private fun KitchenOrderCard(
                         }
                     }
                     if (canVoid) {
-                        BendeyIconButton(
+                        BendeyCompactIconButton(
                             onClick = { onVoid(item) },
-                            modifier = Modifier.size(32.dp),
                             icon = Icons.Default.Delete,
                             contentDescription = "Anular",
                             tint = BendeyColors.Error,
@@ -467,9 +467,8 @@ private fun KitchenCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (canVoid) {
-                        BendeyIconButton(
+                        BendeyCompactIconButton(
                             onClick = onVoid,
-                            modifier = Modifier.size(32.dp),
                             icon = Icons.Default.Delete,
                             contentDescription = "Anular",
                             tint = BendeyColors.Error,

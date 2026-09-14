@@ -15,29 +15,24 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import com.bendey.restaurant.core.designsystem.components.BendeyCard
+import com.bendey.restaurant.core.ui.components.BendeyListRow
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -360,7 +355,7 @@ fun VentasScreen(
     )
 
     if (state.xmlViewOpen) {
-        AlertDialog(
+        BendeyAlertDialog(
             onDismissRequest = viewModel::dismissXmlView,
             title = { Text(state.xmlViewTitle) },
             text = {
@@ -374,7 +369,7 @@ fun VentasScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissXmlView) { Text("Cerrar") }
+                BendeyTextButton(text = "Cerrar", onClick = viewModel::dismissXmlView)
             },
         )
     }
@@ -498,7 +493,9 @@ private fun VentasFiltersSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Antes era su propio ExposedDropdownMenuBox de Material3 — un select sin búsqueda ni anclaje
+// especial, exactamente el caso que ya resuelve BendeySelect. Misma firma pública (label, value,
+// options, onSelect): ningún call site cambia.
 @Composable
 private fun FilterDropdown(
     label: String,
@@ -506,39 +503,13 @@ private fun FilterDropdown(
     options: List<Pair<String, String>>,
     onSelect: (String) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = options.firstOrNull { it.first == value }?.second ?: label
-
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            options.forEach { (code, text) ->
-                DropdownMenuItem(
-                    text = { Text(text) },
-                    onClick = {
-                        onSelect(code)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
+    BendeySimpleSelect(
+        options = options.map { (code, text) -> BendeyOption(code, text) },
+        selectedValue = value,
+        onSelect = onSelect,
+        label = label,
+        placeholder = label,
+    )
 }
 
 @Composable
@@ -638,9 +609,12 @@ private fun SaleRow(
     selected: Boolean = false,
     onClick: () -> Unit,
 ) {
-    BendeyCard(
+    // Contenido interno sin tocar a propósito: la lógica condicional de estado (nota de venta vs.
+    // comprobante vs. nota de crédito, devuelta vs. pendiente de devolución) es densa y ya estaba
+    // bien afinada — solo se reemplaza el envoltorio BendeyCard por BendeyListRow.
+    BendeyListRow(
         onClick = onClick,
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+        selected = selected,
         contentPadding = PaddingValues(BendeySpacing.cardPadding),
     ) {
         Row(
@@ -989,10 +963,6 @@ private fun EmitElectronicDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    var kindExpanded by remember { mutableStateOf(false) }
-    var seriesExpanded by remember { mutableStateOf(false) }
-    val kindLabel = if (docKind == "01") "Factura (01)" else "Boleta (03)"
-    val seriesLabel = series.firstOrNull { it.id == seriesId }?.displayLabel ?: "Seleccionar serie"
     val requiresRuc = isFacturaDocType(if (docKind == "01") "FACTURA" else "BOLETA", docKind)
     val clientOptions = if (requiresRuc) {
         contacts.filter { it.docType.trim() == "6" || it.docType.equals("ruc", ignoreCase = true) }
@@ -1000,11 +970,16 @@ private fun EmitElectronicDialog(
         contacts
     }
 
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = { if (!loading) onDismiss() },
-        title = { Text("Emitir comprobante electrónico") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        title = "Emitir comprobante electrónico",
+        confirmText = if (loading) "Generando…" else "Emitir",
+        confirmEnabled = !loading && !metaLoading && seriesId != null,
+        enableContentScroll = true,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "Genera boleta o factura desde esta nota de venta. Puede cambiar el cliente antes de emitir.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -1028,42 +1003,22 @@ private fun EmitElectronicDialog(
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    TextButton(onClick = onAddClient, enabled = !loading) {
-                        Text("+ Registrar nuevo cliente")
-                    }
+                    BendeyTextButton(text = "+ Registrar nuevo cliente", onClick = onAddClient, enabled = !loading)
                 }
                 sunatLimitWarning?.let {
                     Text(it, color = BendeyColors.Warning, style = MaterialTheme.typography.bodySmall)
                 }
-                ExposedDropdownMenuBox(
-                    expanded = kindExpanded,
-                    onExpandedChange = { kindExpanded = it },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    OutlinedTextField(
-                        value = kindLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Tipo") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !loading,
-                            ),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kindExpanded) },
-                    )
-                    ExposedDropdownMenu(expanded = kindExpanded, onDismissRequest = { kindExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Boleta (03)") },
-                            onClick = { onDocKindChange("03"); kindExpanded = false },
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Factura (01)") },
-                            onClick = { onDocKindChange("01"); kindExpanded = false },
-                        )
-                    }
-                }
+                // Antes: ExposedDropdownMenuBox propio (campo con flecha nativo + menú anclado).
+                // Es un select fijo de 2 valores sin búsqueda — el mismo caso que ya resuelve
+                // BendeySimpleSelect, así que se migró (BendeySelect ahora soporta `enabled` para
+                // no perder el bloqueo mientras se está emitiendo).
+                BendeySimpleSelect(
+                    options = listOf(BendeyOption("03", "Boleta (03)"), BendeyOption("01", "Factura (01)")),
+                    selectedValue = docKind,
+                    onSelect = onDocKindChange,
+                    label = "Tipo",
+                    enabled = !loading,
+                )
                 if (saleDetailEnabled) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         CheckoutDetailModeControl(
@@ -1078,36 +1033,15 @@ private fun EmitElectronicDialog(
                         )
                     }
                 }
-                ExposedDropdownMenuBox(
-                    expanded = seriesExpanded,
-                    onExpandedChange = { seriesExpanded = it },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    OutlinedTextField(
-                        value = seriesLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Serie") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(
-                                type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
-                                enabled = !loading,
-                            ),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = seriesExpanded) },
-                    )
-                    ExposedDropdownMenu(expanded = seriesExpanded, onDismissRequest = { seriesExpanded = false }) {
-                        series.forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text(item.displayLabel) },
-                                onClick = {
-                                    onSeriesChange(item.id)
-                                    seriesExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
+                // Mismo caso que "Tipo" arriba — select fijo, sin búsqueda.
+                BendeySimpleSelect(
+                    options = series.map { BendeyOption(it.id.toString(), it.displayLabel) },
+                    selectedValue = seriesId?.toString(),
+                    onSelect = { value -> value.toIntOrNull()?.let(onSeriesChange) },
+                    label = "Serie",
+                    placeholder = "Seleccionar serie",
+                    enabled = !loading,
+                )
                 BendeyTextField(
                     value = issueDate,
                     onValueChange = onIssueDateChange,
@@ -1118,20 +1052,7 @@ private fun EmitElectronicDialog(
                     Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
                 }
             }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Generando…" else "Emitir",
-                onClick = onConfirm,
-                enabled = !loading && !metaLoading && seriesId != null,
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !loading) {
-                Text("Cancelar")
-            }
-        },
-    )
+    }
 }
 
 /** Alta rápida de cliente sin salir del diálogo de conversión (mismo flujo que el POS). */
@@ -1223,11 +1144,16 @@ private fun VoidReasonDialog(
     }
     val esDevolucion = action == VoidAction.REFUND
 
-    AlertDialog(
+    BendeyFormDialog(
         onDismissRequest = { if (!loading) onDismiss() },
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        title = title,
+        confirmText = confirmLabel,
+        confirmEnabled = !loading && reason.isNotBlank() && (esDevolucion || pin.isNotBlank()),
+        destructive = true,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (esDevolucion) {
                     // El importe no es editable ni lo calcula la app: llega en `refundableAmount`,
                     // derivado por el backend de lo que la venta cobro de verdad.
@@ -1274,19 +1200,6 @@ private fun VoidReasonDialog(
                 error?.let {
                     Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall)
                 }
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = confirmLabel,
-                onClick = onConfirm,
-                enabled = !loading && reason.isNotBlank() && (esDevolucion || pin.isNotBlank()),
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !loading) {
-                Text("Cancelar")
-            }
-        },
-    )
+        }
+    }
 }

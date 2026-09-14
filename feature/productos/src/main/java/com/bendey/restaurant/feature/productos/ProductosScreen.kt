@@ -20,22 +20,25 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
+import com.bendey.restaurant.core.ui.components.BendeyActiveFilter
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyFilterBar
+import com.bendey.restaurant.core.ui.components.BendeyFilterSheet
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyListRow
+import com.bendey.restaurant.core.ui.components.BendeyListRowAction
+import com.bendey.restaurant.core.ui.components.BendeyListRowSubtitle
+import com.bendey.restaurant.core.ui.components.BendeyListRowTitle
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
+import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import androidx.compose.material3.Text
@@ -54,7 +57,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -303,6 +305,7 @@ private fun ProductosTabRow(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductsTabContent(
     state: ProductosUiState,
@@ -326,79 +329,56 @@ private fun ProductsTabContent(
 ) {
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
     val listState = rememberLazyListState()
+    var filterSheetOpen by remember { mutableStateOf(false) }
+    val categoryOptions = remember(state.categories) {
+        listOf(BendeySelectOption(-1, "Todas las categorías")) +
+            state.categories.map { BendeySelectOption(it.id, it.name) }
+    }
+    val selectedCategoryName = state.categoryFilterId?.let { id -> state.categories.firstOrNull { it.id == id }?.name }
+    val selectedBranchName = state.branchFilterId?.let { id -> state.branches.firstOrNull { it.id == id }?.name }
+    val activeFilters = buildList {
+        selectedCategoryName?.let {
+            add(BendeyActiveFilter(key = "category", label = "Categoría: $it", onRemove = { onCategoryFilter(null) }))
+        }
+        selectedBranchName?.let {
+            add(BendeyActiveFilter(key = "branch", label = "Sucursal: $it", onRemove = { onBranchFilter(null) }))
+        }
+    }
     Column(modifier = modifier.fillMaxSize()) {
         error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
-        val categoryOptions = remember(state.categories) {
-            listOf(BendeySelectOption(-1, "Todas las categorías")) +
-                state.categories.map { BendeySelectOption(it.id, it.name) }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            BendeyTextField(
-                value = state.searchQuery,
-                onValueChange = onSearch,
-                label = "Buscar",
-                modifier = Modifier.weight(1.2f),
-            )
-            BendeySearchableSelect(
-                options = categoryOptions,
-                selectedId = state.categoryFilterId ?: -1,
-                onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
-                label = "",
-                placeholder = "Categoría",
-                modifier = Modifier.weight(1f),
-            )
-        }
-        BendeyHorizontalScrollRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-        ) {
-            BendeyFilterChip(
-                selected = state.productTypeFilter == "non_insumo",
-                onClick = { onProductTypeFilter("non_insumo") },
-                text = "Productos",
-            )
-            BendeyFilterChip(
-                selected = state.productTypeFilter == "insumo",
-                onClick = { onProductTypeFilter("insumo") },
-                text = "Insumos",
-            )
-            BendeyFilterChip(
-                selected = state.showInactive,
-                onClick = { onShowInactiveChange(!state.showInactive) },
-                text = "Solo inactivos",
-            )
-        }
-        if (state.branches.size > 1) {
-            BendeyHorizontalScrollRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(
-                    horizontal = BendeySpacing.md,
-                    vertical = BendeySpacing.xxs,
-                ),
-                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
-            ) {
+        // Antes: buscador+categoría en una fila, tipo+inactivos en otra, y sucursales en una
+        // tercera — hasta ~34% de la pantalla (auditoría 2026). "Productos"/"Insumos"/"Solo
+        // inactivos" ya eran exactamente 3 chips (el límite recomendado) así que se quedan como
+        // filtros primarios; Categoría y Sucursal — que pueden crecer sin límite — se movieron a
+        // "Más filtros", con su selección visible como chip removible.
+        BendeyFilterBar(
+            modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+            searchQuery = state.searchQuery,
+            onSearchQueryChange = onSearch,
+            searchPlaceholder = "Buscar productos",
+            primaryFilters = {
                 BendeyFilterChip(
-                    selected = state.branchFilterId == null,
-                    onClick = { onBranchFilter(null) },
-                    text = "Todas sucursales",
+                    selected = state.productTypeFilter == "non_insumo",
+                    onClick = { onProductTypeFilter("non_insumo") },
+                    text = "Productos",
                 )
-                state.branches.forEach { branch ->
-                    BendeyFilterChip(
-                        selected = state.branchFilterId == branch.id,
-                        onClick = { onBranchFilter(branch.id) },
-                        label = { Text(branch.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    )
-                }
-            }
-        }
+                BendeyFilterChip(
+                    selected = state.productTypeFilter == "insumo",
+                    onClick = { onProductTypeFilter("insumo") },
+                    text = "Insumos",
+                )
+                BendeyFilterChip(
+                    selected = state.showInactive,
+                    onClick = { onShowInactiveChange(!state.showInactive) },
+                    text = "Solo inactivos",
+                )
+            },
+            onMoreFiltersClick = { filterSheetOpen = true },
+            moreFiltersActiveCount = activeFilters.size,
+            activeFilters = activeFilters,
+        )
         BendeyFlexibleContentSlot {
             if (state.products.isEmpty() && !state.loading) {
                 BendeyEmptyState(
@@ -447,6 +427,55 @@ private fun ProductsTabContent(
             }
         }
     }
+    if (filterSheetOpen) {
+        BendeyFilterSheet(
+            onDismissRequest = { filterSheetOpen = false },
+            onApply = { filterSheetOpen = false },
+            title = "Más filtros",
+            onClear = if (state.categoryFilterId != null || state.branchFilterId != null) {
+                {
+                    onCategoryFilter(null)
+                    onBranchFilter(null)
+                }
+            } else {
+                null
+            },
+        ) {
+            BendeySearchableSelect(
+                options = categoryOptions,
+                selectedId = state.categoryFilterId ?: -1,
+                onSelect = { id -> onCategoryFilter(if (id == -1) null else id) },
+                label = "Categoría",
+                placeholder = "Categoría",
+            )
+            if (state.branches.size > 1) {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs)) {
+                    Text(
+                        text = "Sucursal",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                    BendeyHorizontalScrollRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
+                    ) {
+                        BendeyFilterChip(
+                            selected = state.branchFilterId == null,
+                            onClick = { onBranchFilter(null) },
+                            text = "Todas sucursales",
+                        )
+                        state.branches.forEach { branch ->
+                            BendeyFilterChip(
+                                selected = state.branchFilterId == branch.id,
+                                onClick = { onBranchFilter(branch.id) },
+                                label = { Text(branch.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -464,157 +493,70 @@ private fun ProductRow(
     onImagePicked: suspend (ByteArray, String) -> Unit,
 ) {
     val imageUrl = resolvePublicAssetUrl(assetsBaseUrl, product.imageUrl).takeIf { it.isNotBlank() }
-    var menuExpanded by remember { mutableStateOf(false) }
-    BendeyCard(
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
+    BendeyListRow(
+        selected = selected,
         contentPadding = PaddingValues(BendeySpacing.sm),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
-        ) {
+        leadingContent = {
             BendeyQuickImageThumb(
                 imageUrl = imageUrl,
                 contentDescription = product.name,
                 onImagePicked = onImagePicked,
                 size = 60.dp,
             )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    product.name,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Text(
-                    product.code,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BendeyColors.OnSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (product.categoryName != null || product.preparationArea?.name != null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                        product.categoryName?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        product.preparationArea?.name?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
+        },
+        overflowActions = buildList {
+            add(BendeyListRowAction(Icons.Default.Edit, "Editar", onEdit))
+            if (product.manageStock) {
+                add(BendeyListRowAction(Icons.Default.Inventory, "Ajuste de stock", onAdjustStock))
+            }
+            add(BendeyListRowAction(Icons.Default.MenuBook, "Menú digital", onMenuChannel))
+            add(
+                BendeyListRowAction(
+                    icon = if (product.active) Icons.Default.ToggleOff else Icons.Default.ToggleOn,
+                    contentDescription = if (product.active) "Desactivar" else "Activar",
+                    onClick = onToggleActive,
+                ),
+            )
+            add(BendeyListRowAction(Icons.Default.Delete, "Eliminar", onDelete, destructive = true))
+        },
+    ) {
+        BendeyListRowTitle(product.name, maxLines = 2)
+        BendeyListRowSubtitle(product.code)
+        if (product.categoryName != null || product.preparationArea?.name != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                product.categoryName?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(
-                    currency.format(product.salePrice),
-                    fontWeight = FontWeight.Bold,
-                    color = BendeyColors.Primary,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                if (!product.active || !product.availableForSale || product.manageStock) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = 2.dp)) {
-                        if (!product.active) {
-                            BendeyStatusChip(label = "Inactivo", accentColor = BendeyColors.Error)
-                        }
-                        if (!product.availableForSale) {
-                            BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
-                        }
-                        if (product.manageStock) {
-                            val stockLabel = stockQty?.let { qty ->
-                                if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
-                            } ?: "Stock"
-                            val lowStock = stockQty != null && product.minStock > 0 && stockQty < product.minStock
-                            BendeyStatusChip(
-                                label = stockLabel,
-                                accentColor = if (lowStock) BendeyColors.Warning else BendeyColors.Info,
-                            )
-                        }
-                    }
+                product.preparationArea?.name?.let {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
-            ProductRowOverflowMenu(
-                productName = product.name,
-                showAdjustStock = product.manageStock,
-                isActive = product.active,
-                expanded = menuExpanded,
-                onExpandedChange = { menuExpanded = it },
-                onEdit = onEdit,
-                onAdjustStock = onAdjustStock,
-                onMenuChannel = onMenuChannel,
-                onToggleActive = onToggleActive,
-                onDelete = onDelete,
-            )
         }
-    }
-}
-
-@Composable
-private fun ProductRowOverflowMenu(
-    productName: String,
-    showAdjustStock: Boolean,
-    isActive: Boolean,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    onEdit: () -> Unit,
-    onAdjustStock: () -> Unit,
-    onMenuChannel: () -> Unit,
-    onToggleActive: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Box {
-        BendeyIconButton(
-            onClick = { onExpandedChange(true) },
-            icon = Icons.Default.MoreVert,
-            contentDescription = "Acciones de $productName",
+        Text(
+            currency.format(product.salePrice),
+            fontWeight = FontWeight.Bold,
+            color = BendeyColors.Primary,
+            modifier = Modifier.padding(top = 2.dp),
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
-            DropdownMenuItem(
-                text = { Text("Editar") },
-                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                onClick = {
-                    onExpandedChange(false)
-                    onEdit()
-                },
-            )
-            if (showAdjustStock) {
-                DropdownMenuItem(
-                    text = { Text("Ajuste de stock") },
-                    leadingIcon = { Icon(Icons.Default.Inventory, contentDescription = null) },
-                    onClick = {
-                        onExpandedChange(false)
-                        onAdjustStock()
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("Menú digital") },
-                leadingIcon = { Icon(Icons.Default.MenuBook, contentDescription = null) },
-                onClick = {
-                    onExpandedChange(false)
-                    onMenuChannel()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(if (isActive) "Desactivar" else "Activar") },
-                leadingIcon = {
-                    Icon(
-                        if (isActive) Icons.Default.ToggleOff else Icons.Default.ToggleOn,
-                        contentDescription = null,
+        if (!product.active || !product.availableForSale || product.manageStock) {
+            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs), modifier = Modifier.padding(top = 2.dp)) {
+                if (!product.active) {
+                    BendeyStatusChip(label = "Inactivo", accentColor = BendeyColors.Error)
+                }
+                if (!product.availableForSale) {
+                    BendeyStatusChip(label = "Solo combo", accentColor = BendeyColors.Warning)
+                }
+                if (product.manageStock) {
+                    val stockLabel = stockQty?.let { qty ->
+                        if (qty % 1.0 == 0.0) "Stock: ${qty.toInt()}" else "Stock: $qty"
+                    } ?: "Stock"
+                    val lowStock = stockQty != null && product.minStock > 0 && stockQty < product.minStock
+                    BendeyStatusChip(
+                        label = stockLabel,
+                        accentColor = if (lowStock) BendeyColors.Warning else BendeyColors.Info,
                     )
-                },
-                onClick = {
-                    onExpandedChange(false)
-                    onToggleActive()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Eliminar", color = BendeyColors.Error) },
-                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error) },
-                onClick = {
-                    onExpandedChange(false)
-                    onDelete()
-                },
-            )
+                }
+            }
         }
     }
 }
@@ -878,24 +820,24 @@ private fun ProductFormFields(
                 }
             }
         }
-        BendeyCheckboxRow(
+        BendeySwitchRow(
             label = "Visible en carta (POS/mesa)",
             checked = form.availableForSale,
             onCheckedChange = { checked -> onFormChange { it.copy(availableForSale = checked) } },
         )
-        BendeyCheckboxRow(
+        BendeySwitchRow(
             label = "Visible en menú digital",
             checked = form.menuChannelEnabled,
             onCheckedChange = { checked -> onFormChange { it.copy(menuChannelEnabled = checked) } },
         )
         if (IgvAffectation.isGravado(form.igvAffectation.code)) {
-            BendeyCheckboxRow(
+            BendeySwitchRow(
                 label = "Precio incluye IGV",
                 checked = form.priceIncludesIgv,
                 onCheckedChange = { checked -> onFormChange { it.copy(priceIncludesIgv = checked) } },
             )
         }
-        BendeyCheckboxRow(
+        BendeySwitchRow(
             label = if (form.productType == ProductType.ELABORADO) {
                 "Controlar stock (los elaborados no controlan stock propio — se descuenta vía receta)"
             } else {
@@ -945,7 +887,7 @@ private fun ProductFormFields(
             form.manageStock &&
             form.presentations.any { it.name.isNotBlank() }
         ) {
-            BendeyCheckboxRow(
+            BendeySwitchRow(
                 label = "Stock independiente por presentación " +
                     "(cada una lleva su propio stock; el del producto es la suma)",
                 checked = form.stockByPresentation,
@@ -1091,5 +1033,6 @@ private fun ConfirmDeleteDialog(
         message = message,
         onConfirm = onConfirm,
         confirmText = "Eliminar",
+        destructive = true,
     )
 }

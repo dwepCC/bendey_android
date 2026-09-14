@@ -22,11 +22,9 @@ import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +53,12 @@ import com.bendey.restaurant.core.domain.catalog.usesSlots
 import com.bendey.restaurant.core.domain.products.ProductItem
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
+import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -68,6 +69,18 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import java.io.ByteArrayOutputStream
 
+/**
+ * Editor de combo — pantalla casi completa (0.96×0.92), con pestañas (ComboEditorTab) y un
+ * botón "Guardar" compacto integrado en el propio encabezado en vez de un pie fijo Cancelar/
+ * Guardar. [BendeyConfigureFullscreenDialog] no encaja aquí sin forzarlo: su encabezado es solo
+ * título+subtítulo y su pie es siempre un Row Cancelar/Confirmar — no tiene lugar para una fila
+ * de pestañas fija entre encabezado y contenido. Por eso este editor mantiene su propio
+ * Dialog+Surface (mismo tamaño/forma que ya usa BendeyFormDialog en tablet), en vez de forzar un
+ * fullscreen genérico que no sabe dónde poner las pestañas. Pendiente, no bloqueante: varios
+ * TextButton/IconButton internos de este archivo (selección de producto por slot, filas de
+ * sucursal) siguen usando Material3 crudo en vez de BendeyTextButton/BendeyIconButton — se deja
+ * documentado para una pasada posterior, no se tocó todo el archivo para minimizar riesgo.
+ */
 @Composable
 fun ComboEditorSheet(
     open: Boolean,
@@ -115,9 +128,7 @@ fun ComboEditorSheet(
                         .padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
-                    }
+                    BendeyIconButton(onClick = onDismiss, icon = Icons.Default.Close, contentDescription = "Cerrar")
                     Column(Modifier.weight(1f).padding(end = BendeySpacing.xs)) {
                         Text(
                             if (isEditing) "Editar combo" else "Nuevo combo",
@@ -354,14 +365,13 @@ private fun FixedTab(
             },
         )
     }
-    TextButton(
+    BendeyTextButton(
+        text = "Agregar producto fijo",
+        icon = Icons.Default.Add,
         onClick = {
             onFormChange { it.copy(fixedItems = it.fixedItems + ComboFixedItem(productId = 0)) }
         },
-    ) {
-        Icon(Icons.Default.Add, contentDescription = null)
-        Text("Agregar producto fijo")
-    }
+    )
 }
 
 @Composable
@@ -385,9 +395,12 @@ private fun FixedItemCard(
                     item.productName?.takeIf { it.isNotBlank() } ?: if (item.productId > 0) "Producto #${item.productId}" else "Seleccionar producto",
                     fontWeight = FontWeight.SemiBold,
                 )
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
-                }
+                BendeyCompactIconButton(
+                    onClick = onRemove,
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Quitar producto fijo",
+                    tint = BendeyColors.Error,
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -401,9 +414,11 @@ private fun FixedItemCard(
                     fillWidth = false,
                     modifier = Modifier.widthIn(min = 72.dp, max = 96.dp),
                 )
-                TextButton(onClick = onOpenPicker, modifier = Modifier.weight(1f)) {
-                    Text(if (pickerOpen) "Buscando…" else "Buscar producto")
-                }
+                BendeyTextButton(
+                    text = if (pickerOpen) "Buscando…" else "Buscar producto",
+                    onClick = onOpenPicker,
+                    modifier = Modifier.weight(1f),
+                )
             }
             if (pickerOpen) {
                 ProductPickerSection(
@@ -461,7 +476,9 @@ private fun SlotsTab(
             },
         )
     }
-    TextButton(
+    BendeyTextButton(
+        text = "Agregar slot",
+        icon = Icons.Default.Add,
         onClick = {
             onFormChange {
                 it.copy(
@@ -472,10 +489,7 @@ private fun SlotsTab(
                 )
             }
         },
-    ) {
-        Icon(Icons.Default.Add, contentDescription = null)
-        Text("Agregar slot")
-    }
+    )
 }
 
 @Composable
@@ -497,9 +511,12 @@ private fun SlotCard(
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Slot ${slotIndex + 1}", fontWeight = FontWeight.SemiBold)
-                IconButton(onClick = onRemoveSlot) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
-                }
+                BendeyCompactIconButton(
+                    onClick = onRemoveSlot,
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Quitar slot",
+                    tint = BendeyColors.Error,
+                )
             }
             BendeyTextField(
                 slot.name,
@@ -631,7 +648,8 @@ private fun SlotCard(
                     },
                 )
             }
-            TextButton(
+            BendeyTextButton(
+                text = "Agregar opción",
                 onClick = {
                     onFormChange { state ->
                         state.copy(
@@ -642,9 +660,7 @@ private fun SlotCard(
                         )
                     }
                 },
-            ) {
-                Text("Agregar opción")
-            }
+            )
         }
     }
 }
@@ -675,9 +691,12 @@ private fun SlotOptionRow(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
-            }
+            BendeyCompactIconButton(
+                onClick = onRemove,
+                icon = Icons.Default.Delete,
+                contentDescription = "Quitar opción",
+                tint = BendeyColors.Error,
+            )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -690,9 +709,7 @@ private fun SlotOptionRow(
                 "Extra",
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onOpenPicker) {
-                Text(if (pickerOpen) "Buscando…" else "Buscar")
-            }
+            BendeyTextButton(text = if (pickerOpen) "Buscando…" else "Buscar", onClick = onOpenPicker)
         }
         if (pickerOpen) {
             ProductPickerSection(
@@ -743,10 +760,7 @@ private fun BranchesTab(
             },
         )
     }
-    TextButton(onClick = onAddBranchRow) {
-        Icon(Icons.Default.Add, contentDescription = null)
-        Text("Agregar sucursal")
-    }
+    BendeyTextButton(text = "Agregar sucursal", icon = Icons.Default.Add, onClick = onAddBranchRow)
 }
 
 @Composable
@@ -760,9 +774,12 @@ private fun BranchSettingCard(
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(setting.branchName ?: branches.firstOrNull { it.id == setting.branchId }?.name ?: "Sucursal #${setting.branchId}", fontWeight = FontWeight.SemiBold)
-                IconButton(onClick = onRemove) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = BendeyColors.Error)
-                }
+                BendeyCompactIconButton(
+                    onClick = onRemove,
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Quitar configuración de sucursal",
+                    tint = BendeyColors.Error,
+                )
             }
             BendeySwitchRow(
                 label = "Activo en sucursal",
@@ -790,13 +807,13 @@ private fun ProductPickerSection(
     onSelect: (ProductItem) -> Unit,
 ) {
     if (!open) {
-        TextButton(onClick = onOpen) { Text("Buscar producto") }
+        BendeyTextButton(text = "Buscar producto", onClick = onOpen)
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             BendeySectionTitle(text = "Buscar producto")
-            TextButton(onClick = onClose) { Text("Cerrar") }
+            BendeyTextButton(text = "Cerrar", onClick = onClose)
         }
         BendeyTextField(query, onQueryChange, "Nombre o código")
         when {

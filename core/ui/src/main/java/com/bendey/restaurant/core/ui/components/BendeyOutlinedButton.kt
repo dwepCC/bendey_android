@@ -30,10 +30,7 @@ fun BendeyOutlinedButton(
             .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
             .heightIn(min = BendeySpacing.buttonHeight),
         shape = MaterialTheme.shapes.medium,
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = BendeyColors.Primary,
-            disabledContentColor = BendeyColors.OnSurfaceVariant,
-        ),
+        colors = BendeyButtonDefaults.outlinedColors(contentColor = BendeyColors.Primary),
         border = ButtonDefaults.outlinedButtonBorder(enabled = enabled),
     ) {
         Text(

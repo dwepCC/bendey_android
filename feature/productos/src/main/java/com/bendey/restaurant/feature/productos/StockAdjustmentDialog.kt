@@ -51,7 +51,7 @@ fun StockAdjustmentDialog(
     BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = "Ajuste de stock",
-        confirmText = if (loading) "Guardando…" else "Guardar ajuste",
+        confirmText = "Guardar",
         loading = loading,
         // Sin presentación elegida el servidor rechaza el ajuste: se bloquea acá para
         // no hacer perder el formulario lleno.

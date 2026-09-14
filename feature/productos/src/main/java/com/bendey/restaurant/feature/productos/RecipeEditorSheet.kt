@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.products.ProductType
+import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
 import com.bendey.restaurant.core.ui.components.BendeySelectOption
@@ -115,9 +115,12 @@ fun RecipeEditorSheet(
                                 ?: "Cant.",
                             modifier = Modifier.weight(0.4f),
                         )
-                        IconButton(onClick = { viewModel.removeIngredient(row.key) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Quitar ingrediente")
-                        }
+                        BendeyCompactIconButton(
+                            onClick = { viewModel.removeIngredient(row.key) },
+                            icon = Icons.Default.Delete,
+                            contentDescription = "Quitar ingrediente",
+                            tint = BendeyColors.Error,
+                        )
                     }
                     // EL UNITARIO AL LADO DEL SUBTOTAL, y no solo el subtotal: es lo que deshace el
                     // malentendido de leer «aceite S/8» y esperar S/8 en el plato. Si la receta usa

@@ -43,6 +43,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.ui.R
+import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import com.bendey.restaurant.core.ui.pos.PosPolishTokens
@@ -223,28 +224,13 @@ fun ReceiptPrintModal(
                     ),
                 )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = dialogPadding, vertical = BendeySpacing.sm),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(BendeyShapeTokens.md)
-                            .background(BendeyColors.Primary)
-                            .clickable(onClick = onDismiss)
-                            .padding(vertical = if (tabletLandscape) BendeySpacing.sm else BendeySpacing.sm),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            "Continuar",
-                            color = BendeyColors.OnPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                }
+                // Antes: Box.clickable pintado a mano imitando un botón primario — mismo color y
+                // forma que BendeyPrimaryButton, reimplementados en vez de reutilizados.
+                BendeyPrimaryButton(
+                    text = "Continuar",
+                    onClick = onDismiss,
+                    modifier = Modifier.padding(horizontal = dialogPadding, vertical = BendeySpacing.sm),
+                )
             }
         }
     }

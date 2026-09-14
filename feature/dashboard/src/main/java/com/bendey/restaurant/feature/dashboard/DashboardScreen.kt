@@ -19,19 +19,17 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.EventSeat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.automirrored.filled.TrendingFlat
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Warning
-import com.bendey.restaurant.core.designsystem.components.BendeyBadge
+import com.bendey.restaurant.core.designsystem.components.BendeyKpiTrend
+import com.bendey.restaurant.core.designsystem.components.BendeyKpiTrendBadge
 import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
@@ -69,9 +67,9 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveCrossfadeValue
 import com.bendey.restaurant.core.designsystem.motion.BendeyExpressiveReveal
+import com.bendey.restaurant.core.ui.components.BendeyDateField
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
-import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
@@ -86,7 +84,6 @@ import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +170,7 @@ fun DashboardScreen(
             item {
                 if (isExpanded) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         BendeyExpressiveReveal(index = 0, resetKey = state.range, modifier = Modifier.weight(1f)) {
@@ -226,8 +223,8 @@ fun DashboardScreen(
                         }
                     }
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
                             BendeyExpressiveReveal(index = 0, resetKey = state.range, modifier = Modifier.weight(1f)) {
                                 DashboardMetricCard(
                                     label = revenueLabel(state.range),
@@ -253,7 +250,7 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
                             BendeyExpressiveReveal(index = 2, resetKey = state.range, modifier = Modifier.weight(1f)) {
                                 DashboardMetricCard(
                                     label = "Ticket promedio",
@@ -533,6 +530,9 @@ private fun DashboardMetricCard(
     }
 }
 
+// Antes duplicaba acá la misma fórmula pct→color/ícono/texto que BendeyKpiCard calcula para su
+// propio badge de tendencia — ahora delega en BendeyKpiTrendBadge (pública justo para esto) y
+// solo se queda con lo que es específico de este dashboard: el sufijo según el rango elegido.
 @Composable
 private fun ChangeBadge(pct: Double, range: DashboardRange) {
     val suffix = when (range) {
@@ -542,25 +542,7 @@ private fun ChangeBadge(pct: Double, range: DashboardRange) {
         DashboardRange.MONTH -> " vs mes ant."
         DashboardRange.CUSTOM -> ""
     }
-    val color = when {
-        pct > 0 -> BendeyColors.Success
-        pct < 0 -> BendeyColors.Error
-        else -> BendeyColors.OnSurfaceVariant
-    }
-    val icon = when {
-        pct > 0 -> Icons.AutoMirrored.Filled.TrendingUp
-        pct < 0 -> Icons.AutoMirrored.Filled.TrendingDown
-        else -> Icons.AutoMirrored.Filled.TrendingFlat
-    }
-    BendeyBadge(
-        text = when {
-            pct > 0 -> "+${pct.roundToInt()}%$suffix"
-            pct < 0 -> "${pct.roundToInt()}%$suffix"
-            else -> "Sin cambio$suffix"
-        },
-        color = color,
-        icon = icon,
-    )
+    BendeyKpiTrendBadge(BendeyKpiTrend(pct = pct, suffix = suffix))
 }
 
 @Composable
@@ -975,22 +957,27 @@ private fun CustomDateRangeDialog(
 ) {
     var fromValue by remember(from) { mutableStateOf(from) }
     var toValue by remember(to) { mutableStateOf(to) }
+    // Antes eran dos BendeyTextField de texto libre ("AAAA-MM-DD"): cualquier typo producía un
+    // rango inválido que el backend rechazaba en silencio, el caso CUSTOM que la auditoría marcó
+    // como roto. BendeyDateField abre un selector de fecha real y sigue devolviendo el mismo
+    // String ISO — no cambia el contrato de onApply.
     BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = "Rango de fechas",
         confirmText = "Aplicar",
+        confirmEnabled = fromValue.isNotBlank() && toValue.isNotBlank(),
         onConfirm = { onApply(fromValue.trim(), toValue.trim()) },
         onDismiss = onDismiss,
     ) {
-        BendeyTextField(
+        BendeyDateField(
             value = fromValue,
             onValueChange = { fromValue = it },
-            label = "Desde (AAAA-MM-DD)",
+            label = "Desde",
         )
-        BendeyTextField(
+        BendeyDateField(
             value = toValue,
             onValueChange = { toValue = it },
-            label = "Hasta (AAAA-MM-DD)",
+            label = "Hasta",
         )
     }
 }
@@ -1079,7 +1066,7 @@ private fun PaymentMethodsSection(
             Text("Sin pagos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
             val max = methods.maxOf { it.amount }.coerceAtLeast(1.0)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 methods.forEach { slice ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
@@ -1132,12 +1119,12 @@ private fun OrderTypesSection(
             Text("Sin pedidos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
             val max = slices.maxOf { it.count }.coerceAtLeast(1)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 slices.forEach { slice ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                     ) {
                         Column(modifier = Modifier.width(88.dp)) {
                             Text(
@@ -1259,9 +1246,9 @@ private fun CatalogKpiSection(catalog: CatalogAnalytics, currency: NumberFormat,
         "Extras" to currency.format(kpi.extrasRevenue),
     )
     if (isExpanded) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             cards.chunked(4).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { (label, value) ->
                         CatalogKpiCard(label, value, Modifier.weight(1f))
                     }
@@ -1278,17 +1265,17 @@ private fun CatalogKpiRow(catalog: CatalogAnalytics, currency: NumberFormat) {
     val kpi = catalog.kpi
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
             CatalogKpiCard("Ingresos", currency.format(kpi.totalRevenue), Modifier.weight(1f))
             CatalogKpiCard("Ventas", kpi.salesCount.toString(), Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
             CatalogKpiCard("Productos", String.format("%.0f", kpi.productsSold), Modifier.weight(1f))
             CatalogKpiCard("Combos", String.format("%.0f", kpi.combosSold), Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm), modifier = Modifier.fillMaxWidth()) {
             CatalogKpiCard("Ticket prom.", currency.format(kpi.avgTicket), Modifier.weight(1f))
             CatalogKpiCard("Extras", currency.format(kpi.extrasRevenue), Modifier.weight(1f))
         }

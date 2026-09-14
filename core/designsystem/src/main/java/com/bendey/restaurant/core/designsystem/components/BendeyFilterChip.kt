@@ -40,7 +40,7 @@ fun BendeyFilterChip(
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         colors = colors,
-        shape = BendeyShapeTokens.chip,
+        shape = BendeyShapeTokens.pill,
         border = null,
     )
 }

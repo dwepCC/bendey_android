@@ -137,6 +137,7 @@ fun ModificadoresScreen(
             message = "¿Eliminar este grupo de modificadores?",
             onConfirm = viewModel::confirmDelete,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
 }

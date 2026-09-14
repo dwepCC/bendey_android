@@ -66,6 +66,15 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 
+/**
+ * A pesar del nombre, esto es un [Dialog] centrado, no un bottom sheet — se revisó en la segunda
+ * pasada de consistencia y se decidió dejarlo así: es un visor de cámara en vivo con overlay
+ * animado, sin campos ni acciones Cancelar/Confirmar (se cierra solo al detectar un código, o con
+ * la "×"), así que ni BendeyFormDialog (siempre dibuja un footer de dos botones) ni
+ * BendeyBottomSheet (pensado para listas ancladas abajo, no para una vista de cámara centrada)
+ * encajan mejor que este Dialog a medida. Renombrar el archivo queda fuera de esta pasada — el
+ * nombre no afecta el comportamiento y renombrar solo por prolijidad generaría un diff sin valor.
+ */
 @Composable
 fun PosBarcodeScannerSheet(
     open: Boolean,
@@ -99,7 +108,10 @@ fun PosBarcodeScannerSheet(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.92f),
-            shape = BendeyShapeTokens.pill,
+            // Antes usaba BendeyShapeTokens.pill (20dp, pensado para chips) en toda la tarjeta —
+            // esquinas fuera de escala para un diálogo. .xl es el radio que ya usan el resto de
+            // diálogos (BendeyFormDialog, BendeyAlertDialog).
+            shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
             shadowElevation = 12.dp,
         ) {

@@ -19,6 +19,10 @@ import androidx.compose.material.icons.filled.Refresh
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyListRow
+import com.bendey.restaurant.core.ui.components.BendeyListRowAction
+import com.bendey.restaurant.core.ui.components.BendeyListRowSubtitle
+import com.bendey.restaurant.core.ui.components.BendeyListRowTitle
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -35,7 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -142,6 +145,7 @@ fun RepartidoresScreen(
             message = "¿Eliminar este repartidor?",
             onConfirm = viewModel::confirmDeleteDriver,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
     state.deleteCompanyId?.let {
@@ -151,10 +155,13 @@ fun RepartidoresScreen(
             message = "¿Eliminar esta empresa?",
             onConfirm = viewModel::confirmDeleteCompany,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
 }
 
+// Mismo patrón que ContactRow (Clientes) / PurchaseRow (Compras) — BendeyCard + título/subtítulo
+// + 2 acciones inline — migrado a BendeyListRow en la segunda pasada de consistencia.
 @Composable
 private fun DriverRow(
     driver: DeliveryDriver,
@@ -162,52 +169,32 @@ private fun DriverRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    BendeyCard(
-        containerColor = if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface,
-        contentPadding = PaddingValues(BendeySpacing.cardPadding),
+    BendeyListRow(
+        selected = selected,
+        actions = listOf(
+            BendeyListRowAction(Icons.Default.Edit, "Editar repartidor", onEdit),
+            BendeyListRowAction(Icons.Default.Delete, "Eliminar repartidor", onDelete, destructive = true),
+        ),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(driver.name, fontWeight = FontWeight.SemiBold)
-                if (driver.phone.isNotBlank()) Text(driver.phone, style = MaterialTheme.typography.bodySmall)
-                driver.deliveryCompanyName?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant) }
-                if (!driver.active) BendeyStatusChip("Inactivo", BendeyColors.Warning)
-            }
-            BendeyIconButton(
-                onClick = onEdit,
-                icon = Icons.Default.Edit,
-                contentDescription = "Editar repartidor",
-            )
-            BendeyIconButton(
-                onClick = onDelete,
-                icon = Icons.Default.Delete,
-                contentDescription = "Eliminar repartidor",
-                tint = BendeyColors.Error,
-            )
+        BendeyListRowTitle(driver.name)
+        if (driver.phone.isNotBlank()) BendeyListRowSubtitle(driver.phone)
+        driver.deliveryCompanyName?.let {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
         }
+        if (!driver.active) BendeyStatusChip("Inactivo", BendeyColors.Warning)
     }
 }
 
 @Composable
 private fun CompanyRow(company: DeliveryCompany, onEdit: () -> Unit, onDelete: () -> Unit) {
-    BendeyCard(contentPadding = PaddingValues(BendeySpacing.cardPadding)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(company.name, fontWeight = FontWeight.SemiBold)
-                if (!company.active) BendeyStatusChip("Inactiva", BendeyColors.Warning)
-            }
-            BendeyIconButton(
-                onClick = onEdit,
-                icon = Icons.Default.Edit,
-                contentDescription = "Editar empresa",
-            )
-            BendeyIconButton(
-                onClick = onDelete,
-                icon = Icons.Default.Delete,
-                contentDescription = "Eliminar empresa",
-                tint = BendeyColors.Error,
-            )
-        }
+    BendeyListRow(
+        actions = listOf(
+            BendeyListRowAction(Icons.Default.Edit, "Editar empresa", onEdit),
+            BendeyListRowAction(Icons.Default.Delete, "Eliminar empresa", onDelete, destructive = true),
+        ),
+    ) {
+        BendeyListRowTitle(company.name)
+        if (!company.active) BendeyStatusChip("Inactiva", BendeyColors.Warning)
     }
 }
 

@@ -153,6 +153,7 @@ fun CombosScreen(
             message = "¿Eliminar este combo?",
             onConfirm = viewModel::confirmDelete,
             confirmText = "Eliminar",
+            destructive = true,
         )
     }
 }
