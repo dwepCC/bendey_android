@@ -26,9 +26,20 @@ data class AppCashSessionState(
     val showOpenModal: Boolean = false,
     val mandatoryModal: Boolean = false,
     val openForm: OpenCashFormState = OpenCashFormState(),
-    val opening: Boolean = false,
-    val error: String? = null,
-)
+    val opening: Boolean = false,
+    val error: String? = null,
+    /**
+     * true cuando el ultimo intento de verificar la caja fallo por un error de red/servidor (NO
+     * porque de verdad no haya sesion abierta). Distingue "no se si esta abierta" de "confirme que
+     * esta cerrada" -- sin esto, un timeout de wifi (justo lo que un local con mala senal sufre a
+     * cada rato) se trataba exactamente igual que una caja cerrada de verdad: se forzaba el modal
+     * obligatorio de "abrir caja", el cajero terminaba cerrando y reabriendo una sesion que en
+     * realidad seguia abierta en el servidor. Mismo criterio que ya usa correctamente
+     * CashSessionContext.tsx en Bendey Resto Tauri (session=undefined distinto de session=null).
+     */
+    val checkFailed: Boolean = false,
+)
+
 
 /**
  * Paridad con `CashSessionProvider` (Capacitor): verifica caja abierta y modal obligatorio.
@@ -96,17 +107,21 @@ class AppCashSessionViewModel @Inject constructor(
                             showOpenModal = !open,
                             mandatoryModal = !open,
                             error = null,
+                            checkFailed = false,
                         )
                     }
                 }
                 is AppResult.Error -> {
+                    // Un timeout de red NO significa "caja cerrada" -- antes esto forzaba el mismo
+                    // modal obligatorio que una caja confirmada como cerrada, y el cajero terminaba
+                    // cerrando/reabriendo una sesion que en realidad seguia abierta en el servidor.
+                    // showOpenModal/mandatoryModal quedan tal cual estaban (no se tocan).
                     _local.update {
                         it.copy(
                             loading = false,
                             checkedForBranch = true,
-                            showOpenModal = true,
-                            mandatoryModal = true,
                             error = result.message,
+                            checkFailed = true,
                         )
                     }
                 }
@@ -120,6 +135,12 @@ class AppCashSessionViewModel @Inject constructor(
         val current = state.value
         if (!current.canOperateCash || current.hasOpenSession) return
         if (current.loading) {
+            refresh()
+            return
+        }
+        if (current.checkFailed) {
+            // Todavia no sabemos si esta abierta o cerrada (el ultimo intento fallo por red) --
+            // reintenta en vez de asumir que esta cerrada.
             refresh()
             return
         }
