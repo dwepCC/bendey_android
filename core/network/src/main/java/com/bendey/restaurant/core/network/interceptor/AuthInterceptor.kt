@@ -1,8 +1,11 @@
 package com.bendey.restaurant.core.network.interceptor
 
+import android.content.Context
+import android.content.pm.PackageManager
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
 import com.bendey.restaurant.core.network.session.SessionExpiryReporter
 import com.bendey.restaurant.core.network.session.SessionInvalidationGate
+import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Protocol
 import okhttp3.Response
@@ -15,7 +18,20 @@ class AuthInterceptor @Inject constructor(
     private val sessionProvider: NetworkSessionProvider,
     private val sessionExpiryReporter: SessionExpiryReporter,
     private val invalidationGate: SessionInvalidationGate,
+    @ApplicationContext private val context: Context,
 ) : Interceptor {
+
+    // BuildConfig.VERSION_NAME vive en :app (donde está el versionName real), no en este módulo
+    // -- core:network no puede referenciarlo sin invertir la dependencia. PackageManager es la
+    // forma estándar de leer la versión instalada desde cualquier módulo. Se calcula una sola vez:
+    // no cambia durante la vida del proceso.
+    private val appVersionName: String? by lazy {
+        runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull()
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val builder = original.newBuilder()
@@ -35,6 +51,15 @@ class AuthInterceptor @Inject constructor(
         // El backend la usa para saber qué reglas aplicar: el PIN de operaciones es del restaurante,
         // mientras que el ERP autoriza por roles y permisos.
         builder.header("X-Bendey-App", "resto")
+
+        // Bendey Resto (Tauri/Android) no se autoactualiza solo -- depende de que el usuario
+        // actualice desde Play Store. Sin esto no había forma de saber, tenant por tenant, si
+        // sigue en una versión vieja (ver pkg/appinstall en backend_go). El ERP web no manda
+        // este header, así que nunca genera filas para él.
+        appVersionName?.let {
+            builder.header("X-App-Platform", "android")
+            builder.header("X-App-Version", it)
+        }
 
         sessionProvider.token()?.let { builder.header("Authorization", "Bearer $it") }
         sessionProvider.tenantSlug()?.let { builder.header("X-Tenant-Slug", it) }
