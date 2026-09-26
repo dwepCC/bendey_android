@@ -247,6 +247,10 @@ data class DeliveryDriverDto(
     val notes: String? = null,
     @SerialName("delivery_company_id") val deliveryCompanyId: Int? = null,
     @SerialName("delivery_company") val deliveryCompany: DeliveryCompanyDto? = null,
+    // Vincula este repartidor con la cuenta (employee_type=driver) con la que entra a Bendey
+    // Delivery -- antes no existía ningún endpoint que lo permitiera, se hacía con un UPDATE
+    // manual a la base.
+    @SerialName("staff_id") val staffId: Int? = null,
 )
 
 @Serializable
@@ -254,6 +258,11 @@ data class DeliveryCompanyUpsertRequestDto(
     val name: String,
     val active: Boolean? = null,
     @SerialName("sort_order") val sortOrder: Int? = null,
+)
+
+@Serializable
+data class AssignDeliveryDriverRequestDto(
+    @SerialName("driver_id") val driverId: Int,
 )
 
 @Serializable
@@ -265,6 +274,7 @@ data class DeliveryDriverUpsertRequestDto(
     val notes: String? = null,
     val active: Boolean? = null,
     @SerialName("delivery_company_id") val deliveryCompanyId: Int? = null,
+    @SerialName("staff_id") val staffId: Int? = null,
 )
 
 @Serializable

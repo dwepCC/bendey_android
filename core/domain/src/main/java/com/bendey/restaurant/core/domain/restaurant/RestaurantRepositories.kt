@@ -24,6 +24,16 @@ interface PosRepository {
     suspend fun markTableOrderPrinted(tableOrderId: Int): AppResult<Unit>
     suspend fun getPrecuenta(sessionId: Int): AppResult<PrecuentaData>
     suspend fun listDeliveryDrivers(): AppResult<List<DeliveryDriverBrief>>
+
+    /**
+     * Crea/reasigna la `TenantDeliveryAssignment` real de la sesión -- antes elegir un repartidor
+     * en el diálogo de Delivery solo guardaba `delivery_driver_id` como referencia rápida en la
+     * sesión, sin llamar a este endpoint: el pedido nunca aparecía en "Entregas activas" ni en
+     * Bendey Delivery, aunque la app mostrara un repartidor elegido (mismo hueco que ya se había
+     * cerrado en el POS de escritorio/Tauri, pero no acá). Se llama después de crear/actualizar
+     * la sesión, siempre que el tipo de pedido sea delivery y haya un repartidor elegido.
+     */
+    suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int): AppResult<Unit>
 }
 
 interface MesasRepository {

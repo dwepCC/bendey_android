@@ -152,6 +152,9 @@ data class DeliveryDriver(
     val notes: String,
     val deliveryCompanyId: Int?,
     val deliveryCompanyName: String?,
+    // Cuenta (employee_type=driver) vinculada para entrar a Bendey Delivery -- antes solo se
+    // podía vincular con un UPDATE manual a la base, sin ningún endpoint ni pantalla.
+    val staffId: Int?,
 )
 
 data class DeliveryCompanyFormInput(val name: String = "")
@@ -164,6 +167,7 @@ data class DeliveryDriverFormInput(
     val notes: String = "",
     val deliveryCompanyId: Int? = null,
     val active: Boolean = true,
+    val staffId: Int? = null,
 )
 
 data class CompanyConfig(

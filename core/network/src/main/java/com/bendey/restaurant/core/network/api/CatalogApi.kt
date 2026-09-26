@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.network.api
 
+import com.bendey.restaurant.core.network.dto.AssignDeliveryDriverRequestDto
 import com.bendey.restaurant.core.network.dto.BranchDto
 import com.bendey.restaurant.core.network.dto.ComboDataResponseDto
 import com.bendey.restaurant.core.network.dto.ComboResolveRequestDto
@@ -121,6 +122,15 @@ interface DeliveryApi {
 
     @DELETE("/api/restaurant/delivery-drivers/{id}")
     suspend fun deleteDeliveryDriver(@Path("id") id: Int): SuccessResponseDto
+
+    // Crea/reasigna la asignación real del pedido -- antes elegir un repartidor en el diálogo de
+    // Delivery del POS solo guardaba delivery_driver_id como referencia en la sesión, sin llamar
+    // a este endpoint: nunca aparecía en "Entregas activas" ni en Bendey Delivery.
+    @POST("/api/restaurant/sessions/{id}/delivery/assign")
+    suspend fun assignDeliveryDriver(
+        @Path("id") sessionId: Int,
+        @Body body: AssignDeliveryDriverRequestDto,
+    ): SuccessResponseDto
 
     @GET("/api/restaurant/delivery-companies")
     suspend fun listDeliveryCompanies(

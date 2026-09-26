@@ -7,6 +7,8 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
+import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
+import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.model.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,9 @@ data class RepartidoresUiState(
     val actionLoading: Boolean = false,
     val drivers: List<DeliveryDriver> = emptyList(),
     val companies: List<DeliveryCompany> = emptyList(),
+    // Solo cuentas con employee_type=driver -- las únicas que MyAssignmentsAPI (Bendey Delivery)
+    // sabe encontrar cuando un repartidor entra con su PIN.
+    val driverStaffOptions: List<RestaurantStaffManagementRow> = emptyList(),
     val driverFormOpen: Boolean = false,
     val companyFormOpen: Boolean = false,
     val editingDriverId: Int? = null,
@@ -38,6 +43,7 @@ data class RepartidoresUiState(
 @HiltViewModel
 class RepartidoresViewModel @Inject constructor(
     private val repository: DeliveryRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RepartidoresUiState())
@@ -55,11 +61,17 @@ class RepartidoresViewModel @Inject constructor(
             _uiState.update { it.copy(loading = true, error = null) }
             val drivers = repository.listDrivers()
             val companies = repository.listCompanies()
+            // Solo para poblar el selector "Cuenta de Bendey Delivery" del formulario -- un fallo
+            // acá no debe tumbar la pantalla completa de repartidores, solo dejar ese selector
+            // vacío (el resto del CRUD sigue funcionando).
+            val staff = settingsRepository.listStaffManagement()
             _uiState.update {
                 it.copy(
                     loading = false,
                     drivers = (drivers as? AppResult.Success)?.data.orEmpty(),
                     companies = (companies as? AppResult.Success)?.data.orEmpty(),
+                    driverStaffOptions = (staff as? AppResult.Success)?.data.orEmpty()
+                        .filter { row -> row.employeeType == "driver" && row.staffId != null },
                     error = (drivers as? AppResult.Error)?.message ?: (companies as? AppResult.Error)?.message,
                 )
             }
@@ -87,6 +99,7 @@ class RepartidoresViewModel @Inject constructor(
                     notes = driver.notes,
                     deliveryCompanyId = driver.deliveryCompanyId,
                     active = driver.active,
+                    staffId = driver.staffId,
                 ),
                 error = null,
             )

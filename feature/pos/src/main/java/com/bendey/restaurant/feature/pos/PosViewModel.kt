@@ -1716,7 +1716,10 @@ class PosViewModel @Inject constructor(
         val input = buildSessionInput(state, saveAsDraft)
         state.activeSessionId?.let { id ->
             when (val update = posRepository.updatePosSession(id, input)) {
-                is AppResult.Success -> return id
+                is AppResult.Success -> {
+                    assignDeliveryDriverIfNeeded(id, state)
+                    return id
+                }
                 is AppResult.Error -> {
                     _uiState.update { it.copy(error = update.message) }
                     return null
@@ -1729,6 +1732,7 @@ class PosViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(activeSessionId = open.data.sessionId, orderCode = open.data.orderCode)
                 }
+                assignDeliveryDriverIfNeeded(open.data.sessionId, state)
                 open.data.sessionId
             }
             is AppResult.Error -> {
@@ -1736,6 +1740,26 @@ class PosViewModel @Inject constructor(
                 null
             }
             AppResult.Loading -> null
+        }
+    }
+
+    /**
+     * Crea/reasigna la asignación real de delivery -- antes elegir un repartidor en el diálogo
+     * solo guardaba `delivery_driver_id` como referencia en la sesión (ver buildSessionInput):
+     * el pedido nunca aparecía en "Entregas activas" ni en Bendey Delivery, aunque la app
+     * mostrara un repartidor elegido. El endpoint es idempotente para el mismo repartidor activo
+     * (ver internal/delivery/service/assignment_service.go), así que llamarlo en cada
+     * creación/actualización de la sesión, sin trackear si "ya se llamó antes", es seguro.
+     *
+     * Un fallo acá NO debe bloquear el flujo -- la sesión ya se creó/actualizó con éxito; el
+     * repartidor puede reasignarse manualmente después si esto falla (ej. sin conexión).
+     */
+    private suspend fun assignDeliveryDriverIfNeeded(sessionId: Int, state: PosUiState) {
+        if (state.orderType != PosOrderType.DELIVERY) return
+        val driverId = state.orderDetails.deliveryDriverId ?: return
+        when (val result = posRepository.assignDeliveryDriver(sessionId, driverId)) {
+            is AppResult.Error -> _uiState.update { it.copy(error = "Repartidor no asignado: ${result.message}") }
+            else -> Unit
         }
     }
 

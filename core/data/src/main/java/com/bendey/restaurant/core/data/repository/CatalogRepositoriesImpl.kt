@@ -759,6 +759,7 @@ private fun DeliveryDriverDto.toDomain() = DeliveryDriver(
     notes = notes.orEmpty(),
     deliveryCompanyId = deliveryCompanyId,
     deliveryCompanyName = deliveryCompany?.name,
+    staffId = staffId,
 )
 
 private fun DeliveryDriverFormInput.toDto() = DeliveryDriverUpsertRequestDto(
@@ -769,6 +770,7 @@ private fun DeliveryDriverFormInput.toDto() = DeliveryDriverUpsertRequestDto(
     notes = notes.trim().ifBlank { null },
     active = active,
     deliveryCompanyId = deliveryCompanyId,
+    staffId = staffId,
 )
 
 private fun DeliveryCompanyDto.toDomain() = DeliveryCompany(

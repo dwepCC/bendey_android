@@ -46,6 +46,7 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
+import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
@@ -133,7 +134,7 @@ fun RepartidoresScreen(
     }
 
     if (state.driverFormOpen) {
-        DriverFormDialog(state.driverForm, state.actionLoading, state.error, state.editingDriverId != null, state.companies, viewModel::dismissDriverForm, viewModel::updateDriverForm, viewModel::saveDriver)
+        DriverFormDialog(state.driverForm, state.actionLoading, state.error, state.editingDriverId != null, state.companies, state.driverStaffOptions, viewModel::dismissDriverForm, viewModel::updateDriverForm, viewModel::saveDriver)
     }
     if (state.companyFormOpen) {
         CompanyFormDialog(state.companyForm, state.actionLoading, state.error, state.editingCompanyId != null, viewModel::dismissCompanyForm, viewModel::updateCompanyForm, viewModel::saveCompany)
@@ -205,10 +206,16 @@ private fun DriverFormFields(
     error: String?,
     isEditing: Boolean,
     companies: List<DeliveryCompany>,
+    staffOptions: List<RestaurantStaffManagementRow>,
     onFormChange: ((DeliveryDriverFormInput) -> DeliveryDriverFormInput) -> Unit,
 ) {
     val companyOptions = listOf(BendeyOption("", "Ninguna")) +
         companies.map { BendeyOption(it.id.toString(), it.name) }
+    // Solo usuarios con rol "Repartidor / Delivery" que todavía no estén vinculados a OTRO
+    // repartidor -- si el que ya tiene vinculado ESTE repartidor no aparece en la lista (porque
+    // otra fila ya lo tomó primero), lo agregamos igual para no perder la selección actual.
+    val staffSelectableOptions = listOf(BendeyOption("", "Sin vincular")) +
+        staffOptions.map { BendeyOption(it.staffId.toString(), it.displayName.ifBlank { it.name }) }
     BendeyTextField(form.name, { v -> onFormChange { it.copy(name = v) } }, "Nombre *")
     BendeyTextField(form.phone, { v -> onFormChange { it.copy(phone = v) } }, "Teléfono")
     BendeyTextField(form.vehicleType, { v -> onFormChange { it.copy(vehicleType = v) } }, "Vehículo")
@@ -222,6 +229,20 @@ private fun DriverFormFields(
             onFormChange { it.copy(deliveryCompanyId = id) }
         },
         label = "Empresa",
+    )
+    // Vínculo con la cuenta de Bendey Delivery -- antes solo se podía hacer con un UPDATE manual
+    // a la base de datos, sin ningún endpoint ni pantalla; sin esto, el repartidor podía entrar
+    // con su PIN pero nunca veía ningún pedido asignado.
+    BendeySimpleSelect(
+        options = staffSelectableOptions,
+        selectedValue = form.staffId?.toString().orEmpty(),
+        onSelect = { value -> onFormChange { it.copy(staffId = value.toIntOrNull()) } },
+        label = "Cuenta de Bendey Delivery",
+    )
+    Text(
+        "Solo aparecen usuarios con rol Repartidor / Delivery que aún no estén vinculados a otro repartidor.",
+        style = MaterialTheme.typography.labelSmall,
+        color = BendeyColors.OnSurfaceVariant,
     )
     if (isEditing) {
         BendeySwitchRow(
@@ -240,6 +261,7 @@ private fun DriverFormPane(
     error: String?,
     isEditing: Boolean,
     companies: List<DeliveryCompany>,
+    staffOptions: List<RestaurantStaffManagementRow>,
     onDismiss: () -> Unit,
     onFormChange: ((DeliveryDriverFormInput) -> DeliveryDriverFormInput) -> Unit,
     onSave: () -> Unit,
@@ -255,7 +277,7 @@ private fun DriverFormPane(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
-            DriverFormFields(form, loading, error, isEditing, companies, onFormChange)
+            DriverFormFields(form, loading, error, isEditing, companies, staffOptions, onFormChange)
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = BendeySpacing.sm))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
@@ -277,6 +299,7 @@ private fun DriverFormDialog(
     error: String?,
     isEditing: Boolean,
     companies: List<DeliveryCompany>,
+    staffOptions: List<RestaurantStaffManagementRow>,
     onDismiss: () -> Unit,
     onFormChange: ((DeliveryDriverFormInput) -> DeliveryDriverFormInput) -> Unit,
     onSave: () -> Unit,
@@ -290,7 +313,7 @@ private fun DriverFormDialog(
         confirmEnabled = !loading,
         loading = loading,
     ) {
-        DriverFormFields(form, loading, error, isEditing, companies, onFormChange)
+        DriverFormFields(form, loading, error, isEditing, companies, staffOptions, onFormChange)
     }
 }
 

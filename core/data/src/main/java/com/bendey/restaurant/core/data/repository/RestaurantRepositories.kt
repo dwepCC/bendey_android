@@ -30,6 +30,7 @@ import com.bendey.restaurant.core.network.api.ProductsApi
 import com.bendey.restaurant.core.network.api.RestaurantApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.AddOrderRequestDto
+import com.bendey.restaurant.core.network.dto.AssignDeliveryDriverRequestDto
 import com.bendey.restaurant.core.network.dto.ComandaDto
 import com.bendey.restaurant.core.network.dto.KitchenComandaDto
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
@@ -148,6 +149,12 @@ class PosRepositoryImpl @Inject constructor(
             .data
             .filter { it.active }
             .map { DeliveryDriverBrief(id = it.id, name = it.name) }
+    }
+
+    override suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<DeliveryApi>()
+            .assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId))
+        Unit
     }
 
     override suspend fun addOrder(
