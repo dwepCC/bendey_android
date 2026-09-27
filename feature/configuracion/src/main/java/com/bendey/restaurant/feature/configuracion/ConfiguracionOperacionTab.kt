@@ -62,6 +62,24 @@ fun OperacionTab(
                 }
             }
         }
+        BendeyManagementCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeySectionTitle(text = "Ganancia por entrega")
+                val earning = state.settings?.deliveryEarningPerOrder ?: 0.0
+                Text(
+                    if (earning > 0) "S/ %.2f por entrega, mostrado en Bendey Delivery".format(earning) else "Sin configurar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+                if (state.canManageRestaurantSettings) {
+                    BendeyPrimaryButton("Configurar monto", viewModel::openEarningDialog, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))
     }
 }

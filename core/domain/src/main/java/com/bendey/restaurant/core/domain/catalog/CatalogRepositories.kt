@@ -69,6 +69,7 @@ interface SettingsRepository {
     suspend fun deleteSeries(id: Int): AppResult<Unit>
     suspend fun getRestaurantSettings(): AppResult<RestaurantSettings>
     suspend fun updateDeletionPin(pin: String): AppResult<Unit>
+    suspend fun updateDeliveryEarningPerOrder(amount: Double): AppResult<Unit>
     suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>>
     suspend fun createStaffUser(input: StaffCreateFormInput): AppResult<Unit>
     suspend fun updateStaffUser(input: StaffEditFormInput): AppResult<Unit>

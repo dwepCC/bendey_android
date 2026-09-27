@@ -271,6 +271,7 @@ data class SeriesFormInput(
 
 data class RestaurantSettings(
     val hasDeletionPin: Boolean,
+    val deliveryEarningPerOrder: Double = 0.0,
 )
 
 /** Snapshot en memoria de configuración del tenant (precarga al iniciar sesión). */

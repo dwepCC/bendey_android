@@ -81,6 +81,7 @@ import com.bendey.restaurant.core.network.dto.ModifierGroupDto
 import com.bendey.restaurant.core.network.dto.ModifierGroupUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ModifierOptionDto
 import com.bendey.restaurant.core.network.dto.RestaurantSettingsUpdateRequestDto
+import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -463,6 +464,11 @@ class SettingsRepositoryImpl @Inject constructor(
         fetchRestaurantSettings().also { operationalDataCache.updateRestaurantSettings(it) }
     }
 
+    override suspend fun updateDeliveryEarningPerOrder(amount: Double): AppResult<Unit> = catalogApiCall {
+        api.updateDeliveryEarningSettings(DeliveryEarningSettingsUpdateRequestDto(earningPerOrder = amount))
+        fetchRestaurantSettings().also { operationalDataCache.updateRestaurantSettings(it) }
+    }
+
     override suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>> = catalogApiCall {
         tenantRetrofitProvider.create<RestaurantApi>()
             .listStaffManagement()
@@ -502,7 +508,9 @@ class SettingsRepositoryImpl @Inject constructor(
         api.getSunatConfig().toDomain()
 
     private suspend fun fetchRestaurantSettings(): RestaurantSettings =
-        RestaurantSettings(hasDeletionPin = api.getRestaurantSettings().hasDeletionPin)
+        api.getRestaurantSettings().let {
+            RestaurantSettings(hasDeletionPin = it.hasDeletionPin, deliveryEarningPerOrder = it.deliveryEarningPerOrder)
+        }
 
     private suspend fun fetchBranches(): List<BranchItem> =
         api.listBranches().data.map {

@@ -339,6 +339,7 @@ data class BranchUpsertRequestDto(
 @Serializable
 data class RestaurantSettingsDto(
     @SerialName("has_deletion_pin") val hasDeletionPin: Boolean = false,
+    @SerialName("delivery_earning_per_order") val deliveryEarningPerOrder: Double = 0.0,
 )
 
 /**
@@ -391,4 +392,9 @@ data class ServiceChargeUpdateRequestDto(
 @Serializable
 data class RestaurantSettingsUpdateRequestDto(
     @SerialName("deletion_pin") val deletionPin: String,
+)
+
+@Serializable
+data class DeliveryEarningSettingsUpdateRequestDto(
+    @SerialName("earning_per_order") val earningPerOrder: Double,
 )

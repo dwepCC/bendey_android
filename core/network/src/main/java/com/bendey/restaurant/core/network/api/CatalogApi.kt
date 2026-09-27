@@ -11,6 +11,7 @@ import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
 import com.bendey.restaurant.core.network.dto.UbiItemDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
+import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryDriverDto
 import com.bendey.restaurant.core.network.dto.DeliveryDriverUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ListResponseDto
@@ -180,4 +181,7 @@ interface SettingsApi {
 
     @PUT("/api/restaurant/settings")
     suspend fun updateRestaurantSettings(@Body body: RestaurantSettingsUpdateRequestDto): SuccessResponseDto
+
+    @PUT("/api/restaurant/settings/delivery-earning")
+    suspend fun updateDeliveryEarningSettings(@Body body: DeliveryEarningSettingsUpdateRequestDto): SuccessResponseDto
 }

@@ -64,6 +64,8 @@ data class ConfiguracionUiState(
     val sunatForm: SunatConfigFormInput = SunatConfigFormInput(),
     val pinDialogOpen: Boolean = false,
     val pinValue: String = "",
+    val earningDialogOpen: Boolean = false,
+    val earningValue: String = "",
     val branchFormOpen: Boolean = false,
     val branchForm: BranchFormInput = BranchFormInput(),
     val deleteBranchId: Int? = null,
@@ -377,6 +379,34 @@ class ConfiguracionViewModel @Inject constructor(
             when (val result = repository.updateDeletionPin(pin)) {
                 is AppResult.Success -> {
                     _uiState.update { it.copy(actionLoading = false, pinDialogOpen = false, pinValue = "") }
+                    refresh()
+                }
+                is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openEarningDialog() {
+        if (!requireManageSettings()) return
+        val current = _uiState.value.settings?.deliveryEarningPerOrder ?: 0.0
+        _uiState.update { it.copy(earningDialogOpen = true, earningValue = if (current > 0) current.toString() else "", error = null) }
+    }
+    fun dismissEarningDialog() { _uiState.update { it.copy(earningDialogOpen = false, earningValue = "") } }
+    fun setEarningValue(value: String) { _uiState.update { it.copy(earningValue = value) } }
+
+    fun saveEarning() {
+        if (!requireManageSettings()) return
+        val amount = _uiState.value.earningValue.replace(',', '.').toDoubleOrNull()
+        if (amount == null || amount < 0) {
+            _uiState.update { it.copy(error = "Ingresa un monto válido") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(actionLoading = true, error = null) }
+            when (val result = repository.updateDeliveryEarningPerOrder(amount)) {
+                is AppResult.Success -> {
+                    _uiState.update { it.copy(actionLoading = false, earningDialogOpen = false, earningValue = "") }
                     refresh()
                 }
                 is AppResult.Error -> _uiState.update { it.copy(actionLoading = false, error = result.message) }

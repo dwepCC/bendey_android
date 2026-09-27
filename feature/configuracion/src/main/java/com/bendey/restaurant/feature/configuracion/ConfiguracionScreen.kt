@@ -118,6 +118,7 @@ fun ConfiguracionScreen(
     if (state.configFormOpen) ConfigFormDialog(state, viewModel)
     if (state.sunatFormOpen) SunatFormDialog(state, viewModel)
     if (state.pinDialogOpen) PinDialog(state, viewModel)
+    if (state.earningDialogOpen) EarningDialog(state, viewModel)
     StaffCreateDialog(state, viewModel)
     StaffEditDialog(state, viewModel)
     if (state.branchFormOpen) BranchFormDialog(state, viewModel)
@@ -490,6 +491,25 @@ private fun SeriesCard(
         validationError = state.error,
     ) {
         BendeyTextField(state.pinValue, { v -> viewModel.setPinValue(v.filter { it.isDigit() }.take(6)) }, "Nuevo PIN (4-6 dígitos)")
+    }
+}
+
+@Composable private fun EarningDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
+    BendeyFormDialog(
+        onDismissRequest = viewModel::dismissEarningDialog,
+        title = "Ganancia por entrega",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveEarning,
+        onDismiss = viewModel::dismissEarningDialog,
+        confirmEnabled = !state.actionLoading,
+        loading = state.actionLoading,
+        validationError = state.error,
+    ) {
+        BendeyTextField(
+            state.earningValue,
+            { v -> viewModel.setEarningValue(v.filter { it.isDigit() || it == '.' || it == ',' }) },
+            "Monto en S/ (ej. 5.00)",
+        )
     }
 }
 
