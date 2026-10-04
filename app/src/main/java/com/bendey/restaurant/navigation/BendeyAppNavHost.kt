@@ -57,6 +57,9 @@ import com.bendey.restaurant.feature.caja.navigation.cajaGraph
 import com.bendey.restaurant.feature.cocina.navigation.cocinaGraph
 import com.bendey.restaurant.feature.dashboard.navigation.dashboardGraph
 import com.bendey.restaurant.feature.mesas.navigation.mesasGraph
+import com.bendey.restaurant.core.domain.onboarding.NextActionId
+import com.bendey.restaurant.core.domain.onboarding.OnboardingDestination
+import com.bendey.restaurant.feature.onboarding.FirstSaleNextSheet
 import com.bendey.restaurant.feature.onboarding.WizardCoachPanel
 import com.bendey.restaurant.feature.onboarding.WizardGateViewModel
 import com.bendey.restaurant.feature.onboarding.navigation.wizardGraph
@@ -497,6 +500,28 @@ private fun MainShell(
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .padding(bottom = snackbarBottomPadding),
+    )
+    // R6: hoja "Lo que sigue" tras la primera venta (no se monta dentro del wizard).
+    FirstSaleNextSheet(
+        suppressed = currentRoute == BendeyRoutes.WIZARD,
+        onAction = { id ->
+            when (id) {
+                NextActionId.TABLE_SALE -> mainNavController.navigateToCoachTarget(
+                    CoachTarget.MESAS, permissions.permissions, permissions.employeeType, onShowMessage,
+                )
+                else -> mainNavController.navigateToOnboardingDestination(
+                    when (id) {
+                        NextActionId.PRINTER -> OnboardingDestination.IMPRESORAS
+                        NextActionId.QR_MENU -> OnboardingDestination.CONFIG_MENU_DIGITAL
+                        else -> OnboardingDestination.CONFIG_OPERACION
+                    },
+                    permissions.permissions,
+                    permissions.employeeType,
+                    onShowMessage,
+                )
+            }
+        },
+        onShowMessage = onShowMessage,
     )
     BendeySnackbarHost(
         hostState = snackbarHostState,

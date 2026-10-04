@@ -95,6 +95,8 @@ data class BillSessionResult(
     val number: String,
     val total: Double,
     val printData: SalePrintData? = null,
+    /** R6: primer cobro del restaurante (lo decide el servidor, una sola vez). */
+    val firstSale: Boolean = false,
 )
 
 data class VoidCreditNoteResult(

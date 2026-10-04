@@ -2,6 +2,8 @@ package com.bendey.restaurant.core.network.dto
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable
 data class BillSessionRequestDto(
@@ -46,7 +48,16 @@ data class BillSessionResponseDto(
     val success: Boolean = true,
     val data: BillSessionResultDto? = null,
     @SerialName("print_data") val printData: PrintDataDto? = null,
-)
+    /**
+     * R6: el servidor lo manda `true` UNA vez por restaurante. Se lee como JsonElement para que un
+     * valor raro (texto, número, null) nunca rompa la deserialización del cobro; ver [isFirstSale].
+     */
+    @SerialName("first_sale") val firstSale: JsonElement? = null,
+) {
+    /** Booleano estricto: solo el literal JSON `true` cuenta. */
+    val isFirstSale: Boolean
+        get() = (firstSale as? JsonPrimitive)?.let { !it.isString && it.content == "true" } == true
+}
 
 @Serializable
 data class PrintDataDto(

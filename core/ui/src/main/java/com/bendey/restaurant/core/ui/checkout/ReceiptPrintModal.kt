@@ -30,18 +30,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.onboarding.FirstSaleMoment
+import com.bendey.restaurant.core.domain.onboarding.shouldShowFirstSaleBand
+import com.bendey.restaurant.core.domain.onboarding.wizard.WizardCopy
 import com.bendey.restaurant.core.ui.R
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfile
@@ -69,8 +76,23 @@ fun ReceiptPrintModal(
     onShareWhatsApp: () -> Unit,
     onOpenPdf: (ReceiptPdfFormatUi) -> Unit,
     onDismiss: () -> Unit,
+    /**
+     * R6: SOLO los flujos de cobro lo pasan, con el `first_sale` de la respuesta. El default (false)
+     * es el de la reimpresión desde Ventas: nunca muestra la banda ni la hoja "Lo que sigue".
+     */
+    firstSale: Boolean = false,
 ) {
     if (!open) return
+
+    val showFirstSale = shouldShowFirstSaleBand(firstSale, open)
+    if (showFirstSale) {
+        // Prepara el momento (sin esperar nada): la hoja se abre al cerrar el recibo.
+        LaunchedEffect(saleNumber) { runCatching { FirstSaleMoment.onReceiptShown(saleNumber) } }
+    }
+    val handleDismiss: () -> Unit = {
+        if (showFirstSale) runCatching { FirstSaleMoment.onReceiptClosed() }
+        onDismiss()
+    }
 
     val profile = rememberBendeyAdaptiveProfile()
     val physicalPortrait = rememberPhysicalPortrait()
@@ -85,7 +107,7 @@ fun ReceiptPrintModal(
     val change = (paidTotal - total).coerceAtLeast(0.0)
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = handleDismiss,
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
@@ -143,9 +165,19 @@ fun ReceiptPrintModal(
                             color = BendeyColors.OnSurfaceVariant,
                         )
                     }
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = handleDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
+                }
+
+                if (showFirstSale) {
+                    FirstSaleBand(
+                        modifier = Modifier.padding(
+                            start = dialogPadding,
+                            end = dialogPadding,
+                            bottom = BendeySpacing.xs,
+                        ),
+                    )
                 }
 
                 Column(
@@ -228,11 +260,36 @@ fun ReceiptPrintModal(
                 // forma que BendeyPrimaryButton, reimplementados en vez de reutilizados.
                 BendeyPrimaryButton(
                     text = "Continuar",
-                    onClick = onDismiss,
+                    onClick = handleDismiss,
                     modifier = Modifier.padding(horizontal = dialogPadding, vertical = BendeySpacing.sm),
                 )
             }
         }
+    }
+}
+
+/** R6: banda de éxito, no bloqueante y sin animaciones. */
+@Composable
+private fun FirstSaleBand(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(BendeyShapeTokens.lg)
+            .background(BendeyColors.PrimaryContainer)
+            .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Text(
+            WizardCopy.FIRST_SALE_BAND_TITLE,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = BendeyColors.Primary,
+        )
+        Text(
+            WizardCopy.FIRST_SALE_BAND_BODY,
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
     }
 }
 

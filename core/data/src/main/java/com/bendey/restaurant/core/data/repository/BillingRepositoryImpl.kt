@@ -120,6 +120,7 @@ class BillingRepositoryImpl @Inject constructor(
             number = data.number,
             total = data.total,
             printData = response.printData?.toDomain(),
+            firstSale = response.isFirstSale,
         )
     }
 
@@ -151,6 +152,7 @@ class BillingRepositoryImpl @Inject constructor(
             number = data.number,
             total = data.total,
             printData = response.printData?.toDomain(),
+            firstSale = response.isFirstSale,
         )
     }
 

@@ -538,6 +538,7 @@ fun PosScreen(
             printData = sale.printData,
             saleNumber = sale.number,
             total = sale.total,
+            firstSale = sale.firstSale,
             hasPrinter = state.receiptHasPrinter,
             busyAction = state.receiptBusy,
             onPrint = viewModel::reprintReceipt,

@@ -89,6 +89,28 @@ object WizardCopy {
     const val PIN_NOTICE_TITLE = "Tu PIN para cocina y delivery"
     const val PIN_NOTICE_GOT_IT = "Ya lo anoté"
 
+    // R6: primera venta (mismas cadenas que Tauri: firstSaleBand*/next* de wizardCopy.ts)
+    const val FIRST_SALE_BAND_TITLE = "¡Tu primera venta! 🎉"
+    const val FIRST_SALE_BAND_BODY = "Quedó registrada. Así de simple es vender con Bendey."
+    const val NEXT_TITLE = "Lo que sigue"
+    const val NEXT_CLOSE = "Cerrar"
+    const val NEXT_PRINTER_TITLE = "Conecta tu impresora y entrega el ticket"
+    const val NEXT_PRINTER_ACTION = "Ir a Impresoras"
+    const val NEXT_QR_TITLE = "Que tus clientes pidan desde la mesa"
+    const val NEXT_QR_ACTION = "Ir a Menú digital"
+    const val NEXT_SUNAT_TITLE = "Emite boletas y facturas electrónicas"
+    const val NEXT_SUNAT_ACTION = "Solicitar activación"
+    const val NEXT_SUNAT_CONFIRM_TITLE = "¿Solicitar la activación de SUNAT?"
+    const val NEXT_SUNAT_CONFIRM_MESSAGE =
+        "Enviaremos tu solicitud para emitir boletas y facturas electrónicas. Te avisamos cuando esté lista."
+    const val NEXT_SUNAT_DONE = "Recibimos tu solicitud. Te avisamos cuando esté lista."
+    const val NEXT_TEAM_TITLE = "Crea el PIN de tu mozo y tu cocinero"
+    const val NEXT_TEAM_ACTION = "Crear usuario"
+    const val NEXT_AUTH_PIN_TITLE = "¿Fue una prueba? Crea tu PIN y anúlala"
+    const val NEXT_AUTH_PIN_ACTION = "Crear mi PIN"
+    const val NEXT_TABLE_TITLE = "Prueba una venta con mesa"
+    const val NEXT_TABLE_ACTION = "Ir a Mesas"
+
     fun progress(done: Int): String = PROGRESS_FORMAT.format(done)
 }
 
