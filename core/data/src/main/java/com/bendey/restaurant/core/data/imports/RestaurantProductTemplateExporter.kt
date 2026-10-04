@@ -27,7 +27,45 @@ class RestaurantProductTemplateExporter @Inject constructor() {
         return output.toByteArray()
     }
 
+    /** Plantilla SIMPLE (R4): 4 columnas con los alias que ya entiende el lector. */
+    fun generateSimpleBytes(): ByteArray {
+        val output = ByteArrayOutputStream()
+        Workbook(output, "Bendey Restaurante", "1.0").use { workbook ->
+            val sheet = workbook.newWorksheet("Productos")
+            SIMPLE_COLUMNS.forEachIndexed { column, header -> sheet.value(0, column, header) }
+            SIMPLE_EXAMPLES.forEachIndexed { index, example ->
+                example.forEachIndexed { column, value ->
+                    when (value) {
+                        is Number -> sheet.value(index + 1, column, value.toDouble())
+                        else -> sheet.value(index + 1, column, value.toString())
+                    }
+                }
+            }
+            val help = workbook.newWorksheet("Instrucciones")
+            SIMPLE_HELP.forEachIndexed { row, line -> help.value(row, 0, line) }
+            workbook.finish()
+        }
+        return output.toByteArray()
+    }
+
     companion object {
+        val SIMPLE_COLUMNS = listOf("nombre", "categoría", "precio", "área")
+
+        private val SIMPLE_EXAMPLES: List<List<Any>> = listOf(
+            listOf("Ceviche clásico", "Entradas", 35, "cocina"),
+            listOf("Lomo saltado", "Fondos", 28.5, "cocina"),
+            listOf("Chicha morada", "Bebidas", 6, "barra"),
+        )
+
+        private val SIMPLE_HELP = listOf(
+            "Cómo usar esta plantilla",
+            "",
+            "1. Una fila por plato: nombre, categoría, precio y área.",
+            "2. La categoría se crea sola si no existe.",
+            "3. El área (cocina, barra…) debe existir en tu restaurante. Si la dejas vacía, el plato va a Cocina.",
+            "4. Borra las filas de ejemplo antes de subir el archivo.",
+        )
+
         private val TEMPLATE_COLUMNS = listOf(
             "nombre",
             "codigo",

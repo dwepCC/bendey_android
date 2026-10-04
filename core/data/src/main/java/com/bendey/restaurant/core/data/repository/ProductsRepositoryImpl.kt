@@ -221,8 +221,8 @@ class ProductImportRepositoryImpl @Inject constructor(
     private val api: ProductsApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun validateExcel(bytes: ByteArray): BulkImportValidationResult =
-        excelImporter.validate(bytes)
+    override suspend fun validateExcel(bytes: ByteArray, areaNames: List<String>): BulkImportValidationResult =
+        excelImporter.validate(bytes, areaNames)
 
     override suspend fun importRows(
         rows: List<BulkImportRow>,
@@ -266,6 +266,8 @@ class ProductImportRepositoryImpl @Inject constructor(
     }
 
     override fun generateTemplateBytes(): ByteArray = templateExporter.generateBytes()
+
+    override fun generateSimpleTemplateBytes(): ByteArray = templateExporter.generateSimpleBytes()
 }
 
 private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {

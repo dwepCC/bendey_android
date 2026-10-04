@@ -12,10 +12,20 @@ import javax.inject.Singleton
 @Singleton
 class RestaurantProductExcelImporter @Inject constructor() {
 
-    fun validate(bytes: ByteArray): BulkImportValidationResult {
+    /**
+     * Valida el Excel fila por fila. `rows` trae SOLO las filas válidas (una fila con error nunca se
+     * agrega), así que se puede importar "solo las filas válidas" sin riesgo; los errores llevan la
+     * fila original para poder descargarlos.
+     *
+     * @param areaNames áreas de preparación del restaurante. Si no está vacío: un área desconocida es
+     * error de fila y un área vacía se resuelve como "cocina" (si existe).
+     */
+    fun validate(bytes: ByteArray, areaNames: List<String> = emptyList()): BulkImportValidationResult {
+        val areaKeys = areaNames.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
         val errors = mutableListOf<BulkImportRowError>()
         val rows = mutableListOf<BulkImportRow>()
         val codesInFile = mutableMapOf<String, Int>()
+        var lastHeaders: List<String> = emptyList()
 
         ByteArrayInputStream(bytes).use { input ->
             ReadableWorkbook(input).use { workbook ->
@@ -30,6 +40,7 @@ class RestaurantProductExcelImporter @Inject constructor() {
                 val headers = (0 until sheetRows.first().cellCount).map { col ->
                     normalizeHeader(rowText(sheetRows.first(), col))
                 }
+                lastHeaders = headers
                 if (!headers.contains("nombre") || !headers.contains("precio_venta")) {
                     return BulkImportValidationResult(
                         rows = emptyList(),
@@ -37,9 +48,10 @@ class RestaurantProductExcelImporter @Inject constructor() {
                             BulkImportRowError(
                                 1,
                                 "encabezados",
-                                "Faltan columnas obligatorias: nombre, precio_venta",
+                                "Faltan columnas obligatorias: nombre y precio (o precio_venta)",
                             ),
                         ),
+                        headers = headers,
                     )
                 }
 
@@ -52,9 +64,14 @@ class RestaurantProductExcelImporter @Inject constructor() {
                     val name = values["nombre"].orEmpty().trim()
                     if (name.isEmpty()) return@forEachIndexed
 
+                    val raw = headers.indices.map { rowText(row, it) }
+                    fun bad(column: String, message: String) {
+                        errors += BulkImportRowError(rowNumber, column, message, raw)
+                    }
+
                     val price = values["precio_venta"].orEmpty().replace(",", ".").toDoubleOrNull()
                     if (price == null || price < 0.01) {
-                        errors += BulkImportRowError(rowNumber, "precio_venta", "Precio de venta inválido")
+                        bad("precio_venta", "Precio de venta inválido")
                         return@forEachIndexed
                     }
 
@@ -62,10 +79,24 @@ class RestaurantProductExcelImporter @Inject constructor() {
                     if (code.isNotEmpty()) {
                         val prev = codesInFile[code]
                         if (prev != null) {
-                            errors += BulkImportRowError(rowNumber, "codigo", "Código duplicado en fila $prev")
-                        } else {
-                            codesInFile[code] = rowNumber
+                            bad("codigo", "Código duplicado en fila $prev")
+                            // Una fila con error NO se importa (antes se agregaba igual a `rows`).
+                            return@forEachIndexed
                         }
+                        codesInFile[code] = rowNumber
+                    }
+
+                    // Área de preparación: contra las del restaurante; vacía -> "cocina" si existe.
+                    var area = values["area_preparacion"].orEmpty().trim().lowercase()
+                    if (areaKeys.isNotEmpty()) {
+                        if (area.isNotEmpty() && area !in areaKeys) {
+                            bad(
+                                "area_preparacion",
+                                "El área \"$area\" no existe en tu restaurante. Usa una de: ${areaNames.joinToString(", ")}",
+                            )
+                            return@forEachIndexed
+                        }
+                        if (area.isEmpty() && "cocina" in areaKeys) area = "cocina"
                     }
 
                     val stockInitial = values["stock_inicial"].orEmpty().replace(",", ".").toDoubleOrNull() ?: 0.0
@@ -79,7 +110,7 @@ class RestaurantProductExcelImporter @Inject constructor() {
                         salePrice = price,
                         unit = values["unidad"].orEmpty().trim().uppercase().ifBlank { "NIU" },
                         categoryName = values["categoria"].orEmpty().trim(),
-                        preparationArea = values["area_preparacion"].orEmpty().trim().lowercase(),
+                        preparationArea = area,
                         igvAffectationType = values["afectacion_igv"].orEmpty().trim().ifBlank { "10" },
                         priceIncludesIgv = parseBool(values["precio_incluye_igv"], default = true),
                         manageStock = manageStock,
@@ -89,7 +120,7 @@ class RestaurantProductExcelImporter @Inject constructor() {
             }
         }
 
-        return BulkImportValidationResult(rows = rows, errors = errors)
+        return BulkImportValidationResult(rows = rows, errors = errors, headers = lastHeaders)
     }
 
     private fun rowText(row: Row, columnIndex: Int): String {
@@ -99,7 +130,10 @@ class RestaurantProductExcelImporter @Inject constructor() {
     }
 
     private fun normalizeHeader(value: String): String {
-        val normalized = value.trim().lowercase()
+        // Sin tildes y con "_" en vez de espacios: "Categoría" / "Precio de venta" también valen.
+        val normalized = java.text.Normalizer.normalize(value.trim().lowercase(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+            .replace(Regex("\\s+"), "_")
         return HEADER_ALIASES[normalized] ?: normalized
     }
 

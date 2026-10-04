@@ -19,6 +19,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.CategoryItem
 import com.bendey.restaurant.core.domain.products.IgvAffectation
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.onboarding.wizard.importResultMessage
 import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.products.ProductFormInput
 import com.bendey.restaurant.core.domain.products.ProductItem
@@ -396,17 +397,21 @@ class ProductosViewModel @Inject constructor(
 
     fun getImportTemplateBytes(): ByteArray = productImportRepository.generateTemplateBytes()
 
+    fun getSimpleImportTemplateBytes(): ByteArray = productImportRepository.generateSimpleTemplateBytes()
+
     fun validateImportFile(bytes: ByteArray) {
         viewModelScope.launch {
-            val validation = productImportRepository.validateExcel(bytes)
+            val areaNames = _uiState.value.preparationAreas.map { it.name }
+            val validation = productImportRepository.validateExcel(bytes, areaNames)
             _uiState.update { it.copy(importValidation = validation, importProgress = null, error = null) }
         }
     }
 
     fun runImport() {
         val validation = _uiState.value.importValidation ?: return
-        if (validation.errors.isNotEmpty() || validation.rows.isEmpty()) {
-            _uiState.update { it.copy(error = "Corrige los errores del Excel antes de importar") }
+        // Solo se importan las filas válidas (validation.rows no trae ninguna con error).
+        if (validation.rows.isEmpty()) {
+            _uiState.update { it.copy(error = "No hay filas válidas para importar") }
             return
         }
         viewModelScope.launch {
@@ -418,7 +423,7 @@ class ProductosViewModel @Inject constructor(
                         it.copy(
                             importLoading = false,
                             importProgress = result.data,
-                            snackMessage = "Importados ${result.data.created} productos",
+                            snackMessage = importResultMessage(result.data.created, result.data.failed.size),
                         )
                     }
                     refreshProducts()

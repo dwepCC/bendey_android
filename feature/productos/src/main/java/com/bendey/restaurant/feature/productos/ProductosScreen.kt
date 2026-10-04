@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material.icons.filled.UploadFile
+import com.bendey.restaurant.core.ui.components.ProductImportDialog
 import com.bendey.restaurant.core.ui.components.BendeyActiveFilter
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyFilterBar
@@ -233,7 +234,8 @@ fun ProductosScreen(
         onDismiss = viewModel::dismissImportDialog,
         onFilePicked = viewModel::validateImportFile,
         onImport = viewModel::runImport,
-        onDownloadTemplate = viewModel::getImportTemplateBytes,
+        onDownloadSimpleTemplate = viewModel::getSimpleImportTemplateBytes,
+        onDownloadAdvancedTemplate = viewModel::getImportTemplateBytes,
         onDownloadError = { message -> viewModel.showSnackMessage(message) },
     )
 

@@ -362,11 +362,16 @@ data class BulkImportRowError(
     val row: Int,
     val column: String,
     val message: String,
+    /** Fila original del Excel (solo errores de validación): sirve para descargar los errores. */
+    val rawValues: List<String> = emptyList(),
 )
 
 data class BulkImportValidationResult(
+    /** Solo filas VÁLIDAS: una fila con error nunca llega aquí (se importa sin riesgo con "solo las válidas"). */
     val rows: List<BulkImportRow>,
     val errors: List<BulkImportRowError>,
+    /** Encabezados ya resueltos del archivo (para el archivo de errores). */
+    val headers: List<String> = emptyList(),
 )
 
 data class BulkImportProgress(

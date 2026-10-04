@@ -36,8 +36,6 @@ import coil.compose.AsyncImage
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
-import com.bendey.restaurant.core.domain.catalog.BulkImportProgress
-import com.bendey.restaurant.core.domain.catalog.BulkImportValidationResult
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
@@ -60,75 +58,6 @@ fun ProductCatalogSectionNav(
         onOpenModificadores = onOpenModificadores,
         onOpenAreasPreparacion = onOpenAreasPreparacion,
         onOpenCombos = onOpenCombos,
-    )
-}
-
-@Composable
-fun ProductImportDialog(
-    open: Boolean,
-    validation: BulkImportValidationResult?,
-    progress: BulkImportProgress?,
-    loading: Boolean,
-    error: String?,
-    onDismiss: () -> Unit,
-    onFilePicked: (ByteArray) -> Unit,
-    onImport: () -> Unit,
-    onDownloadTemplate: () -> ByteArray,
-    onDownloadError: (String) -> Unit = {},
-) {
-    if (!open) return
-    val context = LocalContext.current
-    val excelLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { readBytes(context, it)?.let(onFilePicked) }
-    }
-    val templateLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(EXCEL_MIME)) { uri ->
-        uri?.let {
-            val writeResult = runCatching {
-                context.contentResolver.openOutputStream(it)?.use { stream ->
-                    stream.write(onDownloadTemplate())
-                } ?: error("No fue posible abrir el destino seleccionado.")
-            }
-            if (writeResult.isFailure) {
-                onDownloadError("No fue posible guardar el archivo.")
-            }
-        }
-    }
-
-    BendeyAlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Importar productos (Excel)") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                Text("Columnas: nombre, precio_venta, codigo, categoria, area_preparacion, etc.", style = MaterialTheme.typography.bodySmall)
-                BendeyPrimaryButton(
-                    "Descargar plantilla",
-                    { templateLauncher.launch("plantilla-productos-restaurante.xlsx") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                BendeyPrimaryButton("Seleccionar archivo .xlsx", { excelLauncher.launch(arrayOf(EXCEL_MIME, "application/vnd.ms-excel")) }, modifier = Modifier.fillMaxWidth())
-                validation?.let { result ->
-                    Text("Filas válidas: ${result.rows.size}", fontWeight = FontWeight.SemiBold)
-                    if (result.errors.isNotEmpty()) {
-                        Text("Errores (${result.errors.size}):", color = BendeyColors.Error, fontWeight = FontWeight.SemiBold)
-                        result.errors.take(5).forEach { err ->
-                            Text("Fila ${err.row}: ${err.message}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.Error)
-                        }
-                    }
-                }
-                progress?.let {
-                    Text("Creados: ${it.created}. Fallidos: ${it.failed.size}", fontWeight = FontWeight.SemiBold)
-                }
-                error?.let { Text(it, color = BendeyColors.Error, style = MaterialTheme.typography.bodySmall) }
-            }
-        },
-        confirmButton = {
-            BendeyPrimaryButton(
-                text = if (loading) "Importando…" else "Importar",
-                onClick = onImport,
-                enabled = !loading && validation != null && validation.errors.isEmpty() && validation.rows.isNotEmpty(),
-            )
-        },
-        dismissButton = { BendeyTextButton(text = "Cerrar", onClick = onDismiss) },
     )
 }
 

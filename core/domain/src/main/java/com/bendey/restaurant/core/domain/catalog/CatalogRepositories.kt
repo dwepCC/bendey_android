@@ -76,9 +76,18 @@ interface SettingsRepository {
 }
 
 interface ProductImportRepository {
-    suspend fun validateExcel(bytes: ByteArray): BulkImportValidationResult
+    /**
+     * @param areaNames nombres de las áreas de preparación del restaurante; si no está vacío, la
+     * columna de área se valida contra ellas (y un área vacía se resuelve como "cocina").
+     */
+    suspend fun validateExcel(bytes: ByteArray, areaNames: List<String> = emptyList()): BulkImportValidationResult
     suspend fun importRows(rows: List<BulkImportRow>, categories: Map<String, Int>): AppResult<BulkImportProgress>
+
+    /** Plantilla AVANZADA (11 columnas). */
     fun generateTemplateBytes(): ByteArray
+
+    /** Plantilla SIMPLE (R4): nombre, categoría, precio, área. */
+    fun generateSimpleTemplateBytes(): ByteArray
 }
 
 interface ProductImageRepository {
