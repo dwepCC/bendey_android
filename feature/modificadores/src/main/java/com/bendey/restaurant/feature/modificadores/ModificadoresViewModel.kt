@@ -25,6 +25,8 @@ data class ModificadoresUiState(
     val form: ModifierGroupFormInput = ModifierGroupFormInput(),
     val deleteId: Int? = null,
     val error: String? = null,
+    /** Fallo al CARGAR la lista (no de guardar): la pantalla muestra Reintentar en vez del vacío. */
+    val loadError: String? = null,
 )
 
 @HiltViewModel
@@ -39,10 +41,10 @@ class ModificadoresViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
+            _uiState.update { it.copy(loading = true, error = null, loadError = null) }
             when (val result = repository.listModifierGroups()) {
                 is AppResult.Success -> _uiState.update { it.copy(loading = false, groups = result.data) }
-                is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+                is AppResult.Error -> _uiState.update { it.copy(loading = false, loadError = result.message) }
                 AppResult.Loading -> Unit
             }
         }

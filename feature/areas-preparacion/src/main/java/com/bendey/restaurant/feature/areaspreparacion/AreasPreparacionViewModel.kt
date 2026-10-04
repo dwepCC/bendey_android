@@ -25,6 +25,8 @@ data class AreasPreparacionUiState(
     val editingId: Int? = null,
     val form: PreparationAreaFormInput = PreparationAreaFormInput(),
     val error: String? = null,
+    /** Fallo al CARGAR la lista (no de guardar): la pantalla muestra Reintentar en vez del vacío. */
+    val loadError: String? = null,
 ) {
     val filteredAreas: List<PreparationAreaItem>
         get() {
@@ -51,10 +53,10 @@ class AreasPreparacionViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
+            _uiState.update { it.copy(loading = true, error = null, loadError = null) }
             when (val result = repository.listPreparationAreas(activeOnly = false)) {
                 is AppResult.Success -> _uiState.update { it.copy(loading = false, areas = result.data) }
-                is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+                is AppResult.Error -> _uiState.update { it.copy(loading = false, loadError = result.message) }
                 AppResult.Loading -> Unit
             }
         }

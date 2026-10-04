@@ -40,7 +40,10 @@ import com.bendey.restaurant.core.designsystem.components.BendeySectionTitle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
-import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -186,6 +189,8 @@ fun ProductosScreen(
                     onMenuChannel = viewModel::openMenuChannel,
                     onLoadMore = viewModel::loadMoreProducts,
                     onQuickImagePicked = viewModel::uploadQuickProductImage,
+                    onRetry = viewModel::refreshProducts,
+                    onCreate = viewModel::openCreateProduct,
                     modifier = contentModifier,
                 )
                 ProductosTab.CATEGORIAS -> CategoriesTabContent(
@@ -194,6 +199,8 @@ fun ProductosScreen(
                     error = state.error?.takeIf { !state.categoryFormOpen },
                     onEdit = viewModel::openEditCategory,
                     onDelete = viewModel::requestDeleteCategory,
+                    onRetry = viewModel::loadCategories,
+                    onCreate = viewModel::openCreateCategory,
                     modifier = contentModifier,
                 )
             }
@@ -337,6 +344,8 @@ private fun ProductsTabContent(
     onMenuChannel: (ProductItem) -> Unit,
     onLoadMore: () -> Unit,
     onQuickImagePicked: suspend (Int, ByteArray, String) -> Unit,
+    onRetry: () -> Unit,
+    onCreate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
@@ -356,9 +365,13 @@ private fun ProductsTabContent(
             add(BendeyActiveFilter(key = "branch", label = "Sucursal: $it", onRemove = { onBranchFilter(null) }))
         }
     }
+    val viewState = ListStateDecider.decide(
+        state.loading, error, state.products.size,
+        state.searchQuery.isNotBlank() || activeFilters.isNotEmpty() || state.showInactive,
+    )
     Column(modifier = modifier.fillMaxSize()) {
         banner()
-        error?.let {
+        error?.takeIf { !viewState.showsPlaceholder }?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
         // Antes: buscador+categoría en una fila, tipo+inactivos en otra, y sucursales en una
@@ -393,10 +406,18 @@ private fun ProductsTabContent(
             activeFilters = activeFilters,
         )
         BendeyFlexibleContentSlot {
-            if (state.products.isEmpty() && !state.loading) {
-                BendeyEmptyState(
-                    title = "Sin productos",
-                    inline = true,
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.productos,
+                    onRetry = onRetry,
+                    onCreate = onCreate,
+                    onClearFilters = {
+                        onSearch("")
+                        onCategoryFilter(null)
+                        onBranchFilter(null)
+                        onShowInactiveChange(false)
+                    },
                     modifier = Modifier.align(Alignment.TopStart),
                 )
             } else {
@@ -581,19 +602,24 @@ private fun CategoriesTabContent(
     error: String?,
     onEdit: (Int) -> Unit,
     onDelete: (Int) -> Unit,
+    onRetry: () -> Unit,
+    onCreate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
     val listState = rememberLazyListState()
+    val viewState = ListStateDecider.decide(loading, error, categories.size)
     Column(modifier = modifier) {
-        error?.let {
+        error?.takeIf { !viewState.showsPlaceholder }?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (categories.isEmpty() && !loading) {
-                BendeyEmptyState(
-                    title = "Sin categorías",
-                    inline = true,
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.categorias,
+                    onRetry = onRetry,
+                    onCreate = onCreate,
                     modifier = Modifier.align(Alignment.TopStart),
                 )
             } else {

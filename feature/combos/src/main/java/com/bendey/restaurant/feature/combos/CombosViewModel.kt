@@ -50,6 +50,8 @@ data class CombosUiState(
     /** Incluye los combos desactivados en el listado, para poder reactivarlos. */
     val showInactive: Boolean = false,
     val error: String? = null,
+    /** Fallo al CARGAR la lista (no de guardar): la pantalla muestra Reintentar en vez del vacío. */
+    val loadError: String? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -83,10 +85,10 @@ class CombosViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             val includeInactive = _uiState.value.showInactive
-            _uiState.update { it.copy(loading = true, error = null) }
+            _uiState.update { it.copy(loading = true, error = null, loadError = null) }
             when (val result = repository.listCombos(includeInactive = includeInactive)) {
                 is AppResult.Success -> _uiState.update { it.copy(loading = false, combos = result.data) }
-                is AppResult.Error -> _uiState.update { it.copy(loading = false, error = result.message) }
+                is AppResult.Error -> _uiState.update { it.copy(loading = false, loadError = result.message) }
                 AppResult.Loading -> Unit
             }
         }

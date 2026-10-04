@@ -36,6 +36,10 @@ import com.bendey.restaurant.core.domain.catalog.ComboItem
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.products.CatalogSection
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyQuickImageThumb
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
@@ -96,10 +100,19 @@ fun CombosScreen(
                 onCheckedChange = viewModel::setShowInactive,
                 modifier = Modifier.padding(horizontal = BendeySpacing.md),
             )
-            state.error?.takeIf { !state.formOpen }?.let {
+            val viewState = ListStateDecider.decide(state.loading, state.loadError, state.combos.size)
+            state.error?.takeIf { !state.formOpen && !viewState.showsPlaceholder }?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
-            BendeyLazyColumn(
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.combos,
+                    onRetry = viewModel::refresh,
+                    onCreate = viewModel::openCreate,
+                    modifier = Modifier.weight(1f),
+                )
+            } else BendeyLazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),

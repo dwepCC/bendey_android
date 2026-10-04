@@ -95,6 +95,8 @@ data class ConfiguracionUiState(
     val deleteSeriesId: Int? = null,
     val staffRows: List<RestaurantStaffManagementRow> = emptyList(),
     val staffLoading: Boolean = false,
+    /** Fallo al CARGAR la lista de personal (distinto de un error de guardado): muestra Reintentar, no «Sin personal». */
+    val staffLoadError: String? = null,
     val staffCreateOpen: Boolean = false,
     val staffEditOpen: Boolean = false,
     val staffCreateForm: StaffCreateFormInput = StaffCreateFormInput(),
@@ -428,7 +430,7 @@ class ConfiguracionViewModel @Inject constructor(
         if (!requireManageSettings()) return
         val pin = _uiState.value.pinValue.filter { it.isDigit() }
         if (pin.length !in 4..6) {
-            _uiState.update { it.copy(error = "PIN de operaciones: 4 a 6 dígitos") }
+            _uiState.update { it.copy(error = "PIN de autorización: 4 a 6 dígitos") }
             return
         }
         viewModelScope.launch {
@@ -756,12 +758,12 @@ class ConfiguracionViewModel @Inject constructor(
         }
     }
 
-    private fun loadStaffManagement() {
+    fun loadStaffManagement() {
         viewModelScope.launch {
-            _uiState.update { it.copy(staffLoading = true, error = null) }
+            _uiState.update { it.copy(staffLoading = true, error = null, staffLoadError = null) }
             when (val result = repository.listStaffManagement()) {
                 is AppResult.Success -> _uiState.update { it.copy(staffLoading = false, staffRows = result.data) }
-                is AppResult.Error -> _uiState.update { it.copy(staffLoading = false, error = result.message) }
+                is AppResult.Error -> _uiState.update { it.copy(staffLoading = false, staffLoadError = result.message) }
                 AppResult.Loading -> Unit
             }
         }
@@ -809,7 +811,7 @@ class ConfiguracionViewModel @Inject constructor(
             form.name.isBlank() -> _uiState.update { it.copy(error = "Nombre requerido") }
             form.email.isBlank() -> _uiState.update { it.copy(error = "Email requerido") }
             pin.length !in 4..6 -> _uiState.update { it.copy(error = "PIN de acceso: 4 a 6 dígitos") }
-            form.branchIds.isEmpty() -> _uiState.update { it.copy(error = "Seleccione al menos una sucursal") }
+            form.branchIds.isEmpty() -> _uiState.update { it.copy(error = "Selecciona al menos una sucursal") }
             else -> viewModelScope.launch {
                 _uiState.update { it.copy(actionLoading = true, error = null) }
                 when (val result = repository.createStaffUser(form.copy(pin = pin))) {
@@ -870,7 +872,7 @@ class ConfiguracionViewModel @Inject constructor(
             return
         }
         if (form.branchIds.isEmpty() && form.employeeType.isNotBlank()) {
-            _uiState.update { it.copy(error = "Seleccione al menos una sucursal") }
+            _uiState.update { it.copy(error = "Selecciona al menos una sucursal") }
             return
         }
         viewModelScope.launch {

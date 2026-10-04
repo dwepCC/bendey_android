@@ -36,7 +36,10 @@ import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
-import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
@@ -96,6 +99,8 @@ fun ProveedoresScreen(
             onToggle = viewModel::toggleActive,
             onSearchChange = viewModel::setSearchQuery,
             onShowInactiveChange = viewModel::setShowInactive,
+            onRetry = viewModel::refresh,
+            onCreate = viewModel::openCreate,
             modifier = contentModifier,
         )
     }
@@ -143,8 +148,11 @@ private fun ProveedoresListPane(
     onToggle: (Int) -> Unit,
     onSearchChange: (String) -> Unit,
     onShowInactiveChange: (Boolean) -> Unit,
+    onRetry: () -> Unit,
+    onCreate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val viewState = ListStateDecider.decide(state.loading, state.error?.takeIf { !state.formOpen }, state.contacts.size, state.searchQuery.isNotBlank())
     val listState = rememberLazyListState()
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
     Column(modifier = modifier.fillMaxSize()) {
@@ -171,7 +179,7 @@ private fun ProveedoresListPane(
                 text = "Incluir inactivos",
             )
         }
-        state.error?.takeIf { !state.formOpen }?.let { error ->
+        state.error?.takeIf { !state.formOpen && !viewState.showsPlaceholder }?.let { error ->
             Text(
                 error,
                 color = BendeyColors.Error,
@@ -179,10 +187,13 @@ private fun ProveedoresListPane(
             )
         }
         BendeyFlexibleContentSlot {
-            if (state.contacts.isEmpty() && !state.loading) {
-                BendeyEmptyState(
-                    title = "Sin proveedores",
-                    inline = true,
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.proveedores,
+                    onRetry = onRetry,
+                    onCreate = onCreate,
+                    onClearFilters = { onSearchChange("") },
                     modifier = Modifier.align(Alignment.TopStart),
                 )
             } else {

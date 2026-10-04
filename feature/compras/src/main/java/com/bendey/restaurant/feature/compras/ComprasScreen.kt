@@ -44,6 +44,10 @@ import com.bendey.restaurant.core.ui.components.BendeyActiveFilter
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyDateField
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
 import com.bendey.restaurant.core.ui.components.BendeyFilterBar
 import com.bendey.restaurant.core.ui.components.BendeyFilterSheet
@@ -110,7 +114,6 @@ fun ComprasScreen(
             BendeyEmptyState(
                 title = "No disponible en esta sesión",
                 description = "Compras requiere iniciar sesión con usuario y contraseña (no con el PIN del turno).",
-                inline = true,
                 modifier = contentModifier.padding(BendeySpacing.md),
             )
         } else {
@@ -120,6 +123,8 @@ fun ComprasScreen(
                 onOpenDetail = viewModel::openDetail,
                 onSetDateRange = viewModel::setDateRange,
                 onSetStatusFilter = viewModel::setStatusFilter,
+                onRetry = viewModel::refresh,
+                onCreate = viewModel::openForm,
                 modifier = contentModifier,
             )
         }
@@ -157,12 +162,16 @@ private fun ComprasListPane(
     onOpenDetail: (Int) -> Unit,
     onSetDateRange: (String, String) -> Unit,
     onSetStatusFilter: (String) -> Unit,
+    onRetry: () -> Unit,
+    onCreate: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val bottomScrollPadding = rememberBendeyBottomBarScrollPadding()
     var filterSheetOpen by remember { mutableStateOf(false) }
     val hasDateRange = state.dateFrom.isNotBlank() || state.dateTo.isNotBlank()
+    val hasFilters = hasDateRange || state.searchQuery.isNotBlank() || state.statusFilter.isNotBlank()
+    val viewState = ListStateDecider.decide(state.loading, state.error?.takeIf { !state.formOpen }, state.purchases.size, hasFilters)
     Column(modifier = modifier.fillMaxSize()) {
         // Antes: buscador + botón de fecha + BendeySimpleSelect "Estado" fijos, cada uno con su
         // propia fila — la auditoría de 2026 midió esto consumiendo ~23% de la pantalla. Estado
@@ -197,12 +206,23 @@ private fun ComprasListPane(
                 emptyList()
             },
         )
-        state.error?.takeIf { !state.formOpen }?.let { error ->
+        state.error?.takeIf { !state.formOpen && !viewState.showsPlaceholder }?.let { error ->
             Text(error, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
         BendeyFlexibleContentSlot {
-            if (state.purchases.isEmpty() && !state.loading) {
-                BendeyEmptyState(title = "Sin compras registradas", inline = true, modifier = Modifier.align(Alignment.TopStart))
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.compras,
+                    onRetry = onRetry,
+                    onCreate = onCreate,
+                    onClearFilters = {
+                        onSearchChange("")
+                        onSetDateRange("", "")
+                        onSetStatusFilter("")
+                    },
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
             } else {
                 BendeyLazyColumn(
                     modifier = it,

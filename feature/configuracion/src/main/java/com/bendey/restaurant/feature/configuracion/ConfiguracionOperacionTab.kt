@@ -29,7 +29,10 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
-import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyOption
@@ -107,7 +110,15 @@ private fun OperacionStaffList(
     if (state.staffLoading && state.staffRows.isEmpty()) {
         Text("Cargando usuarios…", modifier = Modifier.padding(BendeySpacing.md), color = BendeyColors.OnSurfaceVariant)
     } else if (state.staffRows.isEmpty()) {
-        BendeyEmptyState(title = "Sin usuarios registrados", inline = true, modifier = modifier)
+        val viewState = ListStateDecider.decide(state.staffLoading, state.staffLoadError, state.staffRows.size)
+        BendeyListPlaceholder(
+            viewState = viewState,
+            emptyCopy = EmptyStatesCopy.personal,
+            onRetry = viewModel::loadStaffManagement,
+            onCreate = viewModel::openCreateStaff,
+            canAct = state.canManageRestaurantSettings,
+            modifier = modifier,
+        )
     } else {
         BendeyLazyColumn(
             state = rememberLazyListState(),

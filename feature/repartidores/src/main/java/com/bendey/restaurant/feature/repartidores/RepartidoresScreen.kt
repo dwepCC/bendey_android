@@ -47,7 +47,10 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
-import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.components.BendeyOption
@@ -100,9 +103,19 @@ fun RepartidoresScreen(
                     text = "Empresas",
                 )
             }
-            state.error?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
+            val driversViewState = ListStateDecider.decide(state.loading, state.driversLoadError, state.drivers.size)
+            val driversPlaceholder = state.tab == RepartidoresTabKind.DRIVERS && driversViewState.showsPlaceholder
+            state.error?.takeIf { !driversPlaceholder }?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
-                RepartidoresTabKind.DRIVERS -> BendeyLazyColumn(
+                RepartidoresTabKind.DRIVERS -> if (driversPlaceholder) {
+                    BendeyListPlaceholder(
+                        viewState = driversViewState,
+                        emptyCopy = EmptyStatesCopy.repartidores,
+                        onRetry = viewModel::refresh,
+                        onCreate = viewModel::openCreate,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else BendeyLazyColumn(
                     state = rememberLazyListState(),
                     contentPadding = PaddingValues(BendeySpacing.md),
                     verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),

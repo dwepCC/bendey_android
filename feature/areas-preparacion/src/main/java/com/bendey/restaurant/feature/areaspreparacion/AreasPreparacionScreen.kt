@@ -50,6 +50,10 @@ import com.bendey.restaurant.core.ui.components.BendeySwitch
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.CatalogSectionNav
 
@@ -118,11 +122,24 @@ fun AreasPreparacionScreen(
                     text = "Incluir inactivas",
                 )
             }
-            state.error?.let {
+            val viewState = ListStateDecider.decide(
+                state.loading, state.loadError, state.filteredAreas.size,
+                state.searchQuery.isNotBlank(),
+            )
+            state.error?.takeIf { !viewState.showsPlaceholder }?.let {
                 Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md))
             }
             val listState = rememberLazyListState()
-            BendeyLazyColumn(
+            if (viewState.showsPlaceholder) {
+                BendeyListPlaceholder(
+                    viewState = viewState,
+                    emptyCopy = EmptyStatesCopy.areas,
+                    onRetry = viewModel::refresh,
+                    onCreate = viewModel::openCreate,
+                    onClearFilters = { viewModel.setSearchQuery("") },
+                    modifier = Modifier.weight(1f),
+                )
+            } else BendeyLazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
                 contentPadding = PaddingValues(BendeySpacing.md),

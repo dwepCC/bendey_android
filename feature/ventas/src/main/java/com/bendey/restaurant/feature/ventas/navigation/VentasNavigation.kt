@@ -8,8 +8,9 @@ import com.bendey.restaurant.feature.ventas.VentasScreen
 fun NavGraphBuilder.ventasGraph(
     onShowMessage: (String) -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
+    onGoToSell: () -> Unit = {},
 ) {
     composable(BendeyRoutes.VENTAS) {
-        VentasScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription)
+        VentasScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription, onGoToSell = onGoToSell)
     }
 }

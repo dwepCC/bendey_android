@@ -94,7 +94,11 @@ import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
 import com.bendey.restaurant.core.ui.checkout.CheckoutDetailModeControl
 import com.bendey.restaurant.core.ui.checkout.ReceiptPdfFormatUi
 import com.bendey.restaurant.core.ui.checkout.ReceiptPrintModal
-import com.bendey.restaurant.core.ui.components.BendeyEmptyState
+import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListStateDecider
+import com.bendey.restaurant.core.domain.copy.ListViewState
+import com.bendey.restaurant.core.domain.copy.showsPlaceholder
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.SalesPaymentSummaryRow
@@ -121,6 +125,7 @@ fun VentasScreen(
     modifier: Modifier = Modifier,
     onShowMessage: (String) -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
+    onGoToSell: () -> Unit = {},
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -178,6 +183,14 @@ fun VentasScreen(
                 currency = currency,
                 selectedSaleId = state.selectedSaleId,
                 onSaleClick = viewModel::openSaleDetail,
+                onRetry = viewModel::refresh,
+                onGoToSell = onGoToSell,
+                onClearFilters = {
+                    viewModel.setSearchQuery("")
+                    viewModel.setPaymentMethodFilter("")
+                    viewModel.setBillingStatusFilter("")
+                    viewModel.selectOrderType("")
+                },
                 modifier = contentModifier,
                 // Filtros + resumen ya NO son header fijo (ocupaban toda la pantalla y tapaban la lista):
                 // van como primer ítem del LazyColumn para que TODO scrollee junto y la lista sea
@@ -542,6 +555,9 @@ private fun VentasSalesList(
     currency: NumberFormat,
     selectedSaleId: Int?,
     onSaleClick: (Int) -> Unit,
+    onRetry: () -> Unit,
+    onGoToSell: () -> Unit,
+    onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
     leadingContent: @Composable () -> Unit = {},
 ) {
@@ -563,19 +579,23 @@ private fun VentasSalesList(
     ) {
         item(key = "ventas-header") { leadingContent() }
 
-        val showError = state.error != null && state.sales.isEmpty() && selectedSaleId == null
+        val hasFilters = state.searchQuery.isNotBlank() || state.paymentMethodFilter.isNotBlank() ||
+            state.billingStatusFilter.isNotBlank() || state.orderTypeFilter.isNotBlank()
+        val viewState = ListStateDecider.decide(
+            loading = state.loading,
+            error = state.error?.takeIf { selectedSaleId == null },
+            itemCount = state.sales.size,
+            hasActiveFilters = hasFilters,
+        )
         when {
-            showError -> item(key = "ventas-error") {
-                Text(
-                    state.error.orEmpty(),
-                    color = BendeyColors.Error,
-                    modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
-                )
-            }
-            !state.canFetchList || (state.sales.isEmpty() && !state.loading) -> item(key = "ventas-empty") {
-                BendeyEmptyState(
-                    title = "No hay comprobantes en esta sección",
-                    inline = true,
+            // Si la facturación no está activa, la lista no se pide: es «vacío», no error.
+            !state.canFetchList || viewState.showsPlaceholder -> item(key = "ventas-empty") {
+                BendeyListPlaceholder(
+                    viewState = if (!state.canFetchList) ListViewState.EmptyCreated else viewState,
+                    emptyCopy = EmptyStatesCopy.ventas,
+                    onRetry = onRetry,
+                    onCreate = onGoToSell,
+                    onClearFilters = onClearFilters,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -993,7 +1013,7 @@ private fun EmitElectronicDialog(
                         selectedId = contactId,
                         onSelect = { onContactChange(it) },
                         label = if (requiresRuc) "Cliente (RUC obligatorio)" else "Cliente",
-                        placeholder = if (requiresRuc) "Seleccione cliente con RUC" else "Seleccione cliente",
+                        placeholder = if (requiresRuc) "Selecciona un cliente con RUC" else "Selecciona un cliente",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (requiresRuc && clientOptions.isEmpty()) {
@@ -1170,7 +1190,7 @@ private fun VoidReasonDialog(
                     )
                 }
                 Text(
-                    if (esDevolucion) "Indique el motivo de la devolución." else "Indique el motivo de anulación.",
+                    if (esDevolucion) "Indica el motivo de la devolución." else "Indica el motivo de la anulación.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -1186,7 +1206,7 @@ private fun VoidReasonDialog(
                     BendeyTextField(
                         value = pin,
                         onValueChange = onPinChange,
-                        label = "PIN de operaciones",
+                        label = "PIN de autorización",
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         modifier = Modifier.fillMaxWidth(),

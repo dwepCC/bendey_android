@@ -413,6 +413,9 @@ private fun MainShell(
                 onNavigateToSubscription = {
                     mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
                 },
+                onGoToSell = {
+                    mainNavController.navigate(BendeyRoutes.POS) { launchSingleTop = true }
+                },
             )
             reportesGraph(
                 onShowMessage = onShowMessage,

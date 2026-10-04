@@ -38,6 +38,8 @@ data class RepartidoresUiState(
     val deleteDriverId: Int? = null,
     val deleteCompanyId: Int? = null,
     val error: String? = null,
+    /** Fallo al CARGAR repartidores (no de guardar): la pantalla muestra Reintentar en vez de «Aún no tienes repartidores». */
+    val driversLoadError: String? = null,
 )
 
 @HiltViewModel
@@ -58,7 +60,7 @@ class RepartidoresViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
+            _uiState.update { it.copy(loading = true, error = null, driversLoadError = null) }
             val drivers = repository.listDrivers()
             val companies = repository.listCompanies()
             // Solo para poblar el selector "Cuenta de Bendey Delivery" del formulario -- un fallo
@@ -73,6 +75,7 @@ class RepartidoresViewModel @Inject constructor(
                     driverStaffOptions = (staff as? AppResult.Success)?.data.orEmpty()
                         .filter { row -> row.employeeType == "driver" && row.staffId != null },
                     error = (drivers as? AppResult.Error)?.message ?: (companies as? AppResult.Error)?.message,
+                    driversLoadError = (drivers as? AppResult.Error)?.message,
                 )
             }
         }
