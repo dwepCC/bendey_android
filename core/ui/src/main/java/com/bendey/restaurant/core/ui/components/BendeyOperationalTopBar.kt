@@ -67,6 +67,7 @@ fun BendeyOperationalTopBar(
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
+    leadingActions: @Composable (() -> Unit)? = null,
 ) {
     val barHeight = OperationalTopBarTokens.barHeight(profile)
     val horizontalPadding = OperationalTopBarTokens.horizontalPadding(profile)
@@ -125,6 +126,7 @@ fun BendeyOperationalTopBar(
                 onNotificationsClick = onNotificationsClick,
                 onOpenProfile = onOpenProfile,
                 onLogout = onLogout,
+                leadingContent = leadingActions,
             )
         }
     }

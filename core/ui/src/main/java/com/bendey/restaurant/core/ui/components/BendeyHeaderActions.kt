@@ -58,12 +58,15 @@ fun BendeyHeaderActions(
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
+    /** Hueco antes de las acciones (p. ej. el chip de caja). */
+    leadingContent: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
+        leadingContent?.invoke()
         if (showSyncIndicator) {
             BendeyHeaderSyncIndicator(
                 status = state.connection,

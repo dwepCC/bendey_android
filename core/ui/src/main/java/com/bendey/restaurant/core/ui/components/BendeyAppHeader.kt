@@ -50,6 +50,7 @@ fun BendeyAppHeader(
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
+    leadingActions: @Composable (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -90,6 +91,7 @@ fun BendeyAppHeader(
             onNotificationsClick = onNotificationsClick,
             onOpenProfile = onOpenProfile,
             onLogout = onLogout,
+            leadingContent = leadingActions,
         )
     }
 }

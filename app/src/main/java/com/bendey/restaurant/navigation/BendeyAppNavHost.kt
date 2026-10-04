@@ -51,7 +51,14 @@ import com.bendey.restaurant.core.ui.components.BendeyOperationalTopBar
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySplashScreen
 import com.bendey.restaurant.BuildConfig
+import com.bendey.restaurant.core.ui.cash.CashClosedBanner
+import com.bendey.restaurant.core.ui.cash.CashStatusChip
+import com.bendey.restaurant.core.ui.cash.CashStatusSheet
 import com.bendey.restaurant.core.ui.cash.OpenCashSessionDialog
+import com.bendey.restaurant.core.domain.cash.CashChipState
+import com.bendey.restaurant.core.domain.cash.shouldShowClosedBanner
+import java.text.NumberFormat
+import java.util.Locale
 import com.bendey.restaurant.feature.auth.navigation.authGraph
 import com.bendey.restaurant.feature.caja.navigation.cajaGraph
 import com.bendey.restaurant.feature.cocina.navigation.cocinaGraph
@@ -231,17 +238,51 @@ private fun MainShell(
         }
     }
 
+    // R9: entrar a POS/Mesas/Mesa/Caja solo REFRESCA la lectura de caja (chip al día). Ya no abre un
+    // diálogo obligatorio: la caja cerrada no impide armar pedidos, enviar comandas ni consultar.
     LaunchedEffect(currentRoute) {
-        when (currentRoute) {
-            BendeyRoutes.POS, BendeyRoutes.MESAS -> {
-                if (routeRequiredFeature(currentRoute) != null) {
-                    cashSessionViewModel.requireOpenSessionForOperation()
-                }
-            }
-        }
-        if (currentRoute?.startsWith("mesa/") == true) {
+        val route = currentRoute ?: return@LaunchedEffect
+        if (route == BendeyRoutes.POS || route == BendeyRoutes.MESAS || route == BendeyRoutes.CAJA ||
+            route.startsWith("mesa/")
+        ) {
             cashSessionViewModel.requireOpenSessionForOperation()
         }
+    }
+
+    val cashCurrency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val cashChipContent: (@Composable () -> Unit)? =
+        if (cashState.chip == CashChipState.Hidden) {
+            null
+        } else {
+            {
+                CashStatusChip(
+                    chip = cashState.chip,
+                    soldNet = cashState.report?.totalNetSales,
+                    currency = cashCurrency,
+                    onClick = cashSessionViewModel::onChipClick,
+                )
+            }
+        }
+    val goToCash: () -> Unit = {
+        cashSessionViewModel.closeSheet()
+        if (canAccessRoute(BendeyRoutes.CAJA, permissions.permissions, permissions.employeeType)) {
+            mainNavController.navigateToDrawerDestination(BendeyRoutes.CAJA)
+        } else {
+            onShowMessage("No tienes permiso para acceder a Caja")
+        }
+    }
+    if (cashState.sheetOpen) {
+        CashStatusSheet(
+            session = cashState.session,
+            report = cashState.report,
+            loading = cashState.reportLoading,
+            error = cashState.reportError,
+            currency = cashCurrency,
+            onClose = goToCash,
+            onPartialCount = goToCash,
+            onDismiss = cashSessionViewModel::closeSheet,
+            onRetry = cashSessionViewModel::loadReport,
+        )
     }
 
     // Restaurante nuevo: el wizard se abre solo, una vez por sesión (el servidor decide).
@@ -260,11 +301,13 @@ private fun MainShell(
         OpenCashSessionDialog(
             form = cashState.openForm,
             loading = cashState.opening,
-            mandatory = cashState.mandatoryModal,
+            mandatory = false,
             error = cashState.error,
             onDismiss = cashSessionViewModel::dismissOpenModal,
             onConfirm = cashSessionViewModel::confirmOpenSession,
             onFormChange = cashSessionViewModel::setOpenForm,
+            prefillAmount = cashState.openPrefill?.let { cashCurrency.format(it) },
+            onOpenZero = cashSessionViewModel::openWithZero,
         )
     }
 
@@ -326,6 +369,7 @@ private fun MainShell(
                         },
                         onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
+                        leadingActions = cashChipContent,
                     )
                 }
                 BendeyRoutes.showsGlobalHeader(currentRoute) -> {
@@ -335,6 +379,7 @@ private fun MainShell(
                         onMenuClick = toggleDrawer,
                         onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
+                        leadingActions = cashChipContent,
                     )
                 }
             }
@@ -357,10 +402,19 @@ private fun MainShell(
             onShowMessage("No tienes permiso para acceder a ${destination.label}")
         },
     ) { contentModifier ->
+        Column(modifier = contentModifier.fillMaxSize()) {
+        // Franja de caja cerrada (solo con la caja CONFIRMADA cerrada y solo para quien puede abrirla):
+        // avisa y ofrece [Abrir caja], pero no bloquea nada.
+        if (shouldShowClosedBanner(cashState.chip) &&
+            (currentRoute == BendeyRoutes.POS || currentRoute == BendeyRoutes.MESAS ||
+                currentRoute?.startsWith("mesa/") == true)
+        ) {
+            CashClosedBanner(onOpen = cashSessionViewModel::requestOpen)
+        }
         NavHost(
             navController = mainNavController,
             startDestination = mainStartRoute,
-            modifier = contentModifier.fillMaxSize(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
             dashboardGraph(
                 onOpenMesas = {
@@ -500,6 +554,7 @@ private fun MainShell(
                 onBack = { mainNavController.popBackStack() },
                 onShowMessage = onShowMessage,
             )
+        }
         }
     }
     WizardCoachPanel(
