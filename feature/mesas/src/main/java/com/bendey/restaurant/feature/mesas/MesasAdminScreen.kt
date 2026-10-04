@@ -83,13 +83,13 @@ fun MesasAdminScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         BendeyScreenToolbar(
-            title = "Configurar mesas",
-            subtitle = "${state.filteredTables.size} mesas · ${state.floors.size} salas",
+            title = "Salón y mesas",
+            subtitle = "${state.filteredTables.size} mesas · ${state.floors.size} zonas",
             actions = {
                 BendeyIconButton(
                     onClick = viewModel::openFloorsSheet,
                     icon = Icons.Default.Layers,
-                    contentDescription = "Salas",
+                    contentDescription = "Zonas",
                 )
                 BendeyIconButton(
                     onClick = viewModel::refresh,
@@ -106,7 +106,7 @@ fun MesasAdminScreen(
         state.error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
-        // Único filtro real (ambiente) además del buscador: cabe entero como chips primarios,
+        // Único filtro real (zona) además del buscador: cabe entero como chips primarios,
         // sin necesitar "Más filtros" — esa capa solo se justifica cuando hay algo que ocultar.
         BendeyFilterBar(
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
@@ -242,7 +242,7 @@ fun MesasAdminScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Salas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Zonas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     BendeyPrimaryButton("Nuevo", viewModel::openCreateFloor, fillWidth = false)
                 }
                 state.floors.forEach { floor ->
@@ -278,7 +278,7 @@ fun MesasAdminScreen(
     if (state.floorFormOpen) {
         BendeyFormDialog(
             onDismissRequest = viewModel::dismissFloorForm,
-            title = if (state.floorForm.id == null) "Nueva sala" else "Editar sala",
+            title = if (state.floorForm.id == null) "Nueva zona" else "Editar zona",
             confirmText = if (state.saving) "Guardando…" else "Guardar",
             onConfirm = viewModel::saveFloor,
             onDismiss = viewModel::dismissFloorForm,
@@ -288,7 +288,7 @@ fun MesasAdminScreen(
             BendeyTextField(
                 value = state.floorForm.name,
                 onValueChange = { value -> viewModel.updateFloorForm { it.copy(name = value) } },
-                label = "Nombre de la sala *",
+                label = "Nombre de la zona *",
             )
             BendeyTextField(
                 value = state.floorForm.sortOrder,
@@ -297,7 +297,7 @@ fun MesasAdminScreen(
             )
             if (state.floorForm.id != null) {
                 BendeyTextButton(
-                    text = "Eliminar sala",
+                    text = "Eliminar zona",
                     onClick = { viewModel.requestDeleteFloor(state.floorForm.id!!) },
                     textColor = BendeyColors.Error,
                 )
@@ -315,7 +315,7 @@ fun MesasAdminScreen(
             confirmEnabled = !state.saving,
             loading = state.saving,
         ) {
-            Text("Sala", style = MaterialTheme.typography.labelLarge)
+            Text("Zona", style = MaterialTheme.typography.labelLarge)
             BendeyHorizontalScrollRow(
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
@@ -366,8 +366,8 @@ fun MesasAdminScreen(
     state.deleteFloorId?.let {
         BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDeleteFloor,
-            title = { Text("Eliminar sala") },
-            text = { Text("¿Eliminar esta sala? Debe estar vacío de mesas activas.") },
+            title = { Text("Eliminar zona") },
+            text = { Text("¿Eliminar esta zona? Debe estar sin mesas activas.") },
             confirmButton = {
                 BendeyDestructiveButton(
                     text = "Eliminar",

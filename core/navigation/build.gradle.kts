@@ -40,4 +40,6 @@ dependencies {
     implementation(libs.androidx.compose.material3.adaptive.navigation)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+
+    testImplementation(kotlin("test-junit"))
 }

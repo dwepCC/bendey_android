@@ -78,7 +78,7 @@ data class MesasUiState(
             val list = filteredTables
             if (list.isEmpty()) return emptyList()
             if (selectedFloorId != null) {
-                val name = floors.find { it.id == selectedFloorId }?.name ?: "Sala"
+                val name = floors.find { it.id == selectedFloorId }?.name ?: "Zona"
                 return listOf(FloorTableSection(selectedFloorId, name, list))
             }
             val sections = floors.mapNotNull { floor ->

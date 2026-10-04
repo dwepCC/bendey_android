@@ -44,4 +44,13 @@ class EmptyStatesCopyTest {
         assertEquals(ListViewState.EmptyFiltered, ListStateDecider.decide(false, null, 0, hasActiveFilters = true))
         assertEquals(ListViewState.EmptyCreated, ListStateDecider.decide(false, "  ", 0))
     }
+
+    /** R2a: un solo nombre de salón. "Salas", "piso" y "ambiente" ya no se muestran. */
+    @Test
+    fun `ningun texto usa terminos de salon retirados`() {
+        val retired = Regex("\b(salas?|configurar mesas|gesti[oó]n de mesas|pisos?|ambientes?)\b", RegexOption.IGNORE_CASE)
+        EmptyStatesCopy.all.flatMap {
+            listOfNotNull(it.title, it.description, it.action, it.noPermissionDescription)
+        }.forEach { assertTrue(!retired.containsMatchIn(it), "término retirado en: $it") }
+    }
 }

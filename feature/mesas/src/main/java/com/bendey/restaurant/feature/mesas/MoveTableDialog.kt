@@ -117,7 +117,7 @@ fun MoveTableDialog(
                                 fontWeight = FontWeight.Medium,
                             )
                             Text(
-                                text = table.floorName ?: "Sin sala",
+                                text = table.floorName ?: "Sin zona",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = BendeyColors.OnSurfaceVariant,
                             )

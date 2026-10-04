@@ -201,6 +201,16 @@ private fun MainShell(
         RestaurantPermissions.defaultRoute(permissions.permissions, permissions.employeeType)
     }
 
+    // Suscripción exige s.m (administrador). Avisos de plan visibles para todos no deben rebotar
+    // en silencio contra el guard de ruta: explican por qué no se abre.
+    val goToSubscription: () -> Unit = {
+        if (canAccessRoute(BendeyRoutes.SUSCRIPCION, permissions.permissions, permissions.employeeType)) {
+            mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+        } else {
+            onShowMessage("Solo el administrador puede ver la suscripción")
+        }
+    }
+
     LaunchedEffect(sessionKey) {
         if (sessionKey.isNullOrBlank() || permissions.permissions.isEmpty()) return@LaunchedEffect
         val start = RestaurantPermissions.defaultRoute(permissions.permissions, permissions.employeeType)
@@ -364,7 +374,7 @@ private fun MainShell(
                     }
                 },
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
                 onOnboardingNavigate = { destination ->
                     mainNavController.navigateToOnboardingDestination(
@@ -393,7 +403,7 @@ private fun MainShell(
                 cashCheckoutGate = cashCheckoutGate,
                 onShowMessage = onShowMessage,
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
             )
             mesasGraph(
@@ -405,13 +415,13 @@ private fun MainShell(
             cajaGraph(
                 onShowMessage = onShowMessage,
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
             )
             ventasGraph(
                 onShowMessage = onShowMessage,
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
                 onGoToSell = {
                     mainNavController.navigate(BendeyRoutes.POS) { launchSingleTop = true }
@@ -420,7 +430,7 @@ private fun MainShell(
             reportesGraph(
                 onShowMessage = onShowMessage,
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
             )
             productosGraph(
@@ -475,7 +485,7 @@ private fun MainShell(
                 onBack = { mainNavController.popBackStack() },
                 onOpenPrinting = { mainNavController.navigate(BendeyRoutes.PRINTING_TEST) },
                 onNavigateToSubscription = {
-                    mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+                    goToSubscription()
                 },
             )
             perfilGraph(
@@ -535,7 +545,7 @@ private fun MainShell(
     // Aviso de vencimiento del plan: se monta a nivel de shell para que aparezca esté donde esté
     // el usuario, no solo si entra a la pantalla de suscripción.
     SubscriptionExpiryDialog(
-        onGoToSubscription = { mainNavController.navigate(BendeyRoutes.SUSCRIPCION) },
+        onGoToSubscription = { goToSubscription() },
     )
     }
 }

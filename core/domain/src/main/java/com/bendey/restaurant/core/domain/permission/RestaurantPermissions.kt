@@ -135,16 +135,10 @@ object RestaurantPermissions {
             if (featureAllowed(permissions, RestaurantFeature.COMANDAS)) return "cocina"
         }
         if (et == "driver") {
-            // Bendey Resto no tiene pantalla propia para el repartidor -- esa experiencia es
-            // Bendey Delivery Android (app nueva e independiente, ver
-            // docs/PLAN_IMPLEMENTACION_MARKETPLACE.md Fase 3). Sin esta rama, driver caía en el
-            // fallback genérico de abajo, que no incluye REPARTIDORES (la pantalla de gestión de
-            // repartidores, con permiso "d.v") -- terminaba en "cocina" (permiso "k.v", que
-            // driver no tiene) y quedaba en loop contra el guard de BendeyAppNavHost, que
-            // recalcula el mismo destino inaccesible como "rescate". "perfil" es la única ruta
-            // sin ningún RestaurantFeature asociado en NavigationPermissions.kt, así que
-            // canAccessRoute siempre la permite -- nunca vuelve a producir el loop.
-            return "perfil"
+            // Repartidor (d.v) -> repartidores. Si por datos raros no tuviera d.v, "perfil" es la
+            // única ruta sin RestaurantFeature asociado (canAccessRoute siempre la permite): así el
+            // guard de BendeyAppNavHost nunca recalcula un destino inaccesible (bucle).
+            return if (featureAllowed(permissions, RestaurantFeature.REPARTIDORES)) "repartidores" else "perfil"
         }
         val order = listOf(
             RestaurantFeature.POS to "pos",
@@ -153,6 +147,7 @@ object RestaurantPermissions {
             RestaurantFeature.VENTAS to "ventas",
             RestaurantFeature.CAJA to "caja",
             RestaurantFeature.CLIENTES to "clientes",
+            RestaurantFeature.REPARTIDORES to "repartidores",
             RestaurantFeature.CONFIGURACION to "configuracion",
         )
         return order.firstOrNull { featureAllowed(permissions, it.first) }?.second ?: "cocina"

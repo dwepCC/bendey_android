@@ -18,7 +18,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 /** Secciones del drawer administrativo Bendey Resto. */
 enum class BendeyDrawerGroup(val title: String) {
     OPERATION("Operación"),
-    CATALOG("Catálogo"),
+    CATALOG("Mi carta"),
+    PURCHASES("Compras e insumos"),
     CONFIGURATION("Configuración"),
 }
 
@@ -32,12 +33,12 @@ enum class BendeyDrawerDestination(
     CAJA(BendeyRoutes.CAJA, "Caja", Icons.Default.Wallet, BendeyDrawerGroup.OPERATION),
     VENTAS(BendeyRoutes.VENTAS, "Ventas", Icons.Default.ShoppingCart, BendeyDrawerGroup.OPERATION),
     REPORTES(BendeyRoutes.REPORTES, "Reportes", Icons.Default.Assessment, BendeyDrawerGroup.OPERATION),
+    CLIENTES(BendeyRoutes.CLIENTES, "Clientes", Icons.Default.People, BendeyDrawerGroup.OPERATION),
+    REPARTIDORES(BendeyRoutes.REPARTIDORES, "Repartidores", Icons.Default.DeliveryDining, BendeyDrawerGroup.OPERATION),
     PRODUCTOS(BendeyRoutes.PRODUCTOS, "Productos", Icons.Default.Inventory2, BendeyDrawerGroup.CATALOG),
-    CLIENTES(BendeyRoutes.CLIENTES, "Clientes", Icons.Default.People, BendeyDrawerGroup.CATALOG),
-    REPARTIDORES(BendeyRoutes.REPARTIDORES, "Repartidores", Icons.Default.DeliveryDining, BendeyDrawerGroup.CATALOG),
-    COMPRAS(BendeyRoutes.COMPRAS, "Compras", Icons.Default.ShoppingBag, BendeyDrawerGroup.CATALOG),
-    PROVEEDORES(BendeyRoutes.PROVEEDORES, "Proveedores", Icons.Default.LocalShipping, BendeyDrawerGroup.CATALOG),
-    MESAS_ADMIN(BendeyRoutes.MESAS_ADMIN, "Mesas", Icons.Default.Layers, BendeyDrawerGroup.CONFIGURATION),
+    COMPRAS(BendeyRoutes.COMPRAS, "Compras", Icons.Default.ShoppingBag, BendeyDrawerGroup.PURCHASES),
+    PROVEEDORES(BendeyRoutes.PROVEEDORES, "Proveedores", Icons.Default.LocalShipping, BendeyDrawerGroup.PURCHASES),
+    MESAS_ADMIN(BendeyRoutes.MESAS_ADMIN, "Salón y mesas", Icons.Default.Layers, BendeyDrawerGroup.CONFIGURATION),
     IMPRESORAS(BendeyRoutes.PRINTING_TEST, "Impresoras", Icons.Default.Print, BendeyDrawerGroup.CONFIGURATION),
     CONFIGURACION(BendeyRoutes.CONFIGURACION, "Configuración", Icons.Default.Settings, BendeyDrawerGroup.CONFIGURATION),
     SUSCRIPCION(BendeyRoutes.SUSCRIPCION, "Suscripción", Icons.Default.WorkspacePremium, BendeyDrawerGroup.CONFIGURATION),
@@ -47,6 +48,7 @@ enum class BendeyDrawerDestination(
         val groupedOrder: List<BendeyDrawerGroup> = listOf(
             BendeyDrawerGroup.OPERATION,
             BendeyDrawerGroup.CATALOG,
+            BendeyDrawerGroup.PURCHASES,
             BendeyDrawerGroup.CONFIGURATION,
         )
     }

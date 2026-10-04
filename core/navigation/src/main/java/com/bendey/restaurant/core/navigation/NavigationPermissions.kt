@@ -26,8 +26,7 @@ fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
     BendeyDrawerDestination.COMPRAS -> RestaurantFeature.COMPRAS
     BendeyDrawerDestination.PROVEEDORES -> RestaurantFeature.PROVEEDORES
     BendeyDrawerDestination.IMPRESORAS -> RestaurantFeature.IMPRESORAS
-    // Suscripción siempre debe ser accesible, sin importar el permiso: no se restringe por
-    // RestaurantFeature real (ver routeRequiredFeature, que la deja sin mapear = sin gating).
+    // Suscripción: solo quien administra el negocio (s.m); mismo gating que la ruta (R2a).
     BendeyDrawerDestination.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
 }
 
@@ -52,6 +51,7 @@ fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
     route == BendeyRoutes.PRINTING_TEST -> RestaurantFeature.IMPRESORAS
     route == BendeyRoutes.COMPRAS -> RestaurantFeature.COMPRAS
     route == BendeyRoutes.PROVEEDORES -> RestaurantFeature.PROVEEDORES
+    route == BendeyRoutes.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
     else -> null
 }
 
@@ -63,3 +63,10 @@ fun canAccessRoute(
     val feature = routeRequiredFeature(route) ?: return true
     return RestaurantPermissions.canAccessFeature(permissions, feature, employeeType)
 }
+
+/** Entradas del drawer que el usuario puede ver (misma regla que el guard de rutas). */
+fun visibleDrawerDestinations(
+    permissions: List<String>,
+    employeeType: String?,
+): List<BendeyDrawerDestination> =
+    BendeyDrawerDestination.entries.filter { canAccessRoute(it.route, permissions, employeeType) }
