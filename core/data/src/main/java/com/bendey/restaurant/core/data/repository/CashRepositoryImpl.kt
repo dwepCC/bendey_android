@@ -99,16 +99,17 @@ class CashRepositoryImpl @Inject constructor(
         notes: String?,
         arqueo: Map<String, Int>?,
     ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
-        val dto = tenantRetrofitProvider.create<CashbankApi>().closeSession(
+        val response = tenantRetrofitProvider.create<CashbankApi>().closeSession(
             sessionId = sessionId,
             body = CloseCashSessionRequestDto(
                 closingBalance = closingBalance,
                 notes = notes?.takeIf { it.isNotBlank() },
                 arqueo = arqueo?.takeIf { it.values.any { qty -> qty > 0 } },
             ),
-        ).data ?: error("No se pudo cerrar la caja")
+        )
+        val dto = response.data ?: error("No se pudo cerrar la caja")
         sessionManager.setCashSession(null)
-        dto.toDomain()
+        dto.toDomain().let { it.copy(counted = response.counted ?: it.counted) }
     }
 
     override suspend fun listSessions(branchId: Int?): AppResult<List<CashSessionBrief>> = apiCall {
@@ -447,6 +448,7 @@ private fun CashSessionDto.toDomain() = CashSession(
     difference = difference,
     notes = notes,
     arqueoJson = arqueoJson,
+    counted = counted,
 )
 
 private fun CashSessionDto.toBrief() = CashSessionBrief(
@@ -459,6 +461,8 @@ private fun CashSessionDto.toBrief() = CashSessionBrief(
     status = CashSessionStatus.fromApi(status),
     openedAt = openedAt,
     closedAt = closedAt,
+    difference = difference,
+    counted = counted,
 )
 
 private fun CashSessionReportDto.toDomain(): CashSessionReport {

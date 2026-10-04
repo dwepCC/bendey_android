@@ -72,6 +72,9 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
+import com.bendey.restaurant.core.domain.cash.CashCloseOutcome
+import com.bendey.restaurant.core.domain.cash.resolveCloseOutcome
+import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
@@ -310,7 +313,7 @@ private fun SessionTab(
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
         ) {
             BendeyKpiCard(
-                title = "Saldo estimado",
+                title = CashCopy.CLOSE_EXPECTED,
                 value = currency.format(session.expectedBalance),
                 hint = "Apertura ${currency.format(session.openingBalance)}",
                 accentColor = BendeyColors.AccentTeal,
@@ -398,7 +401,7 @@ private fun MovementsTab(
             })
         }
         filter.sessionId?.let { id ->
-            add(BendeyActiveFilter("session", "Caja #$id") {
+            add(BendeyActiveFilter("session", "Caja N°$id") {
                 viewModel.updateMovementsFilter { it.copy(sessionId = null) }
                 viewModel.searchMovementsReport()
             })
@@ -410,7 +413,7 @@ private fun MovementsTab(
             })
         }
         filter.userId?.let { id ->
-            add(BendeyActiveFilter("user", "Cajero #$id") {
+            add(BendeyActiveFilter("user", "Cajero N°$id") {
                 viewModel.updateMovementsFilter { it.copy(userId = null) }
                 viewModel.searchMovementsReport()
             })
@@ -768,7 +771,7 @@ private fun ReportDetailContent(
                                     Intent.createChooser(
                                         Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_SUBJECT, "Reporte caja #${report.session.id}")
+                                            putExtra(Intent.EXTRA_SUBJECT, "Reporte de caja N°${report.session.id}")
                                             putExtra(Intent.EXTRA_TEXT, text)
                                         },
                                         "Compartir reporte",
@@ -831,7 +834,7 @@ private fun ReportSessionPickerField(
         ) {
             Column {
                 Text(
-                    selected?.let { "Caja #${it.id}" } ?: "Elegir caja",
+                    selected?.let { "Caja N°${it.id}" } ?: "Elegir caja",
                     fontWeight = FontWeight.Bold,
                 )
                 val subtitle = sessionMomentAndOperator(selected)
@@ -867,6 +870,8 @@ private fun ReportSessionPickerSheet(
                         status = s.status,
                         openedAt = s.openedAt,
                         closedAt = s.closedAt,
+                        difference = s.difference,
+                        counted = s.counted,
                     ),
                 )
             }
@@ -930,7 +935,7 @@ private fun ReportPickerRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text("Caja #${session.id}", fontWeight = FontWeight.SemiBold)
+            Text("Caja N°${session.id}", fontWeight = FontWeight.SemiBold)
             val subtitle = sessionMomentAndOperator(session)
             if (!subtitle.isNullOrBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
@@ -1050,7 +1055,7 @@ private fun ReportContent(
             .padding(BendeySpacing.sm),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
-        Text("Reporte sesión #${session.id}", fontWeight = FontWeight.Bold)
+        Text("Reporte de caja N°${session.id}", fontWeight = FontWeight.Bold)
         session.branchName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         session.openedAt?.let { Text("Apertura: $it", style = MaterialTheme.typography.bodySmall) }
         session.closedAt?.let { Text("Cierre: $it", style = MaterialTheme.typography.bodySmall) }
@@ -1080,12 +1085,23 @@ private fun ReportContent(
         ReportRow("Saldo de apertura", currency.format(session.openingBalance))
         ReportRow("+ Ingresos en efectivo", currency.format(report.totalIncome))
         ReportRow("- Gastos en efectivo", currency.format(report.totalExpense))
-        ReportRow("= Esperado en caja", currency.format(report.finalBalance), bold = true)
-        session.closingBalance?.let { contado ->
-            ReportRow("Contado al cerrar", currency.format(contado))
-            val dif = contado - report.finalBalance
-            // El signo se escribe siempre: un "0.00" pelado no distingue "cuadró" de "no se contó".
-            ReportRow("Diferencia", (if (dif >= 0) "+" else "-") + currency.format(kotlin.math.abs(dif)), bold = true)
+        ReportRow("= " + CashCopy.CLOSE_EXPECTED, currency.format(report.finalBalance), bold = true)
+        when (val outcome = resolveCloseOutcome(
+            closed = session.status == CashSessionStatus.CLOSED,
+            counted = session.counted,
+            closingBalance = session.closingBalance,
+            difference = session.difference,
+            expected = report.finalBalance,
+        )) {
+            is CashCloseOutcome.Counted -> {
+                ReportRow("Contado al cerrar", currency.format(outcome.counted))
+                // El signo se escribe siempre: un "0.00" pelado no distingue "cuadró" de "no se contó".
+                val dif = outcome.difference
+                ReportRow("Diferencia", (if (dif >= 0) "+" else "-") + currency.format(kotlin.math.abs(dif)), bold = true)
+            }
+            // Cerrada sin conteo: NO se muestra "cuadró" ni diferencia 0; se dice lo que pasó.
+            CashCloseOutcome.NotCounted -> ReportRow(CashCopy.CLOSE_NOT_COUNTED, "—", bold = true)
+            CashCloseOutcome.NotClosed -> Unit
         }
         // EL FALTANTE NO PUEDE APARECER RECIEN AL CONTAR.
         //
@@ -1238,7 +1254,7 @@ private fun HistorySessionCard(
     BendeyManagementCard {
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Caja #${session.id}", fontWeight = FontWeight.Bold)
+                Text("Caja N°${session.id}", fontWeight = FontWeight.Bold)
                 BendeyStatusChip(
                     label = if (session.status == CashSessionStatus.OPEN) "Abierta" else "Cerrada",
                     accentColor = if (session.status == CashSessionStatus.OPEN) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
@@ -1249,7 +1265,14 @@ private fun HistorySessionCard(
                 Text(moment, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
             }
             Text("Apertura: ${currency.format(session.openingBalance)}", style = MaterialTheme.typography.bodySmall)
-            session.closingBalance?.let { Text("Cierre: ${currency.format(it)}", style = MaterialTheme.typography.bodySmall) }
+            if (session.status == CashSessionStatus.CLOSED) {
+                // Sin conteo no hay "Cierre: S/ x": se dice que no se contó (nunca 0 ni "cuadró").
+                val counted = session.closingBalance?.takeIf { session.counted != false }
+                Text(
+                    counted?.let { "Cierre: ${currency.format(it)}" } ?: CashCopy.CLOSE_NOT_COUNTED,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
             OutlinedButton(onClick = onOpenReport, modifier = Modifier.padding(top = BendeySpacing.xs)) {
                 Text(if (session.status == CashSessionStatus.OPEN) "Ver estado" else "Ver cierre")
             }

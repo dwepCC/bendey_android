@@ -97,7 +97,7 @@ fun formatSessionReportLines(
 ): List<String> {
     val session = report.session
     val lines = mutableListOf<String>()
-    lines += "Reporte sesión #${session.id}"
+    lines += "Reporte de caja N°${session.id}"
     session.branchName?.let { lines += it }
     session.openedAt?.let { lines += "Apertura: $it" }
     session.closedAt?.let { lines += "Cierre: $it" }
@@ -108,11 +108,22 @@ fun formatSessionReportLines(
     lines += "Saldo de apertura: ${currency.format(session.openingBalance)}"
     lines += "+ Ingresos en efectivo: ${currency.format(report.totalIncome)}"
     lines += "- Gastos en efectivo: ${currency.format(report.totalExpense)}"
-    lines += "= Esperado en caja: ${currency.format(report.finalBalance)}"
-    session.closingBalance?.let { contado ->
-        lines += "Contado al cerrar: ${currency.format(contado)}"
-        val dif = contado - report.finalBalance
-        lines += "Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}"
+    lines += "= Efectivo esperado: ${currency.format(report.finalBalance)}"
+    when (val outcome = com.bendey.restaurant.core.domain.cash.resolveCloseOutcome(
+        closed = session.status == com.bendey.restaurant.core.domain.cash.CashSessionStatus.CLOSED,
+        counted = session.counted,
+        closingBalance = session.closingBalance,
+        difference = session.difference,
+        expected = report.finalBalance,
+    )) {
+        is com.bendey.restaurant.core.domain.cash.CashCloseOutcome.Counted -> {
+            lines += "Contado al cerrar: ${currency.format(outcome.counted)}"
+            val dif = outcome.difference
+            lines += "Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}"
+        }
+        com.bendey.restaurant.core.domain.cash.CashCloseOutcome.NotCounted ->
+            lines += com.bendey.restaurant.core.domain.copy.CashCopy.CLOSE_NOT_COUNTED
+        com.bendey.restaurant.core.domain.cash.CashCloseOutcome.NotClosed -> Unit
     }
     if (report.salesByMethod.isNotEmpty()) {
         lines += ""

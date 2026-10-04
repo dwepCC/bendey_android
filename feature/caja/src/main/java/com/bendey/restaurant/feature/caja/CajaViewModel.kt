@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.domain.cash.BankMovementsSummary
+import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
@@ -316,7 +317,7 @@ class CajaViewModel @Inject constructor(
                             showOpenDialog = session == null,
                             arqueoDraft = parseArqueoJson(session?.arqueoJson),
                             closeForm = it.closeForm.copy(
-                                closingBalance = session?.expectedBalance?.toString().orEmpty(),
+                                closingBalance = "",
                                 arqueo = parseArqueoJson(session?.arqueoJson),
                             ),
                         )
@@ -391,9 +392,7 @@ class CajaViewModel @Inject constructor(
                             session = result.data,
                             showOpenDialog = false,
                             snackMessage = "Caja abierta",
-                            closeForm = CloseCashForm(
-                                closingBalance = result.data.expectedBalance.toString(),
-                            ),
+                            closeForm = CloseCashForm(),
                         )
                     }
                     loadMovements(result.data.id)
@@ -617,8 +616,9 @@ class CajaViewModel @Inject constructor(
                     operationalStatus = operational,
                     closeSummary = null,
                     closeSummaryLoading = true,
+                    // El efectivo contado NUNCA se prellena con el esperado: quien cierra debe contarlo o digitarlo.
                     closeForm = CloseCashForm(
-                        closingBalance = session.expectedBalance.toString(),
+                        closingBalance = "",
                         useArqueo = true,
                         arqueo = parseArqueoJson(session.arqueoJson),
                     ),
@@ -694,7 +694,7 @@ class CajaViewModel @Inject constructor(
             form.closingBalance.replace(",", ".").toDoubleOrNull()
         }
         if (closing == null) {
-            _uiState.update { it.copy(error = "Indica el efectivo contado") }
+            _uiState.update { it.copy(error = CashCopy.CLOSE_EMPTY_ERROR + " " + CashCopy.CLOSE_EMPTY_ERROR_HINT) }
             return
         }
         // `sumArqueo` de un arqueo vacío da 0.0 (no null), así que el guard de arriba nunca
@@ -702,7 +702,7 @@ class CajaViewModel @Inject constructor(
         // se enviaba igual con S/0 contado. Si el sistema espera un saldo real, se bloquea antes
         // de golpear la red; si de verdad se espera S/0 (sesión sin movimientos), se deja pasar.
         if (form.useArqueo && form.arqueo.values.all { it <= 0 } && session.expectedBalance > 0.009) {
-            _uiState.update { it.copy(error = "Cuenta el efectivo de la caja antes de cerrar") }
+            _uiState.update { it.copy(error = CashCopy.CLOSE_EMPTY_ERROR + " " + CashCopy.CLOSE_EMPTY_ERROR_HINT) }
             return
         }
         viewModelScope.launch {
@@ -717,7 +717,7 @@ class CajaViewModel @Inject constructor(
                             movements = emptyList(),
                             showCloseDialog = false,
                             showOpenDialog = true,
-                            snackMessage = "Caja cerrada",
+                            snackMessage = if (result.data.counted == false) CashCopy.CLOSE_NOT_COUNTED else CashCopy.CLOSE_SUCCESS,
                             reportSessionId = result.data.id,
                         )
                     }
@@ -737,7 +737,7 @@ class CajaViewModel @Inject constructor(
                                 actionLoading = false,
                                 showCloseDialog = false,
                                 error = null,
-                                snackMessage = "La caja ya estaba cerrada — actualizando…",
+                                snackMessage = CashCopy.CLOSE_ALREADY_CLOSED,
                             )
                         }
                         refresh()
@@ -920,7 +920,7 @@ class CajaViewModel @Inject constructor(
                 shareSessionReportPdf(
                     context = context,
                     fileShareService = fileShareService,
-                    title = "Reporte caja #${report.session.id}",
+                    title = "Reporte de caja N°${report.session.id}",
                     lines = lines,
                 )
             }
@@ -953,7 +953,7 @@ class CajaViewModel @Inject constructor(
                 _uiState.value.reportProducts,
                 _uiState.value.reportComboComponents,
             )
-            // title = null: `formatSessionReportLines` ya empieza con "Reporte sesión #N".
+            // title = null: `formatSessionReportLines` ya empieza con "Reporte de caja N°N".
             val ok = documentPrintService.printReportTicket(null, lines, force = true)
             _uiState.update {
                 it.copy(

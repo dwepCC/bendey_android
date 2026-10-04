@@ -62,8 +62,8 @@ fun formatArqueoReportText(
     appendLine("ARQUEO DE CAJA")
     branchName?.let { appendLine("Sucursal: $it") }
     openedAt?.let { appendLine("Apertura: $it") }
-    appendLine("Saldo apertura: ${currency.format(openingBalance)}")
-    appendLine("Saldo sistema: ${currency.format(expectedBalance)}")
+    appendLine("Apertura: ${currency.format(openingBalance)}")
+    appendLine("Efectivo esperado: ${currency.format(expectedBalance)}")
     appendLine()
     appendLine("Denominaciones:")
     ARQUEO_DENOMINATIONS.forEach { denom ->
@@ -95,7 +95,7 @@ fun formatSessionReportText(
     comboComponents: List<com.bendey.restaurant.core.domain.cash.CashSessionComboComponent> = emptyList(),
 ): String = buildString {
     val session = report.session
-    appendLine("REPORTE DE CAJA #${session.id}")
+    appendLine("REPORTE DE CAJA N°${session.id}")
     session.branchName?.let { appendLine("Sucursal: $it") }
     session.openedAt?.let { appendLine("Apertura: $it") }
     session.closedAt?.let { appendLine("Cierre: $it") }
@@ -112,11 +112,22 @@ fun formatSessionReportText(
     appendLine("  Saldo de apertura: ${currency.format(session.openingBalance)}")
     appendLine("  + Ingresos en efectivo: ${currency.format(report.totalIncome)}")
     appendLine("  - Gastos en efectivo: ${currency.format(report.totalExpense)}")
-    appendLine("  = Esperado en caja: ${currency.format(report.finalBalance)}")
-    session.closingBalance?.let { contado ->
-        appendLine("  Contado al cerrar: ${currency.format(contado)}")
-        val dif = contado - report.finalBalance
-        appendLine("  Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}")
+    appendLine("  = Efectivo esperado: ${currency.format(report.finalBalance)}")
+    when (val outcome = com.bendey.restaurant.core.domain.cash.resolveCloseOutcome(
+        closed = session.status == com.bendey.restaurant.core.domain.cash.CashSessionStatus.CLOSED,
+        counted = session.counted,
+        closingBalance = session.closingBalance,
+        difference = session.difference,
+        expected = report.finalBalance,
+    )) {
+        is com.bendey.restaurant.core.domain.cash.CashCloseOutcome.Counted -> {
+            appendLine("  Contado al cerrar: ${currency.format(outcome.counted)}")
+            val dif = outcome.difference
+            appendLine("  Diferencia: ${if (dif >= 0) "+" else "-"}${currency.format(kotlin.math.abs(dif))}")
+        }
+        com.bendey.restaurant.core.domain.cash.CashCloseOutcome.NotCounted ->
+            appendLine("  ${com.bendey.restaurant.core.domain.copy.CashCopy.CLOSE_NOT_COUNTED}")
+        com.bendey.restaurant.core.domain.cash.CashCloseOutcome.NotClosed -> Unit
     }
     if (report.salesByMethod.isNotEmpty()) {
         appendLine()

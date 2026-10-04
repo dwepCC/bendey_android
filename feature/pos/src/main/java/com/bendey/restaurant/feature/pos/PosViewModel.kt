@@ -14,6 +14,7 @@ import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
 import com.bendey.restaurant.core.data.repository.checkoutPaymentPrecheckError
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
+import com.bendey.restaurant.core.data.repository.cashSessionIdForCheckout
 import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
 import com.bendey.restaurant.core.data.repository.pickDefaultNotaVentaSeries
@@ -1471,11 +1472,10 @@ class PosViewModel @Inject constructor(
                 return@launch
             }
             val requiresCash = requiresOpenCashSessionForCheckout(
-                canOperateCash = state.canOperateCash,
                 methods = methods,
                 payments = paymentLines,
             )
-            val cashSessionId = if (requiresCash) openCashSessionId else null
+            val cashSessionId = cashSessionIdForCheckout(state.canOperateCash, requiresCash, openCashSessionId)
             val discountAmount = if (state.allowCheckoutDiscount && state.checkoutDiscountAmount > 0) {
                 roundSunat(state.checkoutDiscountAmount)
             } else {

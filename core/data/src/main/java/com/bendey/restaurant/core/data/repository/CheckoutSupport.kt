@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.domain.billing.findPaymentMethodRecord
 import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
 import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
 import com.bendey.restaurant.core.domain.billing.roundSunat
+import com.bendey.restaurant.core.domain.copy.CashCopy
 
 fun parseCheckoutPayments(drafts: List<CheckoutPaymentDraft>): List<CheckoutPaymentLine>? {
     if (drafts.isEmpty()) return null
@@ -32,14 +33,25 @@ fun needsOpenCashSessionForPayments(
     method?.isCash == true || (methods.isEmpty() && line.method.equals("cash", ignoreCase = true))
 }
 
-/** Cajeros deben tener caja abierta para cualquier cobro; otros roles solo si hay efectivo. */
+/**
+ * Regla ÚNICA de caja en el cobro (R9, igual que Tauri): la caja abierta se exige SOLO si algún pago es en
+ * efectivo. Verificado con el servidor: `CashBankService.ResolveCashSessionForPayments` solo exige sesión
+ * cuando hay un pago a destino efectivo; Yape/tarjeta/transferencia no la exigen.
+ */
 fun requiresOpenCashSessionForCheckout(
-    canOperateCash: Boolean,
     methods: List<PaymentMethodOption>,
     payments: List<CheckoutPaymentLine>,
-): Boolean = canOperateCash || needsOpenCashSessionForPayments(methods, payments)
+): Boolean = needsOpenCashSessionForPayments(methods, payments)
 
-const val MSG_CASH_NOT_ALLOWED = "No tienes permiso para cobrar en efectivo; usa otro método o pide a un cajero"
+/**
+ * Qué sesión de caja se manda con el cobro. Quien opera caja la manda siempre que la tenga (aunque pague
+ * con Yape) para que la venta quede en SU turno y salga en el reporte de cierre por método; quien no
+ * opera caja solo la manda si el cobro la exige (y el servidor lo rechazará si no es suya).
+ */
+fun cashSessionIdForCheckout(canOperateCash: Boolean, requiresCash: Boolean, openSessionId: Int?): Int? =
+    if (canOperateCash || requiresCash) openSessionId else null
+
+const val MSG_CASH_NOT_ALLOWED = CashCopy.CHECKOUT_CASH_DISABLED_ROLE
 const val MSG_METHOD_NOT_CONFIGURED = "Método de pago no configurado. Revísalo en Caja."
 
 /**
@@ -49,8 +61,8 @@ const val MSG_METHOD_NOT_CONFIGURED = "Método de pago no configurado. Revísalo
  * Orden: método configurado y con cuenta -> permiso de efectivo -> caja abierta. El permiso va antes
  * que la caja porque a quien no puede cobrar efectivo no le sirve el consejo "abre tu caja" (no puede).
  *
- * NO cambia qué métodos exigen caja: eso sigue en [requiresOpenCashSessionForCheckout] (los cajeros la
- * necesitan para cualquier método; los demás roles, solo con efectivo).
+ * La caja abierta solo se exige para EFECTIVO ([requiresOpenCashSessionForCheckout]). Al que no puede cobrar
+ * efectivo (mozo) nunca se le dice "abre tu caja": no puede; se le dice que use otro método o pida a un cajero.
  *
  * @return mensaje para el usuario, o null si todo está en orden.
  */
@@ -71,8 +83,6 @@ fun checkoutPaymentPrecheckError(
     }
     val hasCash = needsCashSessionForPayments(methods, payments)
     if (hasCash && !canOperateCash) return MSG_CASH_NOT_ALLOWED
-    if (requiresOpenCashSessionForCheckout(canOperateCash, methods, payments) && !hasOpenCashSession) {
-        return if (hasCash) "Abre tu caja para cobrar en efectivo" else "Abre tu caja para cobrar"
-    }
+    if (hasCash && !hasOpenCashSession) return CashCopy.CHECKOUT_NEED_OPEN
     return null
 }

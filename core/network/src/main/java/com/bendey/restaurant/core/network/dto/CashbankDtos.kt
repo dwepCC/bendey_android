@@ -22,11 +22,14 @@ data class CashSessionDto(
     @SerialName("closed_at") val closedAt: String? = null,
     val notes: String? = null,
     @SerialName("arqueo_json") val arqueoJson: String? = null,
+    val counted: Boolean? = null,
 )
 
 @Serializable
 data class CashSessionResponseDto(
     val data: CashSessionDto? = null,
+    /** Solo en el cierre: false = se cerró SIN conteo (sin contado ni diferencia). */
+    val counted: Boolean? = null,
 )
 
 @Serializable

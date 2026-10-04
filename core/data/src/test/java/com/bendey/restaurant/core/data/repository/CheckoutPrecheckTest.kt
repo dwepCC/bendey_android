@@ -3,8 +3,11 @@ package com.bendey.restaurant.core.data.repository
 import com.bendey.restaurant.core.domain.billing.BankAccountBrief
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentLine
 import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
+import com.bendey.restaurant.core.domain.copy.CashCopy
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** El cobro debe validarse ANTES de mandar la comanda a cocina; y al mozo no se le pide "abrir caja". */
@@ -33,12 +36,37 @@ class CheckoutPrecheckTest {
 
     @Test
     fun cajeroConEfectivoYSinCajaDebeAbrirla() {
-        assertEquals("Abre tu caja para cobrar en efectivo", check(true, "cash", openCash = false))
+        assertEquals(CashCopy.CHECKOUT_NEED_OPEN, check(true, "cash", openCash = false))
     }
 
     @Test
-    fun cajeroConCualquierMetodoYSinCajaDebeAbrirla_reglaVigenteDeAndroid() {
-        assertEquals("Abre tu caja para cobrar", check(true, "yape", openCash = false))
+    fun cajeroConMetodoNoEfectivoPasaSinCaja_reglaUnificadaConTauri() {
+        assertNull(check(true, "yape", openCash = false))
+    }
+
+    @Test
+    fun mozoNuncaVeAbreTuCaja_nadaDelMensajeDeAbrir() {
+        val msg = check(canCash = false, code = "cash", openCash = false)
+        assertEquals(CashCopy.CHECKOUT_CASH_DISABLED_ROLE, msg)
+        assertTrue(!msg!!.contains("Abre tu caja", ignoreCase = true))
+    }
+
+    @Test
+    fun cajaRequeridaSoloConEfectivo() {
+        assertTrue(requiresOpenCashSessionForCheckout(methods, pay("cash")))
+        assertFalse(requiresOpenCashSessionForCheckout(methods, pay("yape")))
+        assertTrue(requiresOpenCashSessionForCheckout(emptyList(), pay("cash")))
+        assertFalse(requiresOpenCashSessionForCheckout(emptyList(), pay("yape")))
+        assertTrue(requiresOpenCashSessionForCheckout(methods, pay("yape") + pay("cash")))
+    }
+
+    @Test
+    fun sesionQueSeManda_cajeroLaMandaSiempreQueLaTenga_otrosSoloSiHayEfectivo() {
+        assertEquals(5, cashSessionIdForCheckout(canOperateCash = true, requiresCash = false, openSessionId = 5))
+        assertEquals(5, cashSessionIdForCheckout(true, true, 5))
+        assertNull(cashSessionIdForCheckout(true, false, null))
+        assertNull(cashSessionIdForCheckout(canOperateCash = false, requiresCash = false, openSessionId = 5))
+        assertEquals(5, cashSessionIdForCheckout(false, true, 5))
     }
 
     @Test

@@ -38,6 +38,8 @@ data class CashSession(
     val difference: Double? = null,
     val notes: String?,
     val arqueoJson: String? = null,
+    /** false = cerrada SIN conteo (sin contado ni diferencia). null = el servidor no lo dijo. */
+    val counted: Boolean? = null,
 )
 
 data class CashSessionBrief(
@@ -50,6 +52,8 @@ data class CashSessionBrief(
     val status: CashSessionStatus,
     val openedAt: String?,
     val closedAt: String?,
+    val difference: Double? = null,
+    val counted: Boolean? = null,
 )
 
 data class CashReportRow(

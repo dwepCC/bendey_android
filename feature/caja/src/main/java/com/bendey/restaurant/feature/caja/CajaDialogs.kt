@@ -36,6 +36,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
+import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
@@ -63,7 +64,7 @@ fun ArqueoDialogContent(
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Saldo sistema", color = BendeyColors.OnSurfaceVariant)
+            Text(CashCopy.CLOSE_EXPECTED, color = BendeyColors.OnSurfaceVariant)
             Text(currency.format(expectedBalance), fontWeight = FontWeight.Bold)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -72,11 +73,16 @@ fun ArqueoDialogContent(
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Diferencia")
-            Text(
-                currency.format(diff),
-                color = if (kotlin.math.abs(diff) < 0.01) BendeyColors.Success else BendeyColors.Error,
-                fontWeight = FontWeight.SemiBold,
-            )
+            // Sin contar nada todavia, "diferencia = -esperado" asusta y no significa nada: se dice "Falta contar".
+            if (values.values.none { it > 0 }) {
+                Text("Falta contar", color = BendeyColors.OnSurfaceVariant)
+            } else {
+                Text(
+                    currency.format(diff),
+                    color = if (kotlin.math.abs(diff) < 0.01) BendeyColors.Success else BendeyColors.Error,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
         HorizontalDivider()
         ArqueoSection("Billetes", ARQUEO_DENOMINATIONS.filter { it.kind == ArqueoKind.BILL }, values, currency, onQtyChange)
@@ -328,7 +334,7 @@ fun CloseCashDialog(
                     )
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Saldo sistema")
+                    Text(CashCopy.CLOSE_EXPECTED)
                     Text(currency.format(expectedBalance), fontWeight = FontWeight.Bold)
                 }
                 BendeyHorizontalScrollRow(
@@ -338,12 +344,12 @@ fun CloseCashDialog(
                     BendeyFilterChip(
                         selected = form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = true) } },
-                        text = "Contar el dinero",
+                        text = CashCopy.CLOSE_MODE_COUNT,
                     )
                     BendeyFilterChip(
                         selected = !form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = false) } },
-                        text = "Cerrar sin contar",
+                        text = CashCopy.CLOSE_MODE_MANUAL,
                     )
                 }
                 if (form.useArqueo) {

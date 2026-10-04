@@ -15,6 +15,7 @@ import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
 import com.bendey.restaurant.core.data.repository.checkoutPaymentPrecheckError
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
+import com.bendey.restaurant.core.data.repository.cashSessionIdForCheckout
 import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
 import com.bendey.restaurant.core.data.repository.pickDefaultNotaVentaSeries
@@ -1193,7 +1194,6 @@ class MesaViewModel @Inject constructor(
                 return@launch
             }
             val needsCashSession = requiresOpenCashSessionForCheckout(
-                canOperateCash = state.canOperateCash,
                 methods = methods,
                 payments = paymentLines,
             )
@@ -1230,7 +1230,7 @@ class MesaViewModel @Inject constructor(
                         seriesId = seriesId,
                         docType = state.checkoutDocType,
                         contactId = contactId,
-                        cashSessionId = if (needsCashSession) cashSessionId else null,
+                        cashSessionId = cashSessionIdForCheckout(state.canOperateCash, needsCashSession, cashSessionId),
                         closeSession = closeSession,
                         comandaIds = idsToBill,
                         discountAmount = discountAmount,
