@@ -29,7 +29,8 @@ import com.bendey.restaurant.core.domain.billing.VoidCreditNoteResult
 import com.bendey.restaurant.core.domain.billing.BillingActionResult
 import com.bendey.restaurant.core.network.api.BillingApi
 import com.bendey.restaurant.core.network.dto.VoidCreditNoteRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.ErrorFlow
+import com.bendey.restaurant.core.network.error.apiCall
 import dagger.hilt.android.qualifiers.ApplicationContext
 import android.content.Context
 import java.io.File
@@ -93,7 +94,7 @@ class BillingRepositoryImpl @Inject constructor(
     override suspend fun billSession(
         sessionId: Int,
         input: BillSessionInput,
-    ): AppResult<BillSessionResult> = apiCall {
+    ): AppResult<BillSessionResult> = apiCall(ErrorFlow.CHARGE) {
         val response = tenantRetrofitProvider.create<RestaurantApi>().billSession(
             sessionId = sessionId,
             body = BillSessionRequestDto(
@@ -126,7 +127,7 @@ class BillingRepositoryImpl @Inject constructor(
 
     override suspend fun billQuickSale(
         input: BillQuickSaleInput,
-    ): AppResult<BillSessionResult> = apiCall {
+    ): AppResult<BillSessionResult> = apiCall(ErrorFlow.CHARGE) {
         val response = tenantRetrofitProvider.create<RestaurantApi>().billQuickSale(
             body = BillQuickSaleRequestDto(
                 seriesId = input.seriesId,
@@ -160,7 +161,7 @@ class BillingRepositoryImpl @Inject constructor(
         saleId: Int,
         reason: String,
         pin: String,
-    ): AppResult<VoidCreditNoteResult> = apiCall {
+    ): AppResult<VoidCreditNoteResult> = apiCall(ErrorFlow.VOID_REFUND) {
         val response = tenantRetrofitProvider.create<BillingApi>()
             .voidWithCreditNote(saleId, VoidCreditNoteRequestDto(reason = reason.trim(), pin = pin.trim()))
         VoidCreditNoteResult(
@@ -238,12 +239,6 @@ fun defaultPaymentMethodCode(methods: List<PaymentMethodOption>, canOperateCash:
     return methods.firstOrNull()?.code ?: "cash"
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun DocumentSeriesDto.toDomain(): DocumentSeries {
     val correlativeValue = correlative ?: currentNumber

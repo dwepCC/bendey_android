@@ -13,7 +13,7 @@ import com.bendey.restaurant.core.network.dto.CreatePurchaseRequestDto
 import com.bendey.restaurant.core.network.dto.PurchaseDetailDataDto
 import com.bendey.restaurant.core.network.dto.PurchaseDto
 import com.bendey.restaurant.core.network.dto.PurchaseItemDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,12 +48,6 @@ class PurchasesRepositoryImpl @Inject constructor(
     }
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun PurchaseDto.toDomain() = Purchase(
     id = id,

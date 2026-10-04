@@ -24,6 +24,7 @@ import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.BillingHubDto
 import com.bendey.restaurant.core.network.dto.SubscriptionActionResponseDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import com.bendey.restaurant.core.network.serialization.ApiJson
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
 import okhttp3.MediaType.Companion.toMediaType
@@ -151,10 +152,8 @@ class SubscriptionRepositoryImpl @Inject constructor(
             val response = client.newCall(requestBuilder.build()).execute()
             val responseBody = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                val mapped = NetworkErrorMapper.map(
-                    IllegalStateException(responseBody.ifBlank { "Error al enviar el comprobante" }),
-                )
-                return AppResult.Error(mapped.message ?: "Error al enviar el comprobante", mapped)
+                val mapped = NetworkErrorMapper.mapResponse(response.code, responseBody)
+                return AppResult.Error(mapped.message ?: "No se pudo enviar el comprobante", mapped)
             }
             val parsed = ApiJson.decodeFromString(SubscriptionActionResponseDto.serializer(), responseBody)
             AppResult.Success(
@@ -259,9 +258,3 @@ private fun BillingHubDto.toDomain(): BillingHub = BillingHub(
     events = events.map { SubscriptionTimelineEvent(it.id, it.label, it.reason, it.createdAt) },
 )
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}

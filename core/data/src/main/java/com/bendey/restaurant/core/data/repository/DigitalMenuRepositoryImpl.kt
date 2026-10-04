@@ -18,7 +18,7 @@ import com.bendey.restaurant.core.network.dto.PublicationChannelDto
 import com.bendey.restaurant.core.network.dto.StaffMenuSettingsDto
 import com.bendey.restaurant.core.network.dto.StaffMenuSettingsUpdateDto
 import com.bendey.restaurant.core.network.dto.TableMenuQrDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -73,12 +73,6 @@ class DigitalMenuRepositoryImpl @Inject constructor(
 
     override suspend fun rotateTableMenuToken(tableId: Int): AppResult<TableMenuQr> = apiCall {
         api.rotateTableMenuToken(tableId).data.toDomain()
-    }
-
-    private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-        AppResult.Success(block())
-    } catch (e: Exception) {
-        AppResult.Error(NetworkErrorMapper.map(e).message ?: "Error de conexión", cause = e)
     }
 }
 

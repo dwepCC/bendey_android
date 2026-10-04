@@ -8,7 +8,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.network.api.InventoryApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.StockMovementDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -90,9 +90,3 @@ private fun StockMovementDto.toDomain() = StockMovementItem(
     createdAt = createdAt,
 )
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}

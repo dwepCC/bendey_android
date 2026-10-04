@@ -28,7 +28,8 @@ import com.bendey.restaurant.core.network.dto.SaleContactDto
 import com.bendey.restaurant.core.network.dto.SaleDetailResponseDto
 import com.bendey.restaurant.core.network.dto.SaleDto
 import com.bendey.restaurant.core.network.dto.SaleListSummaryDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.ErrorFlow
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -95,13 +96,13 @@ class SalesRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.create<SalesApi>().getSale(saleId).toDomain()
     }
 
-    override suspend fun cancelNotaVenta(saleId: Int, reason: String, pin: String): AppResult<CancelNotaResult> = apiCall {
+    override suspend fun cancelNotaVenta(saleId: Int, reason: String, pin: String): AppResult<CancelNotaResult> = apiCall(ErrorFlow.VOID_REFUND) {
         val response = tenantRetrofitProvider.create<SalesApi>()
             .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim(), pin = pin.trim()))
         CancelNotaResult(message = response.message ?: "Nota de venta anulada")
     }
 
-    override suspend fun refundSale(saleId: Int, reason: String): AppResult<RefundResult> = apiCall {
+    override suspend fun refundSale(saleId: Int, reason: String): AppResult<RefundResult> = apiCall(ErrorFlow.VOID_REFUND) {
         val response = tenantRetrofitProvider.create<SalesApi>()
             .refundSale(saleId, RefundSaleRequestDto(reason = reason.trim()))
         val data = response.data ?: error("El servidor no informo cuanto se devolvio")
@@ -190,12 +191,6 @@ private fun VentasTab.toListFilters(): ListFilters =
     if (this == VentasTab.CREDITOS) ListFilters(docType = "NOTA_CREDITO")
     else ListFilters(sunatCode = sunatCodes)
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun SaleListSummaryDto.toDomain() = SaleListSummary(
     sumTotal = sumTotal,

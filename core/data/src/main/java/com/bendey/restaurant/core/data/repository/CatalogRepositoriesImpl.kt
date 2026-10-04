@@ -82,7 +82,7 @@ import com.bendey.restaurant.core.network.dto.ModifierGroupUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.ModifierOptionDto
 import com.bendey.restaurant.core.network.dto.RestaurantSettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
@@ -96,21 +96,21 @@ class ModifiersRepositoryImpl @Inject constructor(
     private val api: ModifierGroupsApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listModifierGroups(): AppResult<List<ModifierGroup>> = catalogApiCall {
+    override suspend fun listModifierGroups(): AppResult<List<ModifierGroup>> = apiCall {
         api.listModifierGroups().data.map { it.toDomain() }
     }
 
     override suspend fun createModifierGroup(input: ModifierGroupFormInput): AppResult<ModifierGroup> =
-        catalogApiCall {
+        apiCall {
             api.createModifierGroup(input.toDto()).group.toDomain()
         }
 
     override suspend fun updateModifierGroup(id: Int, input: ModifierGroupFormInput): AppResult<ModifierGroup> =
-        catalogApiCall {
+        apiCall {
             api.updateModifierGroup(id, input.toDto()).group.toDomain()
         }
 
-    override suspend fun deleteModifierGroup(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteModifierGroup(id: Int): AppResult<Unit> = apiCall {
         api.deleteModifierGroup(id)
     }
 }
@@ -124,7 +124,7 @@ class PreparationAreasRepositoryImpl @Inject constructor(
         get() = tenantRetrofitProvider.create()
 
     override suspend fun listPreparationAreas(activeOnly: Boolean): AppResult<List<PreparationAreaItem>> =
-        catalogApiCall {
+        apiCall {
             api.listPreparationAreas(activeOnly = if (activeOnly) "true" else "false")
                 .data
                 .map { it.toDomain() }
@@ -132,16 +132,16 @@ class PreparationAreasRepositoryImpl @Inject constructor(
         }
 
     override suspend fun createPreparationArea(input: PreparationAreaFormInput): AppResult<PreparationAreaItem> =
-        catalogApiCall {
+        apiCall {
             api.createPreparationArea(input.toDto()).data.toDomain()
         }
 
     override suspend fun updatePreparationArea(id: Int, input: PreparationAreaFormInput): AppResult<Unit> =
-        catalogApiCall {
+        apiCall {
             api.updatePreparationArea(id, input.toDto())
         }
 
-    override suspend fun setPreparationAreaStatus(id: Int, active: Boolean): AppResult<Unit> = catalogApiCall {
+    override suspend fun setPreparationAreaStatus(id: Int, active: Boolean): AppResult<Unit> = apiCall {
         api.setPreparationAreaStatus(id, PreparationAreaStatusRequestDto(active = active))
     }
 }
@@ -154,13 +154,13 @@ class CombosRepositoryImpl @Inject constructor(
     private val api: CombosApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listCombos(includeInactive: Boolean): AppResult<List<ComboItem>> = catalogApiCall {
+    override suspend fun listCombos(includeInactive: Boolean): AppResult<List<ComboItem>> = apiCall {
         // OJO: el backend evalúa `active_only != "0"`, así que "false" NO incluye inactivos: debe ser "0".
         api.listCombos(activeOnly = if (includeInactive) "0" else "true").data.map { it.toListItem() }
     }
 
     override suspend fun listPosCombos(branchId: Int?): AppResult<List<com.bendey.restaurant.core.domain.pos.PosComboItem>> =
-        catalogApiCall {
+        apiCall {
             api.listCombos(branchId = branchId, activeOnly = "true").data.map { dto ->
                 com.bendey.restaurant.core.domain.pos.PosComboItem(
                     id = dto.id,
@@ -173,12 +173,12 @@ class CombosRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun getCombo(id: Int): AppResult<ComboFormInput> = catalogApiCall {
+    override suspend fun getCombo(id: Int): AppResult<ComboFormInput> = apiCall {
         api.getCombo(id).data.toFormInput()
     }
 
     override suspend fun resolveCombo(id: Int, branchId: Int, comboConfigJson: String): AppResult<ComboResolveResult> =
-        catalogApiCall {
+        apiCall {
             val response = api.resolveCombo(
                 id,
                 com.bendey.restaurant.core.network.dto.ComboResolveRequestDto(
@@ -201,15 +201,15 @@ class CombosRepositoryImpl @Inject constructor(
             ComboResolveResult(unitPrice = unitPrice, summaryLines = summaryLines)
         }
 
-    override suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem> = catalogApiCall {
+    override suspend fun createCombo(input: ComboFormInput): AppResult<ComboItem> = apiCall {
         api.createCombo(input.toDto()).data.toListItem()
     }
 
-    override suspend fun updateCombo(id: Int, input: ComboFormInput): AppResult<ComboItem> = catalogApiCall {
+    override suspend fun updateCombo(id: Int, input: ComboFormInput): AppResult<ComboItem> = apiCall {
         api.updateCombo(id, input.toDto()).data.toListItem()
     }
 
-    override suspend fun deleteCombo(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteCombo(id: Int): AppResult<Unit> = apiCall {
         api.deleteCombo(id)
     }
 }
@@ -222,35 +222,35 @@ class DeliveryRepositoryImpl @Inject constructor(
     private val api: DeliveryApi
         get() = tenantRetrofitProvider.create()
 
-    override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = catalogApiCall {
+    override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = apiCall {
         api.listDeliveryDrivers().data.map { it.toDomain() }
     }
 
-    override suspend fun createDriver(input: DeliveryDriverFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun createDriver(input: DeliveryDriverFormInput): AppResult<Unit> = apiCall {
         api.createDeliveryDriver(input.toDto())
     }
 
-    override suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit> = apiCall {
         api.updateDeliveryDriver(id, input.toDto())
     }
 
-    override suspend fun deleteDriver(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteDriver(id: Int): AppResult<Unit> = apiCall {
         api.deleteDeliveryDriver(id)
     }
 
-    override suspend fun listCompanies(): AppResult<List<DeliveryCompany>> = catalogApiCall {
+    override suspend fun listCompanies(): AppResult<List<DeliveryCompany>> = apiCall {
         api.listDeliveryCompanies().data.map { it.toDomain() }
     }
 
-    override suspend fun createCompany(input: DeliveryCompanyFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun createCompany(input: DeliveryCompanyFormInput): AppResult<Unit> = apiCall {
         api.createDeliveryCompany(DeliveryCompanyUpsertRequestDto(name = input.name.trim()))
     }
 
-    override suspend fun updateCompany(id: Int, name: String, active: Boolean): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateCompany(id: Int, name: String, active: Boolean): AppResult<Unit> = apiCall {
         api.updateDeliveryCompany(id, DeliveryCompanyUpsertRequestDto(name = name.trim(), active = active))
     }
 
-    override suspend fun deleteCompany(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteCompany(id: Int): AppResult<Unit> = apiCall {
         api.deleteDeliveryCompany(id)
     }
 }
@@ -297,7 +297,7 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun getCompanyConfig(): AppResult<CompanyConfig> {
         operationalDataCache.getTenantSettings()?.config?.let { return AppResult.Success(it) }
-        return catalogApiCall {
+        return apiCall {
             fetchCompanyConfig().also { config ->
                 operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateCompanyConfig(config) }
             }
@@ -305,7 +305,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateCompanyConfig(input: CompanyConfigFormInput): AppResult<CompanyConfig> =
-        catalogApiCall {
+        apiCall {
             val current = api.getCompanyConfig()
             api.updateCompanyConfig(
                 current.copy(
@@ -319,24 +319,24 @@ class SettingsRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getUbigeoRegiones(): AppResult<List<UbiItem>> =
-        catalogApiCall { api.getUbigeoRegiones().data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getUbigeoRegiones().data.map { UbiItem(it.id, it.nombre) } }
 
     override suspend fun getUbigeoProvincias(regionId: String): AppResult<List<UbiItem>> =
-        catalogApiCall { api.getUbigeoProvincias(regionId).data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getUbigeoProvincias(regionId).data.map { UbiItem(it.id, it.nombre) } }
 
     override suspend fun getUbigeoDistritos(provinciaId: String): AppResult<List<UbiItem>> =
-        catalogApiCall { api.getUbigeoDistritos(provinciaId).data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getUbigeoDistritos(provinciaId).data.map { UbiItem(it.id, it.nombre) } }
 
     override suspend fun getSunatConfig(): AppResult<SunatConfig> {
         operationalDataCache.getTenantSettings()?.sunat?.let { return AppResult.Success(it) }
-        return catalogApiCall {
+        return apiCall {
             fetchSunatConfig().also { sunat ->
                 operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateSunatConfig(sunat) }
             }
         }
     }
 
-    override suspend fun updateSunatConfig(input: SunatConfigFormInput): AppResult<SunatConfig> = catalogApiCall {
+    override suspend fun updateSunatConfig(input: SunatConfigFormInput): AppResult<SunatConfig> = apiCall {
         val current = api.getSunatConfig()
         val taxRate = input.taxRate.replace(",", ".").toDoubleOrNull() ?: current.taxRate
         api.updateSunatConfig(
@@ -351,26 +351,26 @@ class SettingsRepositoryImpl @Inject constructor(
 
     override suspend fun listBranches(): AppResult<List<BranchItem>> {
         operationalDataCache.getTenantSettings()?.branches?.let { return AppResult.Success(it) }
-        return catalogApiCall {
+        return apiCall {
             fetchBranches().also { branches ->
                 operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateBranches(branches) }
             }
         }
     }
 
-    override suspend fun createBranch(input: BranchFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun createBranch(input: BranchFormInput): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>().createBranch(input.toDto())
     }
 
-    override suspend fun updateBranch(id: Int, input: BranchFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateBranch(id: Int, input: BranchFormInput): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>().updateBranch(id, input.toDto())
     }
 
-    override suspend fun deleteBranch(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteBranch(id: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>().deleteBranch(id)
     }
 
-    override suspend fun getSaleDetailConfig(branchId: Int): AppResult<SaleDetailConfig> = catalogApiCall {
+    override suspend fun getSaleDetailConfig(branchId: Int): AppResult<SaleDetailConfig> = apiCall {
         val dto = tenantRetrofitProvider.create<CompanyApi>().getSaleDetailConfig(branchId).data
         SaleDetailConfig(
             branchId = dto?.branchId ?: branchId,
@@ -380,7 +380,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateSaleDetailConfig(branchId: Int, enabled: Boolean, defaultText: String): AppResult<SaleDetailConfig> =
-        catalogApiCall {
+        apiCall {
             val dto = tenantRetrofitProvider.create<CompanyApi>()
                 .updateSaleDetailConfig(branchId, SaleDetailConfigUpdateRequestDto(enabled = enabled, defaultText = defaultText))
                 .data
@@ -391,7 +391,7 @@ class SettingsRepositoryImpl @Inject constructor(
             )
         }
 
-    override suspend fun getServiceChargeConfig(branchId: Int): AppResult<ServiceChargeConfig> = catalogApiCall {
+    override suspend fun getServiceChargeConfig(branchId: Int): AppResult<ServiceChargeConfig> = apiCall {
         val dto = tenantRetrofitProvider.create<CompanyApi>().getServiceCharge(branchId).data
         ServiceChargeConfig(
             branchId = dto?.branchId ?: branchId,
@@ -401,7 +401,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateServiceChargeConfig(branchId: Int, enabled: Boolean, rate: Double): AppResult<ServiceChargeConfig> =
-        catalogApiCall {
+        apiCall {
             val dto = tenantRetrofitProvider.create<CompanyApi>()
                 .updateServiceCharge(branchId, ServiceChargeUpdateRequestDto(enabled = enabled, rate = rate))
                 .data
@@ -412,14 +412,14 @@ class SettingsRepositoryImpl @Inject constructor(
             )
         }
 
-    override suspend fun listSeries(branchId: Int?): AppResult<List<DocumentSeries>> = catalogApiCall {
+    override suspend fun listSeries(branchId: Int?): AppResult<List<DocumentSeries>> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>()
             .listSeries(branchId = branchId)
             .data
             .map { it.toDocumentSeries() }
     }
 
-    override suspend fun createSeries(input: SeriesFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun createSeries(input: SeriesFormInput): AppResult<Unit> = apiCall {
         val branchId = input.branchId ?: error("Selecciona sucursal")
         tenantRetrofitProvider.create<CompanyApi>().createSeries(
             SeriesCreateRequestDto(
@@ -432,7 +432,7 @@ class SettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>().updateSeries(
             id,
             SeriesUpdateRequestDto(
@@ -446,37 +446,37 @@ class SettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun deleteSeries(id: Int): AppResult<Unit> = catalogApiCall {
+    override suspend fun deleteSeries(id: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<CompanyApi>().deleteSeries(id)
     }
 
     override suspend fun getRestaurantSettings(): AppResult<RestaurantSettings> {
         operationalDataCache.getTenantSettings()?.settings?.let { return AppResult.Success(it) }
-        return catalogApiCall {
+        return apiCall {
             fetchRestaurantSettings().also { settings ->
                 operationalDataCache.getTenantSettings()?.let { operationalDataCache.updateRestaurantSettings(settings) }
             }
         }
     }
 
-    override suspend fun updateDeletionPin(pin: String): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateDeletionPin(pin: String): AppResult<Unit> = apiCall {
         api.updateRestaurantSettings(RestaurantSettingsUpdateRequestDto(deletionPin = pin))
         fetchRestaurantSettings().also { operationalDataCache.updateRestaurantSettings(it) }
     }
 
-    override suspend fun updateDeliveryEarningPerOrder(amount: Double): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateDeliveryEarningPerOrder(amount: Double): AppResult<Unit> = apiCall {
         api.updateDeliveryEarningSettings(DeliveryEarningSettingsUpdateRequestDto(earningPerOrder = amount))
         fetchRestaurantSettings().also { operationalDataCache.updateRestaurantSettings(it) }
     }
 
-    override suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>> = catalogApiCall {
+    override suspend fun listStaffManagement(): AppResult<List<RestaurantStaffManagementRow>> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>()
             .listStaffManagement()
             .data
             .map { it.toDomain() }
     }
 
-    override suspend fun createStaffUser(input: StaffCreateFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun createStaffUser(input: StaffCreateFormInput): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().createStaffUser(
             CreateStaffUserRequestDto(
                 name = input.name.trim(),
@@ -489,7 +489,7 @@ class SettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun updateStaffUser(input: StaffEditFormInput): AppResult<Unit> = catalogApiCall {
+    override suspend fun updateStaffUser(input: StaffEditFormInput): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().setUserStaff(
             userId = input.userId,
             body = SetUserStaffRequestDto(
@@ -549,12 +549,6 @@ private fun StaffManagementDto.toDomain() = RestaurantStaffManagementRow(
     branchNames = branchNames,
 )
 
-private inline fun <T> catalogApiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun BranchFormInput.toDto() = BranchUpsertRequestDto(
     name = name.trim(),

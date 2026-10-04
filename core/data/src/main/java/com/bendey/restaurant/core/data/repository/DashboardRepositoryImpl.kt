@@ -20,6 +20,7 @@ import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.CatalogAnalyticsDto
 import com.bendey.restaurant.core.network.dto.CatalogAnalyticsRowDto
 import com.bendey.restaurant.core.network.dto.DashboardResponseDto
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,21 +29,17 @@ class DashboardRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
 ) : DashboardRepository {
 
-    override suspend fun loadDashboard(from: String?, to: String?): AppResult<RestaurantDashboard> = try {
+    override suspend fun loadDashboard(from: String?, to: String?): AppResult<RestaurantDashboard> = apiCall {
         val api = tenantRetrofitProvider.create<RestaurantApi>()
         val dto = api.getDashboard(from = from, to = to)
-        AppResult.Success(dto.toDomain())
-    } catch (e: Exception) {
-        AppResult.Error(e.message ?: "No se pudo cargar el dashboard", e)
+        dto.toDomain()
     }
 
-    override suspend fun loadCatalogAnalytics(from: String?, to: String?): AppResult<CatalogAnalytics> = try {
+    override suspend fun loadCatalogAnalytics(from: String?, to: String?): AppResult<CatalogAnalytics> = apiCall {
         val dto = tenantRetrofitProvider.create<RestaurantApi>()
             .getCatalogAnalytics(from = from, to = to)
             .data ?: error("Sin datos de catálogo")
-        AppResult.Success(dto.toDomain())
-    } catch (e: Exception) {
-        AppResult.Error(e.message ?: "No se pudo cargar analytics de catálogo", e)
+        dto.toDomain()
     }
 
     private fun CatalogAnalyticsDto.toDomain() = CatalogAnalytics(

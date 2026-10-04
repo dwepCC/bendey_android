@@ -43,7 +43,7 @@ class EmailLoginViewModel @Inject constructor(
     fun submit(onSuccess: (route: String) -> Unit) {
         val state = _uiState.value
         if (state.email.isBlank() || state.password.isBlank()) {
-            _uiState.update { it.copy(error = "Complete email y contraseña") }
+            _uiState.update { it.copy(error = "Escribe tu correo y tu contraseña.") }
             return
         }
         viewModelScope.launch {
@@ -64,7 +64,7 @@ class EmailLoginViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(loading = false, error = e.message ?: "Error de login") }
+                    _uiState.update { it.copy(loading = false, error = e.message ?: "No se pudo iniciar sesión. Revisa tus datos y vuelve a intentar.") }
                 }
         }
     }

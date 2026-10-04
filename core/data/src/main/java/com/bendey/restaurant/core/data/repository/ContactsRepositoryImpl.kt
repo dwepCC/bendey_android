@@ -14,7 +14,7 @@ import com.bendey.restaurant.core.network.dto.ConsultaDniRequestDto
 import com.bendey.restaurant.core.network.dto.ConsultaRucRequestDto
 import com.bendey.restaurant.core.network.dto.CreateContactRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateContactRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -84,12 +84,6 @@ class ContactsRepositoryImpl @Inject constructor(
     }
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun ContactDto.toCustomer() = CustomerContact(
     id = id,

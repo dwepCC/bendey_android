@@ -19,6 +19,7 @@ import com.bendey.restaurant.core.network.api.PublicApi
 import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.EmailLoginRequestDto
 import com.bendey.restaurant.core.network.dto.PinLoginRequestDto
+import com.bendey.restaurant.core.network.error.ErrorFlow
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -139,7 +140,7 @@ class AuthRepositoryImpl @Inject constructor(
             sessionManager.applyUserSession(enriched)
         }
         enriched
-    }.recoverCatching { throw NetworkErrorMapper.map(it) }
+    }.recoverCatching { throw NetworkErrorMapper.map(it, ErrorFlow.LOGIN_EMAIL) }
 
     override suspend fun loginWithPin(pin: String, station: PinStation): Result<UserSession> = runCatching {
         operationalDataCache.clearAll()
@@ -157,7 +158,7 @@ class AuthRepositoryImpl @Inject constructor(
             sessionManager.applyUserSession(enriched)
         }
         enriched
-    }.recoverCatching { throw NetworkErrorMapper.map(it) }
+    }.recoverCatching { throw NetworkErrorMapper.map(it, ErrorFlow.LOGIN_PIN) }
 
     override suspend fun refreshRestaurantPermissions(): Result<UserSession> = runCatching {
         val session = sessionManager.getUserSession() ?: error("Sin sesión activa")

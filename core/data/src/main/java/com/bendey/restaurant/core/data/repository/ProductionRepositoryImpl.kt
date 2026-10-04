@@ -18,7 +18,7 @@ import com.bendey.restaurant.core.network.dto.RecipeDto
 import com.bendey.restaurant.core.network.dto.CostDraftRequestDto
 import com.bendey.restaurant.core.network.dto.RecipeItemDto
 import com.bendey.restaurant.core.network.dto.UpsertRecipeRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -86,13 +86,6 @@ class ProductionRepositoryImpl @Inject constructor(
         apiCall {
             api.plateMargin(branchId, from, to).data.map { it.toDomain() }
         }
-
-    private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-        AppResult.Success(block())
-    } catch (e: Exception) {
-        val mapped = NetworkErrorMapper.map(e)
-        AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-    }
 }
 
 private fun RecipeDto.toDomain() = Recipe(

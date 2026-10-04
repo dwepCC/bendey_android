@@ -54,7 +54,8 @@ import com.bendey.restaurant.core.network.dto.FloorUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.TableUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaNotesRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.ErrorFlow
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -97,7 +98,7 @@ class PosRepositoryImpl @Inject constructor(
         products to (response.total ?: products.size)
     }
 
-    override suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult> = apiCall {
+    override suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult> = apiCall(ErrorFlow.SEND_COMANDA) {
         val api = tenantRetrofitProvider.create<RestaurantApi>()
         val response = api.openSession(input.toDto())
         val session = response.data ?: error("Sesión no creada")
@@ -116,12 +117,12 @@ class PosRepositoryImpl @Inject constructor(
             .map { it.toDomain() }
     }
 
-    override suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+    override suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
         tenantRetrofitProvider.create<RestaurantApi>()
             .cancelSession(sessionId, CancelSessionRequestDto(reason = reason.trim(), pin = pin.trim()))
     }
 
-    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
         tenantRetrofitProvider.create<RestaurantApi>()
             .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
     }
@@ -160,7 +161,7 @@ class PosRepositoryImpl @Inject constructor(
     override suspend fun addOrder(
         sessionId: Int,
         items: List<OrderItemInput>,
-    ): AppResult<AddOrderResult> = apiCall {
+    ): AppResult<AddOrderResult> = apiCall(ErrorFlow.SEND_COMANDA) {
         val api = tenantRetrofitProvider.create<RestaurantApi>()
         val response = api.addOrder(
             sessionId = sessionId,
@@ -208,7 +209,7 @@ class MesasRepositoryImpl @Inject constructor(
         guests: Int,
         notes: String?,
         staffId: Int?,
-    ): AppResult<OpenSessionResult> = apiCall {
+    ): AppResult<OpenSessionResult> = apiCall(ErrorFlow.OPEN_TABLE) {
         val response = tenantRetrofitProvider.create<RestaurantApi>().openSession(
             OpenSessionRequestDto(
                 tableId = tableId,
@@ -322,18 +323,12 @@ class KitchenRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall {
+    override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
         tenantRetrofitProvider.create<RestaurantApi>()
             .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
     }
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun ProductDto.toDomain() = PosProduct(
     id = id,

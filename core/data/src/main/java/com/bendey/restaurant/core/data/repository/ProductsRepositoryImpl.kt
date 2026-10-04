@@ -32,7 +32,7 @@ import com.bendey.restaurant.core.network.dto.PreparationAreaDto
 import com.bendey.restaurant.core.network.dto.ProductDto
 import com.bendey.restaurant.core.network.dto.ProductPresentationDto
 import com.bendey.restaurant.core.network.dto.UpdateProductRequestDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -270,12 +270,6 @@ class ProductImportRepositoryImpl @Inject constructor(
     override fun generateSimpleTemplateBytes(): ByteArray = templateExporter.generateSimpleBytes()
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun ProductDto.toDomain() = ProductItem(
     id = id,

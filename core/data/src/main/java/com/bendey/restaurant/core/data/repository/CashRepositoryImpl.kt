@@ -55,7 +55,8 @@ import com.bendey.restaurant.core.network.dto.MovementsReportSummaryDto
 import com.bendey.restaurant.core.network.dto.SaveArqueoRequestDto
 import com.bendey.restaurant.core.network.dto.SessionComboComponentDto
 import com.bendey.restaurant.core.network.dto.SessionProductSoldDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.ErrorFlow
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -81,7 +82,7 @@ class CashRepositoryImpl @Inject constructor(
         branchId: Int,
         openingBalance: Double,
         notes: String?,
-    ): AppResult<CashSession> = apiCall {
+    ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
         val dto = tenantRetrofitProvider.create<CashbankApi>().openSession(
             OpenCashSessionRequestDto(
                 branchId = branchId,
@@ -97,7 +98,7 @@ class CashRepositoryImpl @Inject constructor(
         closingBalance: Double?,
         notes: String?,
         arqueo: Map<String, Int>?,
-    ): AppResult<CashSession> = apiCall {
+    ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
         val dto = tenantRetrofitProvider.create<CashbankApi>().closeSession(
             sessionId = sessionId,
             body = CloseCashSessionRequestDto(
@@ -125,7 +126,7 @@ class CashRepositoryImpl @Inject constructor(
             ?: error("Reporte no disponible")
     }
 
-    override suspend fun saveArqueo(sessionId: Int, arqueo: Map<String, Int>): AppResult<Double> = apiCall {
+    override suspend fun saveArqueo(sessionId: Int, arqueo: Map<String, Int>): AppResult<Double> = apiCall(ErrorFlow.CASH) {
         tenantRetrofitProvider.create<CashbankApi>()
             .saveArqueo(sessionId, SaveArqueoRequestDto(arqueo = arqueo))
             .sum ?: 0.0
@@ -141,7 +142,7 @@ class CashRepositoryImpl @Inject constructor(
     override suspend fun addMovement(
         sessionId: Int,
         input: AddCashMovementInput,
-    ): AppResult<CashMovement> = apiCall {
+    ): AppResult<CashMovement> = apiCall(ErrorFlow.CASH) {
         val dto = tenantRetrofitProvider.create<CashbankApi>().addMovement(
             sessionId = sessionId,
             body = AddCashMovementRequestDto(
@@ -429,12 +430,6 @@ class CashRepositoryImpl @Inject constructor(
     }
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun CashSessionDto.toDomain() = CashSession(
     id = id,

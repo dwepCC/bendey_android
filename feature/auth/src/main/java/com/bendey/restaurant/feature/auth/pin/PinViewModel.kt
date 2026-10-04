@@ -68,9 +68,15 @@ class PinViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(loading = false, error = e.message ?: "PIN incorrecto", pin = "")
+                        it.copy(loading = false, error = e.message ?: PIN_FALLBACK_ERROR, pin = "")
                     }
                 }
         }
     }
 }
+
+/**
+ * Reserva si el fallo llega sin texto. El texto real lo arma `ErrorCatalog` (core:network) con el flujo
+ * LOGIN_PIN: red caída, 5xx, bloqueo y PIN incorrecto dicen cosas distintas; aquí nunca se asume "PIN incorrecto".
+ */
+private const val PIN_FALLBACK_ERROR = "No se pudo iniciar sesión. Vuelve a intentar; si sigue igual, avisa a tu administrador."

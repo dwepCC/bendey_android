@@ -9,7 +9,7 @@ import com.bendey.restaurant.core.network.client.TenantRetrofitProvider
 import com.bendey.restaurant.core.network.dto.ChangePasswordRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateProfileRequestDto
 import com.bendey.restaurant.core.network.dto.UserProfileDto
-import com.bendey.restaurant.core.network.error.NetworkErrorMapper
+import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,12 +46,6 @@ class ProfileRepositoryImpl @Inject constructor(
     }
 }
 
-private inline fun <T> apiCall(block: () -> T): AppResult<T> = try {
-    AppResult.Success(block())
-} catch (e: Exception) {
-    val mapped = NetworkErrorMapper.map(e)
-    AppResult.Error(mapped.message ?: "Error de conexión", mapped)
-}
 
 private fun UserProfileDto.toDomain() = UserProfile(
     id = id,

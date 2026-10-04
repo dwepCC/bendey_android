@@ -2,7 +2,6 @@ package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.domain.catalog.ProductImageRepository
 import com.bendey.restaurant.core.domain.model.AppResult
-import com.bendey.restaurant.core.network.dto.ApiErrorDto
 import com.bendey.restaurant.core.network.dto.ProductImageUploadResponseDto
 import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import com.bendey.restaurant.core.network.BuildConfig
@@ -79,11 +78,8 @@ class ProductImageRepositoryImpl @Inject constructor(
             if (!response.isSuccessful) {
                 // Respuesta cruda de OkHttp (no pasa por Retrofit/HttpException), así que
                 // NetworkErrorMapper.map() no sabe parsear el JSON de error — se hace aquí.
-                val parsedMessage = runCatching {
-                    ApiJson.decodeFromString(ApiErrorDto.serializer(), responseBody).error
-                }.getOrNull()?.takeIf { it.isNotBlank() }
-                val message = parsedMessage ?: responseBody.ifBlank { "Error al subir imagen (${response.code})" }
-                return@withContext AppResult.Error(message, IllegalStateException(message))
+                val mapped = NetworkErrorMapper.mapResponse(response.code, responseBody)
+                return@withContext AppResult.Error(mapped.message ?: "No se pudo subir la imagen", mapped)
             }
             val parsed = ApiJson.decodeFromString(ProductImageUploadResponseDto.serializer(), responseBody)
             AppResult.Success(parsed.imageUrl)
