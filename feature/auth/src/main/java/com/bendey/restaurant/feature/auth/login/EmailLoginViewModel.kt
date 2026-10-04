@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.auth.login
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.auth.RegistrationCoordinator
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,9 +23,13 @@ data class EmailLoginUiState(
 @HiltViewModel
 class EmailLoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val registrationCoordinator: RegistrationCoordinator,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(EmailLoginUiState())
+    // Si el restaurante se acaba de crear pero el inicio automático falló, el correo ya viene puesto.
+    private val _uiState = MutableStateFlow(
+        EmailLoginUiState(email = registrationCoordinator.loginHint.value?.email.orEmpty()),
+    )
     val uiState: StateFlow<EmailLoginUiState> = _uiState.asStateFlow()
 
     fun onEmailChange(value: String) {
@@ -54,6 +59,7 @@ class EmailLoginViewModel @Inject constructor(
                             session.restaurantPermissions,
                             session.user.employeeType,
                         )
+                        registrationCoordinator.consumeLoginHint()
                         onSuccess(route)
                     }
                 }

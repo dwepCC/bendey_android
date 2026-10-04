@@ -2,6 +2,7 @@ package com.bendey.restaurant.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.auth.RegistrationCoordinator
 import com.bendey.restaurant.core.data.cache.OperationalDataPreloader
 import com.bendey.restaurant.core.realtime.StaffOrderAlertsCoordinator
 import com.bendey.restaurant.core.domain.auth.AuthRepository
@@ -22,7 +23,14 @@ class AppSessionViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     operationalDataPreloader: OperationalDataPreloader,
     private val staffOrderAlertsCoordinator: StaffOrderAlertsCoordinator,
+    registrationCoordinator: RegistrationCoordinator,
 ) : ViewModel() {
+
+    /** Creando el restaurante: la raíz de navegación no debe cambiar a mitad de camino. */
+    val registrationInFlight: StateFlow<Boolean> = registrationCoordinator.state
+        .map { it.inFlight }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     /** null = hidratando DataStore (evita flash de pantalla RUC). */
     val isTenantBound: StateFlow<Boolean?> = sessionStore.isTenantBoundFlow

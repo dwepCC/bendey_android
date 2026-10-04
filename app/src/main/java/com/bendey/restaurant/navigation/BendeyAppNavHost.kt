@@ -19,6 +19,7 @@ import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfi
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -83,11 +84,13 @@ fun BendeyAppNavHost(
     val isAuthenticated by appViewModel.isAuthenticated.collectAsStateWithLifecycle()
     val rootNavController = rememberNavController()
 
+    val registering by appViewModel.registrationInFlight.collectAsStateWithLifecycle()
     val tenantBound = isTenantBound
     val authenticated = isAuthenticated
 
-    LaunchedEffect(authenticated, tenantBound) {
-        if (tenantBound == true && authenticated == false) {
+    LaunchedEffect(authenticated, tenantBound, registering) {
+        // Mientras se crea el restaurante (queda vinculado antes de iniciar sesión) no se cambia de pantalla.
+        if (!registering && tenantBound == true && authenticated == false) {
             rootNavController.navigate(BendeyRoutes.HOME) {
                 popUpTo(rootNavController.graph.id) { inclusive = true }
                 launchSingleTop = true
@@ -97,13 +100,18 @@ fun BendeyAppNavHost(
 
     val sessionReady = tenantBound != null && (tenantBound == false || authenticated != null)
 
-    val startDestination = when {
+    val computedStart = when {
         tenantBound == null -> null
         tenantBound == false -> BendeyRoutes.WELCOME
         authenticated == null -> null
         authenticated == false -> BendeyRoutes.HOME
         else -> BendeyRoutes.MAIN
     }
+    // Registro en curso: se conserva la raíz anterior hasta que termine (crear → entrar), porque
+    // `key(startDestination)` destruiría la pantalla y su ViewModel a mitad del proceso.
+    val lastStable = remember { arrayOfNulls<String>(1) }
+    val startDestination = if (registering && lastStable[0] != null) lastStable[0] else computedStart
+    SideEffect { if (!registering) lastStable[0] = computedStart }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (!sessionReady || startDestination == null) {

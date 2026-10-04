@@ -34,14 +34,9 @@ fun NavGraphBuilder.authGraph(
     }
     composable(BendeyRoutes.REGISTER) {
         BendeyExpressiveScope {
-            RegisterScreen(
-                onBack = { navController.popBackStack() },
-                onRegistered = { restaurantName ->
-                    navController.navigate(BendeyRoutes.registerSuccess(restaurantName)) {
-                        popUpTo(BendeyRoutes.WELCOME) { inclusive = false }
-                    }
-                },
-            )
+            // Al crear, la sesión queda iniciada y la app cambia de raíz sola (RegistrationCoordinator):
+            // aquí no se navega a mano. RegisterSuccess queda solo como alias de ruta.
+            RegisterScreen(onBack = { navController.popBackStack() })
         }
     }
     composable(

@@ -58,6 +58,9 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyMotion
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.model.PinStation
+import com.bendey.restaurant.core.ui.components.BendeyAlert
+import com.bendey.restaurant.core.ui.components.BendeyAlertAction
+import com.bendey.restaurant.core.ui.components.BendeyAlertSeverity
 import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
 import com.bendey.restaurant.core.ui.layout.rememberIsExpandedWidth
@@ -86,6 +89,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val tenant by viewModel.tenant.collectAsStateWithLifecycle()
+    val loginHint by viewModel.loginHint.collectAsStateWithLifecycle()
     val isExpanded = rememberIsExpandedWidth()
 
     Column(
@@ -150,6 +154,13 @@ fun HomeScreen(
                     RestaurantIdentityRow(
                         name = tenant?.name ?: "Restaurante",
                         ruc = tenant?.ruc,
+                    )
+                }
+                loginHint?.let { hint ->
+                    BendeyAlert(
+                        message = hint.message,
+                        severity = BendeyAlertSeverity.Info,
+                        primaryAction = BendeyAlertAction("Iniciar sesión", onAdminLogin),
                     )
                 }
                 BendeyExpressiveReveal(index = 2) {

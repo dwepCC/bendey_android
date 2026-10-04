@@ -26,7 +26,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyMotion
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
-import com.bendey.restaurant.core.ui.components.BendeyTextButton
+import com.bendey.restaurant.core.ui.components.BendeyOutlinedButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.feature.auth.components.AuthExpressiveCard
 import com.bendey.restaurant.feature.auth.components.AuthWelcomeLayout
@@ -39,24 +39,31 @@ fun WelcomeScreen(
     viewModel: WelcomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val rucFocusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        rucFocusRequester.requestFocus()
-    }
 
     AuthWelcomeLayout(modifier = modifier) {
+        BendeyPrimaryButton(
+            text = "Crear mi restaurante gratis",
+            onClick = onCreateRestaurant,
+            enabled = !state.linking,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(BendeySpacing.lg))
+        Text(
+            text = "¿Ya tienes un restaurante en Bendey?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = BendeyColors.OnSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(BendeySpacing.xs))
         AuthExpressiveCard(
-            title = "Ingresa el RUC de tu negocio",
+            title = "Vincula tu restaurante con el RUC",
             subtitle = "Validaremos que tu restaurante ya esté registrado en Bendey.",
         ) {
             BendeyTextField(
                 value = state.ruc,
                 onValueChange = viewModel::onRucChange,
                 label = "RUC",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(rucFocusRequester),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = !state.linking,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
@@ -71,12 +78,11 @@ fun WelcomeScreen(
                 ),
             )
             Spacer(modifier = Modifier.height(BendeySpacing.md))
-            BendeyPrimaryButton(
+            BendeyOutlinedButton(
                 text = if (state.linking) "Continuando…" else "Continuar",
                 onClick = { viewModel.submit(onBound) },
-                loading = state.linking,
-                enabled = state.canSubmit,
-                modifier = Modifier.fillMaxWidth(),
+                enabled = state.canSubmit && !state.linking,
+                fillWidth = true,
             )
             state.error?.let { error ->
                 Spacer(modifier = Modifier.height(BendeySpacing.sm))
@@ -95,17 +101,5 @@ fun WelcomeScreen(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(BendeySpacing.lg))
-        Text(
-            text = "¿Aún no tienes una cuenta?",
-            style = MaterialTheme.typography.bodyMedium,
-            color = BendeyColors.OnSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        BendeyTextButton(
-            text = "Crear mi restaurante gratis",
-            onClick = onCreateRestaurant,
-            textStyle = MaterialTheme.typography.titleSmall,
-        )
     }
 }
