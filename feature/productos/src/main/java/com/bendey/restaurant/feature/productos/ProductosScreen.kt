@@ -809,7 +809,7 @@ private fun ProductFormFields(
                         "${recipeDraft.items.size} ingrediente${if (recipeDraft.items.size == 1) "" else "s"} — " +
                             "se guarda${if (editingProductId != null) "n los cambios" else ""} al pulsar Guardar",
                         style = MaterialTheme.typography.bodySmall,
-                        color = BendeyColors.Warning,
+                        color = BendeyColors.WarningText,
                     )
                 } else if (editingProductId == null) {
                     Text(

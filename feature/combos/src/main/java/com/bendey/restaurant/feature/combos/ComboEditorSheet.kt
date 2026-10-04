@@ -146,7 +146,7 @@ fun ComboEditorSheet(
                         onClick = onSave,
                         enabled = !loading,
                         fillWidth = false,
-                        modifier = Modifier.heightIn(min = 40.dp),
+                        modifier = Modifier.heightIn(min = BendeySpacing.touchPrimary),
                     )
                 }
 
@@ -550,7 +550,7 @@ private fun SlotCard(
                 Text(
                     COMBO_QUANTITY_MODE_HELP,
                     style = MaterialTheme.typography.labelSmall,
-                    color = BendeyColors.Warning,
+                    color = BendeyColors.WarningText,
                 )
             }
             Row(

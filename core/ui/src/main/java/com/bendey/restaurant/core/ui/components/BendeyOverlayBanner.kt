@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import kotlinx.coroutines.delay
@@ -26,6 +27,7 @@ private const val AutoDismissMs = 5_000L
 
 /**
  * Banner flotante para errores o avisos breves sobre barras compactas POS/Mesa.
+ * Para alertas inline con icono, título y acciones usar [BendeyAlert] (reemplazo progresivo).
  */
 @Composable
 fun BendeyOverlayBanner(
@@ -47,7 +49,7 @@ fun BendeyOverlayBanner(
         modifier = modifier.fillMaxWidth(),
         color = BendeyColors.ErrorContainer,
         shape = BendeyShapeTokens.md,
-        shadowElevation = 4.dp,
+        shadowElevation = BendeyElevation.floating,
         tonalElevation = 0.dp,
     ) {
         Row(
@@ -64,7 +66,7 @@ fun BendeyOverlayBanner(
         ) {
             Text(
                 text = message,
-                color = BendeyColors.Error,
+                color = BendeyColors.ErrorText,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
@@ -78,7 +80,7 @@ fun BendeyOverlayBanner(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Cerrar",
-                        tint = BendeyColors.Error,
+                        tint = BendeyColors.ErrorText,
                         modifier = Modifier.size(20.dp),
                     )
                 }

@@ -13,6 +13,24 @@ fun TableStatus.accentColor(browsingOnly: Boolean = false): Color = when {
     else -> BendeyColors.TableLibre
 }
 
+/** Mapa único de estados (DESIGN-SYSTEM §3.5): fill + tint + onTint de la mesa. */
+fun TableStatus.stateColors(browsingOnly: Boolean = false): BendeyStateColors = when {
+    this == TableStatus.LIBRE && browsingOnly -> BendeyColors.StateMesaViendoCarta
+    this == TableStatus.LIBRE -> BendeyColors.StateMesaLibre
+    this == TableStatus.OCUPADA -> BendeyColors.StateMesaOcupada
+    this == TableStatus.RESERVADA -> BendeyColors.StateMesaReservada
+    this == TableStatus.EN_CONSUMO -> BendeyColors.StateMesaEnConsumo
+    else -> BendeyColors.StateMesaLibre
+}
+
+/** Mapa único de estados (DESIGN-SYSTEM §3.5): fill + tint + onTint de la comanda. */
+fun ComandaStatus.stateColors(): BendeyStateColors = when (this) {
+    ComandaStatus.PENDIENTE -> BendeyColors.StateNuevo
+    ComandaStatus.PREPARACION -> BendeyColors.StatePreparando
+    ComandaStatus.LISTA -> BendeyColors.StateListo
+    ComandaStatus.ENTREGADA -> BendeyColors.StateEntregado
+}
+
 fun ComandaStatus.accentColor(): Color = when (this) {
     ComandaStatus.PENDIENTE -> BendeyColors.KitchenPendiente
     ComandaStatus.PREPARACION -> BendeyColors.KitchenPreparando

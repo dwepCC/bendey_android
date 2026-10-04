@@ -37,7 +37,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 /**
- * Selector +/- con área táctil mínima de 48dp (Material Design).
+ * Selector +/- con área táctil mínima de 44dp (`touchMin`; 48dp por defecto).
  * Reutilizable en POS configure, carrito y pantallas similares.
  *
  * @param compact Reduce espacio alrededor del stepper (configure POS); no reduce botones.
@@ -54,6 +54,8 @@ fun BendeyQuantityStepper(
     compact: Boolean = false,
     dense: Boolean = false,
 ) {
+    // Piso táctil (DESIGN-SYSTEM §6): ningún botón del stepper baja de 44 dp.
+    val buttonSize = maxOf(buttonSize, BendeySpacing.touchMin)
     val innerGap = when {
         dense -> BendeySpacing.xxs
         compact -> BendeySpacing.sm

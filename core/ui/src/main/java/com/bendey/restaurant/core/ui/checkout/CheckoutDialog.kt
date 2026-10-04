@@ -502,8 +502,8 @@ private fun DiscountInputWithToggle(
     ) {
         Box(
             modifier = Modifier
-                .width(36.dp)
-                .height(44.dp)
+                .width(BendeySpacing.touchMin)
+                .height(BendeySpacing.touchMin)
                 .background(
                     if (mode == CheckoutDiscountMode.PERCENT) toggleActiveColor else toggleInactiveColor,
                 )
@@ -522,7 +522,7 @@ private fun DiscountInputWithToggle(
                 text = if (mode == CheckoutDiscountMode.PERCENT) "%" else "S/",
                 color = BendeyColors.OnPrimary,
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelMedium,
             )
         }
         BasicTextField(

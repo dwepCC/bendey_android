@@ -1,14 +1,17 @@
 package com.bendey.restaurant.core.designsystem.theme
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 object BendeyShapeTokens {
     val xs = RoundedCornerShape(8.dp)
-    val sm = RoundedCornerShape(10.dp)
+    // Escala de radios 8 / 12 / 16 (DESIGN-SYSTEM §5). Se conservan los 5 nombres; `sm` (antes 10 dp)
+    // pasa a 12 y `lg` (antes 14 dp) pasa a 16, así que sm==md y lg==xl en valor.
+    val sm = RoundedCornerShape(12.dp)
     val md = RoundedCornerShape(12.dp)
-    val lg = RoundedCornerShape(14.dp)
+    val lg = RoundedCornerShape(16.dp)
     val xl = RoundedCornerShape(16.dp)
 
     /** Alias semánticos — equivalen a la escala Material3 mapeada en [BendeyShapes]. */
@@ -19,9 +22,10 @@ object BendeyShapeTokens {
     val ExtraLarge get() = xl
 
     val sheet = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-    val pill = RoundedCornerShape(20.dp)
+    /** Pill real (50 %): un chip alto ya no se ve ovalado. */
+    val pill: androidx.compose.ui.graphics.Shape = CircleShape
 
-    /** Alias de [pill] — mismo radio (20dp), dos nombres para el mismo shape. Preferir `pill`
+    /** Alias de [pill] — mismo shape, dos nombres para el mismo shape. Preferir `pill`
      * en código nuevo; se mantiene por compatibilidad con los sitios que ya llaman `chip`. */
     @Deprecated("Usar BendeyShapeTokens.pill — mismo valor, un solo nombre.", ReplaceWith("pill"))
     val chip get() = pill

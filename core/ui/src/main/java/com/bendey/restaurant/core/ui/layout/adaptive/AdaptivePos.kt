@@ -60,10 +60,11 @@ object AdaptivePos {
     fun cartPanelElevation(profile: BendeyAdaptiveProfile): Dp = 1.dp
 
     fun searchBarMinHeight(profile: BendeyAdaptiveProfile): Dp = when (profile) {
-        BendeyAdaptiveProfile.MediumPortrait -> 40.dp
-        BendeyAdaptiveProfile.MediumLandscape -> 42.dp
-        BendeyAdaptiveProfile.Expanded -> 42.dp
-        else -> 38.dp
+        // R1: piso táctil 44 dp (antes 38/40/42).
+        BendeyAdaptiveProfile.MediumPortrait -> BendeySpacing.touchMin
+        BendeyAdaptiveProfile.MediumLandscape -> BendeySpacing.touchMin
+        BendeyAdaptiveProfile.Expanded -> BendeySpacing.touchMin
+        else -> BendeySpacing.touchMin
     }
 
     fun searchBarQrSize(profile: BendeyAdaptiveProfile): Dp = searchBarMinHeight(profile)
@@ -138,8 +139,8 @@ object AdaptivePos {
         BendeyAdaptiveProfile.MediumPortrait -> 44.dp
         BendeyAdaptiveProfile.MediumLandscape,
         BendeyAdaptiveProfile.Expanded,
-        -> 40.dp
-        else -> 40.dp
+        -> BendeySpacing.touchMin
+        else -> BendeySpacing.touchMin
     }
 
     fun cartActionGridSpacing(profile: BendeyAdaptiveProfile): Dp = when (profile) {

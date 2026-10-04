@@ -55,6 +55,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.accentColor
+import com.bendey.restaurant.core.designsystem.theme.stateColors
 import com.bendey.restaurant.core.domain.catalog.preparationAreaDisplayLabel
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
@@ -201,7 +202,8 @@ fun CocinaScreen(
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
                 STATUS_FILTERS.forEach { status ->
-                    val accent = status.accentColor()
+                    val tone = status.stateColors()
+                    val accent = tone.fill
                     val selected = activeStatus == status
                     FilterChip(
                         selected = selected,
@@ -215,9 +217,9 @@ fun CocinaScreen(
                         },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = accent,
-                            selectedLabelColor = BendeyColors.OnPrimary,
-                            containerColor = accent.copy(alpha = 0.12f),
-                            labelColor = accent,
+                            selectedLabelColor = BendeyColors.onFill(accent),
+                            containerColor = tone.tint,
+                            labelColor = tone.onTint,
                         ),
                         shape = BendeyShapeTokens.pill,
                         border = null,
@@ -350,7 +352,7 @@ private fun KitchenOrderCard(
                         Text(
                             "Abierto hace $elapsed",
                             style = MaterialTheme.typography.labelSmall,
-                            color = BendeyColors.Warning,
+                            color = BendeyColors.WarningText,
                         )
                     }
                 }
@@ -365,6 +367,7 @@ private fun KitchenOrderCard(
                     enabled = updatingId != -1,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = BendeySpacing.touchKds)
                         .padding(top = BendeySpacing.xxs),
                 ) {
                     Text(if (updatingId == -1) "Marcando…" else "Marcar ronda lista")
@@ -388,9 +391,12 @@ private fun KitchenOrderCard(
                         OutlinedButton(
                             onClick = { onAdvance(item) },
                             enabled = updatingId != item.id,
-                            modifier = Modifier.heightIn(min = 32.dp).padding(end = BendeySpacing.xxs),
+                            modifier = Modifier
+                                .heightIn(min = BendeySpacing.touchKds)
+                                // Separación 16 dp respecto de la acción destructiva (DESIGN-SYSTEM §6).
+                                .padding(end = if (canVoid) BendeySpacing.s16 else BendeySpacing.s4),
                         ) {
-                            Text(if (updatingId == item.id) "…" else "Avanzar", style = MaterialTheme.typography.labelSmall)
+                            Text(if (updatingId == item.id) "…" else "Avanzar", style = MaterialTheme.typography.labelLarge)
                         }
                     }
                     if (canVoid) {
@@ -403,7 +409,7 @@ private fun KitchenOrderCard(
                     }
                 }
                 item.notes?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.Warning)
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = BendeyColors.WarningText)
                 }
                 item.modifierLines.forEach { line ->
                     Text(line, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
@@ -486,7 +492,7 @@ private fun KitchenCard(
                     Text(
                         "Abierto hace $elapsed",
                         style = MaterialTheme.typography.labelSmall,
-                        color = BendeyColors.Warning,
+                        color = BendeyColors.WarningText,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -506,7 +512,8 @@ private fun KitchenCard(
                         text = formatQty(item.kdsQuantity),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
-                        color = accent,
+                        // fill sobre blanco no llega a 3:1 (ámbar 1,97 / gris 2,68): texto = onTint.
+                        color = BendeyColors.toneForAccent(accent)?.onTint ?: accent,
                     )
                     Text("unidades", style = MaterialTheme.typography.labelLarge, color = BendeyColors.OnSurfaceVariant)
                 }
@@ -515,7 +522,7 @@ private fun KitchenCard(
                         text = it,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = BendeyColors.Warning,
+                        color = BendeyColors.WarningText,
                     )
                 }
                 item.modifierLines.forEach { line ->

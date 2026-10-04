@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
@@ -72,7 +73,7 @@ fun PosSentOrdersSection(
             OutlinedButton(
                 onClick = onReprintAll,
                 enabled = !reprintingAll && reprintingOrderId == null,
-                modifier = Modifier.heightIn(min = 36.dp),
+                modifier = Modifier.heightIn(min = BendeySpacing.touchMin),
             ) {
                 if (reprintingAll) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp).padding(end = 6.dp), strokeWidth = 2.dp)

@@ -167,7 +167,7 @@ private fun ArqueoQtyField(qty: Int, onCommit: (Int) -> Unit) {
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
         modifier = Modifier
             .width(ArqueoQtyFieldWidth)
-            .height(40.dp)
+            .height(BendeySpacing.touchMin)
             .onFocusChanged { focusState ->
                 if (focusState.isFocused && !focused) {
                     focused = true
@@ -185,7 +185,7 @@ private fun ArqueoQtyField(qty: Int, onCommit: (Int) -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .height(BendeySpacing.touchMin)
                     .clip(BendeyShapeTokens.sm)
                     .border(1.dp, if (focused) BendeyColors.Primary else BendeyColors.Outline, BendeyShapeTokens.sm)
                     .background(BendeyColors.Surface),
@@ -323,7 +323,7 @@ fun CloseCashDialog(
                             if (op.activeComandasCount > 0) append(" ${op.activeComandasCount} comanda(s) activas.")
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = BendeyColors.Warning,
+                        color = BendeyColors.WarningText,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }

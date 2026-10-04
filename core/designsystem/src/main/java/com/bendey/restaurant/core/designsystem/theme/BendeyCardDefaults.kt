@@ -12,7 +12,7 @@ object BendeyCardDefaults {
     val shape = BendeyShapeTokens.lg
     val border = BorderStroke(1.dp, BendeyColors.Outline.copy(alpha = 0.65f))
     val dialogShape = BendeyShapeTokens.xl
-    val sheetShape = BendeyShapeTokens.pill
+    val sheetShape = BendeyShapeTokens.sheet
 
     @Composable
     fun colors() = CardDefaults.cardColors(containerColor = BendeyColors.Surface)

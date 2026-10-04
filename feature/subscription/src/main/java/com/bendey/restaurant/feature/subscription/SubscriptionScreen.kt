@@ -101,7 +101,7 @@ fun SubscriptionScreen(
                             Text(
                                 hub.statusBanner.message,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = statusBannerColor(hub.statusBanner.variant),
+                                color = statusBannerTextColor(hub.statusBanner.variant),
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -620,6 +620,13 @@ private fun statusBannerColor(variant: String) = when (variant) {
     "warning" -> BendeyColors.Warning
     "success" -> BendeyColors.Primary
     else -> BendeyColors.OnSurfaceVariant
+}
+
+/** Variante de [statusBannerColor] apta para TEXTO sobre blanco (el relleno de aviso no llega a 4,5:1). */
+private fun statusBannerTextColor(variant: String) = when (variant) {
+    "danger" -> BendeyColors.ErrorText
+    "warning" -> BendeyColors.WarningText
+    else -> statusBannerColor(variant)
 }
 
 private fun paymentStatusColor(status: String) = when (status.lowercase()) {

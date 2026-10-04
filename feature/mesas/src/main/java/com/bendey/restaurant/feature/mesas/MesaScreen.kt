@@ -188,7 +188,7 @@ fun MesaScreen(
                 if (orders.isNotEmpty()) {
                     OutlinedButton(
                         onClick = { showOrdersSheet = true },
-                        modifier = Modifier.heightIn(min = 36.dp),
+                        modifier = Modifier.heightIn(min = BendeySpacing.touchMin),
                     ) {
                         Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.padding(end = 4.dp))
                         Text("Pedidos (${orders.size})")
@@ -616,7 +616,7 @@ private fun SessionSummaryBar(
                 onClick = onCloseMesa,
                 enabled = !closingMesa,
                 fillWidth = false,
-                modifier = Modifier.heightIn(min = if (landscapeTablet) 40.dp else 32.dp),
+                modifier = Modifier.heightIn(min = BendeySpacing.touchPrimary),
             )
         } else {
             Row(
@@ -626,7 +626,7 @@ private fun SessionSummaryBar(
                 OutlinedButton(
                     onClick = onPrintPrecuenta,
                     enabled = !printing && total > 0,
-                    modifier = if (landscapeTablet) Modifier.heightIn(min = 40.dp) else Modifier,
+                    modifier = Modifier.heightIn(min = BendeySpacing.touchMin),
                 ) {
                     Icon(Icons.Default.Print, contentDescription = null)
                     Text(if (printing) "Imprimiendo…" else "Precuenta")
@@ -637,7 +637,7 @@ private fun SessionSummaryBar(
                         onClick = onCheckout,
                         enabled = total > 0 && !checkoutLoading && !printing,
                         fillWidth = false,
-                        modifier = if (landscapeTablet) Modifier.heightIn(min = 40.dp) else Modifier,
+                        modifier = Modifier.heightIn(min = BendeySpacing.touchPrimary),
                     )
                 }
             }
@@ -953,7 +953,7 @@ private fun OrdersSection(
             OutlinedButton(
                 onClick = onReprintAll,
                 enabled = !reprintingAll && reprintingOrderId == null,
-                modifier = Modifier.heightIn(min = 36.dp),
+                modifier = Modifier.heightIn(min = BendeySpacing.touchMin),
             ) {
                 if (reprintingAll) {
                     CircularProgressIndicator(
@@ -1048,7 +1048,7 @@ private fun CompactMesaBar(
             enabled = cartCount > 0 && !sending,
             modifier = Modifier
                 .fillMaxWidth(sendButtonWidth)
-                .heightIn(min = if (useTabletPortraitBar) 48.dp else 40.dp),
+                .heightIn(min = BendeySpacing.touchPrimary),
         )
     }
 }

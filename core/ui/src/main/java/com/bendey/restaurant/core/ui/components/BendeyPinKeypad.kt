@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 /** Círculos que se dibujan: 4 por defecto (la longitud habitual del PIN) y crece hasta [maxDigits] si se teclean más. */
 internal fun pinCircleCount(typed: Int, minCircles: Int = 4, maxDigits: Int = 6): Int =
@@ -67,13 +68,13 @@ fun BendeyPinKeypad(
                         "" -> androidx.compose.foundation.layout.Spacer(
                             modifier = Modifier
                                 .weight(1f)
-                                .heightIn(min = 52.dp),
+                                .heightIn(min = BendeySpacing.touchKds),
                         )
                         "del" -> OutlinedButton(
                             onClick = onBackspace,
                             modifier = Modifier
                                 .weight(1f)
-                                .heightIn(min = 52.dp),
+                                .heightIn(min = BendeySpacing.touchKds),
                             shape = MaterialTheme.shapes.large,
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Backspace, contentDescription = "Borrar")
@@ -84,7 +85,7 @@ fun BendeyPinKeypad(
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .heightIn(min = 52.dp),
+                                .heightIn(min = BendeySpacing.touchKds),
                             shape = MaterialTheme.shapes.large,
                         ) {
                             Text(text = key, style = MaterialTheme.typography.headlineMedium)

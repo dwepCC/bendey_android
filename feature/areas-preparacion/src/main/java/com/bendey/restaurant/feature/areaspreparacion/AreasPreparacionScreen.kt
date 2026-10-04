@@ -230,18 +230,26 @@ private fun PreparationAreaFormDialog(
         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
             DEFAULT_PREPARATION_AREA_COLORS.forEach { color ->
                 val selected = form.color.equals(color, ignoreCase = true)
+                // Zona táctil 44 dp; el muestrario visual sigue en 32 dp.
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(BendeySpacing.touchMin)
                         .clip(CircleShape)
-                        .background(parseAreaColor(color))
-                        .border(
-                            width = if (selected) 2.dp else 1.dp,
-                            color = if (selected) BendeyColors.Primary else BendeyColors.Outline.copy(alpha = 0.4f),
-                            shape = CircleShape,
-                        )
                         .clickable { onFormChange { it.copy(color = color) } },
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(parseAreaColor(color))
+                            .border(
+                                width = if (selected) 2.dp else 1.dp,
+                                color = if (selected) BendeyColors.Primary else BendeyColors.Outline.copy(alpha = 0.4f),
+                                shape = CircleShape,
+                            ),
+                    )
+                }
             }
         }
         BendeyTextField(form.color, { v -> onFormChange { it.copy(color = v) } }, "Color (#hex)")

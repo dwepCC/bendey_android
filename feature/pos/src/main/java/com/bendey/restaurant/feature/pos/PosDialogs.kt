@@ -104,12 +104,12 @@ fun PosPendingOrdersBar(
                 icon = Icons.Default.Edit,
                 contentDescription = "Datos del pedido",
                 tint = BendeyColors.Primary,
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(BendeySpacing.touchMin),
             )
         }
         OutlinedButton(
             onClick = onOpenPending,
-            modifier = Modifier.heightIn(min = 36.dp),
+            modifier = Modifier.heightIn(min = BendeySpacing.touchMin),
         ) {
             BadgedBox(
                 badge = {

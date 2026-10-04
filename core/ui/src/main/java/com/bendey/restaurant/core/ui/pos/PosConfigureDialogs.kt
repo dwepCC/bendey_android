@@ -219,7 +219,7 @@ fun ComboConfigureDialog(
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (status.complete) BendeyColors.Success else BendeyColors.Warning,
+                                color = if (status.complete) BendeyColors.Success else BendeyColors.WarningText,
                             )
                         }
                     }

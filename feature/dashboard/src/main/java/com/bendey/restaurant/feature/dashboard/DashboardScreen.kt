@@ -674,7 +674,7 @@ private fun RevenueTrendChart(
                 .fillMaxWidth()
                 .height(160.dp),
         ) {
-            val chartLeft = 44.dp
+            val chartLeft = 52.dp
             val chartBottom = 20.dp
             Canvas(
                 modifier = Modifier
@@ -732,8 +732,10 @@ private fun RevenueTrendChart(
                     val value = yMaxLabel * i / ySteps
                     Text(
                         text = currency.format(value).replace(",00", ""),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        style = MaterialTheme.typography.labelSmall,
                         color = BendeyColors.OnSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
                     )
                 }
             }
@@ -741,7 +743,7 @@ private fun RevenueTrendChart(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 44.dp),
+                .padding(start = 52.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             val indices = listOf(0, points.size / 4, points.size / 2, points.size * 3 / 4, points.lastIndex)
@@ -753,7 +755,7 @@ private fun RevenueTrendChart(
                 }.getOrDefault(points[i].date.take(5))
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                    style = MaterialTheme.typography.labelSmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
             }
@@ -848,7 +850,8 @@ private fun TopProductRow(
                 text = rank.toString(),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = accent,
+                // El acento de la paleta (ámbar, lima...) no da 4,5:1 como texto: el número va neutro.
+                color = BendeyColors.OnSurface,
             )
         }
         Column(modifier = Modifier.weight(1f)) {

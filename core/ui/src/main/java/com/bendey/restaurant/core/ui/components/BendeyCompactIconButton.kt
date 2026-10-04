@@ -15,6 +15,7 @@ import com.bendey.restaurant.core.designsystem.previews.BendeyPhonePreview
 import com.bendey.restaurant.core.designsystem.previews.BendeyPreviewSurface
 import com.bendey.restaurant.core.designsystem.previews.BendeyTabletPreview
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
+import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -27,7 +28,7 @@ import androidx.compose.material.icons.filled.Edit
  * target (con `Modifier.size(32.dp)` sobre [BendeyIconButton]) — un 33% por debajo del mínimo
  * de accesibilidad táctil que el propio sistema declara (`BendeySpacing.touchTarget` = 48dp), en
  * las pantallas de mayor presión operativa (cocina, caja en movimiento). Este componente es la
- * talla intermedia oficial para ese caso: 40dp de hit target / 20dp de icono por defecto — lo
+ * talla intermedia oficial para ese caso: 44dp de hit target / 20dp de icono por defecto — lo
  * bastante compacto para una fila densa, sin bajar del umbral razonable de accesibilidad. Nunca
  * usar `Modifier.size()` para achicar [BendeyIconButton] por debajo de esto; usar este componente.
  */
@@ -77,8 +78,8 @@ fun BendeyCompactIconButton(
     }
 }
 
-/** Hit target — 40dp, la talla "compacta" oficial (la de navegación sigue en 48dp). */
-private val HitTarget = 40.dp
+/** Hit target — 44dp ([BendeySpacing.touchMin]), la talla "compacta" oficial (la de navegación sigue en 48dp). */
+private val HitTarget = BendeySpacing.touchMin
 
 /** Tamaño de glifo por defecto dentro de [BendeyCompactIconButton] — 20dp. */
 private val GlyphSize = 20.dp

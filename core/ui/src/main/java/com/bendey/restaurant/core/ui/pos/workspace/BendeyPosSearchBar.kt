@@ -99,7 +99,7 @@ fun BendeyPosSearchBar(
                     if (query.isNotEmpty()) {
                         IconButton(
                             onClick = { onQueryChange("") },
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(BendeySpacing.touchMin),
                         ) {
                             Icon(
                                 Icons.Default.Close,

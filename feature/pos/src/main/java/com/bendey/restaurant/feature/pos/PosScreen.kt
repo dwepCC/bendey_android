@@ -1030,7 +1030,7 @@ private fun CartPane(
                 showTotal = !useWorkspacePanel,
                 lineSpacing = if (useWorkspacePanel) AdaptivePos.cartLineGap(profile) else BendeySpacing.xxs,
                 workspaceLines = useWorkspacePanel,
-                lineStepperSize = if (useWorkspacePanel) AdaptivePos.cartLineStepperSize(profile) else 40.dp,
+                lineStepperSize = if (useWorkspacePanel) AdaptivePos.cartLineStepperSize(profile) else BendeySpacing.touchMin,
                 lineInnerPadding = if (useWorkspacePanel) AdaptivePos.cartLinePadding(profile) else BendeySpacing.sm,
                 primaryAction = if (!useWorkspacePanel) {
                     {

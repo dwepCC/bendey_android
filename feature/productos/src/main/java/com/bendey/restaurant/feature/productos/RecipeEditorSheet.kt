@@ -130,7 +130,7 @@ fun RecipeEditorSheet(
                             Text(
                                 "Sin costo — cárgale el precio de compra en su ficha",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = BendeyColors.Warning,
+                                color = BendeyColors.WarningText,
                             )
                         } else {
                             Text(

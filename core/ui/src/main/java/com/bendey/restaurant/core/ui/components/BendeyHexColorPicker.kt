@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -75,18 +76,26 @@ fun BendeyHexColorPicker(
             presets.forEach { preset ->
                 val selected = normalizeHexColor(value) == preset
                 val swatchColor = parseHexColorOrNull(preset) ?: BendeyColors.Primary
+                // Zona táctil 44 dp; el muestrario visual sigue en 32 dp.
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(BendeySpacing.touchMin)
                         .clip(CircleShape)
-                        .background(swatchColor)
-                        .border(
-                            width = if (selected) 2.dp else 1.dp,
-                            color = if (selected) BendeyColors.OnSurface else BendeyColors.Outline,
-                            shape = CircleShape,
-                        )
                         .clickable(enabled = enabled) { onValueChange(preset) },
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(swatchColor)
+                            .border(
+                                width = if (selected) 2.dp else 1.dp,
+                                color = if (selected) BendeyColors.OnSurface else BendeyColors.Outline,
+                                shape = CircleShape,
+                            ),
+                    )
+                }
             }
         }
     }

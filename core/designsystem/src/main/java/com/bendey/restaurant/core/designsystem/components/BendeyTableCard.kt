@@ -37,7 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
-import com.bendey.restaurant.core.designsystem.theme.accentColor
+import com.bendey.restaurant.core.designsystem.theme.BendeyStateColors
+import com.bendey.restaurant.core.designsystem.theme.stateColors
 import com.bendey.restaurant.core.domain.restaurant.RestaurantTable
 import com.bendey.restaurant.core.domain.restaurant.TableStatus
 import java.text.NumberFormat
@@ -58,7 +59,8 @@ fun BendeyTableCard(
     enabled: Boolean = table.isClickable,
     menuActions: List<TableCardMenuAction> = emptyList(),
 ) {
-    val accent = table.status.accentColor(browsingOnly = table.browsingOnly)
+    val state = table.status.stateColors(browsingOnly = table.browsingOnly)
+    val accent = state.fill
     val statusLabel = if (table.browsingOnly) "Viendo la carta" else table.status.label
     val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
     var menuExpanded by remember { mutableStateOf(false) }
@@ -99,7 +101,7 @@ fun BendeyTableCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
                     ) {
-                        BendeyStatusChip(label = statusLabel, accentColor = accent)
+                        BendeyStatusChip(label = statusLabel, tone = state)
                         if (menuActions.isNotEmpty()) {
                             TableCardOverflowMenu(
                                 tableName = table.name,
@@ -121,7 +123,7 @@ fun BendeyTableCard(
                 )
                 TableMetaFooter(
                     table = table,
-                    accent = accent,
+                    state = state,
                     currency = currency,
                 )
             }
@@ -147,8 +149,8 @@ private fun TableCardOverflowMenu(
         IconButton(
             onClick = { onExpandedChange(true) },
             modifier = Modifier
-                .width(32.dp)
-                .height(32.dp),
+                .width(BendeySpacing.touchMin)
+                .height(BendeySpacing.touchMin),
         ) {
             Icon(
                 imageVector = Icons.Default.MoreVert,
@@ -173,15 +175,16 @@ private fun TableCardOverflowMenu(
 @Composable
 private fun TableMetaFooter(
     table: RestaurantTable,
-    accent: Color,
+    state: BendeyStateColors,
     currency: NumberFormat,
 ) {
+    val accent = state.onTint
     val occupied = table.status == TableStatus.OCUPADA || table.status == TableStatus.EN_CONSUMO
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(BendeyShapeTokens.sm)
-            .background(accent.copy(alpha = if (occupied || table.browsingOnly) 0.14f else 0.08f))
+            .background(state.tint)
             .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
@@ -211,7 +214,7 @@ private fun MetaLine(label: String, value: String, accent: Color, emphasize: Boo
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = accent.copy(alpha = 0.75f))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = accent)
         Text(
             value,
             style = if (emphasize) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
@@ -247,20 +250,20 @@ fun BendeyTableStatsRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
-        StatDot("Libres", libre, BendeyColors.TableLibre)
-        StatDot("Ocupadas", ocupada, BendeyColors.TableOcupada)
-        StatDot("Reservadas", reservada, BendeyColors.TableReservada)
-        StatDot("Consum.", enConsumo, BendeyColors.TableEnConsumo)
-        if (browsing > 0) StatDot("Viendo carta", browsing, BendeyColors.TableBrowsing)
+        StatDot("Libres", libre, BendeyColors.StateMesaLibre)
+        StatDot("Ocupadas", ocupada, BendeyColors.StateMesaOcupada)
+        StatDot("Reservadas", reservada, BendeyColors.StateMesaReservada)
+        StatDot("Consum.", enConsumo, BendeyColors.StateMesaEnConsumo)
+        if (browsing > 0) StatDot("Viendo carta", browsing, BendeyColors.StateMesaViendoCarta)
     }
 }
 
 @Composable
-private fun StatDot(label: String, count: Int, color: Color) {
+private fun StatDot(label: String, count: Int, state: BendeyStateColors) {
     Row(
         modifier = Modifier
             .clip(BendeyShapeTokens.pill)
-            .background(color.copy(alpha = 0.12f))
+            .background(state.tint)
             .padding(horizontal = 7.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -270,12 +273,12 @@ private fun StatDot(label: String, count: Int, color: Color) {
                 .width(8.dp)
                 .height(8.dp)
                 .clip(BendeyShapeTokens.dot)
-                .background(color),
+                .background(state.fill),
         )
         Text(
             text = "$count $label",
             style = MaterialTheme.typography.labelSmall,
-            color = BendeyColors.OnSurfaceVariant,
+            color = state.onTint,
         )
     }
 }

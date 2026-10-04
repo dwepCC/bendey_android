@@ -214,7 +214,7 @@ private fun CatalogGridBody(
     }
     val categoryGap = if (isTabletMobileCatalog) AdaptivePos.portraitMobileCategoryChipGap() else 4.dp
     val gridGap = if (isTabletMobileCatalog) AdaptivePos.portraitMobileGridGap() else 6.dp
-    val searchHeight = if (isTabletMobileCatalog) AdaptivePos.portraitMobileSearchHeight() else 38.dp
+    val searchHeight = if (isTabletMobileCatalog) AdaptivePos.portraitMobileSearchHeight() else BendeySpacing.touchMin
 
     Column(modifier = modifier.fillMaxSize()) {
         PosCompactSearchField(
@@ -330,7 +330,7 @@ private fun PosCompactSearchField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "Buscar producto…",
-    fieldHeight: Dp = 38.dp,
+    fieldHeight: Dp = BendeySpacing.touchMin,
     barcodeScanEnabled: Boolean = false,
     onBarcodeScanChange: ((Boolean) -> Unit)? = null,
 ) {
@@ -372,7 +372,7 @@ private fun BendeyCompactSearchInput(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
-    fieldHeight: Dp = 38.dp,
+    fieldHeight: Dp = BendeySpacing.touchMin,
 ) {
     // Delega en BendeySearchField (core/ui/components) — antes esta era una implementación
     // completa duplicada, solo usada por POS. Se mantiene esta función privada como adaptador

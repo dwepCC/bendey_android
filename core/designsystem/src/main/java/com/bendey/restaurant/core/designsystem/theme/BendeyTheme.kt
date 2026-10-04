@@ -5,7 +5,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-/** Tema claro fijo — sin dark mode ni dynamic color. */
+/**
+ * Tema claro fijo — sin dark mode ni dynamic color.
+ *
+ * PENDIENTE (no R1): `secondary`/`tertiary` siguen siendo AccentTeal/AccentPurple. Material los usa
+ * por defecto en FilterChip seleccionado, indicadores, etc.; cambiarlos tiñe componentes en toda la
+ * app, así que se deja para una fase con revisión visual (ver informe R1).
+ */
 private val BendeyLightColorScheme = lightColorScheme(
     primary = BendeyColors.Primary,
     onPrimary = BendeyColors.OnPrimary,
@@ -27,9 +33,9 @@ private val BendeyLightColorScheme = lightColorScheme(
     onSurfaceVariant = BendeyColors.OnSurfaceVariant,
     outline = BendeyColors.Outline,
     error = BendeyColors.Error,
-    onError = Color.White,
+    onError = BendeyColors.DangerTone.onSolid,
     errorContainer = BendeyColors.ErrorContainer,
-    onErrorContainer = Color(0xFF5F2120),
+    onErrorContainer = BendeyColors.OnErrorContainer,
 )
 
 @Composable

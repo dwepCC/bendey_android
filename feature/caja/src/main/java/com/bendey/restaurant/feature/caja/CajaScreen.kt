@@ -1096,7 +1096,7 @@ private fun ReportContent(
             Text(
                 "Ventas anuladas sin devolucion registrada",
                 fontWeight = FontWeight.SemiBold,
-                color = BendeyColors.Warning,
+                color = BendeyColors.WarningText,
                 modifier = Modifier.padding(top = BendeySpacing.xs),
             )
             Text(

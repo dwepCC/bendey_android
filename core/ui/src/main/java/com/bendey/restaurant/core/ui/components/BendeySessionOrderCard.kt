@@ -64,7 +64,7 @@ fun BendeySessionOrderCard(
                 )
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(BendeySpacing.touchMin)
                         .clickable(enabled = reprintEnabled, onClick = onReprint),
                     contentAlignment = Alignment.Center,
                 ) {

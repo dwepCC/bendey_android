@@ -136,7 +136,7 @@ fun CheckoutComandaPicker(
                     Text(
                         text = "Selecciona al menos una comanda pendiente.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = BendeyColors.Warning,
+                        color = BendeyColors.WarningText,
                     )
                 }
             } else {

@@ -81,7 +81,7 @@ fun BendeyPosCartPane(
     showTotal: Boolean = true,
     lineSpacing: Dp = BendeySpacing.xxs,
     workspaceLines: Boolean = false,
-    lineStepperSize: Dp = 40.dp,
+    lineStepperSize: Dp = BendeySpacing.touchMin,
     lineInnerPadding: Dp = BendeySpacing.sm,
 ) {
     Column(
@@ -118,7 +118,7 @@ fun BendeyPosCartPane(
             if (canClearCart && onClearCart != null && lines.isNotEmpty()) {
                 IconButton(
                     onClick = onClearCart,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(BendeySpacing.touchMin),
                 ) {
                     Icon(
                         Icons.Default.DeleteSweep,
@@ -238,7 +238,7 @@ private fun BendeyCartLineCard(
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
     workspaceStyle: Boolean = false,
-    stepperSize: Dp = 40.dp,
+    stepperSize: Dp = BendeySpacing.touchMin,
     lineInnerPadding: Dp = BendeySpacing.sm,
 ) {
     Card(
@@ -298,7 +298,7 @@ private fun BendeyCartLineCard(
                         Text(
                             notes,
                             style = MaterialTheme.typography.labelSmall,
-                            color = BendeyColors.Warning,
+                            color = BendeyColors.WarningText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -322,7 +322,7 @@ private fun BendeyCartLineCard(
                         icon = Icons.Default.EditNote,
                         contentDescription = if (line.notes.isBlank()) "Notas" else "Editar notas",
                         tint = if (line.notes.isBlank()) BendeyColors.OnSurfaceVariant else BendeyColors.Primary,
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(BendeySpacing.touchMin),
                     )
                 }
                 if (editablePrice && onUnitPriceChange != null) {
@@ -403,7 +403,7 @@ private fun CartUnitPriceField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = Modifier
             .width(72.dp)
-            .height(36.dp)
+            .height(BendeySpacing.touchMin)
             .onFocusChanged { state ->
                 isFocused = state.isFocused
                 if (!state.isFocused) {
@@ -434,7 +434,7 @@ private fun CartQuantityStepper(
     quantity: Int,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
-    buttonSize: Dp = 40.dp,
+    buttonSize: Dp = BendeySpacing.touchMin,
 ) {
     BendeyQuantityStepper(
         quantity = quantity,

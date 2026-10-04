@@ -999,14 +999,14 @@ private fun EmitElectronicDialog(
                     if (requiresRuc && clientOptions.isEmpty()) {
                         Text(
                             "La factura requiere un cliente con RUC registrado.",
-                            color = BendeyColors.Warning,
+                            color = BendeyColors.WarningText,
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
                     BendeyTextButton(text = "+ Registrar nuevo cliente", onClick = onAddClient, enabled = !loading)
                 }
                 sunatLimitWarning?.let {
-                    Text(it, color = BendeyColors.Warning, style = MaterialTheme.typography.bodySmall)
+                    Text(it, color = BendeyColors.WarningText, style = MaterialTheme.typography.bodySmall)
                 }
                 // Antes: ExposedDropdownMenuBox propio (campo con flecha nativo + menú anclado).
                 // Es un select fijo de 2 valores sin búsqueda — el mismo caso que ya resuelve
