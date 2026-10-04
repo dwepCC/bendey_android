@@ -4,6 +4,7 @@ import com.bendey.restaurant.core.data.mapper.toDomain
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.auth.AuthRepository
+import com.bendey.restaurant.core.domain.auth.InitialAdminPinHolder
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationInput
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationResult
 import com.bendey.restaurant.core.domain.auth.SunatRucValidation
@@ -81,6 +82,8 @@ class TenantRepositoryImpl @Inject constructor(
                 rubro = RESTAURANT_RUBRO,
             ),
         )
+        // El PIN inicial solo se guarda en memoria (holder de vida corta) para la pantalla de éxito.
+        InitialAdminPinHolder.stash(response.initialPin)
         val binding = resolveTenantByRuc(normalizedRuc).getOrThrow()
         operationalDataCache.clearAll()
         sessionManager.clearUserSession()

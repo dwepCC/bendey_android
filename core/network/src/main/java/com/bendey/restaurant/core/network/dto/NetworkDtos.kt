@@ -53,6 +53,8 @@ data class PublicRegisterResponseDto(
     @SerialName("tenant_url") val tenantUrl: String? = null,
     val email: String? = null,
     val message: String? = null,
+    /** PIN inicial del administrador (aleatorio por tenant); solo viene en esta respuesta. No persistir ni loguear. */
+    @SerialName("initial_pin") val initialPin: String? = null,
 )
 
 @Serializable
