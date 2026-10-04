@@ -56,6 +56,7 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `delivery_disabled` | Función desactivada | Esta función está desactivada en tu restaurante. Pídele al administrador que la active. | [Hablar con el administrador] |
 | `menu_digital_disabled` | Función desactivada | Esta función está desactivada en tu restaurante. Pídele al administrador que la active. | [Hablar con el administrador] |
 | `IDEMPOTENCY_IN_PROGRESS` | La comanda se está enviando | La comanda anterior todavía se está enviando. Espera un momento y vuelve a intentar: no se duplicará. | [Reintentar] |
+| `GUESTS_INVALID` | Comensales no válidos | El número de comensales debe estar entre 1 y 99. | [Volver a intentar] |
 | `ORDER_EMPTY` | Pedido vacío | El pedido está vacío. Agrega al menos un producto antes de enviarlo a cocina. | [Volver a intentar] |
 | `SESSION_CLOSED` | Mesa cerrada | Esta mesa ya fue cerrada o cobrada. Actualiza para ver el estado. | [Actualizar] · [Ir a Mesas] |
 | `SESSION_UPDATED` | La mesa cambió | Otra persona modificó esta mesa mientras armabas el pedido. Actualiza para ver lo último y vuelve a intentar. | [Actualizar] |

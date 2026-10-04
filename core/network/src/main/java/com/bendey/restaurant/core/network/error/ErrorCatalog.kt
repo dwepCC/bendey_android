@@ -146,6 +146,7 @@ object ErrorCatalog {
 
         // --- Enviar comanda / mesa ---
         "IDEMPOTENCY_IN_PROGRESS" to e("La comanda se está enviando", "La comanda anterior todavía se está enviando. Espera un momento y vuelve a intentar: no se duplicará.", ErrorAction.RETRY),
+        "GUESTS_INVALID" to e("Comensales no válidos", "El número de comensales debe estar entre 1 y 99.", ErrorAction.BACK_TO_TRY),
         "ORDER_EMPTY" to e("Pedido vacío", "El pedido está vacío. Agrega al menos un producto antes de enviarlo a cocina.", ErrorAction.BACK_TO_TRY),
         "SESSION_CLOSED" to e(
             "Mesa cerrada",
