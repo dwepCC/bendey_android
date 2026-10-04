@@ -101,7 +101,7 @@ fun pasteImportRows(rows: List<PastePreviewRow>): List<BulkImportRow> =
             categoryName = row.category.trim().ifEmpty { PasteMenu.DEFAULT_CATEGORY },
             // Vacía: el motor la resuelve como "Cocina" para platos.
             preparationArea = "",
-            igvAffectationType = "10",
+            igvAffectationType = "", // vacío: el backend aplica la política tributaria del tenant (Ley 27037, etc.)
             priceIncludesIgv = true,
             manageStock = false,
             initialStock = 0.0,

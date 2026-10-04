@@ -242,7 +242,7 @@ class ProductImportRepositoryImpl @Inject constructor(
                     salePrice = row.salePrice,
                     unit = row.unit,
                     categoryName = row.categoryName.takeIf { it.isNotBlank() },
-                    igvAffectationType = row.igvAffectationType,
+                    igvAffectationType = row.igvAffectationType.takeIf { it.isNotBlank() },
                     priceIncludesIgv = row.priceIncludesIgv,
                     manageStock = row.manageStock,
                     initialStock = row.initialStock.takeIf { it > 0 },

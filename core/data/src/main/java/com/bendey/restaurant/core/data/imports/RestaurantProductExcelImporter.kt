@@ -111,7 +111,7 @@ class RestaurantProductExcelImporter @Inject constructor() {
                         unit = values["unidad"].orEmpty().trim().uppercase().ifBlank { "NIU" },
                         categoryName = values["categoria"].orEmpty().trim(),
                         preparationArea = area,
-                        igvAffectationType = values["afectacion_igv"].orEmpty().trim().ifBlank { "10" },
+                        igvAffectationType = values["afectacion_igv"].orEmpty().trim(), // vacío: lo define el tenant en el backend
                         priceIncludesIgv = parseBool(values["precio_incluye_igv"], default = true),
                         manageStock = manageStock,
                         initialStock = stockInitial.coerceAtLeast(0.0),

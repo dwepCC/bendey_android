@@ -376,7 +376,7 @@ class WizardViewModel @Inject constructor(
                 unit = "NIU",
                 categoryName = category,
                 preparationArea = "",
-                igvAffectationType = "10",
+                igvAffectationType = "", // vacío: el backend aplica la política tributaria del tenant
                 priceIncludesIgv = true,
                 manageStock = false,
                 initialStock = 0.0,
