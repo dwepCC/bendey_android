@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.domain.waiter.SessionPatch
 import com.bendey.restaurant.core.data.kitchen.comboPlatosDe
 
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
@@ -161,17 +162,20 @@ class PosRepositoryImpl @Inject constructor(
     override suspend fun addOrder(
         sessionId: Int,
         items: List<OrderItemInput>,
+        idempotencyKey: String?,
     ): AppResult<AddOrderResult> = apiCall(ErrorFlow.SEND_COMANDA) {
         val api = tenantRetrofitProvider.create<RestaurantApi>()
         val response = api.addOrder(
             sessionId = sessionId,
             body = AddOrderRequestDto(items = items.map { it.toDto() }),
+            idempotencyKey = idempotencyKey,
         )
         val order = response.data ?: error("Pedido no registrado")
         AddOrderResult(
             orderId = order.id,
             orderNumber = order.orderNumber,
             comandas = order.comandas.map { it.toDomain() },
+            replayed = response.replayed,
         )
     }
 }
@@ -238,6 +242,25 @@ class MesasRepositoryImpl @Inject constructor(
 
     override suspend fun closeSession(sessionId: Int): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<RestaurantApi>().closeSession(sessionId)
+    }
+
+    override suspend fun closeEmptySession(sessionId: Int): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().closeEmptySession(sessionId)
+    }
+
+    override suspend fun updateSessionDetails(sessionId: Int, patch: SessionPatch): AppResult<Unit> = apiCall {
+        tenantRetrofitProvider.create<RestaurantApi>().updateSession(
+            sessionId,
+            OpenSessionRequestDto(
+                guests = patch.guests,
+                notes = patch.notes,
+                customerName = patch.customerName,
+                customerPhone = patch.customerPhone,
+                deliveryAddress = patch.deliveryAddress,
+                deliveryReference = patch.deliveryReference,
+                estimatedMinutes = patch.estimatedMinutes,
+            ),
+        )
     }
 
     override suspend fun moveSessionTable(sessionId: Int, targetTableId: Int): AppResult<Unit> = apiCall {

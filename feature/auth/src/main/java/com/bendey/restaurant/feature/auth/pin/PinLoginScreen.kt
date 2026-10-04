@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,13 +26,15 @@ import com.bendey.restaurant.core.ui.components.BendeyLoadingOverlay
 import com.bendey.restaurant.core.ui.components.BendeyPinKeypad
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.bendeySafeDrawingPadding
 import com.bendey.restaurant.feature.auth.components.AuthLayoutTokens
 
 @Composable
 fun PinLoginScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
+    onChangeStation: () -> Unit,
     onAuthenticated: (route: String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinViewModel = hiltViewModel(),
@@ -94,6 +97,14 @@ fun PinLoginScreen(
                             loading = state.loading,
                             enabled = !state.loading,
                             modifier = Modifier.fillMaxWidth(),
+                        )
+                        BendeyTextButton(
+                            text = "Cambiar estación",
+                            onClick = { viewModel.changeStation(onChangeStation) },
+                            enabled = !state.loading,
+                            textColor = BendeyColors.OnSurfaceVariant,
+                            textStyle = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
                         )
                         state.error?.let { error ->
                             Spacer(modifier = Modifier.height(BendeySpacing.xs))

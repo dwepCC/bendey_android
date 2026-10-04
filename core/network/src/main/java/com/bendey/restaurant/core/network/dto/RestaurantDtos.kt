@@ -223,6 +223,8 @@ data class TableOrderDto(
 data class AddOrderResponseDto(
     val success: Boolean = true,
     val data: TableOrderDto? = null,
+    /** true cuando el servidor reconocio la Idempotency-Key y devolvio la ronda del primer envio. */
+    val replayed: Boolean = false,
 )
 
 @Serializable

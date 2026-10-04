@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.model.PinStation
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.waiter.StationPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,7 @@ data class PinUiState(
 class PinViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
+    private val stationPreferences: StationPreferences,
 ) : ViewModel() {
 
     private val stationKey: String = savedStateHandle.get<String>("station").orEmpty()
@@ -41,6 +43,14 @@ class PinViewModel @Inject constructor(
 
     fun backspace() {
         _uiState.update { it.copy(pin = it.pin.dropLast(1), error = null) }
+    }
+
+    /** "Cambiar estación": olvida la recordada y deja que la pantalla vuelva a la elección. */
+    fun changeStation(onDone: () -> Unit) {
+        viewModelScope.launch {
+            stationPreferences.clear()
+            onDone()
+        }
     }
 
     fun submit(onSuccess: (route: String) -> Unit) {
@@ -63,6 +73,8 @@ class PinViewModel @Inject constructor(
                             state.station,
                             session.user.employeeType,
                         )
+                        // R8: la estación es del dispositivo; se recuerda SOLO tras un PIN válido con acceso.
+                        stationPreferences.remember(state.station)
                         onSuccess(route)
                     }
                 }

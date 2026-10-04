@@ -65,6 +65,12 @@ fun NavGraphBuilder.authGraph(
                 onPinStation = { station ->
                     navController.navigate(BendeyRoutes.pin(station.routeKey))
                 },
+                // Estación recordada: se reemplaza Inicio por el PIN (sin Inicio atrás no hay bucle de salto).
+                onAutoStation = { station ->
+                    navController.navigate(BendeyRoutes.pin(station.routeKey)) {
+                        popUpTo(BendeyRoutes.HOME) { inclusive = true }
+                    }
+                },
                 onAdminLogin = { navController.navigate(BendeyRoutes.LOGIN) },
             )
         }
@@ -75,7 +81,17 @@ fun NavGraphBuilder.authGraph(
     ) {
         BendeyExpressiveScope {
             PinLoginScreen(
-                onBack = { navController.popBackStack() },
+                // Tras el salto automático no hay pantalla previa: sin flecha; "Cambiar estación" es la salida.
+                onBack = if (navController.previousBackStackEntry != null) {
+                    { navController.popBackStack() }
+                } else {
+                    null
+                },
+                onChangeStation = {
+                    navController.navigate(BendeyRoutes.HOME) {
+                        popUpTo(BendeyRoutes.HOME) { inclusive = true }
+                    }
+                },
                 onAuthenticated = onAuthenticated,
             )
         }

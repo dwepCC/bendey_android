@@ -188,8 +188,10 @@ fun MesasScreen(
                             onClick = { viewModel.onTableClick(table) },
                             menuActions = buildMoveMenuActions(
                                 canMoveTable = state.canMoveTable,
+                                canAssignStaff = state.canAssignStaff,
                                 table = table,
                                 onMove = { viewModel.openMoveDialog(table) },
+                                onOpenWithStaff = { viewModel.openTableWithStaff(table) },
                             ),
                         )
                     }
@@ -264,9 +266,21 @@ fun MesasScreen(
 
 private fun buildMoveMenuActions(
     canMoveTable: Boolean,
+    canAssignStaff: Boolean,
     table: RestaurantTable,
     onMove: () -> Unit,
+    onOpenWithStaff: () -> Unit,
 ): List<TableCardMenuAction> {
+    // R8: tocar una mesa libre ya la abre; abrirla a nombre de otro empleado queda en el menú de la tarjeta.
+    if (table.status == TableStatus.LIBRE && canAssignStaff) {
+        return listOf(
+            TableCardMenuAction(
+                id = "open-with-staff",
+                label = "Abrir a nombre de otro empleado…",
+                onClick = onOpenWithStaff,
+            ),
+        )
+    }
     if (!canMoveTable) return emptyList()
     val occupied = table.status == TableStatus.OCUPADA || table.status == TableStatus.EN_CONSUMO
     if (!occupied || table.sessionId == null) return emptyList()

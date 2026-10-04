@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -84,6 +85,7 @@ private val stations = listOf(
 @Composable
 fun HomeScreen(
     onPinStation: (PinStation) -> Unit,
+    onAutoStation: (PinStation) -> Unit,
     onAdminLogin: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
@@ -91,6 +93,17 @@ fun HomeScreen(
     val tenant by viewModel.tenant.collectAsStateWithLifecycle()
     val loginHint by viewModel.loginHint.collectAsStateWithLifecycle()
     val isExpanded = rememberIsExpandedWidth()
+    val jump by viewModel.jump.collectAsStateWithLifecycle()
+
+    // R8: la estación es del dispositivo. Si ya se usó una, se salta directo a su PIN (el PIN nunca se recuerda).
+    val jumpTarget = (jump as? StationJump.To)?.station
+    LaunchedEffect(jumpTarget) {
+        jumpTarget?.let(onAutoStation)
+    }
+    if (jump !is StationJump.Choose) {
+        Box(modifier = modifier.fillMaxSize().background(BendeyColors.Background))
+        return
+    }
 
     Column(
         modifier = modifier

@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.printer
 
+import com.bendey.restaurant.core.domain.waiter.comandaSentMessage
 import com.bendey.restaurant.core.data.kitchen.KitchenRoutingLine
 import com.bendey.restaurant.core.data.kitchen.PRINT_DEFAULT_AREA_KEY
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
@@ -67,9 +68,17 @@ data class ComandaPrintFeedback(
     val markPrinted: Boolean,
 )
 
-fun comandaPrintFeedback(outcome: ComandaPrintOutcome, orderNumber: Int): ComandaPrintFeedback = when (outcome) {
-    ComandaPrintOutcome.Printed -> ComandaPrintFeedback("Comanda #$orderNumber enviada", null, false, true)
-    ComandaPrintOutcome.AutoPrintOff -> ComandaPrintFeedback("Comanda #$orderNumber enviada a cocina", null, false, false)
+fun comandaPrintFeedback(
+    outcome: ComandaPrintOutcome,
+    orderNumber: Int,
+    /** Suma de cantidades de la ronda; con valor > 0 el aviso dice "Comanda #3 enviada · 4 ítems" (igual que Tauri). */
+    itemCount: Int = 0,
+): ComandaPrintFeedback = when (outcome) {
+    ComandaPrintOutcome.Printed -> ComandaPrintFeedback(comandaSentMessage(orderNumber, itemCount), null, false, true)
+    ComandaPrintOutcome.AutoPrintOff -> ComandaPrintFeedback(
+        if (itemCount > 0) comandaSentMessage(orderNumber, itemCount) else "Comanda #$orderNumber enviada a cocina",
+        null, false, false,
+    )
     ComandaPrintOutcome.NothingToPrint -> ComandaPrintFeedback("Pedido #$orderNumber enviado", null, false, false)
     ComandaPrintOutcome.Failed -> ComandaPrintFeedback(
         snack = null,

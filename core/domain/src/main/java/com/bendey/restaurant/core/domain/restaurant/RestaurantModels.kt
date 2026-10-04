@@ -142,6 +142,8 @@ data class AddOrderResult(
     val orderId: Int,
     val orderNumber: Int,
     val comandas: List<ComandaLine>,
+    /** El servidor devolvio la ronda de un envio anterior con la misma Idempotency-Key (no creo otra). */
+    val replayed: Boolean = false,
 )
 
 data class OpenSessionResult(

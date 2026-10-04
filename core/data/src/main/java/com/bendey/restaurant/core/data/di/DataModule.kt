@@ -2,6 +2,8 @@ package com.bendey.restaurant.core.data.di
 
 import com.bendey.restaurant.core.data.onboarding.OnboardingRepositoryImpl
 import com.bendey.restaurant.core.data.onboarding.WizardPreferencesStore
+import com.bendey.restaurant.core.data.session.StationPreferencesStore
+import com.bendey.restaurant.core.domain.waiter.StationPreferences
 import com.bendey.restaurant.core.data.repository.AuthRepositoryImpl
 import com.bendey.restaurant.core.data.repository.BillingRepositoryImpl
 import com.bendey.restaurant.core.data.repository.CashRepositoryImpl
@@ -182,4 +184,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindWizardPreferences(impl: WizardPreferencesStore): WizardPreferences
+
+    @Binds
+    @Singleton
+    abstract fun bindStationPreferences(impl: StationPreferencesStore): StationPreferences
 }

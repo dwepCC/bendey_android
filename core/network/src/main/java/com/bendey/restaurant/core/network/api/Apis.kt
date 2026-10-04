@@ -155,6 +155,12 @@ interface RestaurantApi {
         @Body body: OpenSessionRequestDto,
     ): SuccessResponseDto
 
+    /** Cierra un pedido que se quedo sin items (sin PIN). El backend rechaza si tiene lineas vigentes. */
+    @POST("/api/restaurant/sessions/{sessionId}/close-empty")
+    suspend fun closeEmptySession(
+        @Path("sessionId") sessionId: Int,
+    ): SuccessResponseDto
+
     @POST("/api/restaurant/sessions/{sessionId}/cancel")
     suspend fun cancelSession(
         @Path("sessionId") sessionId: Int,
@@ -172,10 +178,15 @@ interface RestaurantApi {
         @Body body: CancelComandaRequestDto,
     ): SuccessResponseDto
 
+    /**
+     * `Idempotency-Key` (uuid v4, uno por carrito): si el envio se repite con la misma key el servidor devuelve
+     * la ronda original (`replayed: true`) en vez de crear otra. Con `null` Retrofit omite el header.
+     */
     @POST("/api/restaurant/sessions/{sessionId}/orders")
     suspend fun addOrder(
         @retrofit2.http.Path("sessionId") sessionId: Int,
         @Body body: AddOrderRequestDto,
+        @retrofit2.http.Header("Idempotency-Key") idempotencyKey: String? = null,
     ): AddOrderResponseDto
 
     @GET("/api/restaurant/kitchen")

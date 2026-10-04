@@ -13,6 +13,7 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.sortRestaurantTables
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.domain.waiter.SyncGuard
 import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
 import com.bendey.restaurant.core.realtime.store.FloorsStore
 import com.bendey.restaurant.core.realtime.store.TablesStore
@@ -189,30 +190,72 @@ class MesasViewModel @Inject constructor(
         _uiState.update { it.copy(searchQuery = query) }
     }
 
+    /**
+     * Guard SINCRONO contra doble toque a una mesa libre: dos toques seguidos llegan antes de que el estado
+     * (o la lista de mesas) cambie, y abrirían dos sesiones.
+     */
+    private val openGuard = SyncGuard()
+
     fun onTableClick(table: RestaurantTable) {
         when (table.status) {
-            TableStatus.LIBRE -> {
-                val state = _uiState.value
-                val defaultStaffId = when {
-                    state.canAssignStaff -> null
-                    else -> state.currentUserStaffId
-                }
-                _uiState.update {
-                    it.copy(
-                        openTableTarget = table,
-                        openForm = OpenTableForm(staffId = defaultStaffId),
-                    )
-                }
-                if (state.canAssignStaff && state.staff.isEmpty()) {
-                    loadStaffOptions(canAssign = true)
-                }
-            }
+            TableStatus.LIBRE -> openTableNow(table)
             TableStatus.OCUPADA, TableStatus.EN_CONSUMO -> {
                 table.sessionId?.let { sessionId ->
                     _uiState.update { it.copy(openSessionTarget = sessionId) }
                 }
             }
             TableStatus.RESERVADA -> Unit
+        }
+    }
+
+    /**
+     * R8 paso 2: tocar una mesa libre la abre y entra. Comensales y nota se corrigen después, en la cabecera
+     * de la mesa. Un mozo se asigna a sí mismo; quien puede reasignar deja la mesa "automática" (como antes).
+     */
+    private fun openTableNow(table: RestaurantTable) {
+        if (!openGuard.tryAcquire()) return
+        val state = _uiState.value
+        val staffId = if (state.canAssignStaff) null else state.currentUserStaffId
+        _uiState.update { it.copy(opening = true, error = null) }
+        viewModelScope.launch {
+            try {
+                when (
+                    val result = mesasRepository.openTableSession(
+                        tableId = table.id,
+                        guests = DEFAULT_GUESTS,
+                        notes = null,
+                        staffId = staffId,
+                    )
+                ) {
+                    is AppResult.Success -> {
+                        _uiState.update { it.copy(opening = false, openSessionTarget = result.data.sessionId) }
+                        refresh()
+                    }
+                    is AppResult.Error -> {
+                        _uiState.update { it.copy(opening = false, error = result.message) }
+                        // Si otra persona la abrió justo antes, el listado quedó viejo.
+                        refresh()
+                    }
+                    AppResult.Loading -> _uiState.update { it.copy(opening = false) }
+                }
+            } finally {
+                openGuard.release()
+            }
+        }
+    }
+
+    /** Ruta con decisiones (solo quien puede reasignar): abrir la mesa a nombre de otro empleado. */
+    fun openTableWithStaff(table: RestaurantTable) {
+        if (table.status != TableStatus.LIBRE) return
+        val state = _uiState.value
+        _uiState.update {
+            it.copy(
+                openTableTarget = table,
+                openForm = OpenTableForm(staffId = null),
+            )
+        }
+        if (state.canAssignStaff && state.staff.isEmpty()) {
+            loadStaffOptions(canAssign = true)
         }
     }
 
@@ -225,37 +268,47 @@ class MesasViewModel @Inject constructor(
     }
 
     fun confirmOpenTable() {
+        if (!openGuard.tryAcquire()) return
         val state = _uiState.value
-        val table = state.openTableTarget ?: return
+        val table = state.openTableTarget
+        if (table == null) {
+            openGuard.release()
+            return
+        }
         val guests = state.openForm.guestsText.filter { it.isDigit() }.toIntOrNull()?.coerceAtLeast(1)
         if (guests == null) {
+            openGuard.release()
             _uiState.update { it.copy(error = "Ingresa un número de comensales válido") }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(opening = true, error = null) }
-            when (
-                val result = mesasRepository.openTableSession(
-                    tableId = table.id,
-                    guests = guests,
-                    notes = state.openForm.notes,
-                    staffId = state.openForm.staffId,
-                )
-            ) {
-                is AppResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            opening = false,
-                            openTableTarget = null,
-                            openSessionTarget = result.data.sessionId,
-                        )
+            try {
+                _uiState.update { it.copy(opening = true, error = null) }
+                when (
+                    val result = mesasRepository.openTableSession(
+                        tableId = table.id,
+                        guests = guests,
+                        notes = state.openForm.notes,
+                        staffId = state.openForm.staffId,
+                    )
+                ) {
+                    is AppResult.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                opening = false,
+                                openTableTarget = null,
+                                openSessionTarget = result.data.sessionId,
+                            )
+                        }
+                        refresh()
                     }
-                    refresh()
+                    is AppResult.Error -> _uiState.update {
+                        it.copy(opening = false, error = result.message)
+                    }
+                    AppResult.Loading -> Unit
                 }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(opening = false, error = result.message)
-                }
-                AppResult.Loading -> Unit
+            } finally {
+                openGuard.release()
             }
         }
     }
@@ -363,6 +416,7 @@ class MesasViewModel @Inject constructor(
     }
 
     companion object {
+        private const val DEFAULT_GUESTS = 2
         private val WAITER_TYPES = setOf("waiter", "mozo", "cashier", "admin", "supervisor")
     }
 }

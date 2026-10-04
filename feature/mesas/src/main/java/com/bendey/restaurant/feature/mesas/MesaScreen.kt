@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.mesas
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
@@ -105,6 +109,7 @@ import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyCartAction
 import com.bendey.restaurant.core.ui.components.BendeyCartActionGrid
 import com.bendey.restaurant.core.ui.components.BendeyCartActionStyle
+import com.bendey.restaurant.core.ui.components.BendeyFilledTonalButton
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyPosCartPane
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -152,6 +157,9 @@ fun MesaScreen(
         !state.checkoutOpen && state.voidComanda == null && state.comandaNoteTarget == null
     }
     val compactMesaBarHeight = rememberCompactMesaBarHeight(workspaceMode)
+    // R8: al salir sin pedir nada la sesión vacía se cierra (nunca con ítems); flecha y botón Atrás hacen lo mismo.
+    val leaveMesa: () -> Unit = { viewModel.leaveMesa(onBack) }
+    BackHandler(onBack = leaveMesa)
 
     // Antes este LaunchedEffect solo hacía consumeSnackMessage() — nunca llamaba a onShowMessage.
     // El mensaje se BORRABA sin mostrarse jamás: "Precuenta enviada", "Comanda reimpresa", etc.
@@ -183,7 +191,7 @@ fun MesaScreen(
         BendeyScreenToolbar(
             title = state.session?.tableName ?: "Mesa",
             subtitle = buildSessionSubtitle(state.session?.floorName, state.session?.orderCode, state.session?.guests),
-            onBack = onBack,
+            onBack = leaveMesa,
             actions = {
                 if (orders.isNotEmpty()) {
                     OutlinedButton(
@@ -201,6 +209,15 @@ fun MesaScreen(
                 )
             },
         )
+        state.session?.let { session ->
+            MesaSessionChips(
+                guests = session.guests,
+                notes = session.notes,
+                saving = state.savingSessionDetails,
+                onSaveGuests = { n, onDone -> viewModel.saveSessionDetails(guests = n, onDone = onDone) },
+                onSaveNotes = { text, onDone -> viewModel.saveSessionDetails(notes = text, onDone = onDone) },
+            )
+        }
         SessionSummaryBar(
             total = state.sessionTotal,
             currency = currency,
@@ -881,22 +898,37 @@ private fun CartSection(
         },
         modifier = modifier,
         primaryAction = {
-            BendeyCartActionGrid(
-                actions = listOf(
-                    BendeyCartAction(
-                        text = "Producto manual",
-                        onClick = { onManualProduct?.invoke() },
+            // R8 paso 7: "Producto manual" sale del camino principal y vive en un menú ⋮.
+            var moreOpen by remember { mutableStateOf(false) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box {
+                    BendeyIconButton(
+                        onClick = { moreOpen = true },
+                        icon = Icons.Default.MoreVert,
+                        contentDescription = "Más acciones",
                         enabled = onManualProduct != null,
-                        style = BendeyCartActionStyle.SecondaryFilled,
-                    ),
-                    BendeyCartAction(
-                        text = if (state.sending) "Enviando…" else "Enviar a cocina",
-                        onClick = { onSend?.invoke() ?: viewModel.sendComanda() },
-                        enabled = state.cart.isNotEmpty() && !state.sending,
-                        style = BendeyCartActionStyle.FilledTonal,
-                    ),
-                ),
-            )
+                    )
+                    DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Producto manual") },
+                            onClick = {
+                                moreOpen = false
+                                onManualProduct?.invoke()
+                            },
+                        )
+                    }
+                }
+                BendeyFilledTonalButton(
+                    text = if (state.sending) "Enviando…" else "Enviar a cocina",
+                    onClick = { onSend?.invoke() ?: viewModel.sendComanda() },
+                    enabled = state.cart.isNotEmpty() && !state.sending,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                )
+            }
         },
     )
 }

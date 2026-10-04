@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.restaurant
 
+import com.bendey.restaurant.core.domain.waiter.SessionPatch
 import com.bendey.restaurant.core.domain.model.AppResult
 
 interface PosRepository {
@@ -16,7 +17,11 @@ interface PosRepository {
 
     suspend fun openPosSession(input: PosSessionInput): AppResult<OpenSessionResult>
     suspend fun updatePosSession(sessionId: Int, input: PosSessionInput): AppResult<Unit>
-    suspend fun addOrder(sessionId: Int, items: List<OrderItemInput>): AppResult<AddOrderResult>
+    suspend fun addOrder(
+        sessionId: Int,
+        items: List<OrderItemInput>,
+        idempotencyKey: String? = null,
+    ): AppResult<AddOrderResult>
     suspend fun listOpenOrders(): AppResult<List<OpenOrderSummary>>
     suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit>
     suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit>
@@ -49,6 +54,12 @@ interface MesasRepository {
     suspend fun getSession(sessionId: Int): AppResult<TableSessionDetail>
     suspend fun getPrecuenta(sessionId: Int): AppResult<PrecuentaData>
     suspend fun closeSession(sessionId: Int): AppResult<Unit>
+
+    /** Cierra una sesion sin items (sin PIN). Nunca cierra una con lineas vigentes: el backend lo rechaza. */
+    suspend fun closeEmptySession(sessionId: Int): AppResult<Unit>
+
+    /** Cambia comensales y/o nota de la mesa (PATCH de la sesion). */
+    suspend fun updateSessionDetails(sessionId: Int, patch: SessionPatch): AppResult<Unit>
     suspend fun moveSessionTable(sessionId: Int, targetTableId: Int): AppResult<Unit>
     suspend fun createFloor(name: String, sortOrder: Int): AppResult<Unit>
     suspend fun updateFloor(id: Int, name: String, sortOrder: Int): AppResult<Unit>

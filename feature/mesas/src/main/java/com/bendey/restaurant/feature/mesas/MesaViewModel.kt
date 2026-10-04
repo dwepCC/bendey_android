@@ -93,6 +93,13 @@ import com.bendey.restaurant.core.domain.restaurant.SessionOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.TableSessionDetail
 import com.bendey.restaurant.core.domain.restaurant.toComandaLine
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.domain.waiter.GUESTS_NOT_SAVED_MESSAGE
+import com.bendey.restaurant.core.domain.waiter.IdempotencyKeyHolder
+import com.bendey.restaurant.core.domain.waiter.SyncGuard
+import com.bendey.restaurant.core.domain.waiter.buildSessionPatch
+import com.bendey.restaurant.core.domain.waiter.cartSignature
+import com.bendey.restaurant.core.domain.waiter.shouldAutoCloseEmptySession
+import com.bendey.restaurant.core.domain.waiter.stampManualLines
 import com.bendey.restaurant.core.realtime.UiPresence
 import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
 import com.bendey.restaurant.core.realtime.store.SessionsStore
@@ -105,6 +112,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import kotlin.math.round
 
@@ -177,6 +185,8 @@ data class MesaUiState(
     val clientQuickAddConsulting: Boolean = false,
     val clientQuickAddError: String? = null,
     val tenantRuc: String = "",
+    /** Guardando comensales/nota desde los chips de la cabecera. */
+    val savingSessionDetails: Boolean = false,
 ) {
     val cartTotal: Double get() = cart.sumOf { it.lineTotal }
     val cartCount: Int get() = cart.sumOf { it.quantity }
@@ -289,6 +299,18 @@ class MesaViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(MesaUiState())
     val uiState: StateFlow<MesaUiState> = _uiState.asStateFlow()
+
+    /**
+     * Guard SINCRONO de "Enviar a cocina" y "Cobrar": se toma ANTES de lanzar la corrutina, así dos toques
+     * seguidos (que llegan antes de que `sending`/`checkoutSubmitting` lleguen a la UI) no envían dos rondas.
+     * Envío y cobro comparten el candado: no pueden correr a la vez.
+     */
+    private val orderSubmitGuard = SyncGuard()
+
+    /** `Idempotency-Key` del carrito en curso: misma key en reintentos, nueva si cambia o tras éxito. */
+    private val idempotencyKeys = IdempotencyKeyHolder()
+
+    private val leaveGuard = SyncGuard()
 
     init {
         UiPresence.trackSession(sessionId, true)
@@ -742,7 +764,8 @@ class MesaViewModel @Inject constructor(
     fun clearCart() {
         if (!_uiState.value.canClearCart) return
         cartFeedback.playAddToCart()
-        _uiState.update { it.copy(cart = emptyList(), snackMessage = "Carrito vaciado") }
+        // Sin aviso: el carrito vacío ya es visible (R8 paso 8).
+        _uiState.update { it.copy(cart = emptyList()) }
     }
 
     fun updateCartLineNotes(cartKey: String, notes: String) {
@@ -846,13 +869,73 @@ class MesaViewModel @Inject constructor(
             _uiState.update { it.copy(closingMesa = true, error = null) }
             when (val result = mesasRepository.closeSession(sessionId)) {
                 is AppResult.Success -> {
-                    _uiState.update { it.copy(closingMesa = false, snackMessage = "Mesa cerrada") }
+                    // Sin aviso: la pantalla se cierra y el mapa de mesas ya muestra la mesa libre (R8 paso 8).
+                    _uiState.update { it.copy(closingMesa = false) }
                     onSuccess()
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(closingMesa = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Cambia comensales y/o nota desde los chips de la cabecera (R8 paso 2). Relî la sesión: el servidor es la
+     * fuente de verdad, así que si no guardó los comensales no se afirma que sí.
+     */
+    fun saveSessionDetails(guests: Int? = null, notes: String? = null, onDone: () -> Unit = {}) {
+        val current = _uiState.value.session ?: return
+        if (_uiState.value.savingSessionDetails) return
+        _uiState.update { it.copy(savingSessionDetails = true, error = null) }
+        viewModelScope.launch {
+            when (val result = mesasRepository.updateSessionDetails(sessionId, buildSessionPatch(current, guests, notes))) {
+                is AppResult.Success -> {
+                    loadSession()
+                    val fresh = _uiState.value.session
+                    _uiState.update {
+                        it.copy(
+                            savingSessionDetails = false,
+                            snackMessage = if (guests != null && fresh != null && fresh.guests != guests) {
+                                GUESTS_NOT_SAVED_MESSAGE
+                            } else {
+                                it.snackMessage
+                            },
+                        )
+                    }
+                    onDone()
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(savingSessionDetails = false, error = result.message)
+                }
+                AppResult.Loading -> _uiState.update { it.copy(savingSessionDetails = false) }
+            }
+        }
+    }
+
+    /**
+     * Salir de la mesa. Abrir la mesa al tocarla crea la sesión antes de saber si habrá pedido: si se sale
+     * sin pedir nada (sin líneas vigentes, sin total, sin carrito) se cierra con el mecanismo existente
+     * (`close-empty`, sin PIN) para no dejar mesas fantasma. NUNCA con ítems: el backend también lo rechaza.
+     * Falle o no el cierre, el mozo sale igual.
+     */
+    fun leaveMesa(onLeave: () -> Unit) {
+        val state = _uiState.value
+        val busy = state.sending || state.checkoutSubmitting || state.checkoutOpen || state.closingMesa
+        if (!shouldAutoCloseEmptySession(state.session, state.cart.size, busy)) {
+            onLeave()
+            return
+        }
+        if (!leaveGuard.tryAcquire()) return
+        viewModelScope.launch {
+            try {
+                withTimeoutOrNull(CLOSE_EMPTY_TIMEOUT_MS) { mesasRepository.closeEmptySession(sessionId) }
+                // El mapa de mesas se entera por WebSocket; esto lo asegura si el evento tarda.
+                withTimeoutOrNull(CLOSE_EMPTY_TIMEOUT_MS) { restaurantHydrators.hydrateTables(floorId = null) }
+            } finally {
+                leaveGuard.release()
+                onLeave()
             }
         }
     }
@@ -869,14 +952,21 @@ class MesaViewModel @Inject constructor(
     }
 
     fun sendComanda() {
+        // Bloqueo SÍNCRONO: antes de la corrutina y de cualquier comprobación asíncrona.
+        if (_uiState.value.sending || !orderSubmitGuard.tryAcquire()) return
         val state = _uiState.value
         if (state.cart.isEmpty()) {
+            orderSubmitGuard.release()
             _uiState.update { it.copy(error = "Agrega productos al carrito") }
             return
         }
+        _uiState.update { it.copy(sending = true, error = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(sending = true, error = null) }
-            sendCartItems(state)
+            try {
+                sendCartItems(state)
+            } finally {
+                orderSubmitGuard.release()
+            }
         }
     }
 
@@ -935,17 +1025,24 @@ class MesaViewModel @Inject constructor(
                     // mismo síntoma que ya se había corregido en Pos, que sí usa
                     // `checkoutPayableTotal` acá. Se recalcula con discountMode/Value YA reseteados a
                     // 0 (no los de una venta anterior) para no arrastrar un descuento viejo.
-                    checkoutPayments = listOf(
-                        CheckoutPaymentDraft(
-                            method = method,
-                            amount = formatAmount(
-                                it.copy(
-                                    checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
-                                    checkoutDiscountValue = "0",
-                                ).checkoutPayableTotal,
+                    // Sin la meta de cobro (métodos) aún no se sabe cuál NO es efectivo: se deja vacío y
+                    // `applyCheckoutDefaults` lo llena al llegar la meta con el default correcto del rol. Antes
+                    // se prellenaba "cash" y a un mozo le quedaba el efectivo por defecto.
+                    checkoutPayments = if (state.checkoutMeta == null) {
+                        emptyList()
+                    } else {
+                        listOf(
+                            CheckoutPaymentDraft(
+                                method = method,
+                                amount = formatAmount(
+                                    it.copy(
+                                        checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
+                                        checkoutDiscountValue = "0",
+                                    ).checkoutPayableTotal,
+                                ),
                             ),
-                        ),
-                    ),
+                        )
+                    },
                     error = null,
                 )
             }
@@ -1176,6 +1273,9 @@ class MesaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El monto pagado debe cubrir el total") }
             return
         }
+        // Mismo candado síncrono que "Enviar a cocina": un doble toque en "Cobrar" no puede cobrar dos veces
+        // ni mezclarse con un envío en curso.
+        if (!orderSubmitGuard.tryAcquire()) return
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutSubmitting = true, error = null) }
             // Validar el cobro (método, permiso de efectivo, caja abierta) ANTES de enviar la comanda a
@@ -1254,11 +1354,9 @@ class MesaViewModel @Inject constructor(
                             cart = emptyList(),
                             splitBillEnabled = false,
                             selectedComandaIds = emptyList(),
-                            snackMessage = if (closeSession) {
-                                "Venta generada. Mesa cerrada."
-                            } else {
-                                "Cobro parcial registrado"
-                            },
+                            // Sin aviso: el modal del comprobante ya confirma la venta (R8 paso 8). También
+                            // descarta el "Comanda enviada" de la ronda que se mandó en este mismo cobro.
+                            snackMessage = null,
                         )
                     }
                 }
@@ -1279,7 +1377,7 @@ class MesaViewModel @Inject constructor(
                 }
                 AppResult.Loading -> Unit
             }
-        }
+        }.invokeOnCompletion { orderSubmitGuard.release() }
     }
 
     fun dismissCheckoutSuccess() {
@@ -1523,12 +1621,18 @@ class MesaViewModel @Inject constructor(
     }
 
     private suspend fun sendCartItems(state: MesaUiState): List<Int>? {
-        val items = state.cart.map { it.toOrderItemInput() }
-        return when (val result = posRepository.addOrder(sessionId, items)) {
+        val userName = sessionStore.userSessionFlow.first()?.user?.name
+        // Los productos manuales llevan la marca de quién los agregó (en la nota del ítem), puesta aquí
+        // para que el mozo no pueda quitarla editando el carrito.
+        val items = stampManualLines(state.cart, userName).map { it.toOrderItemInput() }
+        // UNA key por intento de carrito: si el envío se repite (timeout, reintento) el servidor devuelve la
+        // misma ronda en vez de crear otra y duplicar platos en cocina.
+        val idempotencyKey = idempotencyKeys.keyFor(cartSignature(state.cart))
+        return when (val result = posRepository.addOrder(sessionId, items, idempotencyKey)) {
             is AppResult.Success -> {
+                idempotencyKeys.onSuccess()
                 val order = result.data
                 val session = state.session
-                val userName = sessionStore.userSessionFlow.first()?.user?.name
                 val waiterName = session?.waiterName ?: userName
                 val outcome = kitchenPrintService.printComandaRoundOutcome(
                     tableName = session?.tableName,
@@ -1536,7 +1640,11 @@ class MesaViewModel @Inject constructor(
                     waiterName = waiterName,
                     comandas = order.comandas,
                 )
-                val feedback = comandaPrintFeedback(outcome, order.orderNumber)
+                val feedback = comandaPrintFeedback(
+                    outcome,
+                    order.orderNumber,
+                    itemCount = order.comandas.sumOf { it.quantity.toInt() },
+                )
                 loadSession()
                 _uiState.update {
                     it.copy(
@@ -1628,6 +1736,11 @@ class MesaViewModel @Inject constructor(
     private fun formatAmount(value: Double): String {
         val rounded = roundMoney(value)
         return if (rounded % 1.0 == 0.0) rounded.toLong().toString() else rounded.toString()
+    }
+
+    private companion object {
+        /** Cerrar una mesa vacía al salir no debe retener al mozo si la red va lenta. */
+        const val CLOSE_EMPTY_TIMEOUT_MS = 4_000L
     }
 }
 
