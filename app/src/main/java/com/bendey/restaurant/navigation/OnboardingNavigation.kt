@@ -23,6 +23,7 @@ internal fun OnboardingDestination.route(): String = when (this) {
     OnboardingDestination.CONFIG_SUCURSALES,
     -> BendeyRoutes.CONFIGURACION
     OnboardingDestination.REPARTIDORES -> BendeyRoutes.REPARTIDORES
+    OnboardingDestination.WIZARD -> BendeyRoutes.WIZARD
 }
 
 internal fun OnboardingDestination.configTab(): String? = when (this) {
@@ -48,6 +49,31 @@ internal fun NavController.navigateToOnboardingDestination(
         OnboardingDestination.POS -> navigateToBottomBarDestination(route)
         // Igual que el botón "Impresoras" de Configuración: ruta suelta, sin tocar el back stack del drawer.
         OnboardingDestination.IMPRESORAS -> navigate(route)
+        OnboardingDestination.WIZARD -> navigate(route) { launchSingleTop = true }
         else -> navigateToDrawerDestination(route)
+    }
+}
+
+/** W3: lleva a la pantalla REAL de cada paso de la guía (no se inventan rutas). */
+internal fun NavController.navigateToCoachTarget(
+    target: com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget,
+    permissions: List<String>,
+    employeeType: String?,
+    onShowMessage: (String) -> Unit,
+) {
+    val route = when (target) {
+        com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget.CAJA -> BendeyRoutes.CAJA
+        com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget.MESAS -> BendeyRoutes.MESAS
+        com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget.POS -> BendeyRoutes.POS
+        com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget.COCINA -> BendeyRoutes.COCINA
+    }
+    if (!canAccessRoute(route, permissions, employeeType)) {
+        onShowMessage("No tienes permiso para abrir esa pantalla.")
+        return
+    }
+    if (target == com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget.CAJA) {
+        navigateToDrawerDestination(route)
+    } else {
+        navigateToBottomBarDestination(route)
     }
 }

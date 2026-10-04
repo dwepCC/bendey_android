@@ -23,6 +23,9 @@ enum class OnboardingDestination {
     CONFIG_MENU_DIGITAL,
     CONFIG_SUCURSALES,
     REPARTIDORES,
+
+    /** Retomar el wizard de configuración (R4). */
+    WIZARD,
 }
 
 sealed interface OnboardingAction {

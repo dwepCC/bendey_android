@@ -76,6 +76,7 @@ dependencies {
     implementation(project(":feature:repartidores"))
     implementation(project(":feature:subscription"))
     implementation(project(":feature:printing"))
+    implementation(project(":feature:onboarding"))
     implementation(project(":platform:printing"))
 
     implementation(libs.androidx.core.ktx)

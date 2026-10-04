@@ -57,6 +57,11 @@ import com.bendey.restaurant.feature.caja.navigation.cajaGraph
 import com.bendey.restaurant.feature.cocina.navigation.cocinaGraph
 import com.bendey.restaurant.feature.dashboard.navigation.dashboardGraph
 import com.bendey.restaurant.feature.mesas.navigation.mesasGraph
+import com.bendey.restaurant.feature.onboarding.WizardCoachPanel
+import com.bendey.restaurant.feature.onboarding.WizardGateViewModel
+import com.bendey.restaurant.feature.onboarding.navigation.wizardGraph
+import com.bendey.restaurant.core.domain.onboarding.wizard.CoachTarget
+import com.bendey.restaurant.core.domain.onboarding.wizard.WizardCoach
 import com.bendey.restaurant.feature.pos.navigation.posGraph
 import com.bendey.restaurant.feature.printing.navigation.printingGraph
 import com.bendey.restaurant.feature.clientes.navigation.clientesGraph
@@ -153,6 +158,7 @@ private fun MainShell(
     headerViewModel: AppHeaderViewModel = hiltViewModel(),
     sessionViewModel: AppSessionViewModel = hiltViewModel(),
     cashSessionViewModel: AppCashSessionViewModel = hiltViewModel(),
+    wizardGate: WizardGateViewModel = hiltViewModel(),
 ) {
     val mainNavController = rememberNavController()
     val navBackStackEntry by mainNavController.currentBackStackEntryAsState()
@@ -161,6 +167,7 @@ private fun MainShell(
     val permContext by sessionViewModel.permissionContext.collectAsStateWithLifecycle()
     val sessionKey by sessionViewModel.sessionKey.collectAsStateWithLifecycle()
     val cashState by cashSessionViewModel.state.collectAsStateWithLifecycle()
+    val showWizard by wizardGate.showWizard.collectAsStateWithLifecycle()
 
     if (permContext == null) {
         Box(
@@ -221,6 +228,14 @@ private fun MainShell(
         }
         if (currentRoute?.startsWith("mesa/") == true) {
             cashSessionViewModel.requireOpenSessionForOperation()
+        }
+    }
+
+    // Restaurante nuevo: el wizard se abre solo, una vez por sesión (el servidor decide).
+    LaunchedEffect(showWizard) {
+        if (showWizard) {
+            wizardGate.consume()
+            mainNavController.navigate(BendeyRoutes.WIZARD) { launchSingleTop = true }
         }
     }
 
@@ -358,6 +373,19 @@ private fun MainShell(
                 },
             )
             printingGraph(onBack = { mainNavController.popBackStack() })
+            wizardGraph(
+                onExit = { mainNavController.popBackStack() },
+                onStartGuide = {
+                    WizardCoach.state.value.current?.target?.let { target ->
+                        mainNavController.navigateToCoachTarget(
+                            target, permissions.permissions, permissions.employeeType, onShowMessage,
+                        )
+                    }
+                },
+                onOpenProductos = {
+                    mainNavController.navigateToDrawerDestination(BendeyRoutes.PRODUCTOS)
+                },
+            )
             posGraph(
                 cashCheckoutGate = cashCheckoutGate,
                 onShowMessage = onShowMessage,
@@ -458,6 +486,18 @@ private fun MainShell(
             )
         }
     }
+    WizardCoachPanel(
+        onNavigate = { target ->
+            mainNavController.navigateToCoachTarget(
+                target, permissions.permissions, permissions.employeeType, onShowMessage,
+            )
+        },
+        onOpenCash = cashSessionViewModel::openWithZero,
+        onFinished = { onShowMessage("Hiciste tu primera venta. Ya puedes seguir con tu lista de primeros pasos.") },
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = snackbarBottomPadding),
+    )
     BendeySnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier

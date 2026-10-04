@@ -55,6 +55,7 @@ import com.bendey.restaurant.core.domain.onboarding.OnboardingItem
 import com.bendey.restaurant.core.domain.onboarding.OnboardingSection
 import com.bendey.restaurant.core.domain.onboarding.OnboardingSectionKind
 import com.bendey.restaurant.core.domain.onboarding.OnboardingStepKey
+import com.bendey.restaurant.core.domain.onboarding.wizard.WizardCopy
 import com.bendey.restaurant.core.ui.components.BendeyAlert
 import com.bendey.restaurant.core.ui.components.BendeyAlertAction
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
@@ -236,6 +237,15 @@ internal fun OnboardingChecklistCard(
                     message = it.message,
                     severity = if (it.isError) BendeyAlertSeverity.Danger else BendeyAlertSeverity.Success,
                     onDismiss = onDismissFeedback,
+                )
+            }
+
+            // Retomar el wizard (R4) mientras falte lo mínimo para vender: carta o primera venta.
+            if (!checklist.sellReady) {
+                BendeyTextButton(
+                    text = WizardCopy.CONTINUE_SETUP,
+                    onClick = { onNavigate(OnboardingDestination.WIZARD) },
+                    enabled = !busy,
                 )
             }
 

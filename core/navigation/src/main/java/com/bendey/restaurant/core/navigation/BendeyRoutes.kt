@@ -8,6 +8,8 @@ object BendeyRoutes {
     const val PIN = "pin/{station}"
     const val LOGIN = "login"
     const val MAIN = "main"
+    /** Wizard de configuración inicial (R4): pantalla completa dentro del shell. */
+    const val WIZARD = "wizard"
 
     const val DASHBOARD = "dashboard"
     const val POS = "pos"
@@ -56,7 +58,7 @@ object BendeyRoutes {
     fun showsGlobalHeader(route: String?): Boolean {
         if (route == null) return false
         if (route.startsWith("mesa/")) return false
-        if (route == PRINTING_TEST) return false
+        if (route == PRINTING_TEST || route == WIZARD) return false
         return true
     }
 
