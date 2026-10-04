@@ -34,6 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,7 +55,7 @@ fun BendeyHeaderActions(
     modifier: Modifier = Modifier,
     showSyncIndicator: Boolean = false,
     compactOnlineIndicator: Boolean = false,
-    onNotificationsClick: () -> Unit = {},
+    onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
@@ -64,27 +66,30 @@ fun BendeyHeaderActions(
     ) {
         if (showSyncIndicator) {
             BendeyHeaderSyncIndicator(
-                isOnline = state.isOnline,
+                status = state.connection,
                 compact = compactOnlineIndicator,
             )
         }
-        BadgedBox(
-            badge = {
-                if (state.notificationCount > 0) {
-                    Badge { Text(state.notificationCount.coerceAtMost(9).toString()) }
-                }
-            },
-        ) {
-            IconButton(
-                onClick = onNotificationsClick,
-                modifier = Modifier.size(BendeySpacing.touchTarget),
+        // Sin handler no hay campana: un botón que no hace nada es peor que no tenerlo.
+        if (onNotificationsClick != null) {
+            BadgedBox(
+                badge = {
+                    if (state.notificationCount > 0) {
+                        Badge { Text(state.notificationCount.coerceAtMost(9).toString()) }
+                    }
+                },
             ) {
-                Icon(
-                    Icons.Default.Notifications,
-                    contentDescription = "Notificaciones",
-                    tint = BendeyColors.OnPrimary,
-                    modifier = Modifier.size(22.dp),
-                )
+                IconButton(
+                    onClick = onNotificationsClick,
+                    modifier = Modifier.size(BendeySpacing.touchTarget),
+                ) {
+                    Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = "Notificaciones",
+                        tint = BendeyColors.OnPrimary,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
             }
         }
         BendeyHeaderUserMenu(
@@ -97,28 +102,23 @@ fun BendeyHeaderActions(
 
 @Composable
 private fun BendeyHeaderSyncIndicator(
-    isOnline: Boolean,
+    status: BendeyConnectionStatus,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    if (compact) {
-        Box(
-            modifier = modifier
-                .padding(horizontal = BendeySpacing.xxs)
-                .size(BendeySpacing.touchTarget),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(if (isOnline) BendeyColors.Success else BendeyColors.Error),
-            )
-        }
-        return
+    val label = connectionStatusLabel(status)
+    val dotColor = when (status) {
+        BendeyConnectionStatus.ONLINE -> BendeyColors.Success
+        BendeyConnectionStatus.OFFLINE -> BendeyColors.Error
+        BendeyConnectionStatus.CONNECTING -> BendeyColors.Warning
     }
+    // Compacto (barra de tablet): solo el punto mientras todo va bien; si algo falla, el texto también,
+    // para que el estado nunca dependa solo del color.
+    val showText = !compact || status != BendeyConnectionStatus.ONLINE
     Row(
-        modifier = modifier.padding(horizontal = BendeySpacing.xxs),
+        modifier = modifier
+            .padding(horizontal = BendeySpacing.xxs)
+            .semantics(mergeDescendants = true) { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
@@ -126,16 +126,25 @@ private fun BendeyHeaderSyncIndicator(
             modifier = Modifier
                 .size(8.dp)
                 .clip(CircleShape)
-                .background(if (isOnline) BendeyColors.Success else BendeyColors.Error),
+                .background(dotColor),
         )
-        Text(
-            text = if (isOnline) "En línea" else "Sin conexión",
-            style = MaterialTheme.typography.labelSmall,
-            color = BendeyColors.OnPrimary.copy(alpha = 0.85f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (showText) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = BendeyColors.OnPrimary.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
+}
+
+/** Texto visible del estado de conexión (tuteo/neutro, sin jerga). */
+internal fun connectionStatusLabel(status: BendeyConnectionStatus): String = when (status) {
+    BendeyConnectionStatus.ONLINE -> "En línea"
+    BendeyConnectionStatus.OFFLINE -> "Sin conexión"
+    BendeyConnectionStatus.CONNECTING -> "Conectando…"
 }
 
 @Composable

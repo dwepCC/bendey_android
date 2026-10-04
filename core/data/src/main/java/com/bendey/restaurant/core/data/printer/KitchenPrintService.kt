@@ -38,6 +38,65 @@ sealed class PrecuentaPrintOutcome {
     data class Failed(val message: String) : PrecuentaPrintOutcome()
 }
 
+/** Qué pasó al imprimir la comanda de una ronda recién enviada. Distingue "falló" de "no hay con qué". */
+enum class ComandaPrintOutcome {
+    /** Se imprimió completa. */
+    Printed,
+    /** Hay impresora/servidor configurado y la impresión falló (total o parcialmente). */
+    Failed,
+    /** No hay impresora de comandas (ni servidor) configurado. */
+    NotConfigured,
+    /** El usuario desactivó la impresión automática: no es un fallo. */
+    AutoPrintOff,
+    /** La ronda no tiene comandas que imprimir. */
+    NothingToPrint,
+}
+
+/**
+ * Qué mostrar y qué registrar tras enviar una ronda a cocina. Pura, para poder probarla sin Android.
+ *
+ * @property snack aviso corto (sin acción) o null.
+ * @property alert aviso accionable (el pedido ya salió a cocina, pero la comanda en papel no) o null.
+ * @property canReprint si el aviso puede ofrecer "Reimprimir" (solo cuando hay impresora a la que reintentar).
+ * @property markPrinted si se debe confirmar la ronda como impresa en el backend (solo si salió en papel).
+ */
+data class ComandaPrintFeedback(
+    val snack: String?,
+    val alert: String?,
+    val canReprint: Boolean,
+    val markPrinted: Boolean,
+)
+
+fun comandaPrintFeedback(outcome: ComandaPrintOutcome, orderNumber: Int): ComandaPrintFeedback = when (outcome) {
+    ComandaPrintOutcome.Printed -> ComandaPrintFeedback("Comanda #$orderNumber enviada", null, false, true)
+    ComandaPrintOutcome.AutoPrintOff -> ComandaPrintFeedback("Comanda #$orderNumber enviada a cocina", null, false, false)
+    ComandaPrintOutcome.NothingToPrint -> ComandaPrintFeedback("Pedido #$orderNumber enviado", null, false, false)
+    ComandaPrintOutcome.Failed -> ComandaPrintFeedback(
+        snack = null,
+        alert = "El pedido se envió a cocina, pero la comanda no se imprimió. Revisa la impresora.",
+        canReprint = true,
+        markPrinted = false,
+    )
+    ComandaPrintOutcome.NotConfigured -> ComandaPrintFeedback(
+        snack = null,
+        alert = "El pedido se envió a cocina, pero no hay una impresora de comandas configurada. Configúrala en Ajustes.",
+        canReprint = false,
+        markPrinted = false,
+    )
+}
+
+/** Aviso pendiente de una comanda que no salió en papel, con lo necesario para reimprimirla desde el propio aviso. */
+data class ComandaPrintAlert(
+    val message: String,
+    val canReprint: Boolean,
+    val tableName: String?,
+    val orderNumber: Int,
+    val waiterName: String?,
+    val comandas: List<ComandaLine>,
+    /** Id de la ronda en el backend, para confirmarla como impresa al reimprimir (solo POS lo usa). */
+    val orderId: Int? = null,
+)
+
 @Singleton
 class KitchenPrintService @Inject constructor(
     private val printerRepository: PrinterRepository,
@@ -57,6 +116,27 @@ class KitchenPrintService @Inject constructor(
         if (!settings.autoPrintComandas) return null
         if (!settings.isComandaPrintReady()) return null
         return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
+    }
+
+    /**
+     * Igual que [printComandaRound] pero sin colapsar los motivos en un `Boolean?`: la UI necesita saber si
+     * la comanda salió, falló o nunca hubo impresora para no marcar como impresa una ronda que no lo está.
+     */
+    suspend fun printComandaRoundOutcome(
+        tableName: String?,
+        orderNumber: Int,
+        waiterName: String?,
+        comandas: List<ComandaLine>,
+    ): ComandaPrintOutcome {
+        if (comandas.isEmpty()) return ComandaPrintOutcome.NothingToPrint
+        val settings = printerPreferencesStore.settings.first()
+        if (!settings.autoPrintComandas) return ComandaPrintOutcome.AutoPrintOff
+        if (!settings.isComandaPrintReady()) return ComandaPrintOutcome.NotConfigured
+        return if (printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)) {
+            ComandaPrintOutcome.Printed
+        } else {
+            ComandaPrintOutcome.Failed
+        }
     }
 
     /** Reimpresión manual: ignora auto-print pero requiere impresora de comandas configurada. */

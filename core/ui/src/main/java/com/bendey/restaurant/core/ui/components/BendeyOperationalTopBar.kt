@@ -64,7 +64,7 @@ fun BendeyOperationalTopBar(
     profile: BendeyAdaptiveProfile = rememberBendeyAdaptiveProfile(),
     isDrawerOpen: Boolean = false,
     onMenuClick: () -> Unit = {},
-    onNotificationsClick: () -> Unit = {},
+    onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {

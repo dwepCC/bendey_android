@@ -225,7 +225,14 @@ fun pickVariosContactId(contacts: List<ContactBrief>): Int? {
     }?.id ?: contacts.firstOrNull()?.id
 }
 
-fun defaultPaymentMethodCode(methods: List<PaymentMethodOption>): String {
+/**
+ * Método preseleccionado en el cobro. Quien no puede cobrar efectivo (p. ej. un mozo) arranca en el primer
+ * método que no sea efectivo, para que no tenga que descubrir por error que el default no le sirve.
+ */
+fun defaultPaymentMethodCode(methods: List<PaymentMethodOption>, canOperateCash: Boolean = true): String {
+    if (!canOperateCash) {
+        methods.firstOrNull { !it.isCash }?.let { return it.code }
+    }
     return methods.firstOrNull()?.code ?: "cash"
 }
 

@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.feedback.CartFeedback
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
+import com.bendey.restaurant.core.data.printer.ComandaPrintAlert
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
+import com.bendey.restaurant.core.data.printer.comandaPrintFeedback
 import com.bendey.restaurant.core.data.printer.PrecuentaPrintOutcome
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
+import com.bendey.restaurant.core.data.repository.checkoutPaymentPrecheckError
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
 import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
@@ -39,10 +42,7 @@ import com.bendey.restaurant.core.domain.catalog.PreparationAreasRepository
 import com.bendey.restaurant.core.domain.billing.BILLING_NOT_ENABLED_MESSAGE
 import com.bendey.restaurant.core.domain.billing.checkoutContactIsValid
 import com.bendey.restaurant.core.domain.billing.filterRestaurantCheckoutSeries
-import com.bendey.restaurant.core.domain.billing.findPaymentMethodRecord
 import com.bendey.restaurant.core.domain.billing.isElectronicBillingSunatCode
-import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
-import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
 import com.bendey.restaurant.core.domain.billing.paidCoversTotal
 import com.bendey.restaurant.core.domain.subscription.BILLING_MODULE_KEY
 import com.bendey.restaurant.core.domain.subscription.hasModule
@@ -207,6 +207,9 @@ data class PosUiState(
     val receiptBusy: String? = null,
     val error: String? = null,
     val snackMessage: String? = null,
+    /** Pedido enviado a cocina cuya comanda no salió en papel; el mozo debe enterarse y poder reimprimir. */
+    val comandaPrintAlert: ComandaPrintAlert? = null,
+    val reprintingFromAlert: Boolean = false,
     val printingPrecuenta: Boolean = false,
     val comandaNoteTarget: SessionComandaSummary? = null,
     val comandaNoteText: String = "",
@@ -949,6 +952,42 @@ class PosViewModel @Inject constructor(
         }
     }
 
+    fun dismissComandaPrintAlert() {
+        _uiState.update { it.copy(comandaPrintAlert = null, reprintingFromAlert = false) }
+    }
+
+    fun reprintFromComandaPrintAlert() {
+        val alert = _uiState.value.comandaPrintAlert ?: return
+        if (!alert.canReprint || _uiState.value.reprintingFromAlert) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(reprintingFromAlert = true) }
+            val result = kitchenPrintService.reprintComandaRound(
+                tableName = alert.tableName,
+                orderNumber = alert.orderNumber,
+                waiterName = alert.waiterName,
+                comandas = alert.comandas,
+            )
+            if (result == true) alert.orderId?.let { posRepository.markTableOrderPrinted(it) }
+            _uiState.update {
+                if (result == true) {
+                    it.copy(
+                        comandaPrintAlert = null,
+                        reprintingFromAlert = false,
+                        snackMessage = "Comanda #${alert.orderNumber} reimpresa",
+                    )
+                } else {
+                    // El diálogo sigue abierto: un snack quedaría detrás de él.
+                    it.copy(
+                        reprintingFromAlert = false,
+                        comandaPrintAlert = alert.copy(
+                            message = "No se pudo reimprimir. Revisa que la impresora esté encendida, con papel y conectada.",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
     }
@@ -1184,7 +1223,7 @@ class PosViewModel @Inject constructor(
                 session?.restaurantPermissions.orEmpty(),
                 session?.user?.employeeType,
             )
-            val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty())
+            val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty(), state.canOperateCash)
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
@@ -1414,44 +1453,29 @@ class PosViewModel @Inject constructor(
             return
         }
         val methods = meta?.paymentMethods.orEmpty()
-        val bankAccounts = meta?.bankAccounts.orEmpty()
-        if (methods.isNotEmpty()) {
-            for (line in paymentLines) {
-                val pm = findPaymentMethodRecord(methods, line.method)
-                if (pm == null) {
-                    _uiState.update { it.copy(error = "Método de pago no configurado. Revísalo en Caja.") }
-                    return
-                }
-                if (!isPaymentMethodLinkedForSale(pm, bankAccounts)) {
-                    _uiState.update { it.copy(error = "El método \"${pm.name}\" no tiene una cuenta vinculada.") }
-                    return
-                }
-            }
-        }
-        val needsCashSession = needsCashSessionForPayments(methods, paymentLines)
-        if (needsCashSession && !state.canOperateCash) {
-            _uiState.update { it.copy(error = "No tiene permiso para cobrar en efectivo") }
-            return
-        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutSubmitting = true, error = null) }
+            // Validar método, permiso de efectivo y caja abierta ANTES de crear la sesión o enviar la
+            // comanda; si falla, el diálogo de cobro sigue abierto con lo tecleado.
+            val openCashSessionId = sessionStore.cashSessionFlow.first()?.sessionId
+            val precheckError = checkoutPaymentPrecheckError(
+                canOperateCash = state.canOperateCash,
+                methods = methods,
+                bankAccounts = meta?.bankAccounts.orEmpty(),
+                payments = paymentLines,
+                hasOpenCashSession = openCashSessionId != null,
+            )
+            if (precheckError != null) {
+                _uiState.update { it.copy(checkoutSubmitting = false, error = precheckError) }
+                return@launch
+            }
             val requiresCash = requiresOpenCashSessionForCheckout(
                 canOperateCash = state.canOperateCash,
                 methods = methods,
                 payments = paymentLines,
             )
-            val cashSessionId = if (requiresCash) sessionStore.cashSessionFlow.first()?.sessionId else null
-            if (requiresCash && cashSessionId == null) {
-                _uiState.update {
-                    it.copy(
-                        checkoutSubmitting = false,
-                        checkoutOpen = false,
-                        error = if (needsCashSession) "Abre tu caja para cobrar en efectivo" else "Abre tu caja para cobrar",
-                    )
-                }
-                return@launch
-            }
+            val cashSessionId = if (requiresCash) openCashSessionId else null
             val discountAmount = if (state.allowCheckoutDiscount && state.checkoutDiscountAmount > 0) {
                 roundSunat(state.checkoutDiscountAmount)
             } else {
@@ -1770,13 +1794,31 @@ class PosViewModel @Inject constructor(
                 val order = result.data
                 if (printKitchen && !state.isDirectSale) {
                     val userName = sessionStore.userSessionFlow.first()?.user?.name
-                    kitchenPrintService.printComandaRound(
+                    val outcome = kitchenPrintService.printComandaRoundOutcome(
                         tableName = state.orderType.label,
                         orderNumber = order.orderNumber,
                         waiterName = userName,
                         comandas = order.comandas,
                     )
-                    posRepository.markTableOrderPrinted(order.orderId)
+                    val feedback = comandaPrintFeedback(outcome, order.orderNumber)
+                    // Solo se confirma como impresa una ronda que de verdad salió en papel.
+                    if (feedback.markPrinted) posRepository.markTableOrderPrinted(order.orderId)
+                    _uiState.update {
+                        it.copy(
+                            snackMessage = feedback.snack ?: it.snackMessage,
+                            comandaPrintAlert = feedback.alert?.let { message ->
+                                ComandaPrintAlert(
+                                    message = message,
+                                    canReprint = feedback.canReprint,
+                                    tableName = state.orderType.label,
+                                    orderNumber = order.orderNumber,
+                                    waiterName = userName,
+                                    comandas = order.comandas,
+                                    orderId = order.orderId,
+                                )
+                            },
+                        )
+                    }
                 }
                 true
             }
@@ -1918,7 +1960,7 @@ class PosViewModel @Inject constructor(
         val filteredSeries = filterRestaurantCheckoutSeries(meta.series, meta.sunatEnabled)
         val defaultSeries = pickDefaultNotaVentaSeries(filteredSeries)
         val defaultContact = pickVariosContactId(meta.contacts)
-        val defaultMethod = defaultPaymentMethodCode(meta.paymentMethods)
+        val defaultMethod = defaultPaymentMethodCode(meta.paymentMethods, _uiState.value.canOperateCash)
         _uiState.update { state ->
             state.copy(
                 checkoutSeriesId = state.checkoutSeriesId ?: defaultSeries?.id,

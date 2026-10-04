@@ -68,7 +68,7 @@ fun RegisterSuccessScreen(
             }
             Spacer(modifier = Modifier.height(BendeySpacing.sm))
             Text(
-                text = "Inicia sesión con tu correo y contraseña. Tu PIN de administrador por defecto es 7410.",
+                text = "Inicia sesión con tu correo y la contraseña que registraste. Como administrador no necesitas un PIN para entrar.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = BendeyColors.OnSurfaceVariant,
                 textAlign = TextAlign.Center,

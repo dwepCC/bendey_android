@@ -92,6 +92,7 @@ import com.bendey.restaurant.core.domain.pos.PosCatalogTab
 import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
+import com.bendey.restaurant.core.ui.components.BendeyComandaPrintAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
@@ -160,6 +161,16 @@ fun MesaScreen(
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
     )
+
+    state.comandaPrintAlert?.let { alert ->
+        BendeyComandaPrintAlertDialog(
+            message = alert.message,
+            canReprint = alert.canReprint,
+            reprinting = state.reprintingFromAlert,
+            onReprint = viewModel::reprintFromComandaPrintAlert,
+            onDismiss = viewModel::dismissComandaPrintAlert,
+        )
+    }
 
     val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
 

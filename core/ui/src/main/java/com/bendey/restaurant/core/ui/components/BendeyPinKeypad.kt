@@ -16,6 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+/** Círculos que se dibujan: 4 por defecto (la longitud habitual del PIN) y crece hasta [maxDigits] si se teclean más. */
+internal fun pinCircleCount(typed: Int, minCircles: Int = 4, maxDigits: Int = 6): Int =
+    maxOf(minCircles, typed).coerceAtMost(maxDigits)
+
 @Composable
 fun BendeyPinKeypad(
     onDigit: (String) -> Unit,
@@ -32,7 +36,7 @@ fun BendeyPinKeypad(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            repeat(6) { index ->
+            repeat(pinCircleCount(currentLength, maxDigits = maxDigits)) { index ->
                 val filled = index < currentLength
                 Text(
                     text = if (filled) "●" else "○",

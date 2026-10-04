@@ -5,12 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.feedback.CartFeedback
 import com.bendey.restaurant.core.data.printer.DocumentPrintService
+import com.bendey.restaurant.core.data.printer.ComandaPrintAlert
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
+import com.bendey.restaurant.core.data.printer.comandaPrintFeedback
 import com.bendey.restaurant.core.data.printer.PrecuentaPrintOutcome
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfService
+import com.bendey.restaurant.core.data.repository.checkoutPaymentPrecheckError
 import com.bendey.restaurant.core.data.repository.defaultPaymentMethodCode
 import com.bendey.restaurant.core.data.repository.requiresOpenCashSessionForCheckout
 import com.bendey.restaurant.core.data.repository.parseCheckoutPayments
@@ -160,6 +163,9 @@ data class MesaUiState(
     val comandaNoteSubmitting: Boolean = false,
     val error: String? = null,
     val snackMessage: String? = null,
+    /** Pedido enviado a cocina cuya comanda no salió en papel; el mozo debe enterarse y poder reimprimir. */
+    val comandaPrintAlert: ComandaPrintAlert? = null,
+    val reprintingFromAlert: Boolean = false,
     val canChargeOrders: Boolean = false,
     val canAnularComanda: Boolean = false,
     val canOperateCash: Boolean = false,
@@ -912,7 +918,7 @@ class MesaViewModel @Inject constructor(
                 session?.restaurantPermissions.orEmpty(),
                 session?.user?.employeeType,
             )
-            val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty())
+            val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty(), state.canOperateCash)
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
@@ -1171,6 +1177,26 @@ class MesaViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutSubmitting = true, error = null) }
+            // Validar el cobro (método, permiso de efectivo, caja abierta) ANTES de enviar la comanda a
+            // cocina: si falla, el pedido no debe haber salido y el diálogo conserva lo tecleado.
+            val methods = state.checkoutMeta?.paymentMethods.orEmpty()
+            val cashSessionId = sessionStore.cashSessionFlow.first()?.sessionId
+            val precheckError = checkoutPaymentPrecheckError(
+                canOperateCash = state.canOperateCash,
+                methods = methods,
+                bankAccounts = state.checkoutMeta?.bankAccounts.orEmpty(),
+                payments = paymentLines,
+                hasOpenCashSession = cashSessionId != null,
+            )
+            if (precheckError != null) {
+                _uiState.update { it.copy(checkoutSubmitting = false, error = precheckError) }
+                return@launch
+            }
+            val needsCashSession = requiresOpenCashSessionForCheckout(
+                canOperateCash = state.canOperateCash,
+                methods = methods,
+                payments = paymentLines,
+            )
             var orderComandaIds = emptyList<Int>()
             if (state.cart.isNotEmpty()) {
                 val newIds = sendCartItems(state)
@@ -1179,27 +1205,6 @@ class MesaViewModel @Inject constructor(
                     return@launch
                 }
                 orderComandaIds = newIds
-            }
-            val methods = state.checkoutMeta?.paymentMethods.orEmpty()
-            val needsCashSession = requiresOpenCashSessionForCheckout(
-                canOperateCash = state.canOperateCash,
-                methods = methods,
-                payments = paymentLines,
-            )
-            val cashSessionId = if (needsCashSession) {
-                sessionStore.cashSessionFlow.first()?.sessionId
-            } else {
-                null
-            }
-            if (needsCashSession && cashSessionId == null) {
-                _uiState.update {
-                    it.copy(
-                        checkoutSubmitting = false,
-                        checkoutOpen = false,
-                        error = "Abre tu caja para cobrar",
-                    )
-                }
-                return@launch
             }
             val sessionSnapshot = _uiState.value.session
             val pendingIds = partitionComandasFromSession(sessionSnapshot).pending.map { it.comanda.id }
@@ -1225,7 +1230,7 @@ class MesaViewModel @Inject constructor(
                         seriesId = seriesId,
                         docType = state.checkoutDocType,
                         contactId = contactId,
-                        cashSessionId = cashSessionId,
+                        cashSessionId = if (needsCashSession) cashSessionId else null,
                         closeSession = closeSession,
                         comandaIds = idsToBill,
                         discountAmount = discountAmount,
@@ -1411,6 +1416,41 @@ class MesaViewModel @Inject constructor(
         }
     }
 
+    fun dismissComandaPrintAlert() {
+        _uiState.update { it.copy(comandaPrintAlert = null, reprintingFromAlert = false) }
+    }
+
+    fun reprintFromComandaPrintAlert() {
+        val alert = _uiState.value.comandaPrintAlert ?: return
+        if (!alert.canReprint || _uiState.value.reprintingFromAlert) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(reprintingFromAlert = true) }
+            val result = kitchenPrintService.reprintComandaRound(
+                tableName = alert.tableName,
+                orderNumber = alert.orderNumber,
+                waiterName = alert.waiterName,
+                comandas = alert.comandas,
+            )
+            _uiState.update {
+                if (result == true) {
+                    it.copy(
+                        comandaPrintAlert = null,
+                        reprintingFromAlert = false,
+                        snackMessage = "Comanda #${alert.orderNumber} reimpresa",
+                    )
+                } else {
+                    // El diálogo sigue abierto: un snack quedaría detrás de él.
+                    it.copy(
+                        reprintingFromAlert = false,
+                        comandaPrintAlert = alert.copy(
+                            message = "No se pudo reimprimir. Revisa que la impresora esté encendida, con papel y conectada.",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
     fun consumeSnackMessage() {
         _uiState.update { it.copy(snackMessage = null) }
     }
@@ -1451,7 +1491,7 @@ class MesaViewModel @Inject constructor(
         if (meta == null) return
         val defaultSeries = pickDefaultNotaVentaSeries(meta.series)
         val defaultContact = pickVariosContactId(meta.contacts)
-        val defaultMethod = defaultPaymentMethodCode(meta.paymentMethods)
+        val defaultMethod = defaultPaymentMethodCode(meta.paymentMethods, _uiState.value.canOperateCash)
         _uiState.update { state ->
             state.copy(
                 checkoutSeriesId = state.checkoutSeriesId ?: defaultSeries?.id,
@@ -1489,14 +1529,31 @@ class MesaViewModel @Inject constructor(
                 val order = result.data
                 val session = state.session
                 val userName = sessionStore.userSessionFlow.first()?.user?.name
-                kitchenPrintService.printComandaRound(
+                val waiterName = session?.waiterName ?: userName
+                val outcome = kitchenPrintService.printComandaRoundOutcome(
                     tableName = session?.tableName,
                     orderNumber = order.orderNumber,
-                    waiterName = session?.waiterName ?: userName,
+                    waiterName = waiterName,
                     comandas = order.comandas,
                 )
+                val feedback = comandaPrintFeedback(outcome, order.orderNumber)
                 loadSession()
-                _uiState.update { it.copy(cart = emptyList()) }
+                _uiState.update {
+                    it.copy(
+                        cart = emptyList(),
+                        snackMessage = feedback.snack ?: it.snackMessage,
+                        comandaPrintAlert = feedback.alert?.let { message ->
+                            ComandaPrintAlert(
+                                message = message,
+                                canReprint = feedback.canReprint,
+                                tableName = session?.tableName,
+                                orderNumber = order.orderNumber,
+                                waiterName = waiterName,
+                                comandas = order.comandas,
+                            )
+                        },
+                    )
+                }
                 order.comandas.map { it.id }
             }
             is AppResult.Error -> {

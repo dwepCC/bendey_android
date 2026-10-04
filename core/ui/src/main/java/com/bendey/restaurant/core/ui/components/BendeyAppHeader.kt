@@ -24,12 +24,16 @@ import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
+/** Estado de conexión que ve el usuario en el header. Nunca se comunica solo con color: siempre lleva texto. */
+enum class BendeyConnectionStatus { ONLINE, OFFLINE, CONNECTING }
+
 data class BendeyAppHeaderState(
     val restaurantName: String = "",
     val branchName: String = "",
     val userName: String = "",
     val userInitials: String = "",
-    val isOnline: Boolean = true,
+    /** Por defecto ONLINE para no mostrar alarma antes de que el ViewModel calcule el estado real. */
+    val connection: BendeyConnectionStatus = BendeyConnectionStatus.ONLINE,
     val notificationCount: Int = 0,
     /** Solo el login completo (email/contraseña) puede editar su perfil — un turno por PIN no. */
     val isAdmin: Boolean = false,
@@ -42,7 +46,8 @@ fun BendeyAppHeader(
     modifier: Modifier = Modifier,
     isDrawerOpen: Boolean = false,
     onMenuClick: () -> Unit = {},
-    onNotificationsClick: () -> Unit = {},
+    /** null = no hay centro de notificaciones: la campana no se dibuja (sin botones muertos). */
+    onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
@@ -80,7 +85,8 @@ fun BendeyAppHeader(
         }
         BendeyHeaderActions(
             state = state,
-            showSyncIndicator = false,
+            // En móvil el indicador solo aparece cuando algo anda mal (Sin conexión / Conectando).
+            showSyncIndicator = state.connection != BendeyConnectionStatus.ONLINE,
             onNotificationsClick = onNotificationsClick,
             onOpenProfile = onOpenProfile,
             onLogout = onLogout,

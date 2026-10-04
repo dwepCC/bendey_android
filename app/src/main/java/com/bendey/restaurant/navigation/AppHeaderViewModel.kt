@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.dispatcher.RealtimeObservability
 import com.bendey.restaurant.core.ui.components.BendeyAppHeaderState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,7 +28,16 @@ private fun resolveHeaderDisplayName(tradeName: String, businessName: String, te
 class AppHeaderViewModel @Inject constructor(
     sessionStore: UserSessionStore,
     private val settingsRepository: SettingsRepository,
+    observability: RealtimeObservability,
+    networkStatusMonitor: NetworkStatusMonitor,
 ) : ViewModel() {
+
+    /** Estado de conexión real: WebSocket (RealtimeObservability) + red del dispositivo. */
+    private val connectionStatus = combine(
+        observability.snapshot.map { it.connectionState },
+        networkStatusMonitor.hasNetwork,
+        ::resolveConnectionStatus,
+    )
 
     private val companyTradeName = MutableStateFlow("")
     private val companyBusinessName = MutableStateFlow("")
@@ -58,7 +69,8 @@ class AppHeaderViewModel @Inject constructor(
         sessionStore.userSessionFlow,
         companyTradeName,
         companyBusinessName,
-    ) { tenant, session, tradeName, businessName ->
+        connectionStatus,
+    ) { tenant, session, tradeName, businessName, connection ->
         val user = session?.user
         val name = user?.name.orEmpty()
         val initials = name.split(" ")
@@ -75,7 +87,8 @@ class AppHeaderViewModel @Inject constructor(
             branchName = session?.activeBranch?.name.orEmpty(),
             userName = name,
             userInitials = initials,
-            isOnline = true,
+            connection = connection,
+            // Aún no existe un centro de notificaciones: sin conteo y la campana no se dibuja.
             notificationCount = 0,
             isAdmin = user?.isPinSession == false,
         )

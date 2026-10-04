@@ -102,6 +102,7 @@ import com.bendey.restaurant.core.ui.pos.ComboConfigureDialog
 import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
 import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyComandaPrintAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
@@ -163,6 +164,16 @@ fun PosScreen(
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
     )
+
+    state.comandaPrintAlert?.let { alert ->
+        BendeyComandaPrintAlertDialog(
+            message = alert.message,
+            canReprint = alert.canReprint,
+            reprinting = state.reprintingFromAlert,
+            onReprint = viewModel::reprintFromComandaPrintAlert,
+            onDismiss = viewModel::dismissComandaPrintAlert,
+        )
+    }
 
     val tabletBannerBottomPadding = rememberBendeyBottomBarScrollPadding(includeBottomBar = false)
 
