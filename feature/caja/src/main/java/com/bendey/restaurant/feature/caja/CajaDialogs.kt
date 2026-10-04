@@ -219,7 +219,7 @@ fun ArqueoDialog(
     // ~94% del ancho por defecto, exactamente el rango que pidió la prueba manual.
     BendeyFormDialog(
         onDismissRequest = onDismiss,
-        title = "Arqueo de caja",
+        title = "Contar el dinero de la caja",
         confirmText = if (loading) "Guardando…" else "Guardar",
         confirmEnabled = !loading,
         enableContentScroll = true,
@@ -285,7 +285,7 @@ fun CloseCashDialog(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
                 Text(
-                    "Revise el resumen. Puede cerrar con arqueo para registrar el efectivo contado.",
+                    "Revisa el resumen. Puedes contar el dinero de la caja para registrar el efectivo que hay.",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -338,12 +338,12 @@ fun CloseCashDialog(
                     BendeyFilterChip(
                         selected = form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = true) } },
-                        text = "Con arqueo",
+                        text = "Contar el dinero",
                     )
                     BendeyFilterChip(
                         selected = !form.useArqueo,
                         onClick = { onFormChange { it.copy(useArqueo = false) } },
-                        text = "Sin arqueo",
+                        text = "Cerrar sin contar",
                     )
                 }
                 if (form.useArqueo) {

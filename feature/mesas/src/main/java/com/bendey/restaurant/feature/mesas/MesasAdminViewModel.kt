@@ -200,7 +200,7 @@ class MesasAdminViewModel @Inject constructor(
     fun saveFloor() {
         val form = _uiState.value.floorForm
         if (form.name.isBlank()) {
-            _uiState.update { it.copy(error = "Ingresa el nombre del ambiente") }
+            _uiState.update { it.copy(error = "Ingresa el nombre de la sala") }
             return
         }
         val sortOrder = form.sortOrder.toIntOrNull() ?: 0
@@ -285,7 +285,7 @@ class MesasAdminViewModel @Inject constructor(
         val floorId = form.floorId
         val capacity = form.capacity.toIntOrNull() ?: 0
         if (floorId == null || form.name.isBlank() || capacity <= 0) {
-            _uiState.update { it.copy(error = "Completa ambiente, nombre y capacidad") }
+            _uiState.update { it.copy(error = "Completa sala, nombre y capacidad") }
             return
         }
         viewModelScope.launch {

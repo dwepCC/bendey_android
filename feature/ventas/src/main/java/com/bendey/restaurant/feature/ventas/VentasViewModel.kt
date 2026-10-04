@@ -99,7 +99,7 @@ data class VentasUiState(
     val voidDialogOpen: Boolean = false,
     val voidAction: VoidAction? = null,
     val voidReason: String = "",
-    /** PIN de operaciones. Solo lo piden las anulaciones; la devolución de dinero no lo usa. */
+    /** PIN de autorización. Solo lo piden las anulaciones; la devolución de dinero no lo usa. */
     val voidPin: String = "",
     val voidSubmitting: Boolean = false,
     val emitDialogOpen: Boolean = false,
@@ -426,7 +426,7 @@ class VentasViewModel @Inject constructor(
             when (val settings = settingsRepository.getRestaurantSettings()) {
                 is AppResult.Success -> {
                     if (!settings.data.hasDeletionPin) {
-                        _uiState.update { it.copy(error = "Configure el PIN de operaciones en Configuración") }
+                        _uiState.update { it.copy(error = "Configure el PIN de autorización en Configuración") }
                         return@launch
                     }
                     abrir()
@@ -473,14 +473,14 @@ class VentasViewModel @Inject constructor(
         val detail = state.detail ?: return
         val reason = state.voidReason.trim()
         if (reason.isBlank()) {
-            _uiState.update { it.copy(error = "Indique el motivo de anulación") }
+            _uiState.update { it.copy(error = "Indica el motivo de la anulación") }
             return
         }
         // El PIN cubre las anulaciones, no la devolución: son operaciones distintas y el backend
         // solo lo exige en las primeras. Pedirlo acá igual solo trabaría una que el servidor acepta.
         val pin = state.voidPin.trim()
         if (pin.isBlank() && state.voidAction != VoidAction.REFUND) {
-            _uiState.update { it.copy(error = "Ingrese el PIN de operaciones") }
+            _uiState.update { it.copy(error = "Ingresa el PIN de autorización") }
             return
         }
         when (state.voidAction) {
@@ -825,7 +825,7 @@ class VentasViewModel @Inject constructor(
         val detail = state.detail ?: return
         val seriesId = state.emitSeriesId
         if (seriesId == null) {
-            _uiState.update { it.copy(error = "Seleccione una serie") }
+            _uiState.update { it.copy(error = "Selecciona una serie") }
             return
         }
         val meta = state.emitCheckoutMeta ?: state.checkoutMeta
@@ -847,7 +847,7 @@ class VentasViewModel @Inject constructor(
                     error = if (isFacturaDocType(emitDocType, state.emitDocKind)) {
                         "La factura requiere un cliente con RUC (11 dígitos)"
                     } else {
-                        "Seleccione un cliente"
+                        "Selecciona un cliente"
                     },
                 )
             }

@@ -229,7 +229,7 @@ class MesasViewModel @Inject constructor(
         val table = state.openTableTarget ?: return
         val guests = state.openForm.guestsText.filter { it.isDigit() }.toIntOrNull()?.coerceAtLeast(1)
         if (guests == null) {
-            _uiState.update { it.copy(error = "Ingrese un número de comensales válido") }
+            _uiState.update { it.copy(error = "Ingresa un número de comensales válido") }
             return
         }
         viewModelScope.launch {

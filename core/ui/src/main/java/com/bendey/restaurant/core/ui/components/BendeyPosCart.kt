@@ -65,7 +65,7 @@ fun BendeyPosCartPane(
     total: Double,
     currency: NumberFormat,
     sending: Boolean,
-    sendLabel: String = "Enviar comanda",
+    sendLabel: String = "Enviar a cocina",
     onIncrement: (PosCartLine) -> Unit,
     onDecrement: (String) -> Unit,
     modifier: Modifier = Modifier,

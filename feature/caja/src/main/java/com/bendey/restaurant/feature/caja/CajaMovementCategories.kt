@@ -14,7 +14,7 @@ val incomeMovementCategories = listOf(
 )
 
 val expenseMovementCategories = listOf(
-    CashMovementCategoryOption("egreso_manual", "Egreso manual"),
+    CashMovementCategoryOption("egreso_manual", "Gasto manual"),
     CashMovementCategoryOption("gasto", "Gasto"),
     CashMovementCategoryOption("retiro", "Retiro"),
     CashMovementCategoryOption("pago_proveedor", "Pago a proveedor"),

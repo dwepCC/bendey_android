@@ -1141,7 +1141,7 @@ private fun buildCartActions(
     if (state.isRestaurantOrder) {
         add(
             BendeyCartAction(
-                text = if (state.sending) "Enviando…" else "Enviar comanda",
+                text = if (state.sending) "Enviando…" else "Enviar a cocina",
                 onClick = onSend,
                 enabled = state.cart.isNotEmpty() && !state.sending && !state.savingDraft,
                 style = BendeyCartActionStyle.FilledTonal,

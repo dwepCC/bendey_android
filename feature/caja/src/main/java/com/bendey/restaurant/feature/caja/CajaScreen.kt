@@ -331,13 +331,13 @@ private fun SessionTab(
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
             BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
-            BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
+            BendeyPrimaryButton("- Gasto", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
         }
         Row(
             modifier = Modifier.fillMaxWidth().padding(BendeySpacing.md),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
         ) {
-            OutlinedButton(onClick = viewModel::showArqueoDialog, modifier = Modifier.weight(1f)) { Text("Arqueo") }
+            OutlinedButton(onClick = viewModel::showArqueoDialog, modifier = Modifier.weight(1f)) { Text("Contar dinero") }
             if (state.canOpenCashDrawer) {
                 OutlinedButton(
                     onClick = viewModel::openCashDrawer,
@@ -398,7 +398,7 @@ private fun MovementsTab(
             })
         }
         filter.sessionId?.let { id ->
-            add(BendeyActiveFilter("session", "Sesión #$id") {
+            add(BendeyActiveFilter("session", "Caja #$id") {
                 viewModel.updateMovementsFilter { it.copy(sessionId = null) }
                 viewModel.searchMovementsReport()
             })
@@ -410,7 +410,7 @@ private fun MovementsTab(
             })
         }
         filter.userId?.let { id ->
-            add(BendeyActiveFilter("user", "Usuario #$id") {
+            add(BendeyActiveFilter("user", "Cajero #$id") {
                 viewModel.updateMovementsFilter { it.copy(userId = null) }
                 viewModel.searchMovementsReport()
             })
@@ -431,7 +431,7 @@ private fun MovementsTab(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyPrimaryButton("+ Ingreso", { viewModel.showMovementDialog(CashMovementType.INCOME) }, Modifier.weight(1f))
-                    BendeyPrimaryButton("- Egreso", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
+                    BendeyPrimaryButton("- Gasto", { viewModel.showMovementDialog(CashMovementType.EXPENSE) }, Modifier.weight(1f))
                 }
             }
         }
@@ -469,7 +469,7 @@ private fun MovementsTab(
                     BendeyCompactIconButton(
                         onClick = onNavigateToSubscription,
                         icon = Icons.Default.Lock,
-                        contentDescription = "Excel (Pro)",
+                        contentDescription = "Excel (plan de pago)",
                     )
                 }
             }
@@ -495,7 +495,7 @@ private fun MovementsTab(
         item {
             Text(
                 "Ingresos: ${currency.format(state.movementsReportSummary.sumIncome)} · " +
-                    "Egresos: ${currency.format(state.movementsReportSummary.sumExpense)} · " +
+                    "Gastos: ${currency.format(state.movementsReportSummary.sumExpense)} · " +
                     "Neto: ${currency.format(state.movementsReportSummary.netMovement)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = BendeyColors.OnSurfaceVariant,
@@ -543,7 +543,7 @@ private fun MovementsTab(
             item {
                 Text(
                     "Ingresos: ${currency.format(bank.sumIncome)} · " +
-                        "Egresos: ${currency.format(bank.sumExpense)} · " +
+                        "Gastos: ${currency.format(bank.sumExpense)} · " +
                         "Neto: ${currency.format(bank.netMovement)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
@@ -579,7 +579,7 @@ private fun MovementsTab(
                             fontWeight = FontWeight.Medium,
                         )
                         Text(
-                            "${row.date} · ${if (row.isIncome) "Ingreso" else "Egreso"} · ${row.method}" +
+                            "${row.date} · ${if (row.isIncome) "Ingreso" else "Gasto"} · ${row.method}" +
                                 if (row.userName.isNotBlank()) " · ${row.userName}" else "",
                             style = MaterialTheme.typography.bodySmall,
                             color = BendeyColors.OnSurfaceVariant,
@@ -658,7 +658,7 @@ private fun MovementsTab(
                 BendeyTextField(
                     value = sessionIdDraft,
                     onValueChange = { sessionIdDraft = it },
-                    label = "Sesión #",
+                    label = "Caja (N°)",
                     modifier = Modifier.weight(1f),
                 )
                 BendeyTextField(
@@ -672,13 +672,13 @@ private fun MovementsTab(
                 BendeyTextField(
                     value = userIdDraft,
                     onValueChange = { userIdDraft = it },
-                    label = "Usuario #",
+                    label = "Cajero (N°)",
                     modifier = Modifier.weight(1f),
                 )
                 BendeyTextField(
                     value = typeDraft,
                     onValueChange = { typeDraft = it },
-                    label = "Tipo (income/expense)",
+                    label = "Tipo (ingreso/gasto)",
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -803,7 +803,7 @@ private fun ReportDetailContent(
                         } else {
                             OutlinedButton(onClick = onNavigateToSubscription) {
                                 Icon(Icons.Default.Lock, contentDescription = null)
-                                Text("PDF (Pro)", modifier = Modifier.padding(start = BendeySpacing.xs))
+                                Text("PDF (plan de pago)", modifier = Modifier.padding(start = BendeySpacing.xs))
                             }
                         }
                     }
@@ -831,7 +831,7 @@ private fun ReportSessionPickerField(
         ) {
             Column {
                 Text(
-                    selected?.let { "Sesión #${it.id}" } ?: "Elegir sesión",
+                    selected?.let { "Caja #${it.id}" } ?: "Elegir caja",
                     fontWeight = FontWeight.Bold,
                 )
                 val subtitle = sessionMomentAndOperator(selected)
@@ -930,7 +930,7 @@ private fun ReportPickerRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text("Sesión #${session.id}", fontWeight = FontWeight.SemiBold)
+            Text("Caja #${session.id}", fontWeight = FontWeight.SemiBold)
             val subtitle = sessionMomentAndOperator(session)
             if (!subtitle.isNullOrBlank()) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
@@ -1079,7 +1079,7 @@ private fun ReportContent(
         Text("Efectivo en caja", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
         ReportRow("Saldo de apertura", currency.format(session.openingBalance))
         ReportRow("+ Ingresos en efectivo", currency.format(report.totalIncome))
-        ReportRow("- Egresos en efectivo", currency.format(report.totalExpense))
+        ReportRow("- Gastos en efectivo", currency.format(report.totalExpense))
         ReportRow("= Esperado en caja", currency.format(report.finalBalance), bold = true)
         session.closingBalance?.let { contado ->
             ReportRow("Contado al cerrar", currency.format(contado))
@@ -1129,7 +1129,7 @@ private fun ReportContent(
             }
         }
         if (report.expenseDetail.isNotEmpty()) {
-            Text("Egresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
+            Text("Detalle de gastos", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.expenseDetail.take(15).forEach { row ->
                 Text("${row.reference.ifBlank { row.type }} · ${currency.format(row.amount)}", style = MaterialTheme.typography.bodySmall)
             }
@@ -1238,7 +1238,7 @@ private fun HistorySessionCard(
     BendeyManagementCard {
         Column {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Sesión #${session.id}", fontWeight = FontWeight.Bold)
+                Text("Caja #${session.id}", fontWeight = FontWeight.Bold)
                 BendeyStatusChip(
                     label = if (session.status == CashSessionStatus.OPEN) "Abierta" else "Cerrada",
                     accentColor = if (session.status == CashSessionStatus.OPEN) BendeyColors.Success else BendeyColors.OnSurfaceVariant,
@@ -1648,7 +1648,7 @@ private fun BankMovementsDialog(
                     BendeyFilterChip(
                         selected = form.type == "debit",
                         onClick = { onFormChange { it.copy(type = "debit") } },
-                        text = "Egreso",
+                        text = "Gasto",
                     )
                 }
                 BendeyTextField(form.description, { v -> onFormChange { it.copy(description = v) } }, "Descripción")

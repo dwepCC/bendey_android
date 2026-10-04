@@ -735,7 +735,7 @@ private fun BranchesTab(
 ) {
     if (form.branchSettings.isEmpty()) {
         Text(
-            "Sin configuración por sucursal. Agregue filas para activar o sobreescribir precio.",
+            "Sin configuración por sucursal. Agrega filas para activar o cambiar el precio.",
             style = MaterialTheme.typography.bodySmall,
             color = BendeyColors.OnSurfaceVariant,
         )

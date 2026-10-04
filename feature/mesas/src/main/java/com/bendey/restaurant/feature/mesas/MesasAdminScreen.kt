@@ -84,12 +84,12 @@ fun MesasAdminScreen(
     Column(modifier = modifier.fillMaxSize()) {
         BendeyScreenToolbar(
             title = "Configurar mesas",
-            subtitle = "${state.filteredTables.size} mesas · ${state.floors.size} ambientes",
+            subtitle = "${state.filteredTables.size} mesas · ${state.floors.size} salas",
             actions = {
                 BendeyIconButton(
                     onClick = viewModel::openFloorsSheet,
                     icon = Icons.Default.Layers,
-                    contentDescription = "Ambientes",
+                    contentDescription = "Salas",
                 )
                 BendeyIconButton(
                     onClick = viewModel::refresh,
@@ -242,7 +242,7 @@ fun MesasAdminScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Ambientes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Salas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     BendeyPrimaryButton("Nuevo", viewModel::openCreateFloor, fillWidth = false)
                 }
                 state.floors.forEach { floor ->
@@ -278,7 +278,7 @@ fun MesasAdminScreen(
     if (state.floorFormOpen) {
         BendeyFormDialog(
             onDismissRequest = viewModel::dismissFloorForm,
-            title = if (state.floorForm.id == null) "Nuevo ambiente" else "Editar ambiente",
+            title = if (state.floorForm.id == null) "Nueva sala" else "Editar sala",
             confirmText = if (state.saving) "Guardando…" else "Guardar",
             onConfirm = viewModel::saveFloor,
             onDismiss = viewModel::dismissFloorForm,
@@ -288,7 +288,7 @@ fun MesasAdminScreen(
             BendeyTextField(
                 value = state.floorForm.name,
                 onValueChange = { value -> viewModel.updateFloorForm { it.copy(name = value) } },
-                label = "Nombre del ambiente *",
+                label = "Nombre de la sala *",
             )
             BendeyTextField(
                 value = state.floorForm.sortOrder,
@@ -297,7 +297,7 @@ fun MesasAdminScreen(
             )
             if (state.floorForm.id != null) {
                 BendeyTextButton(
-                    text = "Eliminar ambiente",
+                    text = "Eliminar sala",
                     onClick = { viewModel.requestDeleteFloor(state.floorForm.id!!) },
                     textColor = BendeyColors.Error,
                 )
@@ -315,7 +315,7 @@ fun MesasAdminScreen(
             confirmEnabled = !state.saving,
             loading = state.saving,
         ) {
-            Text("Ambiente", style = MaterialTheme.typography.labelLarge)
+            Text("Sala", style = MaterialTheme.typography.labelLarge)
             BendeyHorizontalScrollRow(
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             ) {
@@ -366,8 +366,8 @@ fun MesasAdminScreen(
     state.deleteFloorId?.let {
         BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDeleteFloor,
-            title = { Text("Eliminar ambiente") },
-            text = { Text("¿Eliminar este ambiente? Debe estar vacío de mesas activas.") },
+            title = { Text("Eliminar sala") },
+            text = { Text("¿Eliminar esta sala? Debe estar vacío de mesas activas.") },
             confirmButton = {
                 BendeyDestructiveButton(
                     text = "Eliminar",

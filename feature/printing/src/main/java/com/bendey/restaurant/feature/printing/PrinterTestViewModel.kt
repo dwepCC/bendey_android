@@ -326,7 +326,7 @@ class PrinterTestViewModel @Inject constructor(
             val server = effectivePrintServer()
             if (server == null || !server.isReady()) {
                 _uiState.update {
-                    it.copy(error = "Ingrese la IP del servidor (solo IP, ej. 192.168.1.20) o seleccione uno de la lista")
+                    it.copy(error = "Ingresa la IP del servidor (solo IP, ej. 192.168.1.20) o selecciona uno de la lista")
                 }
                 return@launch
             }
@@ -366,7 +366,7 @@ class PrinterTestViewModel @Inject constructor(
     fun connectBluetooth() {
         val address = _uiState.value.bluetoothAddress
         if (address.isBlank()) {
-            _uiState.update { it.copy(error = "Seleccione una impresora Bluetooth") }
+            _uiState.update { it.copy(error = "Selecciona una impresora Bluetooth") }
             return
         }
         viewModelScope.launch {

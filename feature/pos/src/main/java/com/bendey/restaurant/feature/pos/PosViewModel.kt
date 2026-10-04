@@ -1127,7 +1127,7 @@ class PosViewModel @Inject constructor(
                 is AppResult.Success -> {
                     if (!settings.data.hasDeletionPin) {
                         _uiState.update {
-                            it.copy(error = "Configure el PIN de operaciones en Configuración")
+                            it.copy(error = "Configura el PIN de autorización en Configuración")
                         }
                         return@launch
                     }
@@ -1166,7 +1166,7 @@ class PosViewModel @Inject constructor(
         val reason = state.voidReason.trim()
         val pin = state.voidPin.trim()
         if (reason.isBlank() || pin.isBlank()) {
-            _uiState.update { it.copy(error = "Indique motivo y PIN") }
+            _uiState.update { it.copy(error = "Indica el motivo y el PIN") }
             return
         }
         viewModelScope.launch {

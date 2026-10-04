@@ -111,7 +111,7 @@ fun formatSessionReportText(
     appendLine("EFECTIVO EN CAJA")
     appendLine("  Saldo de apertura: ${currency.format(session.openingBalance)}")
     appendLine("  + Ingresos en efectivo: ${currency.format(report.totalIncome)}")
-    appendLine("  - Egresos en efectivo: ${currency.format(report.totalExpense)}")
+    appendLine("  - Gastos en efectivo: ${currency.format(report.totalExpense)}")
     appendLine("  = Esperado en caja: ${currency.format(report.finalBalance)}")
     session.closingBalance?.let { contado ->
         appendLine("  Contado al cerrar: ${currency.format(contado)}")

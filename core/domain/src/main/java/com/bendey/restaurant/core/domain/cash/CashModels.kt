@@ -2,7 +2,7 @@ package com.bendey.restaurant.core.domain.cash
 
 enum class CashMovementType(val apiValue: String, val label: String) {
     INCOME("income", "Ingreso"),
-    EXPENSE("expense", "Egreso"),
+    EXPENSE("expense", "Gasto"),
     ;
 
     companion object {

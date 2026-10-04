@@ -46,7 +46,7 @@ class PinViewModel @Inject constructor(
     fun submit(onSuccess: (route: String) -> Unit) {
         val state = _uiState.value
         if (state.pin.length < 4) {
-            _uiState.update { it.copy(error = "Ingrese al menos 4 dígitos") }
+            _uiState.update { it.copy(error = "Ingresa al menos 4 dígitos") }
             return
         }
         viewModelScope.launch {

@@ -83,8 +83,8 @@ fun shareArqueoPdf(
 ): ExportShareResult {
     return try {
         val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/arqueo-caja.pdf")
-        ReportPdfWriter.writePortraitA4(file, "Arqueo de caja", lines)
-        fileShareService.shareFile(context, file, "application/pdf", "Exportar arqueo PDF")
+        ReportPdfWriter.writePortraitA4(file, "Conteo de caja", lines)
+        fileShareService.shareFile(context, file, "application/pdf", "Exportar conteo de caja en PDF")
     } catch (e: Exception) {
         fileShareService.failureFrom(e)
     }
@@ -107,7 +107,7 @@ fun formatSessionReportLines(
     lines += "Efectivo en caja"
     lines += "Saldo de apertura: ${currency.format(session.openingBalance)}"
     lines += "+ Ingresos en efectivo: ${currency.format(report.totalIncome)}"
-    lines += "- Egresos en efectivo: ${currency.format(report.totalExpense)}"
+    lines += "- Gastos en efectivo: ${currency.format(report.totalExpense)}"
     lines += "= Esperado en caja: ${currency.format(report.finalBalance)}"
     session.closingBalance?.let { contado ->
         lines += "Contado al cerrar: ${currency.format(contado)}"

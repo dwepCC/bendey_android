@@ -890,7 +890,7 @@ private fun CartSection(
                         style = BendeyCartActionStyle.SecondaryFilled,
                     ),
                     BendeyCartAction(
-                        text = if (state.sending) "Enviando…" else "Enviar comanda",
+                        text = if (state.sending) "Enviando…" else "Enviar a cocina",
                         onClick = { onSend?.invoke() ?: viewModel.sendComanda() },
                         enabled = state.cart.isNotEmpty() && !state.sending,
                         style = BendeyCartActionStyle.FilledTonal,

@@ -33,7 +33,7 @@ class TenantRepositoryImpl @Inject constructor(
 
     override suspend fun resolveTenantByRuc(ruc: String): Result<TenantBinding> = runCatching {
         val normalized = ruc.replace(Regex("\\D"), "").trim()
-        require(normalized.length >= 8) { "Ingrese un RUC válido" }
+        require(normalized.length >= 8) { "Ingresa un RUC válido" }
         val dto = publicApi.getTenantByRuc(normalized)
         val binding = dto.toDomain(normalized)
         require(binding.slug.isNotBlank()) { "Tenant no encontrado" }
@@ -145,7 +145,7 @@ class AuthRepositoryImpl @Inject constructor(
         operationalDataCache.clearAll()
         tenantRetrofitProvider.invalidate()
         sessionManager.clearUserSession()
-        require(pin.length >= 4) { "Ingrese al menos 4 dígitos" }
+        require(pin.length >= 4) { "Ingresa al menos 4 dígitos" }
         val api = tenantRetrofitProvider.create<AuthApi>()
         val response = api.pinLogin(
             PinLoginRequestDto(pin = pin, station = station.routeKey),

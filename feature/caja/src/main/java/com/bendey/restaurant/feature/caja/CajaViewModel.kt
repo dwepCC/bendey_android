@@ -538,7 +538,7 @@ class CajaViewModel @Inject constructor(
                 it.copy(
                     arqueoDocBusy = false,
                     snackMessage = when (shareResult) {
-                        ExportShareResult.Success -> "Arqueo PDF exportado"
+                        ExportShareResult.Success -> "Conteo de caja exportado en PDF"
                         is ExportShareResult.Failure -> shareResult.userMessage
                     },
                 )
@@ -561,8 +561,8 @@ class CajaViewModel @Inject constructor(
                 it.copy(
                     arqueoDocBusy = false,
                     snackMessage = when (ok) {
-                        true -> "Arqueo enviado a la impresora"
-                        false -> "No se pudo imprimir el arqueo"
+                        true -> "Conteo de caja enviado a la impresora"
+                        false -> "No se pudo imprimir el conteo de caja"
                         null -> "Configura una impresora de documentos directa"
                     },
                 )
@@ -591,7 +591,7 @@ class CajaViewModel @Inject constructor(
                         it.copy(
                             actionLoading = false,
                             showArqueoDialog = false,
-                            snackMessage = "Arqueo guardado · ${String.format("%.2f", result.data)}",
+                            snackMessage = "Conteo guardado · ${String.format("%.2f", result.data)}",
                         )
                     }
                 }
@@ -702,7 +702,7 @@ class CajaViewModel @Inject constructor(
         // se enviaba igual con S/0 contado. Si el sistema espera un saldo real, se bloquea antes
         // de golpear la red; si de verdad se espera S/0 (sesión sin movimientos), se deja pasar.
         if (form.useArqueo && form.arqueo.values.all { it <= 0 } && session.expectedBalance > 0.009) {
-            _uiState.update { it.copy(error = "Ingresa el conteo de efectivo (arqueo) antes de cerrar") }
+            _uiState.update { it.copy(error = "Cuenta el efectivo de la caja antes de cerrar") }
             return
         }
         viewModelScope.launch {

@@ -137,7 +137,7 @@ fun formatSlotQuantityStatus(slot: ComboSlot, selections: List<ComboSlotSelectio
     val remaining = (required - selected).coerceAtLeast(0)
     val complete = isSlotSelectionComplete(slot, selections)
     return SlotQuantityStatus(
-        prompt = "Seleccione $required ${slot.name.trim()}",
+        prompt = "Selecciona $required ${slot.name.trim()}",
         progress = "$selected / $required seleccionadas",
         hint = when {
             complete -> "✓ Completo"
