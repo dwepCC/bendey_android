@@ -2,7 +2,6 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,13 +16,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.domain.copy.EmptyCopy
+import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
+import com.bendey.restaurant.core.domain.copy.ListViewState
+import com.bendey.restaurant.core.domain.copy.LoadErrorCopy
 
 /**
- * Estado vacío. [icon] es opcional (decorativo: el título ya dice lo mismo).
- *
- * - Modo normal: bloque centrado con icono de 48 dp, título, descripción y acción.
- * - Modo [inline]: versión compacta alineada a la izquierda para listas; ahora SÍ muestra
- *   [description] y [action] (antes los descartaba) y usa tipografía del tema.
+ * Estado vacío: bloque centrado con [icon] opcional (decorativo, 48 dp), título, descripción y acción.
+ * Responde las 4 preguntas de UX-REDESIGN §7: qué es, por qué está vacío, qué hacer y botón.
  */
 @Composable
 fun BendeyEmptyState(
@@ -31,43 +31,8 @@ fun BendeyEmptyState(
     modifier: Modifier = Modifier,
     description: String? = null,
     action: @Composable (() -> Unit)? = null,
-    inline: Boolean = false,
     icon: ImageVector? = null,
 ) {
-    if (inline) {
-        Row(
-            modifier = modifier.padding(BendeySpacing.s16),
-            horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s12),
-            verticalAlignment = Alignment.Top,
-        ) {
-            icon?.let {
-                Icon(
-                    imageVector = it,
-                    contentDescription = null,
-                    tint = BendeyColors.OnSurfaceVariant,
-                    modifier = Modifier.size(24.dp),
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.s4)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = BendeyColors.OnSurface,
-                )
-                description?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = BendeyColors.OnSurfaceVariant,
-                    )
-                }
-                action?.let {
-                    Column(modifier = Modifier.padding(top = BendeySpacing.s4)) { it() }
-                }
-            }
-        }
-        return
-    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -98,5 +63,75 @@ fun BendeyEmptyState(
             )
         }
         action?.invoke()
+    }
+}
+
+/**
+ * Estado vacío con los textos centrales de [com.bendey.restaurant.core.domain.copy.EmptyStatesCopy].
+ * El botón solo aparece si hay [onAction] y la copia define `action`; con [canAct] = false se usa
+ * la variante «pídele al administrador» (si existe) y no se muestra botón.
+ */
+@Composable
+fun BendeyEmptyState(
+    copy: EmptyCopy,
+    modifier: Modifier = Modifier,
+    onAction: (() -> Unit)? = null,
+    canAct: Boolean = true,
+    icon: ImageVector? = null,
+) {
+    BendeyEmptyState(
+        title = copy.title,
+        description = copy.descriptionFor(canAct),
+        modifier = modifier,
+        icon = icon,
+        action = if (canAct && onAction != null && copy.action != null) {
+            { BendeyPrimaryButton(text = copy.action!!, onClick = onAction, fillWidth = false) }
+        } else {
+            null
+        },
+    )
+}
+
+/**
+ * Fallo de carga: mensaje + Reintentar. Se usa EN LUGAR de «Sin X» cuando la carga falló
+ * (un error de red nunca debe parecer una lista vacía).
+ */
+@Composable
+fun BendeyLoadError(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    message: String? = null,
+) {
+    BendeyEmptyState(
+        title = LoadErrorCopy.TITLE,
+        description = message?.takeIf { it.isNotBlank() } ?: LoadErrorCopy.DESCRIPTION,
+        modifier = modifier,
+        action = { BendeyPrimaryButton(text = LoadErrorCopy.RETRY, onClick = onRetry, fillWidth = false) },
+    )
+}
+
+/**
+ * Placeholder de una lista según [ListViewState]: error + Reintentar, vacío «no hay nada creado» o vacío
+ * «nada con este filtro». Para Loading/Content no dibuja nada (la pantalla muestra la lista).
+ */
+@Composable
+fun BendeyListPlaceholder(
+    viewState: ListViewState,
+    emptyCopy: EmptyCopy,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+    onCreate: (() -> Unit)? = null,
+    onClearFilters: (() -> Unit)? = null,
+    canAct: Boolean = true,
+) {
+    when (viewState) {
+        is ListViewState.Error -> BendeyLoadError(onRetry = onRetry, message = viewState.message, modifier = modifier)
+        ListViewState.EmptyCreated -> BendeyEmptyState(copy = emptyCopy, onAction = onCreate, canAct = canAct, modifier = modifier)
+        ListViewState.EmptyFiltered -> BendeyEmptyState(
+            copy = EmptyStatesCopy.filtrado,
+            onAction = onClearFilters,
+            modifier = modifier,
+        )
+        ListViewState.Loading, ListViewState.Content -> Unit
     }
 }
