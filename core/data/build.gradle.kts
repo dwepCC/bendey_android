@@ -41,4 +41,6 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
+    // Solo para fabricar HttpException en los tests del repositorio (Response.error).
+    testImplementation(libs.retrofit)
 }

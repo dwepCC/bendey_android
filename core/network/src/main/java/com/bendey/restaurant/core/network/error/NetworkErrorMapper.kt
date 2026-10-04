@@ -49,6 +49,9 @@ object NetworkErrorMapper {
      */
     fun esConflicto(error: Throwable): Boolean = error is HttpException && error.code() == 409
 
+    /** Código HTTP de la respuesta del servidor, o null si el fallo no vino de una respuesta (red, parseo). */
+    fun httpStatus(error: Throwable): Int? = (error as? HttpException)?.code()
+
     private fun subscriptionBlockedMessage(blocked: Boolean): String = if (blocked) {
         "Tu cuenta está bloqueada. Comunícate con soporte para reactivar el servicio."
     } else {

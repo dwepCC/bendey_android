@@ -75,6 +75,7 @@ import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import com.bendey.restaurant.core.ui.subscription.BendeyExportActionsRow
 import androidx.compose.ui.platform.LocalContext
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalytics
+import com.bendey.restaurant.core.domain.onboarding.OnboardingDestination
 import com.bendey.restaurant.core.domain.dashboard.CatalogAnalyticsRow
 import com.bendey.restaurant.core.domain.dashboard.DashboardDailyPoint
 import com.bendey.restaurant.core.domain.dashboard.DashboardRecentSession
@@ -91,10 +92,13 @@ fun DashboardScreen(
     onOpenMesas: () -> Unit = {},
     onOpenVentas: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
+    onOnboardingNavigate: (OnboardingDestination) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // Checklist de activación (solo administrador): opcional, nunca debe romper el Dashboard.
+    val onboarding = rememberOnboardingChecklistState()
     val context = LocalContext.current
     val adaptiveProfile = rememberBendeyAdaptiveProfile()
     val isExpanded = !adaptiveProfile.isCompact
@@ -108,7 +112,10 @@ fun DashboardScreen(
 
     PullToRefreshBox(
         isRefreshing = state.loading || state.catalogLoading,
-        onRefresh = viewModel::refresh,
+        onRefresh = {
+            viewModel.refresh()
+            onboarding.forceRefresh()
+        },
         modifier = modifier.fillMaxSize(),
     ) {
         BendeyLazyColumn(
@@ -119,6 +126,9 @@ fun DashboardScreen(
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(BendeySpacing.sectionGap),
         ) {
+            if (onboarding.visible) {
+                item { onboarding.Content(onNavigate = onOnboardingNavigate) }
+            }
             if (state.lowStockCount > 0) {
                 item { LowStockAlertCard(count = state.lowStockCount) }
             }

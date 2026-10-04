@@ -213,6 +213,35 @@ private fun GeneralTab(
                 }
             }
         }
+        if (state.firstStepsHidden || state.firstStepsMessage != null) {
+            item {
+                BendeyManagementCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                        BendeySectionTitle(text = "Primeros pasos")
+                        Text(
+                            "Vuelve a ver la lista para dejar tu restaurante listo.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BendeyColors.OnSurfaceVariant,
+                        )
+                        state.firstStepsMessage?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (state.firstStepsMessageIsError) BendeyColors.ErrorText else BendeyColors.SuccessText,
+                            )
+                        }
+                        if (state.firstStepsHidden) {
+                            BendeyOutlinedButton(
+                                text = "Mostrar primeros pasos",
+                                onClick = viewModel::showFirstSteps,
+                                enabled = !state.firstStepsBusy,
+                                fillWidth = true,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

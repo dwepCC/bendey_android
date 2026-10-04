@@ -110,6 +110,13 @@ data class PrinterSettings(
         PrintDeliveryMode.LOCAL ->
             targetFor(PrinterSlot.DOCUMENTOS) != null || targetFor(PrinterSlot.COMANDAS) != null
     }
+
+    /**
+     * Este equipo tiene al menos una impresora lista para imprimir (local o por servidor de
+     * impresión). Alimenta el paso "Conecta tu impresora" del checklist de activación.
+     */
+    fun hasAnyPrinterConfigured(): Boolean =
+        isComandaPrintReady() || isDocumentPrintReady() || precuenta.isConfigured
 }
 
 /** @deprecated Usar [PrinterSettings]; conservado para migración interna. */

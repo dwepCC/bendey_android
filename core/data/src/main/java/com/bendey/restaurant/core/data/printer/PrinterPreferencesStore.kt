@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bendey.restaurant.core.data.onboarding.OnboardingTelemetry
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
 import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
@@ -17,6 +18,7 @@ import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.transport.PrinterConnectionType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -31,6 +33,7 @@ private val Context.printerDataStore: DataStore<Preferences> by preferencesDataS
 @Singleton
 class PrinterPreferencesStore @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val onboardingTelemetry: OnboardingTelemetry,
 ) {
     private val dataStore = context.printerDataStore
 
@@ -39,8 +42,34 @@ class PrinterPreferencesStore @Inject constructor(
     /** Comandas slot — compatibilidad con servicios existentes. */
     val config: Flow<SavedPrinterConfig> = settings.map { it.toLegacyConfig() }
 
-    suspend fun save(settings: PrinterSettings) {
+    /**
+     * Si ESTE equipo tiene alguna impresora lista (local o por servidor de impresión). Es la señal
+     * del paso "Conecta tu impresora" del checklist: la impresora es del equipo, no del tenant.
+     */
+    val hasConfiguredPrinter: Flow<Boolean> = settings.map { it.hasAnyPrinterConfigured() }.distinctUntilChanged()
+
+    /**
+     * Toda escritura de impresora pasa por aquí. La PRIMERA vez que el equipo queda con una
+     * impresora lista, se reclama (dentro de la misma edición, así que es atómico) la marca
+     * [Keys.PRINTER_EVENT_SENT] y se avisa al servidor en segundo plano. La marca es local al
+     * equipo y no se limpia: no se repite el evento al reconfigurar. Un equipo que ya tenía
+     * impresora antes de esta versión lo reportará al guardar por primera vez (el servidor ignora
+     * duplicados por tenant).
+     */
+    private suspend fun editAndReportFirstPrinter(block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
+        var firstPrinter = false
         dataStore.edit { prefs ->
+            block(prefs)
+            if (prefs[Keys.PRINTER_EVENT_SENT] != true && prefs.toSettings().hasAnyPrinterConfigured()) {
+                prefs[Keys.PRINTER_EVENT_SENT] = true
+                firstPrinter = true
+            }
+        }
+        if (firstPrinter) onboardingTelemetry.reportPrinterConfigured()
+    }
+
+    suspend fun save(settings: PrinterSettings) {
+        editAndReportFirstPrinter { prefs ->
             prefs[Keys.AUTO_PRINT] = settings.autoPrintComandas
             prefs[Keys.AUTO_PRINT_DOCS] = settings.autoPrintDocuments
             prefs[Keys.COMANDA_TEXT_SIZE] = when (settings.comandaTextSize) {
@@ -71,7 +100,7 @@ class PrinterPreferencesStore @Inject constructor(
     }
 
     suspend fun saveDeliveryMode(mode: PrintDeliveryMode, server: PrintServerSelection? = null) {
-        dataStore.edit { prefs ->
+        editAndReportFirstPrinter { prefs ->
             prefs[Keys.DELIVERY_MODE] = when (mode) {
                 PrintDeliveryMode.SERVER -> "server"
                 PrintDeliveryMode.LOCAL -> "local"
@@ -83,7 +112,7 @@ class PrinterPreferencesStore @Inject constructor(
     }
 
     suspend fun saveSlot(slot: PrinterSlot, config: PrinterSlotConfig) {
-        dataStore.edit { prefs ->
+        editAndReportFirstPrinter { prefs ->
             writeSlot(prefs, slot, config)
         }
     }
@@ -231,6 +260,9 @@ class PrinterPreferencesStore @Inject constructor(
         val DOCUMENT_LOGO_SIZE = stringPreferencesKey("document_logo_size")
         val DELIVERY_MODE = stringPreferencesKey("print_delivery_mode")
         val PRINT_SERVER_JSON = stringPreferencesKey("print_server_json")
+
+        /** El evento `printer_configured` ya se envió desde este equipo (ver [editAndReportFirstPrinter]). */
+        val PRINTER_EVENT_SENT = booleanPreferencesKey("onboarding_printer_event_sent")
     }
 }
 

@@ -340,6 +340,14 @@ private fun MainShell(
                 onNavigateToSubscription = {
                     mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
                 },
+                onOnboardingNavigate = { destination ->
+                    mainNavController.navigateToOnboardingDestination(
+                        destination,
+                        permissions.permissions,
+                        permissions.employeeType,
+                        onShowMessage,
+                    )
+                },
             )
             printingGraph(onBack = { mainNavController.popBackStack() })
             posGraph(

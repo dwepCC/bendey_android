@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.di
 
+import com.bendey.restaurant.core.data.onboarding.OnboardingRepositoryImpl
 import com.bendey.restaurant.core.data.repository.AuthRepositoryImpl
 import com.bendey.restaurant.core.data.repository.BillingRepositoryImpl
 import com.bendey.restaurant.core.data.repository.CashRepositoryImpl
@@ -40,6 +41,7 @@ import com.bendey.restaurant.core.domain.digitalmenu.DigitalMenuRepository
 import com.bendey.restaurant.core.domain.contacts.ContactsRepository
 import com.bendey.restaurant.core.domain.dashboard.DashboardRepository
 import com.bendey.restaurant.core.domain.inventory.InventoryRepository
+import com.bendey.restaurant.core.domain.onboarding.OnboardingRepository
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.PosRepository
@@ -170,4 +172,8 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindProductImageRepository(impl: ProductImageRepositoryImpl): ProductImageRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindOnboardingRepository(impl: OnboardingRepositoryImpl): OnboardingRepository
 }

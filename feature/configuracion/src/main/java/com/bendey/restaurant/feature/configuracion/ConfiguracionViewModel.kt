@@ -18,6 +18,10 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
 import com.bendey.restaurant.core.domain.catalog.SunatConfigFormInput
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.onboarding.ConfigTabHint
+import com.bendey.restaurant.core.domain.onboarding.OnboardingPreferencesUpdate
+import com.bendey.restaurant.core.domain.onboarding.OnboardingRepository
+import com.bendey.restaurant.core.domain.onboarding.canSeeOnboarding
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.domain.subscription.BILLING_MODULE_KEY
@@ -28,6 +32,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -95,6 +101,11 @@ data class ConfiguracionUiState(
     val staffEditForm: StaffEditFormInput = StaffEditFormInput(),
     val canManageRestaurantSettings: Boolean = false,
     val billingModuleEnabled: Boolean = false,
+    /** El administrador ocultó el checklist de primeros pasos: se le ofrece volver a mostrarlo. */
+    val firstStepsHidden: Boolean = false,
+    val firstStepsBusy: Boolean = false,
+    val firstStepsMessage: String? = null,
+    val firstStepsMessageIsError: Boolean = false,
     val error: String? = null,
 )
 
@@ -102,6 +113,7 @@ data class ConfiguracionUiState(
 class ConfiguracionViewModel @Inject constructor(
     private val repository: SettingsRepository,
     private val sessionStore: UserSessionStore,
+    private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
@@ -109,6 +121,22 @@ class ConfiguracionViewModel @Inject constructor(
 
     init {
         applyCachedSettings()
+        // El checklist de Inicio puede pedir una pestaña concreta (no hay deep-link a pestañas).
+        viewModelScope.launch {
+            ConfigTabHint.pending.collect { request ->
+                if (request == null) return@collect
+                ConfigTabHint.freshTab(request)
+                    ?.let { name -> ConfigTab.entries.firstOrNull { it.name == name } }
+                    ?.let(::setTab)
+                ConfigTabHint.consume()
+            }
+        }
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .map { it.canSeeOnboarding() }
+                .distinctUntilChanged()
+                .collect { canSee -> if (canSee) loadFirstStepsHidden() else _uiState.update { it.copy(firstStepsHidden = false) } }
+        }
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
@@ -121,6 +149,35 @@ class ConfiguracionViewModel @Inject constructor(
             }
         }
         refresh(forceNetwork = false)
+    }
+
+    /** Solo se ofrece "Mostrar primeros pasos" si de verdad están ocultos; un fallo aquí no molesta. */
+    private suspend fun loadFirstStepsHidden() {
+        val result = onboardingRepository.getState()
+        if (result is AppResult.Success) {
+            _uiState.update { it.copy(firstStepsHidden = result.data.dismissed) }
+        }
+    }
+
+    fun showFirstSteps() {
+        if (_uiState.value.firstStepsBusy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(firstStepsBusy = true, firstStepsMessage = null) }
+            when (val result = onboardingRepository.updatePreferences(OnboardingPreferencesUpdate(dismissed = false))) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        firstStepsBusy = false,
+                        firstStepsHidden = result.data.dismissed,
+                        firstStepsMessage = "Listo. Verás tus primeros pasos en Inicio.",
+                        firstStepsMessageIsError = false,
+                    )
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(firstStepsBusy = false, firstStepsMessage = result.message, firstStepsMessageIsError = true)
+                }
+                AppResult.Loading -> Unit
+            }
+        }
     }
 
     private fun applyCachedSettings() {

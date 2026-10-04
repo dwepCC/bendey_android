@@ -164,6 +164,15 @@ fun ProductosScreen(
                     currency = currency,
                     assetsBaseUrl = viewModel.tenantBaseUrl,
                     error = state.error?.takeIf { !state.productFormOpen },
+                    banner = {
+                        SampleMenuBanner(
+                            hasProducts = state.products.isNotEmpty(),
+                            onChanged = {
+                                viewModel.refreshProducts()
+                                viewModel.loadCategories()
+                            },
+                        )
+                    },
                     onSearch = viewModel::setSearchQuery,
                     onCategoryFilter = viewModel::setCategoryFilter,
                     onBranchFilter = viewModel::setBranchFilter,
@@ -313,6 +322,7 @@ private fun ProductsTabContent(
     assetsBaseUrl: String?,
     error: String?,
     selectedProductId: Int? = null,
+    banner: @Composable () -> Unit = {},
     onSearch: (String) -> Unit,
     onCategoryFilter: (Int?) -> Unit,
     onBranchFilter: (Int?) -> Unit,
@@ -345,6 +355,7 @@ private fun ProductsTabContent(
         }
     }
     Column(modifier = modifier.fillMaxSize()) {
+        banner()
         error?.let {
             Text(it, color = BendeyColors.Error, modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs))
         }
