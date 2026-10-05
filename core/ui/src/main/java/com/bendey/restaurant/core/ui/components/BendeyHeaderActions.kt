@@ -186,7 +186,9 @@ private fun BendeyHeaderUserMenu(
             ) {
                 IconButton(
                     onClick = { showUserMenu = true },
-                    modifier = Modifier.size(BendeySpacing.touchTarget),
+                    modifier = Modifier
+                        .size(BendeySpacing.touchTarget)
+                        .semantics { contentDescription = "Menú de usuario" },
                 ) {
                     Text(
                         text = state.userInitials.ifBlank { "?" },

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -85,14 +86,21 @@ fun BendeySearchField(
                     innerTextField()
                 }
                 if (value.isNotEmpty()) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Limpiar búsqueda",
-                        tint = BendeyColors.OnSurfaceVariant,
+                    // Zona táctil 44 dp; el glifo sigue en 18 dp.
+                    Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(BendeySpacing.touchMin)
+                            .clip(CircleShape)
                             .clickable { onValueChange("") },
-                    )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Limpiar búsqueda",
+                            tint = BendeyColors.OnSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         },

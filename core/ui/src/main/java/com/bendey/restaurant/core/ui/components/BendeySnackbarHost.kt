@@ -1,6 +1,12 @@
 package com.bendey.restaurant.core.ui.components
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -21,16 +27,26 @@ fun BendeySnackbarHost(
         hostState = hostState,
         modifier = modifier,
     ) { data ->
-        Snackbar(
-            snackbarData = data,
-            containerColor = BendeyColors.OnSurface,
-            contentColor = BendeyColors.Surface,
-            shape = BendeyShapeTokens.md,
-            actionColor = BendeyColors.Primary,
-            actionContentColor = BendeyColors.Primary,
-        )
+        // Tablet: centrado abajo y con ancho legible (no pegado a una esquina ni de borde a borde).
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Snackbar(
+                snackbarData = data,
+                modifier = Modifier.widthIn(max = BendeySnackbarMaxWidth),
+                containerColor = BendeyColors.OnSurface,
+                contentColor = BendeyColors.Surface,
+                shape = BendeyShapeTokens.md,
+                actionColor = BendeyColors.Primary,
+                actionContentColor = BendeyColors.Primary,
+            )
+        }
     }
 }
+
+/** Ancho máximo legible del aviso; en teléfono ocupa el ancho disponible. */
+val BendeySnackbarMaxWidth: Dp = 560.dp
 
 @BendeyPhonePreview
 @Composable

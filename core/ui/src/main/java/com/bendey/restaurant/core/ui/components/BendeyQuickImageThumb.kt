@@ -64,7 +64,7 @@ fun BendeyQuickImageThumb(
             .size(size)
             .clip(BendeyShapeTokens.xs)
             .background(BendeyColors.SurfaceVariant)
-            .clickable(enabled = !uploading) { launcher.launch("image/*") },
+            .clickable(enabled = !uploading, onClickLabel = "Cambiar imagen: $contentDescription") { launcher.launch("image/*") },
         contentAlignment = Alignment.Center,
     ) {
         if (imageUrl != null) {
