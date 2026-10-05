@@ -134,7 +134,14 @@ data class VentasUiState(
     val xmlViewTitle: String = "",
     val xmlViewContent: String = "",
     val listSummary: com.bendey.restaurant.core.domain.sales.SaleListSummary = com.bendey.restaurant.core.domain.sales.SaleListSummary(),
+    /** Anulaciones a medias (R10.9, solo lectura). null = aún no se consultó. */
+    val stuckVoid: List<com.bendey.restaurant.core.domain.billing.StuckVoidCreditNote>? = null,
+    val stuckVoidError: String? = null,
+    val stuckVoidExpanded: Boolean = false,
 ) {
+    val stuckVoidBanner: com.bendey.restaurant.core.domain.billing.StuckVoidBannerState
+        get() = com.bendey.restaurant.core.domain.billing.stuckVoidBannerState(sunatEnabled, stuckVoid, stuckVoidError)
+
     // «Todas» y «Solo notas de venta» se piden siempre: traen notas de venta, que no dependen de
     // SUNAT. Los filtros que solo traen comprobantes electronicos necesitan la facturacion activa.
     val canFetchList: Boolean
@@ -293,6 +300,22 @@ class VentasViewModel @Inject constructor(
         }
     }
 
+    /** Consulta las anulaciones que quedaron a medias; solo con facturación electrónica activa. */
+    fun refreshStuckVoid() {
+        if (!_uiState.value.sunatEnabled) return
+        viewModelScope.launch {
+            when (val result = billingRepository.listStuckVoidCreditNotes()) {
+                is AppResult.Success -> _uiState.update { it.copy(stuckVoid = result.data, stuckVoidError = null) }
+                is AppResult.Error -> _uiState.update { it.copy(stuckVoidError = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun toggleStuckVoidExpanded() {
+        _uiState.update { it.copy(stuckVoidExpanded = !it.stuckVoidExpanded) }
+    }
+
     private fun warmCheckoutMeta() {
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
@@ -306,6 +329,7 @@ class VentasViewModel @Inject constructor(
                             receiptHasPrinter = hasPrinter,
                         )
                     }
+                    refreshStuckVoid()
                 }
                 else -> Unit
             }
@@ -326,6 +350,7 @@ class VentasViewModel @Inject constructor(
     }
 
     fun refresh() {
+        refreshStuckVoid()
         viewModelScope.launch {
             val state = _uiState.value
             if (!state.canFetchList) {

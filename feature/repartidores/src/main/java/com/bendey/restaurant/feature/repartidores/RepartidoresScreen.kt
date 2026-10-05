@@ -32,7 +32,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import java.time.Instant
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +52,8 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
+import com.bendey.restaurant.core.domain.delivery.DELIVERY_BOARD_REFRESH_MS
+import com.bendey.restaurant.core.domain.delivery.deliveryBoardTitle
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
@@ -69,11 +80,32 @@ fun RepartidoresScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    // Tablero de entregas: se refresca al entrar (init del ViewModel) y cada 60 s mientras la pantalla está
+    // a la vista; el reloj de "hace N min" avanza cada 30 s sin pedir nada al servidor.
+    var now by remember { mutableStateOf(Instant.now()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            now = Instant.now()
+            var sinceRefresh = 0L
+            while (true) {
+                delay(DELIVERY_CLOCK_TICK_MS)
+                now = Instant.now()
+                sinceRefresh += DELIVERY_CLOCK_TICK_MS
+                if (sinceRefresh >= DELIVERY_BOARD_REFRESH_MS) {
+                    sinceRefresh = 0L
+                    viewModel.refreshBoard()
+                }
+            }
+        }
+    }
+
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             BendeyScreenToolbar(
                 title = "Repartidores",
                 subtitle = when (state.tab) {
+                    RepartidoresTabKind.BOARD -> deliveryBoardTitle(state.board.size)
                     RepartidoresTabKind.DRIVERS -> "${state.drivers.size} repartidores"
                     RepartidoresTabKind.COMPANIES -> "${state.companies.size} empresas"
                 },
@@ -84,14 +116,21 @@ fun RepartidoresScreen(
                         icon = Icons.Default.Refresh,
                         contentDescription = "Actualizar",
                     )
-                    BendeyIconButton(
-                        onClick = viewModel::openCreate,
-                        icon = Icons.Default.Add,
-                        contentDescription = "Nuevo",
-                    )
+                    if (state.tab != RepartidoresTabKind.BOARD) {
+                        BendeyIconButton(
+                            onClick = viewModel::openCreate,
+                            icon = Icons.Default.Add,
+                            contentDescription = "Nuevo",
+                        )
+                    }
                 },
             )
             Row(Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                BendeyFilterChip(
+                    selected = state.tab == RepartidoresTabKind.BOARD,
+                    onClick = { viewModel.selectTab(RepartidoresTabKind.BOARD.name) },
+                    text = "Entregas",
+                )
                 BendeyFilterChip(
                     selected = state.tab == RepartidoresTabKind.DRIVERS,
                     onClick = { viewModel.selectTab(RepartidoresTabKind.DRIVERS.name) },
@@ -105,8 +144,16 @@ fun RepartidoresScreen(
             }
             val driversViewState = ListStateDecider.decide(state.loading, state.driversLoadError, state.drivers.size)
             val driversPlaceholder = state.tab == RepartidoresTabKind.DRIVERS && driversViewState.showsPlaceholder
-            state.error?.takeIf { !driversPlaceholder }?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
+            state.error?.takeIf { !driversPlaceholder && state.tab != RepartidoresTabKind.BOARD }?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
+                RepartidoresTabKind.BOARD -> DeliveryBoard(
+                    items = state.board,
+                    loading = state.boardLoading,
+                    error = state.boardError,
+                    now = now,
+                    onRetry = viewModel::refreshBoard,
+                    modifier = Modifier.weight(1f),
+                )
                 RepartidoresTabKind.DRIVERS -> if (driversPlaceholder) {
                     BendeyListPlaceholder(
                         viewState = driversViewState,

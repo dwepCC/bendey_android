@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.network.dto.ComboUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
 import com.bendey.restaurant.core.network.dto.UbiItemDto
+import com.bendey.restaurant.core.network.dto.DeliveryBoardItemDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
@@ -132,6 +133,10 @@ interface DeliveryApi {
         @Path("id") sessionId: Int,
         @Body body: AssignDeliveryDriverRequestDto,
     ): SuccessResponseDto
+
+    // Tablero de entregas activas de la sucursal (R10.9, solo lectura).
+    @GET("/api/restaurant/delivery-assignments")
+    suspend fun listDeliveryBoard(): ListResponseDto<DeliveryBoardItemDto>
 
     @GET("/api/restaurant/delivery-companies")
     suspend fun listDeliveryCompanies(

@@ -414,3 +414,17 @@ data class SalesByProductResponseDto(
     val data: List<SalesByProductRowDto> = emptyList(),
     val summary: SalesByProductSummaryDto? = null,
 )
+
+@Serializable
+data class StuckVoidCreditNoteDto(
+    @SerialName("original_sale_id") val originalSaleId: Int = 0,
+    @SerialName("original_number") val originalNumber: String? = null,
+    @SerialName("original_doc_type") val originalDocType: String? = null,
+    @SerialName("original_total") val originalTotal: Double = 0.0,
+    @SerialName("credit_note_id") val creditNoteId: Int = 0,
+    @SerialName("credit_note_number") val creditNoteNumber: String? = null,
+    @SerialName("sunat_message") val sunatMessage: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    /** true = no está rechazada, solo lleva demasiado tiempo sin resolverse. */
+    val stalled: Boolean = false,
+)

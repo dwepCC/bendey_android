@@ -238,6 +238,22 @@ class DeliveryRepositoryImpl @Inject constructor(
         api.deleteDeliveryDriver(id)
     }
 
+    override suspend fun listActiveAssignments(): AppResult<List<com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem>> = apiCall {
+        api.listDeliveryBoard().data.map {
+            com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem(
+                assignmentId = it.assignmentId,
+                sessionId = it.sessionId,
+                status = it.status,
+                assignedAt = it.assignedAt,
+                driverId = it.driverId,
+                driverName = it.driverName.orEmpty(),
+                customerName = it.customerName.orEmpty(),
+                deliveryAddress = it.deliveryAddress.orEmpty(),
+                failedReason = it.failedReason?.takeIf { r -> r.isNotBlank() },
+            )
+        }
+    }
+
     override suspend fun listCompanies(): AppResult<List<DeliveryCompany>> = apiCall {
         api.listDeliveryCompanies().data.map { it.toDomain() }
     }

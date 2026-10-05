@@ -196,6 +196,13 @@ fun VentasScreen(
                 // van como primer ítem del LazyColumn para que TODO scrollee junto y la lista sea
                 // alcanzable. Las pestañas (Todas/Notas/Boletas) siguen fijas arriba.
                 leadingContent = {
+                    StuckVoidBanner(
+                        state = state.stuckVoidBanner,
+                        expanded = state.stuckVoidExpanded,
+                        onToggle = viewModel::toggleStuckVoidExpanded,
+                        onRetry = viewModel::refreshStuckVoid,
+                        currency = currency,
+                    )
                     VentasFiltersSection(
                         state = state,
                         paymentMethods = state.checkoutMeta?.paymentMethods.orEmpty(),

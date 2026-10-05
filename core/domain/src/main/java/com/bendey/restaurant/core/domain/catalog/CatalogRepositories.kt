@@ -38,6 +38,9 @@ interface DeliveryRepository {
     suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit>
     suspend fun deleteDriver(id: Int): AppResult<Unit>
 
+    /** Entregas activas de la sucursal, solo lectura (R10.9). */
+    suspend fun listActiveAssignments(): AppResult<List<com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem>>
+
     suspend fun listCompanies(): AppResult<List<DeliveryCompany>>
     suspend fun createCompany(input: DeliveryCompanyFormInput): AppResult<Unit>
     suspend fun updateCompany(id: Int, name: String, active: Boolean): AppResult<Unit>

@@ -188,6 +188,22 @@ class BillingRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun listStuckVoidCreditNotes(): AppResult<List<com.bendey.restaurant.core.domain.billing.StuckVoidCreditNote>> = apiCall {
+        tenantRetrofitProvider.create<BillingApi>().listStuckVoidCreditNotes().data.map {
+            com.bendey.restaurant.core.domain.billing.StuckVoidCreditNote(
+                originalSaleId = it.originalSaleId,
+                originalNumber = it.originalNumber.orEmpty(),
+                originalDocType = it.originalDocType.orEmpty(),
+                originalTotal = it.originalTotal,
+                creditNoteId = it.creditNoteId,
+                creditNoteNumber = it.creditNoteNumber.orEmpty(),
+                sunatMessage = it.sunatMessage.orEmpty(),
+                stalled = it.stalled,
+                createdAt = it.createdAt,
+            )
+        }
+    }
+
     override suspend fun downloadOfficialPdf(saleId: Int): AppResult<File> =
         downloadBillingDocument(saleId, BillingDocumentKind.PDF)
 

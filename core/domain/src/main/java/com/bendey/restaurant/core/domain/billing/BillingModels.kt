@@ -203,4 +203,7 @@ interface BillingRepository {
     suspend fun downloadOfficialPdf(saleId: Int): AppResult<java.io.File>
     suspend fun downloadBillingDocument(saleId: Int, kind: BillingDocumentKind): AppResult<java.io.File>
     suspend fun loadBillingDocumentText(saleId: Int, kind: BillingDocumentKind): AppResult<String>
+
+    /** Anulaciones que quedaron a medias (NC rechazada o colgada), solo lectura (R10.9). */
+    suspend fun listStuckVoidCreditNotes(): AppResult<List<StuckVoidCreditNote>>
 }

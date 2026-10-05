@@ -254,6 +254,19 @@ data class DeliveryDriverDto(
 )
 
 @Serializable
+data class DeliveryBoardItemDto(
+    @SerialName("assignment_id") val assignmentId: Int,
+    @SerialName("session_id") val sessionId: Int = 0,
+    val status: String = "",
+    @SerialName("assigned_at") val assignedAt: String? = null,
+    @SerialName("driver_id") val driverId: Int = 0,
+    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("failed_reason") val failedReason: String? = null,
+)
+
+@Serializable
 data class DeliveryCompanyUpsertRequestDto(
     val name: String,
     val active: Boolean? = null,
