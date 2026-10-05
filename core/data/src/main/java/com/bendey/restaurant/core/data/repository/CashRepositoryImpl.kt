@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.data.session.SessionManager
 import com.bendey.restaurant.core.domain.cash.BankMethodTotals
 import com.bendey.restaurant.core.domain.cash.BankMovementRow
@@ -64,7 +65,16 @@ import javax.inject.Singleton
 class CashRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
     private val sessionManager: SessionManager,
+    private val operationalDataCache: OperationalDataCache,
 ) : CashRepository {
+
+    /** R10.5: cualquier cambio de metodos de pago / cuentas / series / contactos descarta la cache de cobro. */
+    private suspend inline fun <T> mutating(crossinline block: suspend () -> T): AppResult<T> {
+        val result = apiCall { block() }
+        if (result is AppResult.Success) operationalDataCache.clearCheckoutMeta()
+        return result
+    }
+
 
     override suspend fun getOpenSession(branchId: Int?): AppResult<CashSession?> = apiCall {
         val dto = tenantRetrofitProvider.create<CashbankApi>()
@@ -171,7 +181,7 @@ class CashRepositoryImpl @Inject constructor(
         code: String,
         destinationType: String,
         bankAccountId: Int?,
-    ): AppResult<Unit> = apiCall {
+    ): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CashbankApi>().createPaymentMethod(
             PaymentMethodUpsertRequestDto(
                 name = name,
@@ -190,7 +200,7 @@ class CashRepositoryImpl @Inject constructor(
         destinationType: String,
         bankAccountId: Int?,
         active: Boolean,
-    ): AppResult<Unit> = apiCall {
+    ): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CashbankApi>().updatePaymentMethod(
             id = id,
             body = PaymentMethodUpsertRequestDto(
@@ -204,7 +214,7 @@ class CashRepositoryImpl @Inject constructor(
         Unit
     }
 
-    override suspend fun deletePaymentMethod(id: Int): AppResult<Unit> = apiCall {
+    override suspend fun deletePaymentMethod(id: Int): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CashbankApi>().deletePaymentMethod(id)
         Unit
     }
@@ -224,7 +234,7 @@ class CashRepositoryImpl @Inject constructor(
         type: String,
         paymentMethod: String,
         initialBalance: Double,
-    ): AppResult<Unit> = apiCall {
+    ): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CashbankApi>().createBankAccount(
             BankAccountUpsertRequestDto(
                 name = name,
@@ -247,7 +257,7 @@ class CashRepositoryImpl @Inject constructor(
         type: String,
         paymentMethod: String,
         active: Boolean,
-    ): AppResult<Unit> = apiCall {
+    ): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CashbankApi>().updateBankAccount(
             id = id,
             body = BankAccountUpsertRequestDto(

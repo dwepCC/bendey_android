@@ -46,6 +46,10 @@ class OperationalDataCache @Inject constructor() {
         else checkoutMetaByBranch.remove(branchId)
     }
 
+    fun clearCategories() {
+        categories = null
+    }
+
     fun getTenantSettings(): CachedTenantSettings? = tenantSettings
 
     fun setTenantSettings(value: CachedTenantSettings) {

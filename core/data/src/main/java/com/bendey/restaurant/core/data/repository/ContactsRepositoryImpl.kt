@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.data.cache.OperationalDataCache
 import com.bendey.restaurant.core.domain.contacts.ConsultaDniResult
 import com.bendey.restaurant.core.domain.contacts.ConsultaRucResult
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
@@ -21,7 +22,16 @@ import javax.inject.Singleton
 @Singleton
 class ContactsRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
 ) : ContactsRepository {
+
+    /** R10.5: cualquier cambio de metodos de pago / cuentas / series / contactos descarta la cache de cobro. */
+    private suspend inline fun <T> mutating(crossinline block: suspend () -> T): AppResult<T> {
+        val result = apiCall { block() }
+        if (result is AppResult.Success) operationalDataCache.clearCheckoutMeta()
+        return result
+    }
+
 
     private val contactsApi: ContactsApi
         get() = tenantRetrofitProvider.create()
@@ -45,19 +55,19 @@ class ContactsRepositoryImpl @Inject constructor(
         contactsApi.getContact(id).data.toCustomer()
     }
 
-    override suspend fun createCustomer(input: ContactFormInput, type: String): AppResult<CustomerContact> = apiCall {
+    override suspend fun createCustomer(input: ContactFormInput, type: String): AppResult<CustomerContact> = mutating {
         contactsApi.createContact(input.toCreateDto(type)).data.toCustomer()
     }
 
-    override suspend fun updateCustomer(id: Int, input: ContactFormInput, type: String): AppResult<CustomerContact> = apiCall {
+    override suspend fun updateCustomer(id: Int, input: ContactFormInput, type: String): AppResult<CustomerContact> = mutating {
         contactsApi.updateContact(id, input.toUpdateDto(type)).data.toCustomer()
     }
 
-    override suspend fun deleteCustomer(id: Int): AppResult<Unit> = apiCall {
+    override suspend fun deleteCustomer(id: Int): AppResult<Unit> = mutating {
         contactsApi.deleteContact(id)
     }
 
-    override suspend fun toggleCustomer(id: Int): AppResult<Unit> = apiCall {
+    override suspend fun toggleCustomer(id: Int): AppResult<Unit> = mutating {
         contactsApi.toggleContact(id)
     }
 

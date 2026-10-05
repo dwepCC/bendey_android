@@ -261,6 +261,14 @@ class SettingsRepositoryImpl @Inject constructor(
     private val operationalDataCache: OperationalDataCache,
 ) : SettingsRepository {
 
+    /** R10.5: cualquier cambio de metodos de pago / cuentas / series / contactos descarta la cache de cobro. */
+    private suspend inline fun <T> mutating(crossinline block: suspend () -> T): AppResult<T> {
+        val result = apiCall { block() }
+        if (result is AppResult.Success) operationalDataCache.clearCheckoutMeta()
+        return result
+    }
+
+
     private val api: SettingsApi
         get() = tenantRetrofitProvider.create()
 
@@ -419,7 +427,7 @@ class SettingsRepositoryImpl @Inject constructor(
             .map { it.toDocumentSeries() }
     }
 
-    override suspend fun createSeries(input: SeriesFormInput): AppResult<Unit> = apiCall {
+    override suspend fun createSeries(input: SeriesFormInput): AppResult<Unit> = mutating {
         val branchId = input.branchId ?: error("Selecciona sucursal")
         tenantRetrofitProvider.create<CompanyApi>().createSeries(
             SeriesCreateRequestDto(
@@ -432,7 +440,7 @@ class SettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit> = apiCall {
+    override suspend fun updateSeries(id: Int, input: SeriesFormInput): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CompanyApi>().updateSeries(
             id,
             SeriesUpdateRequestDto(
@@ -446,7 +454,7 @@ class SettingsRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun deleteSeries(id: Int): AppResult<Unit> = apiCall {
+    override suspend fun deleteSeries(id: Int): AppResult<Unit> = mutating {
         tenantRetrofitProvider.create<CompanyApi>().deleteSeries(id)
     }
 

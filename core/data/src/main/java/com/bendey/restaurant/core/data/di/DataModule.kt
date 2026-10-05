@@ -13,6 +13,8 @@ import com.bendey.restaurant.core.data.repository.DashboardRepositoryImpl
 import com.bendey.restaurant.core.data.repository.DeliveryRepositoryImpl
 import com.bendey.restaurant.core.data.repository.InventoryRepositoryImpl
 import com.bendey.restaurant.core.data.repository.KitchenRepositoryImpl
+import com.bendey.restaurant.core.data.repository.PendingApprovalRepositoryImpl
+import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalRepository
 import com.bendey.restaurant.core.data.repository.MesasRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ModifiersRepositoryImpl
 import com.bendey.restaurant.core.data.repository.PreparationAreasRepositoryImpl
@@ -108,6 +110,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindKitchenRepository(impl: KitchenRepositoryImpl): KitchenRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPendingApprovalRepository(impl: PendingApprovalRepositoryImpl): PendingApprovalRepository
 
     @Binds
     @Singleton

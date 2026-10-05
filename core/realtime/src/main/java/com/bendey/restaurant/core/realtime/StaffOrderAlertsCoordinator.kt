@@ -1,6 +1,10 @@
 package com.bendey.restaurant.core.realtime
 
+import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalLogic
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.realtime.pending.PendingApprovalStore
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.realtime.connection.AppForeground
 import com.bendey.restaurant.core.realtime.connection.ConnectionSession
@@ -37,6 +41,7 @@ class StaffOrderAlertsCoordinator @Inject constructor(
     private val realtimeRecovery: RealtimeRecovery,
     private val restaurantStores: RestaurantStores,
     private val appForeground: AppForeground,
+    private val pendingApprovalStore: PendingApprovalStore,
 ) {
     private val latestPermissions = MutableStateFlow<List<String>>(emptyList())
     private val latestBranchId = MutableStateFlow<Int?>(null)
@@ -54,7 +59,29 @@ class StaffOrderAlertsCoordinator @Inject constructor(
                 latestPermissions.value = session?.restaurantPermissions.orEmpty()
                 latestBranchId.value = session?.activeBranch?.id
                 latestEmployeeType.value = session?.user?.employeeType
+                // R10.1: solo quien puede revisar la cola la consulta (y ve el badge).
+                pendingApprovalStore.setEnabled(
+                    session?.activeBranch?.id != null && PendingApprovalLogic.canView(session.restaurantPermissions),
+                )
             }
+        }
+
+        scope.launch {
+            // Cola de pedidos por revisar: al volver a primer plano, al cambiar de sucursal/permiso y con un
+            // respaldo lento por si se pierde un evento. El evento en tiempo real es la via normal.
+            combine(sessionStore.userSessionFlow, appForeground.enPantalla) { session, enPantalla ->
+                val on = enPantalla && session?.activeBranch?.id != null &&
+                    PendingApprovalLogic.canView(session.restaurantPermissions)
+                if (on) session?.activeBranch?.id else null
+            }
+                .distinctUntilChanged()
+                .collectLatest { branchId ->
+                    if (branchId == null) return@collectLatest
+                    while (true) {
+                        pendingApprovalStore.refresh()
+                        delay(PendingApprovalLogic.BACKUP_REFRESH_MS)
+                    }
+                }
         }
 
         scope.launch {
@@ -90,7 +117,12 @@ class StaffOrderAlertsCoordinator @Inject constructor(
             realtimeClient.connected
                 .drop(1)
                 .distinctUntilChanged()
-                .collect { connected -> if (connected) realtimeRecovery.evaluatePostReconnect() }
+                .collect { connected ->
+                    if (connected) {
+                        realtimeRecovery.evaluatePostReconnect()
+                        pendingApprovalStore.refresh()
+                    }
+                }
         }
 
         scope.launch {
@@ -103,6 +135,7 @@ class StaffOrderAlertsCoordinator @Inject constructor(
                 .drop(1)
                 .collect { branchId ->
                     realtimeRecovery.resetAllStores()
+                    pendingApprovalStore.reset()
                     if (branchId != null) realtimeRecovery.restoreForBranch(branchId)
                 }
         }

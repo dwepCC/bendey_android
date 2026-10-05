@@ -11,6 +11,7 @@ import com.bendey.restaurant.core.realtime.domains.stubs.inventoryDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.purchasesDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.salesDomain
 import com.bendey.restaurant.core.realtime.effects.SideEffectRunner
+import com.bendey.restaurant.core.realtime.effects.PendingApprovalSideEffect
 import com.bendey.restaurant.core.realtime.effects.SoundSideEffect
 import com.bendey.restaurant.core.realtime.effects.analyticsSideEffect
 import com.bendey.restaurant.core.realtime.effects.badgeSideEffect
@@ -27,6 +28,7 @@ class RealtimePlatform @Inject constructor(
     private val restaurantDomain: RestaurantDomain,
     private val sideEffectRunner: SideEffectRunner,
     private val soundSideEffect: SoundSideEffect,
+    private val pendingApprovalSideEffect: PendingApprovalSideEffect,
 ) {
     @Volatile
     private var initialized = false
@@ -53,6 +55,7 @@ class RealtimePlatform @Inject constructor(
 
     private fun registerSideEffects() {
         sideEffectRunner.register(soundSideEffect)
+        sideEffectRunner.register(pendingApprovalSideEffect)
         sideEffectRunner.register(toastSideEffect)
         sideEffectRunner.register(navigationSideEffect)
         sideEffectRunner.register(badgeSideEffect)

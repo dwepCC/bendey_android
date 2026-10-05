@@ -348,3 +348,38 @@ data class PrecuentaDto(
 data class PrecuentaResponseDto(
     val data: PrecuentaDto? = null,
 )
+
+@Serializable
+data class PendingApprovalItemDto(
+    val id: Int,
+    @SerialName("product_name") val productName: String = "",
+    val quantity: Double = 1.0,
+    val notes: String? = null,
+    @SerialName("modifiers_json") val modifiersJson: String? = null,
+    @SerialName("combo_snapshot_json") val comboSnapshotJson: String? = null,
+    @SerialName("preparation_area") val preparationArea: String? = null,
+)
+
+@Serializable
+data class PendingApprovalOrderDto(
+    @SerialName("order_id") val orderId: Int,
+    @SerialName("order_number") val orderNumber: Int = 0,
+    @SerialName("session_id") val sessionId: Int = 0,
+    @SerialName("table_name") val tableName: String? = null,
+    @SerialName("order_type") val orderType: String? = null,
+    val notes: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("customer_name") val customerName: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
+    @SerialName("items_count") val itemsCount: Int = 0,
+    val total: Double = 0.0,
+    val items: List<PendingApprovalItemDto> = emptyList(),
+)
+
+@Serializable
+data class RejectTableOrderRequestDto(val reason: String)
+
+@Serializable
+data class CatalogVersionDto(
+    @SerialName("catalog_updated_at") val catalogUpdatedAt: String = "",
+)

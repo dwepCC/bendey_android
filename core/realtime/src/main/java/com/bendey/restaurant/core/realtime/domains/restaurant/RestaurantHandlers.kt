@@ -5,6 +5,7 @@ import com.bendey.restaurant.core.realtime.RealtimeSchema
 import com.bendey.restaurant.core.realtime.UiPresence
 import com.bendey.restaurant.core.realtime.domains.DomainHandler
 import com.bendey.restaurant.core.realtime.domains.DomainHandlerContext
+import com.bendey.restaurant.core.realtime.pending.PendingApprovalStore
 import com.bendey.restaurant.core.realtime.recovery.RecoveryPolicy
 import com.bendey.restaurant.core.realtime.recovery.RecoveryRequest
 import com.bendey.restaurant.core.realtime.recovery.RecoveryScheduler
@@ -24,6 +25,7 @@ class RestaurantHandlers @Inject constructor(
     private val hydrators: RestaurantHydrators,
     private val scheduler: RecoveryScheduler,
     private val stores: RestaurantStores,
+    private val pendingApproval: PendingApprovalStore,
 ) {
     fun buildHandlers(): Map<String, DomainHandler> = mapOf(
         "restaurant.table.updated" to ::onTableUpdated,
@@ -40,6 +42,8 @@ class RestaurantHandlers @Inject constructor(
         "menu.order.created" to ::onOrderCreated,
         "menu.order.accepted" to ::onOrderCreated,
         "menu.session.updated" to ::onSessionUpdated,
+        // R10.2: pedido del QR por revisar -> actualizar la cola/badge (no toca mesas ni cocina: aun no llego).
+        "restaurant.order.pending_approval" to ::onPendingApproval,
     )
 
     private fun markTableFree(tableId: Int, recordPatch: (Boolean) -> Unit) {
@@ -151,6 +155,11 @@ class RestaurantHandlers @Inject constructor(
         scheduler.schedule(
             RecoveryRequest(RecoveryPolicy.PARTIAL, RecoveryScope(domain = "restaurant", slice = "tables"), "session_moved"),
         )
+    }
+
+    private fun onPendingApproval(ctx: DomainHandlerContext) {
+        ctx.recordPatch(false)
+        pendingApproval.refreshAsync()
     }
 
     private fun onOrderCreated(ctx: DomainHandlerContext) {

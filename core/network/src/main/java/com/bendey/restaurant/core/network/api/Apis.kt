@@ -192,6 +192,19 @@ interface RestaurantApi {
     @GET("/api/restaurant/kitchen")
     suspend fun getKitchen(): ListResponseDto<KitchenComandaDto>
 
+    /** R10.1: cola de pedidos del cliente (QR) que esperan revision del personal. */
+    @GET("/api/restaurant/table-orders/pending-approval")
+    suspend fun listPendingApproval(): ListResponseDto<com.bendey.restaurant.core.network.dto.PendingApprovalOrderDto>
+
+    @POST("/api/restaurant/table-orders/{orderId}/approve")
+    suspend fun approveTableOrder(@Path("orderId") orderId: Int): SuccessResponseDto
+
+    @POST("/api/restaurant/table-orders/{orderId}/reject")
+    suspend fun rejectTableOrder(
+        @Path("orderId") orderId: Int,
+        @Body body: com.bendey.restaurant.core.network.dto.RejectTableOrderRequestDto,
+    ): SuccessResponseDto
+
     @PUT("/api/restaurant/comandas/{comandaId}/status")
     suspend fun updateComandaStatus(
         @retrofit2.http.Path("comandaId") comandaId: Int,
@@ -272,7 +285,17 @@ interface RestaurantApi {
     suspend fun deleteTable(@Path("id") id: Int): SuccessResponseDto
 }
 
+/** Sonda publica de alcance (sin Authorization): `GET /api/health/live`. */
+interface HealthApi {
+    @GET("/api/health/live")
+    suspend fun live(): okhttp3.ResponseBody
+}
+
 interface ProductsApi {
+    /** Senal de invalidacion de cache (no el catalogo en si): `catalog_updated_at`. */
+    @GET("/api/products/catalog-version")
+    suspend fun getCatalogVersion(): com.bendey.restaurant.core.network.dto.CatalogVersionDto
+
     @GET("/api/products")
     suspend fun listProducts(
         @Query("q") query: String = "",

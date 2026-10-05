@@ -233,3 +233,6 @@ private fun KitchenItem.withDisplay(
     isComboComponent = isComboComponent,
     comboName = comboName,
 )
+
+/** Modificadores legibles de un `modifiers_json` (usado por la cola de pedidos por revisar). */
+internal fun modifierLinesOf(json: String?): List<String> = parseModifierLines(json)
