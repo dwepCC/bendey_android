@@ -18,11 +18,18 @@ enum class ComandaStatus(val backendValue: String, val label: String) {
     PREPARACION("preparacion", "En preparación"),
     LISTA("lista", "Listo"),
     ENTREGADA("entregada", "Entregado"),
+
+    /**
+     * Pedido del cliente (QR) que espera la revision del personal (R10.1). Todavia NO llego a
+     * cocina, asi que NO es parte de la cadena Pendiente -> Entregado: va al FINAL del enum para no
+     * alterar el orden por `ordinal` del KDS, y `next` no lo avanza. Mismo texto que Tauri.
+     */
+    POR_APROBAR("por_aprobar", "Por revisar"),
     ;
 
     companion object {
         fun fromBackend(value: String): ComandaStatus = when (value) {
-            "preparacion", "lista", "entregada" -> entries.first { it.backendValue == value }
+            "preparacion", "lista", "entregada", "por_aprobar" -> entries.first { it.backendValue == value }
             else -> PENDIENTE
         }
 
@@ -30,7 +37,7 @@ enum class ComandaStatus(val backendValue: String, val label: String) {
             PENDIENTE -> PREPARACION
             PREPARACION -> LISTA
             LISTA -> ENTREGADA
-            ENTREGADA -> null
+            ENTREGADA, POR_APROBAR -> null
         }
     }
 }

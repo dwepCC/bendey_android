@@ -24,7 +24,8 @@ enum class KdsColumn(val status: ComandaStatus, val label: String) {
     ;
 
     companion object {
-        fun of(status: ComandaStatus): KdsColumn = entries.first { it.status == status }
+        // `por_aprobar` no llega al KDS; si se colara, cae en NUEVO en vez de romper el tablero.
+        fun of(status: ComandaStatus): KdsColumn = entries.firstOrNull { it.status == status } ?: NUEVO
     }
 }
 

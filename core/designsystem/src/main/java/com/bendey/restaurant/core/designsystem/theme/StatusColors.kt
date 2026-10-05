@@ -29,6 +29,8 @@ fun ComandaStatus.stateColors(): BendeyStateColors = when (this) {
     ComandaStatus.PREPARACION -> BendeyColors.StatePreparando
     ComandaStatus.LISTA -> BendeyColors.StateListo
     ComandaStatus.ENTREGADA -> BendeyColors.StateEntregado
+    // Por revisar: espera una decision del personal, se ve como "nuevo" (ambar).
+    ComandaStatus.POR_APROBAR -> BendeyColors.StateNuevo
 }
 
 fun ComandaStatus.accentColor(): Color = when (this) {
@@ -36,6 +38,7 @@ fun ComandaStatus.accentColor(): Color = when (this) {
     ComandaStatus.PREPARACION -> BendeyColors.KitchenPreparando
     ComandaStatus.LISTA -> BendeyColors.KitchenListo
     ComandaStatus.ENTREGADA -> BendeyColors.KitchenEntregado
+    ComandaStatus.POR_APROBAR -> BendeyColors.KitchenPendiente
 }
 
 fun saleStatusAccentColor(status: String, billingStatus: String?): Color {
