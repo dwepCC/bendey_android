@@ -65,7 +65,7 @@ fun BendeyBadge(
             Text(
                 text = text,
                 modifier = modifier
-                    .clip(BendeyShapeTokens.xs)
+                    .clip(BendeyShapeTokens.pill)
                     .background(bg)
                     .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
                 style = MaterialTheme.typography.labelSmall,

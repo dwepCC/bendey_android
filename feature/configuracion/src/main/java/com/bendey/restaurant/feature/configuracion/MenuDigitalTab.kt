@@ -30,6 +30,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.Dialog
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Palette
@@ -470,12 +471,12 @@ private fun SelectableChip(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(BendeyShapeTokens.pill)
             .background(if (selected) BendeyColors.PrimaryContainer else BendeyColors.Surface)
             .border(
                 width = 1.dp,
                 color = if (selected) BendeyColors.Primary else BendeyColors.Outline,
-                shape = RoundedCornerShape(12.dp),
+                shape = BendeyShapeTokens.pill,
             )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),

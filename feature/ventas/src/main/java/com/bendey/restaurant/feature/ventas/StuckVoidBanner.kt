@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
@@ -17,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.billing.StuckVoidBannerState
@@ -67,7 +67,7 @@ internal fun StuckVoidBanner(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .background(BendeyColors.Surface, RoundedCornerShape(8.dp))
+                            .background(BendeyColors.Surface, BendeyShapeTokens.xs)
                             .padding(BendeySpacing.sm),
                     ) {
                         Text(
@@ -106,7 +106,7 @@ private fun BannerBox(modifier: Modifier, content: @Composable () -> Unit) {
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs)
-            .background(BendeyColors.WarningContainer, RoundedCornerShape(12.dp))
+            .background(BendeyColors.WarningContainer, BendeyShapeTokens.md)
             .padding(BendeySpacing.sm),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {

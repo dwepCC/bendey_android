@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -191,7 +192,7 @@ private fun CenterPosFab(
         Box(
             modifier = Modifier
                 .size(56.dp)
-                .shadow(2.dp, CircleShape)
+                .shadow(BendeyElevation.floating, CircleShape)
                 .clip(CircleShape)
                 .background(if (selected) BendeyColors.Rest800 else BendeyColors.Primary)
                 .clickable(

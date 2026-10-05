@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.ui.layout.BendeyCompactCartBarHeight
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -332,7 +333,7 @@ private fun PosFloatingActionChip(
         colors = CardDefaults.cardColors(
             containerColor = if (emphasized) BendeyColors.Primary else BendeyColors.Surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = BendeyElevation.floating),
         border = if (emphasized) {
             null
         } else {

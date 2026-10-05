@@ -57,6 +57,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -113,7 +114,7 @@ fun PosBarcodeScannerSheet(
             // diálogos (BendeyFormDialog, BendeyAlertDialog).
             shape = BendeyShapeTokens.xl,
             color = BendeyColors.Surface,
-            shadowElevation = 12.dp,
+            shadowElevation = BendeyElevation.dialogShadow,
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),

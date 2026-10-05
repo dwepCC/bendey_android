@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.domain.products.CatalogSection
 
 @Composable
@@ -27,24 +28,28 @@ fun CatalogSectionNav(
         FilterChip(
             selected = current == CatalogSection.PRODUCTOS,
             onClick = onOpenProductos,
+            shape = BendeyShapeTokens.pill,
             enabled = current != CatalogSection.PRODUCTOS,
             label = { Text(CatalogSection.PRODUCTOS.label) },
         )
         FilterChip(
             selected = current == CatalogSection.MODIFICADORES,
             onClick = onOpenModificadores,
+            shape = BendeyShapeTokens.pill,
             enabled = current != CatalogSection.MODIFICADORES,
             label = { Text(CatalogSection.MODIFICADORES.label) },
         )
         FilterChip(
             selected = current == CatalogSection.AREAS_PREPARACION,
             onClick = onOpenAreasPreparacion,
+            shape = BendeyShapeTokens.pill,
             enabled = current != CatalogSection.AREAS_PREPARACION,
             label = { Text(CatalogSection.AREAS_PREPARACION.label) },
         )
         FilterChip(
             selected = current == CatalogSection.COMBOS,
             onClick = onOpenCombos,
+            shape = BendeyShapeTokens.pill,
             enabled = current != CatalogSection.COMBOS,
             label = { Text(CatalogSection.COMBOS.label) },
         )

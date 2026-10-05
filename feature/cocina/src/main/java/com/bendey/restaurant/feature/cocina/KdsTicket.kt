@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Schedule
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.designsystem.theme.stateColors
@@ -105,7 +105,7 @@ fun KdsTicket(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.md,
         color = BendeyColors.Surface,
         border = BorderStroke(borderWidth, borderColor),
         shadowElevation = 1.dp,
@@ -229,7 +229,7 @@ private fun KdsItemLine(item: KitchenItem, column: KdsColumn, qtyColor: Color) {
                 modifier = Modifier
                     .padding(top = 4.dp)
                     .fillMaxWidth()
-                    .background(NoteBackground, RoundedCornerShape(8.dp))
+                    .background(NoteBackground, BendeyShapeTokens.xs)
                     .padding(8.dp),
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -249,7 +249,7 @@ private fun KdsActionButton(action: KdsAction, primary: Boolean, onClick: () -> 
         Button(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_HEIGHT),
-            shape = RoundedCornerShape(12.dp),
+            shape = BendeyShapeTokens.md,
             colors = ButtonDefaults.buttonColors(containerColor = fill, contentColor = Color.White),
         ) {
             Text(action.label, fontSize = 24.sp, fontWeight = FontWeight.Black)
@@ -258,7 +258,7 @@ private fun KdsActionButton(action: KdsAction, primary: Boolean, onClick: () -> 
         OutlinedButton(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_HEIGHT),
-            shape = RoundedCornerShape(12.dp),
+            shape = BendeyShapeTokens.md,
             border = BorderStroke(2.dp, tone.fill),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = tone.onTint),
         ) {

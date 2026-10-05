@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material3.Icon
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
@@ -68,7 +68,7 @@ fun MetodoDePagoElegido(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(BendeyShapeTokens.md)
             .background(BendeyColors.SurfaceVariant)
             .padding(BendeySpacing.sm),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
@@ -88,7 +88,7 @@ fun MetodoDePagoElegido(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .size(132.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(BendeyShapeTokens.xs)
                         .background(Color.White)
                         .clickable { ampliado = qr },
                 )
@@ -120,7 +120,7 @@ fun MetodoDePagoElegido(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(BendeyShapeTokens.xs)
                         .background(BendeyColors.Surface)
                         .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.xs),
                 ) {
@@ -197,7 +197,7 @@ fun VisorDeImagen(
                     .padding(BendeySpacing.lg)
                     .fillMaxWidth()
                     .then(if (cuadrada) Modifier.aspectRatio(1f) else Modifier)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(BendeyShapeTokens.md)
                     .background(Color.White)
                     .padding(BendeySpacing.xs),
             )

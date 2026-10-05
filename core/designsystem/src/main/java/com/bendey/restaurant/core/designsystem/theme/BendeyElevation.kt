@@ -6,6 +6,8 @@ import androidx.compose.ui.unit.dp
 object BendeyElevation {
     val none = 0.dp
     val pressed = 1.dp
+    /** Reposo con sombra sutil (tarjetas elevadas). Mismo valor que [pressed]: el conjunto sigue siendo 0/1/4/6. */
+    val resting = 1.dp
     /** Banners y elementos flotantes (antes 4 dp suelto en `BendeyOverlayBanner`). */
     val floating = 4.dp
     val dialogShadow = 6.dp

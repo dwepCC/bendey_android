@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -138,7 +139,7 @@ fun <T> BendeySelect(
                         shape = BendeyShapeTokens.md,
                         color = BendeyColors.Surface,
                         border = BorderStroke(1.dp, BendeyColors.Outline),
-                        shadowElevation = 8.dp,
+                        shadowElevation = BendeyElevation.dialogShadow,
                     ) {
                         Column {
                             if (searchable) {

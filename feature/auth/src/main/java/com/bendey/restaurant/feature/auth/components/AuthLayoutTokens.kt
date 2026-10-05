@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.auth.components
 
 import androidx.compose.ui.unit.dp
+import com.bendey.restaurant.core.designsystem.theme.BendeyElevation
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 
 /** Tokens de layout compartidos del módulo auth (evita valores mágicos dispersos). */
@@ -20,10 +21,11 @@ internal object AuthLayoutTokens {
     val iconBadge = 16.dp
     val successIconSize = 56.dp
 
-    val cardElevationRest = 1.dp
-    val cardElevationRaised = 2.dp
-    val cardElevationProminent = 3.dp
-    val cardElevationPressed = 4.dp
+    // Conjunto único de sombras del DS (BendeyElevation 0/1/4/6) — R11.
+    val cardElevationRest = BendeyElevation.resting
+    val cardElevationRaised = BendeyElevation.floating
+    val cardElevationProminent = BendeyElevation.floating
+    val cardElevationPressed = BendeyElevation.dialogShadow
 
     val logoHeightWelcome = 56.dp
     val logoHeightHomeHeader = 44.dp

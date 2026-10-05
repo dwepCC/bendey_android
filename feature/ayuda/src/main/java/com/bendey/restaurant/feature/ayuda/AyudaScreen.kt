@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,6 +29,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -269,7 +269,7 @@ private fun Callout(block: HelpBlock.Callout) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(container, RoundedCornerShape(8.dp))
+            .background(container, BendeyShapeTokens.xs)
             .padding(BendeySpacing.sm),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
@@ -283,7 +283,7 @@ private fun HelpTable(table: HelpBlock.Table) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(BendeyColors.SurfaceVariant, RoundedCornerShape(8.dp))
+            .background(BendeyColors.SurfaceVariant, BendeyShapeTokens.xs)
             .padding(BendeySpacing.xs),
     ) {
         Row(Modifier.fillMaxWidth().padding(vertical = BendeySpacing.xxs), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
