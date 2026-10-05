@@ -14,6 +14,8 @@ enum class RestaurantFeature {
     CAJA,
     CLIENTES,
     REPARTIDORES,
+    /** Vista de reparto (tablero de solo lectura): mismo permiso d.v que Repartidores. */
+    ENTREGAS,
     DASHBOARD,
     CONFIGURACION,
     IMPRESORAS,

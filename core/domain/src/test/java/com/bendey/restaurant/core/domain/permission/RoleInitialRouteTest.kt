@@ -6,12 +6,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * R2a: tabla rol -> ruta inicial. Es la MISMA que `defaultRouteForPermissions` de Tauri
- * (`restaurantPermissions.ts`, con rutas /dashboard /salas /comandas /repartidores):
+ * R2a/R2b: tabla rol -> ruta inicial. Es la MISMA que `defaultRouteForPermissions` de Tauri
+ * (`restaurantPermissions.ts`, con rutas /dashboard /salas /comandas /entregas):
  *
  *   admin (s.m)      -> dashboard      cajero (c.v) -> dashboard
  *   mozo (t.v)       -> mesas          cocina (k.v) -> cocina
- *   repartidor (d.v) -> repartidores
+ *   repartidor (d.v) -> entregas
  *
  * Si cambias una fila, cámbiala también allá (y su test).
  */
@@ -29,7 +29,7 @@ class RoleInitialRouteTest {
         assertEquals("dashboard", RestaurantPermissions.defaultRoute(cashier, "cashier"))
         assertEquals("mesas", RestaurantPermissions.defaultRoute(waiter, "waiter"))
         assertEquals("cocina", RestaurantPermissions.defaultRoute(cook, "cook"))
-        assertEquals("repartidores", RestaurantPermissions.defaultRoute(driver, "driver"))
+        assertEquals("entregas", RestaurantPermissions.defaultRoute(driver, "driver"))
     }
 
     @Test
@@ -52,7 +52,7 @@ class RoleInitialRouteTest {
                 "mesas" -> RestaurantFeature.SALAS
                 "pos" -> RestaurantFeature.POS
                 "cocina" -> RestaurantFeature.COMANDAS
-                "repartidores" -> RestaurantFeature.REPARTIDORES
+                "entregas" -> RestaurantFeature.ENTREGAS
                 else -> null
             }
             if (feature != null) assertTrue(RestaurantPermissions.featureAllowed(perms, feature), "$type -> $route")
@@ -65,8 +65,8 @@ class RoleInitialRouteTest {
     }
 
     @Test
-    fun `sin tipo de empleado, d punto v solo aterriza en repartidores`() {
-        assertEquals("repartidores", RestaurantPermissions.defaultRoute(driver, null))
+    fun `sin tipo de empleado, d punto v solo aterriza en entregas`() {
+        assertEquals("entregas", RestaurantPermissions.defaultRoute(driver, null))
     }
 
     /** Mismos conjuntos de permisos que `restaurantNavigation.test.ts` de Tauri. */
@@ -77,6 +77,6 @@ class RoleInitialRouteTest {
         assertEquals("mesas", RestaurantPermissions.defaultRoute(listOf("t.v", "t.o"), "waiter"))
         assertEquals("dashboard", RestaurantPermissions.defaultRoute(listOf("c.v", "p.u", "t.v", "o.ch", "k.v"), "cashier"))
         assertEquals("cocina", RestaurantPermissions.defaultRoute(listOf("k.v", "k.u"), "cook"))
-        assertEquals("repartidores", RestaurantPermissions.defaultRoute(listOf("d.v"), "driver"))
+        assertEquals("entregas", RestaurantPermissions.defaultRoute(listOf("d.v"), "driver"))
     }
 }

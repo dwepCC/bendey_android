@@ -56,7 +56,7 @@ object RestaurantPermissions {
         RestaurantFeature.CERRAR_MESA, RestaurantFeature.CLIENTES -> PERM_ORDERS_CHARGE
         RestaurantFeature.VENTAS -> PERM_ORDERS_CHARGE
         RestaurantFeature.CAJA, RestaurantFeature.DASHBOARD -> PERM_CAJA
-        RestaurantFeature.REPARTIDORES -> PERM_REPARTIDORES
+        RestaurantFeature.REPARTIDORES, RestaurantFeature.ENTREGAS -> PERM_REPARTIDORES
         RestaurantFeature.REPORTES -> PERM_PRODUCTOS
         RestaurantFeature.CONFIGURACION, RestaurantFeature.IMPRESORAS -> PERM_ADMIN
         RestaurantFeature.COMPRAS, RestaurantFeature.PROVEEDORES -> PERM_ADMIN
@@ -118,7 +118,10 @@ object RestaurantPermissions {
         else -> featureAllowed(permissions, feature)
     }
 
-    /** Ruta inicial alineada con `defaultRouteForPermissions` (Capacitor). */
+    /**
+     * Ruta inicial alineada con `defaultRouteForPermissions` de Tauri (R2b): admin/cajero -> Hoy (dashboard),
+     * mozo -> Mesas, cocina -> Cocina, repartidor -> Entregas.
+     */
     fun defaultRoute(permissions: List<String>, employeeType: String?): String {
         if (permissions.isEmpty()) return "cocina"
         val et = employeeType?.lowercase().orEmpty()
@@ -135,10 +138,10 @@ object RestaurantPermissions {
             if (featureAllowed(permissions, RestaurantFeature.COMANDAS)) return "cocina"
         }
         if (et == "driver") {
-            // Repartidor (d.v) -> repartidores. Si por datos raros no tuviera d.v, "perfil" es la
+            // Repartidor (d.v) -> entregas (R2b). Si por datos raros no tuviera d.v, "perfil" es la
             // única ruta sin RestaurantFeature asociado (canAccessRoute siempre la permite): así el
             // guard de BendeyAppNavHost nunca recalcula un destino inaccesible (bucle).
-            return if (featureAllowed(permissions, RestaurantFeature.REPARTIDORES)) "repartidores" else "perfil"
+            return if (featureAllowed(permissions, RestaurantFeature.ENTREGAS)) "entregas" else "perfil"
         }
         val order = listOf(
             RestaurantFeature.POS to "pos",
@@ -147,7 +150,7 @@ object RestaurantPermissions {
             RestaurantFeature.VENTAS to "ventas",
             RestaurantFeature.CAJA to "caja",
             RestaurantFeature.CLIENTES to "clientes",
-            RestaurantFeature.REPARTIDORES to "repartidores",
+            RestaurantFeature.ENTREGAS to "entregas",
             RestaurantFeature.CONFIGURACION to "configuracion",
         )
         return order.firstOrNull { featureAllowed(permissions, it.first) }?.second ?: "cocina"

@@ -49,7 +49,7 @@ data class BendeyNavItem(
 )
 
 /**
- * Barra inferior móvil: Inicio · Mesas · POS (FAB +) · Comandas · Más.
+ * Barra inferior móvil (R2b): Hoy · Mesas · Vender (FAB +) · Cocina · Caja, o las que el rol pueda abrir.
  * El tomate solo pinta el inset del sistema; la barra blanca queda pegada al contenido.
  */
 @Composable
@@ -59,8 +59,9 @@ fun BendeyBottomNavigationBar(
     centerItem: BendeyNavItem?,
     rightItems: List<BendeyNavItem>,
     onNavigate: (BendeyNavItem) -> Unit,
-    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** null = sin pestaña Más (R2b: la gestión vive en Mi negocio, no en un menú plano). */
+    onMoreClick: (() -> Unit)? = null,
     showCenterFab: Boolean = centerItem != null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -107,13 +108,15 @@ fun BendeyBottomNavigationBar(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    BottomNavTab(
-                        selected = false,
-                        icon = Icons.Default.Menu,
-                        label = "Más",
-                        onClick = onMoreClick,
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (onMoreClick != null) {
+                        BottomNavTab(
+                            selected = false,
+                            icon = Icons.Default.Menu,
+                            label = "Más",
+                            onClick = onMoreClick,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
             if (showCenterFab && centerItem != null) {

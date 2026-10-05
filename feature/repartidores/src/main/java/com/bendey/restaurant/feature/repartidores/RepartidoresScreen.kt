@@ -80,25 +80,7 @@ fun RepartidoresScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Tablero de entregas: se refresca al entrar (init del ViewModel) y cada 60 s mientras la pantalla está
-    // a la vista; el reloj de "hace N min" avanza cada 30 s sin pedir nada al servidor.
-    var now by remember { mutableStateOf(Instant.now()) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            now = Instant.now()
-            var sinceRefresh = 0L
-            while (true) {
-                delay(DELIVERY_CLOCK_TICK_MS)
-                now = Instant.now()
-                sinceRefresh += DELIVERY_CLOCK_TICK_MS
-                if (sinceRefresh >= DELIVERY_BOARD_REFRESH_MS) {
-                    sinceRefresh = 0L
-                    viewModel.refreshBoard()
-                }
-            }
-        }
-    }
+    val now = rememberDeliveryBoardClock(onRefresh = viewModel::refreshBoard)
 
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {

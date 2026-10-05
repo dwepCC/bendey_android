@@ -27,6 +27,10 @@ object BendeyRoutes {
     const val CONFIGURACION = "configuracion"
     const val PERFIL = "perfil"
     const val REPARTIDORES = "repartidores"
+    /** Vista de reparto (R2b): tablero de entregas de solo lectura; destino único del repartidor. */
+    const val ENTREGAS = "entregas"
+    /** Índice de tarjetas de gestión (R2b): reemplaza al drawer plano. Solo quien administra. */
+    const val MI_NEGOCIO = "mi_negocio"
     const val REPORTES = "reportes"
     const val PRINTING_TEST = "printing_test"
     const val SUSCRIPCION = "suscripcion"
@@ -44,11 +48,11 @@ object BendeyRoutes {
 
     fun mesa(sessionId: Int): String = "mesa/$sessionId"
 
-    private val bottomBarRoutes = setOf(DASHBOARD, POS, MESAS, COCINA)
+    private val bottomBarRoutes = setOf(DASHBOARD, POS, MESAS, COCINA, CAJA, ENTREGAS)
 
     private val managementRoutes = setOf(
-        CAJA, VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES, REPORTES,
-        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES, AYUDA,
+        VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES, REPORTES,
+        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES, AYUDA, MI_NEGOCIO,
     )
 
     fun showsBottomBar(route: String?): Boolean {

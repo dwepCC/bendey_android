@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,8 +61,8 @@ fun BendeyOperationalTopBar(
     onOperationalNavigate: (BendeyOperationalNavItem) -> Unit,
     modifier: Modifier = Modifier,
     profile: BendeyAdaptiveProfile = rememberBendeyAdaptiveProfile(),
-    isDrawerOpen: Boolean = false,
-    onMenuClick: () -> Unit = {},
+    onMenuClick: (() -> Unit)? = null,
+    userMenuItems: List<BendeyUserMenuItem> = emptyList(),
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -93,7 +92,6 @@ fun BendeyOperationalTopBar(
             BendeyOperationalBrandBlock(
                 state = state,
                 profile = profile,
-                isDrawerOpen = isDrawerOpen,
                 onMenuClick = onMenuClick,
             )
 
@@ -126,6 +124,7 @@ fun BendeyOperationalTopBar(
                 onNotificationsClick = onNotificationsClick,
                 onOpenProfile = onOpenProfile,
                 onLogout = onLogout,
+                userMenuItems = userMenuItems,
                 leadingContent = leadingActions,
             )
         }
@@ -137,8 +136,7 @@ fun BendeyOperationalTopBar(
 private fun BendeyOperationalBrandBlock(
     state: BendeyAppHeaderState,
     profile: BendeyAdaptiveProfile,
-    isDrawerOpen: Boolean,
-    onMenuClick: () -> Unit,
+    onMenuClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val logoSize = OperationalTopBarTokens.brandLogoSize(profile)
@@ -149,13 +147,15 @@ private fun BendeyOperationalBrandBlock(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
-        IconButton(onClick = onMenuClick, modifier = Modifier.size(BendeySpacing.touchTarget)) {
-            Icon(
-                if (isDrawerOpen) Icons.Default.Close else Icons.Default.Menu,
-                contentDescription = if (isDrawerOpen) "Cerrar menú" else "Menú",
-                tint = BendeyColors.OnPrimary,
-                modifier = Modifier.size(22.dp),
-            )
+        if (onMenuClick != null) {
+            IconButton(onClick = onMenuClick, modifier = Modifier.size(BendeySpacing.touchTarget)) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Mi negocio",
+                    tint = BendeyColors.OnPrimary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
         Row(
             modifier = Modifier.weight(1f, fill = false),

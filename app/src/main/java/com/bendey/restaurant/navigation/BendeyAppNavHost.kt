@@ -37,7 +37,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
-import com.bendey.restaurant.core.navigation.BendeyDrawerDestination
+import com.bendey.restaurant.core.navigation.AccountMenuEntry
+import com.bendey.restaurant.core.navigation.MiNegocioCard
+import com.bendey.restaurant.core.navigation.MiNegocioScreen
+import com.bendey.restaurant.core.navigation.OperationNav
 import com.bendey.restaurant.core.navigation.BendeyNavigationSuite
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.core.navigation.CashCheckoutGate
@@ -50,6 +53,8 @@ import com.bendey.restaurant.core.navigation.showsOperationalTopBar
 import com.bendey.restaurant.core.navigation.toOperationalNavItems
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.bendey.restaurant.core.ui.components.BendeyAppHeader
+import com.bendey.restaurant.core.ui.components.BendeyKioskHeader
+import com.bendey.restaurant.core.ui.components.BendeyUserMenuItem
 import com.bendey.restaurant.core.ui.components.BendeyOperationalTopBar
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
 import com.bendey.restaurant.core.ui.components.BendeySplashScreen
@@ -197,15 +202,18 @@ private fun MainShell(
 
     val permissions = permContext ?: return
 
+    // R2b: barra de operación por rol (mozo 1, cocina 0 = quiosco, repartidor 1, cajero 5, admin 5 + Mi negocio).
     val visibleBottomBar = remember(permissions.permissions, permissions.employeeType) {
-        TopLevelDestination.bottomBarDestinations.filter {
-            canAccessRoute(it.route, permissions.permissions, permissions.employeeType)
-        }
+        OperationNav.operationBar(permissions.permissions, permissions.employeeType)
     }
-    val visibleDrawer = remember(permissions.permissions, permissions.employeeType) {
-        BendeyDrawerDestination.entries.filter {
-            canAccessRoute(it.route, permissions.permissions, permissions.employeeType)
-        }
+    val kioskMode = remember(permissions.permissions, permissions.employeeType) {
+        OperationNav.isKitchenKiosk(permissions.permissions, permissions.employeeType)
+    }
+    val showMiNegocio = remember(permissions.permissions, permissions.employeeType) {
+        OperationNav.showsMiNegocio(permissions.permissions, permissions.employeeType)
+    }
+    val accountEntries = remember(permissions.permissions, permissions.employeeType) {
+        AccountMenuEntry.visible(permissions.permissions, permissions.employeeType)
     }
 
     val mainStartRoute = remember(permissions.permissions, permissions.employeeType) {
@@ -286,7 +294,7 @@ private fun MainShell(
     val goToCash: () -> Unit = {
         cashSessionViewModel.closeSheet()
         if (canAccessRoute(BendeyRoutes.CAJA, permissions.permissions, permissions.employeeType)) {
-            mainNavController.navigateToDrawerDestination(BendeyRoutes.CAJA)
+            mainNavController.navigateToBottomBarDestination(BendeyRoutes.CAJA)
         } else {
             onShowMessage("No tienes permiso para acceder a Caja")
         }
@@ -353,24 +361,43 @@ private fun MainShell(
         physicalPortrait = physicalPortrait,
     )
 
+    val openMiNegocio: (() -> Unit)? = if (showMiNegocio) {
+        { mainNavController.navigate(BendeyRoutes.MI_NEGOCIO) { launchSingleTop = true } }
+    } else {
+        null
+    }
+    val openAyuda: () -> Unit = { mainNavController.navigate(BendeyRoutes.AYUDA) { launchSingleTop = true } }
+    // Mi cuenta: Ayuda para TODOS los puestos, Impresoras, Mi plan (solo s.m) y los atajos del cajero.
+    val userMenuItems = remember(accountEntries) {
+        accountEntries.map { entry ->
+            BendeyUserMenuItem(entry.label, entry.icon) {
+                mainNavController.navigate(entry.route) { launchSingleTop = true }
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
     BendeyNavigationSuite(
         currentRoute = currentRoute ?: mainStartRoute,
-        appVersion = BuildConfig.VERSION_NAME,
-        headerState = headerState,
-        showBottomBar = BendeyRoutes.showsBottomBar(currentRoute),
+        showBottomBar = BendeyRoutes.showsBottomBar(currentRoute) && !kioskMode,
         visibleBottomBarDestinations = visibleBottomBar,
-        visibleDrawerDestinations = visibleDrawer,
-        onLogout = { sessionViewModel.logout {} },
-        topBar = { toggleDrawer, drawerOpen ->
+        topBar = {
             when {
+                // Cocina en modo quiosco: cabecera mínima (restaurante, conexión, Salir), sin menú ni avatar.
+                kioskMode && BendeyRoutes.showsGlobalHeader(currentRoute) -> {
+                    BendeyKioskHeader(
+                        state = headerState,
+                        onLogout = { sessionViewModel.logout {} },
+                        onHelp = if (currentRoute == BendeyRoutes.AYUDA) null else openAyuda,
+                    )
+                }
                 showOperationalTopBar -> {
                     BendeyOperationalTopBar(
                         state = headerState,
                         currentRoute = currentRoute,
                         operationalDestinations = operationalNavItems,
-                        isDrawerOpen = drawerOpen,
-                        onMenuClick = toggleDrawer,
+                        onMenuClick = openMiNegocio,
+                        userMenuItems = userMenuItems,
                         onOperationalNavigate = { item ->
                             visibleBottomBar
                                 .firstOrNull { it.route == item.route }
@@ -396,8 +423,8 @@ private fun MainShell(
                 BendeyRoutes.showsGlobalHeader(currentRoute) -> {
                     BendeyAppHeader(
                         state = headerState,
-                        isDrawerOpen = drawerOpen,
-                        onMenuClick = toggleDrawer,
+                        onMenuClick = openMiNegocio,
+                        userMenuItems = userMenuItems,
                         onNotificationsClick = onBellClick,
                         onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
@@ -412,16 +439,6 @@ private fun MainShell(
             } else {
                 onShowMessage("No tienes permiso para acceder a ${destination.label}")
             }
-        },
-        onDrawerNavigate = { destination ->
-            if (canAccessRoute(destination.route, permissions.permissions, permissions.employeeType)) {
-                mainNavController.navigateToDrawerDestination(destination.route)
-            } else {
-                onShowMessage("No tienes permiso para acceder a ${destination.label}")
-            }
-        },
-        onDisabledDestinationClick = { destination ->
-            onShowMessage("No tienes permiso para acceder a ${destination.label}")
         },
     ) { contentModifier ->
         Column(modifier = contentModifier.fillMaxSize()) {
@@ -571,6 +588,18 @@ private fun MainShell(
                 onShowMessage = onShowMessage,
             )
             repartidoresGraph(onBack = { mainNavController.popBackStack() })
+            composable(BendeyRoutes.MI_NEGOCIO) {
+                val groups = remember(permissions.permissions, permissions.employeeType) {
+                    MiNegocioCard.visibleGrouped(permissions.permissions, permissions.employeeType)
+                }
+                MiNegocioScreen(
+                    groups = groups,
+                    onOpen = { card ->
+                        mainNavController.navigate(card.route) { launchSingleTop = true }
+                    },
+                    onBack = { mainNavController.popBackStack() },
+                )
+            }
             clientesGraph(onShowMessage = onShowMessage)
             proveedoresGraph(onShowMessage = onShowMessage)
             comprasGraph(onShowMessage = onShowMessage)

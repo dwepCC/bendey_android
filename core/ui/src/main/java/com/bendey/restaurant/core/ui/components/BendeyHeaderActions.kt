@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,13 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyExpressiveScope
 import com.bendey.restaurant.core.designsystem.theme.BendeyMotion
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+
+/** Entrada extra del menú del avatar (Mi cuenta): Ayuda, Impresoras, Mi plan, atajos. */
+data class BendeyUserMenuItem(
+    val label: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
 
 /**
  * Acciones compartidas del header Bendey (sync, notificaciones, usuario).
@@ -59,6 +67,7 @@ fun BendeyHeaderActions(
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit = {},
+    userMenuItems: List<BendeyUserMenuItem> = emptyList(),
     /** Hueco antes de las acciones (p. ej. el chip de caja). */
     leadingContent: @Composable (() -> Unit)? = null,
 ) {
@@ -100,12 +109,13 @@ fun BendeyHeaderActions(
             state = state,
             onOpenProfile = onOpenProfile,
             onLogout = onLogout,
+            items = userMenuItems,
         )
     }
 }
 
 @Composable
-private fun BendeyHeaderSyncIndicator(
+internal fun BendeyHeaderSyncIndicator(
     status: BendeyConnectionStatus,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
@@ -156,6 +166,7 @@ private fun BendeyHeaderUserMenu(
     state: BendeyAppHeaderState,
     onOpenProfile: () -> Unit,
     onLogout: () -> Unit,
+    items: List<BendeyUserMenuItem> = emptyList(),
 ) {
     var showUserMenu by remember { mutableStateOf(false) }
     BendeyExpressiveScope {
@@ -273,6 +284,41 @@ private fun BendeyHeaderUserMenu(
                                 )
                                 Text(
                                     text = "Mi perfil",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = BendeyColors.OnSurface,
+                                )
+                            }
+                        }
+                    }
+                    items.forEach { item ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(BendeyShapeTokens.md)
+                                .clickable {
+                                    showUserMenu = false
+                                    item.onClick()
+                                },
+                            shape = BendeyShapeTokens.md,
+                            color = BendeyColors.SurfaceVariant.copy(alpha = 0.55f),
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = BendeySpacing.sm, vertical = BendeySpacing.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    item.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = BendeySpacing.xs)
+                                        .size(18.dp),
+                                    tint = BendeyColors.OnSurfaceVariant,
+                                )
+                                Text(
+                                    text = item.label,
                                     style = MaterialTheme.typography.labelLarge,
                                     fontWeight = FontWeight.Medium,
                                     color = BendeyColors.OnSurface,

@@ -3,12 +3,12 @@ package com.bendey.restaurant.core.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,8 +44,10 @@ data class BendeyAppHeaderState(
 fun BendeyAppHeader(
     state: BendeyAppHeaderState,
     modifier: Modifier = Modifier,
-    isDrawerOpen: Boolean = false,
-    onMenuClick: () -> Unit = {},
+    /** null = sin botón de menú (el rol no administra: no hay Mi negocio). */
+    onMenuClick: (() -> Unit)? = null,
+    menuContentDescription: String = "Mi negocio",
+    userMenuItems: List<BendeyUserMenuItem> = emptyList(),
     /** null = no hay centro de notificaciones: la campana no se dibuja (sin botones muertos). */
     onNotificationsClick: (() -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
@@ -60,13 +62,17 @@ fun BendeyAppHeader(
             .padding(horizontal = BendeySpacing.xxs, vertical = BendeySpacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onMenuClick, modifier = Modifier.size(BendeySpacing.touchTarget)) {
-            Icon(
-                if (isDrawerOpen) Icons.Default.Close else Icons.Default.Menu,
-                contentDescription = if (isDrawerOpen) "Cerrar menú" else "Menú",
-                tint = BendeyColors.OnPrimary,
-                modifier = Modifier.size(22.dp),
-            )
+        if (onMenuClick != null) {
+            IconButton(onClick = onMenuClick, modifier = Modifier.size(BendeySpacing.touchTarget)) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = menuContentDescription,
+                    tint = BendeyColors.OnPrimary,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        } else {
+            Spacer(Modifier.size(BendeySpacing.touchTarget))
         }
         Box(
             modifier = Modifier
@@ -91,6 +97,7 @@ fun BendeyAppHeader(
             onNotificationsClick = onNotificationsClick,
             onOpenProfile = onOpenProfile,
             onLogout = onLogout,
+            userMenuItems = userMenuItems,
             leadingContent = leadingActions,
         )
     }

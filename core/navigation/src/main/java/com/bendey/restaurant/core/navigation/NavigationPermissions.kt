@@ -9,27 +9,10 @@ fun TopLevelDestination.requiredFeature(): RestaurantFeature = when (this) {
     TopLevelDestination.MESAS -> RestaurantFeature.SALAS
     TopLevelDestination.COCINA -> RestaurantFeature.COMANDAS
     TopLevelDestination.CAJA -> RestaurantFeature.CAJA
+    TopLevelDestination.ENTREGAS -> RestaurantFeature.ENTREGAS
     TopLevelDestination.VENTAS -> RestaurantFeature.VENTAS
     TopLevelDestination.PRODUCTOS -> RestaurantFeature.PRODUCTOS
     TopLevelDestination.CLIENTES -> RestaurantFeature.CLIENTES
-}
-
-/** null = la entrada no exige ninguna función (la ayuda es para todos los puestos). */
-fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature? = when (this) {
-    BendeyDrawerDestination.CAJA -> RestaurantFeature.CAJA
-    BendeyDrawerDestination.VENTAS -> RestaurantFeature.VENTAS
-    BendeyDrawerDestination.REPORTES -> RestaurantFeature.REPORTES
-    BendeyDrawerDestination.MESAS_ADMIN -> RestaurantFeature.MESAS
-    BendeyDrawerDestination.PRODUCTOS -> RestaurantFeature.PRODUCTOS
-    BendeyDrawerDestination.CLIENTES -> RestaurantFeature.CLIENTES
-    BendeyDrawerDestination.CONFIGURACION -> RestaurantFeature.CONFIGURACION
-    BendeyDrawerDestination.REPARTIDORES -> RestaurantFeature.REPARTIDORES
-    BendeyDrawerDestination.COMPRAS -> RestaurantFeature.COMPRAS
-    BendeyDrawerDestination.PROVEEDORES -> RestaurantFeature.PROVEEDORES
-    BendeyDrawerDestination.IMPRESORAS -> RestaurantFeature.IMPRESORAS
-    // Suscripción: solo quien administra el negocio (s.m); mismo gating que la ruta (R2a).
-    BendeyDrawerDestination.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
-    BendeyDrawerDestination.AYUDA -> null
 }
 
 fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
@@ -50,6 +33,7 @@ fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
     route == BendeyRoutes.CLIENTES -> RestaurantFeature.CLIENTES
     route == BendeyRoutes.CONFIGURACION -> RestaurantFeature.CONFIGURACION
     route == BendeyRoutes.REPARTIDORES -> RestaurantFeature.REPARTIDORES
+    route == BendeyRoutes.ENTREGAS -> RestaurantFeature.ENTREGAS
     route == BendeyRoutes.PRINTING_TEST -> RestaurantFeature.IMPRESORAS
     route == BendeyRoutes.COMPRAS -> RestaurantFeature.COMPRAS
     route == BendeyRoutes.PROVEEDORES -> RestaurantFeature.PROVEEDORES
@@ -62,13 +46,8 @@ fun canAccessRoute(
     permissions: List<String>,
     employeeType: String?,
 ): Boolean {
+    // "Mi negocio" lo abre quien administra (s.m o tipo admin/supervisor), no una función suelta.
+    if (route == BendeyRoutes.MI_NEGOCIO) return OperationNav.isBusinessManager(permissions, employeeType)
     val feature = routeRequiredFeature(route) ?: return true
     return RestaurantPermissions.canAccessFeature(permissions, feature, employeeType)
 }
-
-/** Entradas del drawer que el usuario puede ver (misma regla que el guard de rutas). */
-fun visibleDrawerDestinations(
-    permissions: List<String>,
-    employeeType: String?,
-): List<BendeyDrawerDestination> =
-    BendeyDrawerDestination.entries.filter { canAccessRoute(it.route, permissions, employeeType) }
