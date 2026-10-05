@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.productos.reportes
 
 
 
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import androidx.compose.foundation.layout.Arrangement
 
 import androidx.compose.foundation.layout.Box
@@ -926,7 +927,7 @@ private fun KardexList(
 
                 Text(row.productName.orEmpty(), fontWeight = FontWeight.SemiBold)
 
-                Text("${row.createdAt.take(16)} · ${row.type} · ${row.quantity}", style = MaterialTheme.typography.bodySmall)
+                Text("${PeruDateTime.formatDateTimeOrRaw(row.createdAt)} · ${row.type} · ${row.quantity}", style = MaterialTheme.typography.bodySmall)
 
                 Text(row.notes.orEmpty(), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
 

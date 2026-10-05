@@ -1,10 +1,9 @@
 package com.bendey.restaurant.feature.caja
 
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Filtra y busca en el historial de cierres YA CARGADO — `listSessions` no acepta rango de
@@ -41,13 +40,11 @@ internal object CajaHistoryFilters {
         runCatching { OffsetDateTime.parse(value) }.getOrNull()
 }
 
-private val momentFormatter = DateTimeFormatter.ofPattern("d MMM, HH:mm", Locale("es", "PE"))
-
 /**
- * "2026-09-09T08:15:00-05:00" → "9 sep, 08:15". Si el valor no es parseable se devuelve tal
- * cual — mejor mostrar el dato crudo que ocultarlo.
+ * "2026-09-09T13:15:00Z" -> "09/09/2026 08:15" (hora de Lima, es-PE). Si el valor no es
+ * parseable se devuelve tal cual: mejor mostrar el dato crudo que ocultarlo.
  */
 internal fun formatSessionMoment(raw: String?): String? {
     if (raw.isNullOrBlank()) return null
-    return runCatching { OffsetDateTime.parse(raw).format(momentFormatter) }.getOrDefault(raw)
+    return PeruDateTime.formatDateTimeOrRaw(raw)
 }

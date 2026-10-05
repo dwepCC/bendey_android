@@ -74,11 +74,4 @@ fun lastCountedCash(sessions: List<CashSessionBrief>): Double? =
         ?.closingBalance
 
 /** "2026-10-04T10:02:00-05:00" -> "10:02" (hora de Lima). Si no se puede leer, null: mejor omitirlo que inventarlo. */
-fun formatCashSince(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
-    val zone = java.time.ZoneId.of("America/Lima")
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-    return runCatching { java.time.OffsetDateTime.parse(iso).atZoneSameInstant(zone).format(formatter) }
-        .recoverCatching { java.time.LocalDateTime.parse(iso).format(formatter) }
-        .getOrNull()
-}
+fun formatCashSince(iso: String?): String? = com.bendey.restaurant.core.domain.time.PeruDateTime.formatTime(iso)

@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
@@ -67,9 +68,8 @@ import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import com.bendey.restaurant.core.ui.layout.BendeyOrientationPolicy
 import kotlinx.coroutines.delay
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -279,7 +279,7 @@ private fun KdsHeader(
             Surface(
                 color = BendeyColors.StateAtrasado.tint,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.xs),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                shape = BendeyShapeTokens.xs,
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -302,8 +302,7 @@ private fun KdsHeader(
     }
 }
 
-private fun hhmm(ms: Long): String =
-    DateTimeFormatter.ofPattern("HH:mm").format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
+private fun hhmm(ms: Long): String = PeruDateTime.formatTime(ms)
 
 /** UNA sola fila: areas (recordada por dispositivo) y tipo de pedido. */
 @Composable
@@ -354,7 +353,7 @@ private fun KdsColumnHeader(column: KdsColumn, count: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(tone.tint, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .background(tone.tint, BendeyShapeTokens.xs)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -418,7 +417,7 @@ private fun KdsUndoBar(text: String, onUndo: () -> Unit) {
     Surface(
         color = Color(0xFF263238),
         modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.xs, vertical = BendeySpacing.xxs),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        shape = BendeyShapeTokens.md,
     ) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),

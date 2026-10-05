@@ -83,7 +83,7 @@ import com.bendey.restaurant.core.domain.dashboard.DashboardTableSummary
 import com.bendey.restaurant.core.domain.dashboard.DashboardTopProduct
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -676,7 +676,6 @@ private fun RevenueTrendChart(
     val maxRevenue = points.maxOf { it.revenue }.coerceAtLeast(1.0)
     val ySteps = 4
     val yMaxLabel = ((maxRevenue / 200.0).toInt().coerceAtLeast(1) * 200.0).coerceAtLeast(200.0)
-    val dateFmt = DateTimeFormatter.ofPattern("d MMM", Locale("es", "PE"))
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         BoxWithConstraints(
@@ -761,7 +760,7 @@ private fun RevenueTrendChart(
                 .filter { it in points.indices }
             indices.forEach { i ->
                 val label = runCatching {
-                    LocalDate.parse(points[i].date).format(dateFmt)
+                    PeruDateTime.formatDayMonth(LocalDate.parse(points[i].date))
                 }.getOrDefault(points[i].date.take(5))
                 Text(
                     text = label,

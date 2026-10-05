@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
 import android.content.Intent
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -523,7 +524,7 @@ private fun MovementsTab(
                         fontWeight = FontWeight.Medium,
                         color = if (row.estaAnulado) BendeyColors.OnSurfaceVariant else Color.Unspecified,
                     )
-                    Text("${row.date} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    Text("${PeruDateTime.formatDateOrRaw(row.date)} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     Text(
                         currency.format(row.amount),
                         fontWeight = FontWeight.Bold,
@@ -610,7 +611,7 @@ private fun MovementsTab(
                 BendeyManagementCard {
                     Column {
                         Text(row.saleNumber.ifBlank { row.orderCode }, fontWeight = FontWeight.Medium)
-                        Text("${row.date} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        Text("${PeruDateTime.formatDateOrRaw(row.date)} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                         Text(currency.format(row.amount), fontWeight = FontWeight.Bold)
                     }
                 }
@@ -948,7 +949,7 @@ private fun ReportPickerRow(
     }
 }
 
-/** "9 sep, 08:10 – 22:38 · María Torres" — o solo lo que haya disponible. */
+/** "09/09/2026 08:10 – 22:38 · María Torres" — o solo lo que haya disponible. */
 private fun sessionMomentAndOperator(session: CashSessionBrief?): String? {
     if (session == null) return null
     val opened = formatSessionMoment(session.openedAt)
@@ -1057,8 +1058,8 @@ private fun ReportContent(
     ) {
         Text("Reporte de caja N°${session.id}", fontWeight = FontWeight.Bold)
         session.branchName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        session.openedAt?.let { Text("Apertura: $it", style = MaterialTheme.typography.bodySmall) }
-        session.closedAt?.let { Text("Cierre: $it", style = MaterialTheme.typography.bodySmall) }
+        session.openedAt?.let { Text("Apertura: ${PeruDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
+        session.closedAt?.let { Text("Cierre: ${PeruDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
         ReportRow("Ventas netas", currency.format(report.totalNetSales))
         if (report.totalVoidedSales > 0) {
             ReportRow("Ventas anuladas", currency.format(report.totalVoidedSales))
@@ -1686,7 +1687,7 @@ private fun BankMovementsDialog(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column(Modifier.weight(1f)) {
                                 Text(mov.description, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(mov.date, style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                                Text(PeruDateTime.formatDateOrRaw(mov.date), style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                             }
                             Text(
                                 "${if (mov.type == "credit") "+" else "-"}${currency.format(mov.amount)}",
