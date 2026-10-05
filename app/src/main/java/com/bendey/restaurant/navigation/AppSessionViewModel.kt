@@ -3,7 +3,9 @@ package com.bendey.restaurant.navigation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.auth.RegistrationCoordinator
+import com.bendey.restaurant.core.data.cache.CatalogVersionWatcher
 import com.bendey.restaurant.core.data.cache.OperationalDataPreloader
+import com.bendey.restaurant.core.realtime.connection.AppForeground
 import com.bendey.restaurant.core.realtime.StaffOrderAlertsCoordinator
 import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.session.UserSessionStore
@@ -24,6 +26,8 @@ class AppSessionViewModel @Inject constructor(
     operationalDataPreloader: OperationalDataPreloader,
     private val staffOrderAlertsCoordinator: StaffOrderAlertsCoordinator,
     registrationCoordinator: RegistrationCoordinator,
+    catalogVersionWatcher: CatalogVersionWatcher,
+    appForeground: AppForeground,
 ) : ViewModel() {
 
     /** Creando el restaurante: la raíz de navegación no debe cambiar a mitad de camino. */
@@ -61,6 +65,8 @@ class AppSessionViewModel @Inject constructor(
             operationalDataPreloader.preloadActiveBranch()
         }
         staffOrderAlertsCoordinator.start(viewModelScope)
+        // R10.5: invalida la cache de cobro si el catalogo cambia en otro equipo o la app estuvo mucho tiempo fuera.
+        catalogVersionWatcher.start(viewModelScope, appForeground.enPantalla, sessionStore.isAuthenticatedFlow)
         viewModelScope.launch {
             sessionStore.userSessionFlow
                 .distinctUntilChanged { old, new -> old?.token == new?.token }

@@ -19,6 +19,9 @@ import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfi
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalLogic
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -210,6 +213,22 @@ private fun MainShell(
 
     // Suscripción exige s.m (administrador). Avisos de plan visibles para todos no deben rebotar
     // en silencio contra el guard de ruta: explican por qué no se abre.
+    // R10.1/R10.2: la campana abre la cola de pedidos del cliente por revisar (solo quien puede verla).
+    var showPendingSheet by remember { mutableStateOf(false) }
+    val canSeePending = PendingApprovalLogic.canView(permissions.permissions)
+    val onBellClick: (() -> Unit)? = if (canSeePending) ({ showPendingSheet = true }) else null
+    LaunchedEffect(canSeePending) {
+        if (!canSeePending) return@LaunchedEffect
+        headerViewModel.pendingArrivals.collect { table -> onShowMessage(PendingApprovalLogic.arrivedMessage(table)) }
+    }
+    if (showPendingSheet && canSeePending) {
+        PendingApprovalSheet(
+            permissions = permissions.permissions,
+            onDismiss = { showPendingSheet = false },
+            onShowMessage = onShowMessage,
+        )
+    }
+
     val goToSubscription: () -> Unit = {
         if (canAccessRoute(BendeyRoutes.SUSCRIPCION, permissions.permissions, permissions.employeeType)) {
             mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
@@ -367,6 +386,7 @@ private fun MainShell(
                                     }
                                 }
                         },
+                        onNotificationsClick = onBellClick,
                         onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
                         leadingActions = cashChipContent,
@@ -377,6 +397,7 @@ private fun MainShell(
                         state = headerState,
                         isDrawerOpen = drawerOpen,
                         onMenuClick = toggleDrawer,
+                        onNotificationsClick = onBellClick,
                         onOpenProfile = { mainNavController.navigate(BendeyRoutes.PERFIL) { launchSingleTop = true } },
                         onLogout = { sessionViewModel.logout {} },
                         leadingActions = cashChipContent,

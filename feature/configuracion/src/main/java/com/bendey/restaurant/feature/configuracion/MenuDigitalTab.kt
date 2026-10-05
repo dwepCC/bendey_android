@@ -92,9 +92,6 @@ private fun dataUrlToBitmap(dataUrl: String): android.graphics.Bitmap? {
     }.getOrNull()
 }
 
-/** Ver comentario en el uso: false mientras Android no implemente la cola de aprobación de pedidos (R10). */
-private const val SHOW_ORDER_APPROVAL_SWITCH = false
-
 @Composable
 fun MenuDigitalTab(
     modifier: Modifier = Modifier,
@@ -298,17 +295,13 @@ fun MenuDigitalTab(
                         enabled = state.canManage,
                         onCheckedChange = viewModel::setShowStockBadges,
                     )
-                    // Oculto hasta R10: Android no tiene la cola de aprobación de pedidos, así que activar esto
-                    // haría que los pedidos del menú digital esperaran una revisión que nadie puede hacer.
-                    // El estado y el ViewModel se conservan intactos (se edita desde ERP/Tauri).
-                    if (SHOW_ORDER_APPROVAL_SWITCH) {
-                        BendeySwitchRow(
-                            label = "Revisar pedidos antes de cocina",
-                            checked = state.requireOrderApproval,
-                            enabled = state.canManage,
-                            onCheckedChange = viewModel::setRequireOrderApproval,
-                        )
-                    }
+                    // R10.1: ahora esta respaldado por la cola de pedidos por revisar (campana de la barra superior).
+                    BendeySwitchRow(
+                        label = "Revisar pedidos antes de cocina",
+                        checked = state.requireOrderApproval,
+                        enabled = state.canManage,
+                        onCheckedChange = viewModel::setRequireOrderApproval,
+                    )
                     Column {
                         Text("Portada del inicio (opcional)", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {

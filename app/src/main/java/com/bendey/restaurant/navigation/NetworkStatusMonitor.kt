@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import com.bendey.restaurant.core.domain.connectivity.ReachabilityLevel
 import com.bendey.restaurant.core.realtime.dispatcher.ConnectionState
 import com.bendey.restaurant.core.ui.components.BendeyConnectionStatus
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -17,16 +18,25 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Función pura: combina lo que dice el WebSocket con lo que dice el sistema operativo.
+ * Funcion pura: combina red del dispositivo + alcance REAL del backend (sonda) + WebSocket. NUNCA devuelve
+ * ONLINE (verde) si no esta comprobado:
  *
  * - Sin red en el dispositivo => OFFLINE (manda el SO: el WS tarda hasta ~90 s en darse cuenta).
- * - Con red y WS autenticado => ONLINE.
- * - Con red y WS conectando/reconectando => CONNECTING (verificando, no afirmamos nada).
- * - Con red y WS apagado a propósito (sin sesión, sin permiso de realtime) => ONLINE: no hay otra señal
- *   y mostrar "Sin conexión" a quien nunca abre el WS sería mentir en el otro sentido.
+ * - Backend inalcanzable (3 sondas seguidas fallidas) => OFFLINE.
+ * - Backend sin comprobar todavia o degradado (1-2 fallos) => CONNECTING.
+ * - Backend alcanzable y WS conectando/reconectando => CONNECTING.
+ * - Backend alcanzable y WS autenticado => ONLINE.
+ * - Backend alcanzable y WS apagado a proposito (sin sesion, sin permiso de realtime, segundo plano) =>
+ *   ONLINE: el WS no es la senal en ese caso y la sonda ya confirmo el servidor.
  */
-internal fun resolveConnectionStatus(realtime: ConnectionState, hasNetwork: Boolean): BendeyConnectionStatus = when {
+internal fun resolveConnectionStatus(
+    realtime: ConnectionState,
+    hasNetwork: Boolean,
+    reachability: ReachabilityLevel,
+): BendeyConnectionStatus = when {
     !hasNetwork -> BendeyConnectionStatus.OFFLINE
+    reachability == ReachabilityLevel.UNREACHABLE -> BendeyConnectionStatus.OFFLINE
+    reachability == ReachabilityLevel.UNKNOWN || reachability == ReachabilityLevel.DEGRADED -> BendeyConnectionStatus.CONNECTING
     realtime == ConnectionState.CONNECTING || realtime == ConnectionState.RECONNECTING -> BendeyConnectionStatus.CONNECTING
     else -> BendeyConnectionStatus.ONLINE
 }

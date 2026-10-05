@@ -32,8 +32,8 @@ data class BendeyAppHeaderState(
     val branchName: String = "",
     val userName: String = "",
     val userInitials: String = "",
-    /** Por defecto ONLINE para no mostrar alarma antes de que el ViewModel calcule el estado real. */
-    val connection: BendeyConnectionStatus = BendeyConnectionStatus.ONLINE,
+    /** Por defecto CONNECTING: nunca se muestra "En linea" (verde) antes de comprobarlo. */
+    val connection: BendeyConnectionStatus = BendeyConnectionStatus.CONNECTING,
     val notificationCount: Int = 0,
     /** Solo el login completo (email/contraseña) puede editar su perfil — un turno por PIN no. */
     val isAdmin: Boolean = false,

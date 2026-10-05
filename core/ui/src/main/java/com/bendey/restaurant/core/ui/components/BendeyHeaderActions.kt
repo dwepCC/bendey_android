@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.ui.components
 
+import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalLogic
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -78,7 +79,7 @@ fun BendeyHeaderActions(
             BadgedBox(
                 badge = {
                     if (state.notificationCount > 0) {
-                        Badge { Text(state.notificationCount.coerceAtMost(9).toString()) }
+                        Badge { Text(PendingApprovalLogic.badgeLabel(state.notificationCount)) }
                     }
                 },
             ) {
@@ -88,7 +89,7 @@ fun BendeyHeaderActions(
                 ) {
                     Icon(
                         Icons.Default.Notifications,
-                        contentDescription = "Notificaciones",
+                        contentDescription = PendingApprovalLogic.badgeContentDescription(state.notificationCount),
                         tint = BendeyColors.OnPrimary,
                         modifier = Modifier.size(22.dp),
                     )
