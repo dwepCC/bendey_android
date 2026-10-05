@@ -42,7 +42,7 @@ class OrdersStore @Inject constructor() :
 /** KDS cocina. */
 @Singleton
 class KitchenStore @Inject constructor() :
-    RealtimeStore<KitchenItem> by createRealtimeStore(getId = { it.id })
+    RealtimeStore<KitchenItem> by createRealtimeStore(getId = { it.kdsKey })
 
 /** Ventas / cobros registrados vía realtime (`restaurant.bill.closed`). */
 data class BillQueueItem(

@@ -181,6 +181,7 @@ object ErrorCatalog {
         "COMANDA_NOT_FOUND" to e("Comanda no encontrada", "No encontramos la comanda. Actualiza para ver el estado.", ErrorAction.REFRESH),
         "COMANDA_CANCELLED" to e("Comanda anulada", "Esta comanda ya fue anulada. Actualiza para ver el estado.", ErrorAction.REFRESH),
         "COMANDA_STATUS_BACKWARDS" to e("Estado no válido", "La comanda ya avanzó de estado y no puede retroceder. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "COMANDA_NOT_IN_ORDER" to e("Comanda de otra ronda", "Una de las comandas ya no pertenece a esta ronda. Actualiza la cocina y vuelve a intentar.", ErrorAction.REFRESH),
         "COMANDA_ALREADY_DELIVERED" to e("Comanda entregada", "Esta comanda ya fue entregada y no se puede anular.", ErrorAction.REFRESH),
 
         // --- Cobrar ---

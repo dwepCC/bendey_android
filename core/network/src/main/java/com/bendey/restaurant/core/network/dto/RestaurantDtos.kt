@@ -250,12 +250,21 @@ data class KitchenComandaDto(
     @SerialName("floor_name") val floorName: String? = null,
     @SerialName("customer_name") val customerName: String? = null,
     @SerialName("waiter_name") val waiterName: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("session_opened_at") val sessionOpenedAt: String? = null,
+    @SerialName("area_estimated_minutes") val areaEstimatedMinutes: Int = 0,
 )
 
 @Serializable
 data class UpdateComandaStatusRequestDto(
     val status: String,
+)
+
+/** Cambio masivo de estado de las comandas de UNA ronda (`PUT /orders/:orderId/comandas/status`). */
+@Serializable
+data class UpdateOrderComandasStatusRequestDto(
+    val status: String,
+    @SerialName("comanda_ids") val comandaIds: List<Int>? = null,
 )
 
 @Serializable

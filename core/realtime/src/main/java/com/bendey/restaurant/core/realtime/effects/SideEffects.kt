@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.realtime.effects
 
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
+import com.bendey.restaurant.core.domain.kitchen.shouldPlayNewOrderSound
 import com.bendey.restaurant.core.realtime.DomainEvent
 import com.bendey.restaurant.core.realtime.NewOrderEventTypes
 import com.bendey.restaurant.core.realtime.NewOrderSoundPlayer
@@ -16,6 +17,7 @@ class SoundSideEffect @Inject constructor(
 
     override fun matches(event: DomainEvent, ctx: SideEffectContext): Boolean =
         event.type in NewOrderEventTypes.ALERT_TYPES &&
+            shouldPlayNewOrderSound(event.type) &&
             RestaurantPermissions.canReceiveNewOrderSound(ctx.restaurantPermissions)
 
     override fun run(event: DomainEvent, ctx: SideEffectContext) {

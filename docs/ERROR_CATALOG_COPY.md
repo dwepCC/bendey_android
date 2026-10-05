@@ -71,6 +71,7 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `COMANDA_NOT_FOUND` | Comanda no encontrada | No encontramos la comanda. Actualiza para ver el estado. | [Actualizar] |
 | `COMANDA_CANCELLED` | Comanda anulada | Esta comanda ya fue anulada. Actualiza para ver el estado. | [Actualizar] |
 | `COMANDA_STATUS_BACKWARDS` | Estado no válido | La comanda ya avanzó de estado y no puede retroceder. Actualiza para ver el estado. | [Actualizar] |
+| `COMANDA_NOT_IN_ORDER` | Comanda de otra ronda | Una de las comandas ya no pertenece a esta ronda. Actualiza la cocina y vuelve a intentar. | [Actualizar] |
 | `COMANDA_ALREADY_DELIVERED` | Comanda entregada | Esta comanda ya fue entregada y no se puede anular. | [Actualizar] |
 | `COMANDA_ALREADY_BILLED` | Ya cobrada | Esta comanda ya fue cobrada. Revisa en Ventas el comprobante; no se cobró de nuevo. | [Ver Ventas] · [Actualizar] |
 | `COMANDA_NOTHING_TO_BILL` | Nada por cobrar | No hay productos por cobrar en esta mesa. Actualiza para ver el estado. | [Actualizar] |

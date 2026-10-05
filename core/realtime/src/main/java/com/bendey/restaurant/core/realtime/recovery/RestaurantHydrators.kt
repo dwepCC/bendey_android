@@ -101,7 +101,7 @@ class RestaurantHydrators @Inject constructor(
     /** Retorna `true` si la carga fue exitosa — preserva feedback de error en refresh manual (CocinaViewModel). */
     suspend fun hydrateKitchen(): Boolean {
         val comandas = kitchenRepository.loadKitchen().dataOrNull() ?: return false
-        stores.kitchen.hydrate(snapshotFromList(comandas, { it.id }))
+        stores.kitchen.hydrate(snapshotFromList(comandas, { it.kdsKey }))
         return true
     }
 

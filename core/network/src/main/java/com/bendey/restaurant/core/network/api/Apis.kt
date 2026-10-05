@@ -198,6 +198,12 @@ interface RestaurantApi {
         @Body body: UpdateComandaStatusRequestDto,
     ): SuccessResponseDto
 
+    @PUT("/api/restaurant/orders/{orderId}/comandas/status")
+    suspend fun updateOrderComandasStatus(
+        @retrofit2.http.Path("orderId") orderId: Int,
+        @Body body: com.bendey.restaurant.core.network.dto.UpdateOrderComandasStatusRequestDto,
+    ): SuccessResponseDto
+
     @GET("/api/restaurant/sessions/{sessionId}")
     suspend fun getSession(
         @retrofit2.http.Path("sessionId") sessionId: Int,

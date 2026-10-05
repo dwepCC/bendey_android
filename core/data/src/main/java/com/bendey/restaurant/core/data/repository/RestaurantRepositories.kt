@@ -55,6 +55,8 @@ import com.bendey.restaurant.core.network.dto.FloorUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.TableUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaNotesRequestDto
 import com.bendey.restaurant.core.network.dto.UpdateComandaStatusRequestDto
+import com.bendey.restaurant.core.network.dto.UpdateOrderComandasStatusRequestDto
+import com.bendey.restaurant.core.network.error.NetworkErrorMapper
 import com.bendey.restaurant.core.network.error.ErrorFlow
 import com.bendey.restaurant.core.network.error.apiCall
 import javax.inject.Inject
@@ -346,6 +348,39 @@ class KitchenRepositoryImpl @Inject constructor(
         )
     }
 
+    @Volatile
+    private var bulkUnsupported = false
+
+    override suspend fun updateOrderComandasStatus(
+        orderId: Int?,
+        comandaIds: List<Int>,
+        status: ComandaStatus,
+    ): AppResult<Unit> {
+        val ids = comandaIds.distinct()
+        if (ids.isEmpty()) return AppResult.Success(Unit)
+        if (orderId != null && !bulkUnsupported) {
+            val bulk = apiCall {
+                tenantRetrofitProvider.create<RestaurantApi>().updateOrderComandasStatus(
+                    orderId,
+                    UpdateOrderComandasStatusRequestDto(status = status.backendValue, comandaIds = ids),
+                )
+            }
+            if (bulk is AppResult.Success) return AppResult.Success(Unit)
+            val http = generateSequence((bulk as AppResult.Error).cause) { it.cause }
+                .firstNotNullOfOrNull(NetworkErrorMapper::httpStatus)
+            // Backend viejo sin la ruta: 404/405 -> PUT por comanda. (Un 404 ORDER_NOT_FOUND tambien cae
+            // aqui y el PUT por comanda devolvera su propio error, sin dano.)
+            if (http != 404 && http != 405) return bulk
+            if (http == 405) bulkUnsupported = true
+        }
+        var failure: AppResult.Error? = null
+        for (id in ids) {
+            val r = updateComandaStatus(id, status)
+            if (r is AppResult.Error && failure == null) failure = r
+        }
+        return failure ?: AppResult.Success(Unit)
+    }
+
     override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
         tenantRetrofitProvider.create<RestaurantApi>()
             .cancelComanda(comandaId, CancelComandaRequestDto(reason = reason.trim(), pin = pin.trim()))
@@ -427,7 +462,11 @@ private fun KitchenComandaDto.toDomain() = KitchenItem(
     preparationArea = preparationArea,
     comboSnapshotJson = comboSnapshotJson,
     createdAt = createdAt,
+    updatedAt = updatedAt,
     sessionOpenedAt = sessionOpenedAt,
+    orderId = orderId.takeIf { it > 0 },
+    sessionId = sessionId.takeIf { it > 0 },
+    areaEstimatedMinutes = areaEstimatedMinutes,
     displayName = productName,
     displayQuantity = quantity,
 )

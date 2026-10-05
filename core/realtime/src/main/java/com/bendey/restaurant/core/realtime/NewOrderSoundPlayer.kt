@@ -34,6 +34,6 @@ class NewOrderSoundPlayer @Inject constructor(
 object NewOrderEventTypes {
     val ALERT_TYPES = setOf(
         "restaurant.order.created",
-        "menu.order.created",
+        "menu.order.accepted",
     )
 }
