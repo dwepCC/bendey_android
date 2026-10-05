@@ -559,11 +559,7 @@ class CajaViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     arqueoDocBusy = false,
-                    snackMessage = when (ok) {
-                        true -> "Conteo de caja enviado a la impresora"
-                        false -> "No se pudo imprimir el conteo de caja"
-                        null -> "Configura una impresora de documentos directa"
-                    },
+                    snackMessage = ok?.message,
                 )
             }
         }
@@ -958,12 +954,7 @@ class CajaViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     sessionReportPrintBusy = false,
-                    snackMessage = when (ok) {
-                        true -> "Reporte enviado a la impresora"
-                        false -> "No se pudo imprimir el reporte"
-                        null -> "Configura una impresora directa (BT/USB/red) para imprimir el reporte — " +
-                            "el servidor de impresión no imprime texto libre"
-                    },
+                    snackMessage = ok?.message,
                 )
             }
         }

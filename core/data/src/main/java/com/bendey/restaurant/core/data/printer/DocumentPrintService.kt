@@ -3,10 +3,11 @@ package com.bendey.restaurant.core.data.printer
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
-import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
+import com.bendey.restaurant.core.data.printer.printserver.toPrintOutcome
 import com.bendey.restaurant.core.data.receipt.ReceiptLogoLoader
 import com.bendey.restaurant.core.data.receipt.ReceiptModifierLines
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.print.PrintOutcome
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintInput
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintLine
 import com.bendey.restaurant.platform.printing.escpos.DocumentPrintPayment
@@ -30,26 +31,27 @@ class DocumentPrintService @Inject constructor(
     private val printServerClient: PrintServerClient,
     private val printServerConnectionManager: PrintServerConnectionManager,
 ) {
-    /** null = sin impresora / auto-print off; true = OK; false = error. */
-    suspend fun printSaleDocument(data: SalePrintData?, force: Boolean = false): Boolean? {
+    /**
+     * Imprime el comprobante. null = no corresponde imprimir (sin datos, o impresión automática
+     * apagada y no es una reimpresión manual); si no, el resultado distingue OK / FAILED(motivo) /
+     * NOT_CONFIGURED / SERVER_UNREACHABLE / SERVER_DOWN (R10.4). Solo OK cuenta como impreso.
+     */
+    suspend fun printSaleDocument(data: SalePrintData?, force: Boolean = false): PrintOutcome? {
         if (data == null) return null
         val settings = printerPreferencesStore.settings.first()
         if (!force && !settings.autoPrintDocuments) return null
         if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
-            val server = printServerConnectionManager.resolveServer(settings) ?: return null
-            return when (printServerClient.printDocument(server, data)) {
-                RemotePrintResult.Success -> true
-                is RemotePrintResult.Error -> false
-            }
+            // Sin servidor elegido: en la impresión automática no hay nada que avisar; en la manual sí.
+            val server = printServerConnectionManager.resolveServer(settings)
+                ?: return if (force) PrintOutcome.NotConfigured else null
+            return printServerClient.printDocument(server, data).toPrintOutcome()
         }
         val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
-            ?: return null
+            ?: return if (force) PrintOutcome.NotConfigured else null
         val logoRaster = loadLogoRaster(data.companyLogoUrl, target.paperWidth, settings.documentLogoSize)
-        return when (printerRepository.printDocument(target, data.toInput(logoRaster, settings.openCashDrawerOnDocument))) {
-            is PrintResult.Success -> true
-            is PrintResult.Error -> false
-        }
+        return printerRepository.printDocument(target, data.toInput(logoRaster, settings.openCashDrawerOnDocument))
+            .toPrintOutcome()
     }
 
     suspend fun hasConfiguredPrinter(): Boolean {
@@ -59,20 +61,22 @@ class DocumentPrintService @Inject constructor(
 
     /**
      * Imprime un reporte de texto libre (p. ej. el arqueo de caja) en la ticketera de documentos.
-     * null = sin impresora directa (o modo servidor, que solo acepta documentos estructurados);
-     * true = OK; false = error. El título va centrado en negrita; cada línea se ajusta al ancho.
+     * null = no corresponde imprimir (impresión automática apagada y sin `force`); si no, el resultado
+     * unificado (R10.4). El modo servidor solo acepta documentos estructurados, así que el reporte de
+     * texto allí es un FAILED con un motivo en lenguaje llano. El título va centrado en negrita;
+     * cada línea se ajusta al ancho.
      */
-    suspend fun printReportTicket(title: String?, lines: List<String>, force: Boolean = false): Boolean? {
+    suspend fun printReportTicket(title: String?, lines: List<String>, force: Boolean = false): PrintOutcome? {
         val settings = printerPreferencesStore.settings.first()
         if (!force && !settings.autoPrintDocuments) return null
         if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
             // El servidor de impresión solo expone endpoints estructurados (documento/comanda);
             // el reporte de texto se imprime únicamente con impresora directa (BT/USB/red).
-            return null
+            return PrintOutcome.failed(REPORT_NEEDS_DIRECT_PRINTER)
         }
         val target = settings.targetFor(PrinterSlot.DOCUMENTOS)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
-            ?: return null
+            ?: return PrintOutcome.NotConfigured
         val cols = when (target.paperWidth) {
             PaperWidthMm.W58 -> 32
             PaperWidthMm.W80 -> 48
@@ -96,10 +100,7 @@ class DocumentPrintService @Inject constructor(
         builder.line()
         builder.line()
         builder.cutPartial()
-        return when (printerRepository.printRaw(builder.bytes(), target)) {
-            is PrintResult.Success -> true
-            is PrintResult.Error -> false
-        }
+        return printerRepository.printRaw(builder.bytes(), target).toPrintOutcome()
     }
 
     /**
@@ -120,6 +121,10 @@ class DocumentPrintService @Inject constructor(
             is PrintResult.Success -> true
             is PrintResult.Error -> false
         }
+    }
+
+    private companion object {
+        const val REPORT_NEEDS_DIRECT_PRINTER = "este reporte solo se imprime con una impresora conectada a este equipo"
     }
 
     private fun loadLogoRaster(logoUrl: String?, paperWidth: PaperWidthMm, logoSize: LogoSize): ByteArray? {

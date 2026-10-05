@@ -1,6 +1,9 @@
 package com.bendey.restaurant.core.data.printer.printserver
 
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.print.RemotePrintCode
+import com.bendey.restaurant.core.domain.print.PrintOutcome
+import com.bendey.restaurant.core.domain.print.printOutcomeFromRemoteError
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +26,12 @@ import javax.inject.Singleton
 sealed class RemotePrintResult {
     data object Success : RemotePrintResult()
     data class Error(val message: String, val code: String = "unknown") : RemotePrintResult()
+}
+
+/** Resultado de impresión (R10.4) a partir de lo que respondió el servidor de impresión. */
+fun RemotePrintResult.toPrintOutcome(): PrintOutcome = when (this) {
+    RemotePrintResult.Success -> PrintOutcome.Ok
+    is RemotePrintResult.Error -> printOutcomeFromRemoteError(code, message)
 }
 
 @Singleton
@@ -110,7 +119,7 @@ class PrintServerClient @Inject constructor(
     private suspend fun post(server: PrintServerSelection, path: String, payload: String): RemotePrintResult =
         withContext(Dispatchers.IO) {
         val host = server.resolvedHost()
-        if (host.isBlank()) return@withContext RemotePrintResult.Error("Servidor no configurado", "server_stopped")
+        if (host.isBlank()) return@withContext RemotePrintResult.Error("Servidor no configurado", RemotePrintCode.NOT_CONFIGURED)
         val url = "http://$host:${server.port}$path"
         val builder = Request.Builder()
             .url(url)
@@ -151,7 +160,8 @@ class PrintServerClient @Inject constructor(
     private fun mapHttpError(code: Int): RemotePrintResult.Error = when (code) {
         503 -> RemotePrintResult.Error("Servidor de impresión detenido o cola no disponible", "server_stopped")
         408, 504 -> RemotePrintResult.Error("Tiempo de espera agotado", "timeout")
-        else -> RemotePrintResult.Error("Error HTTP $code", "connection_error")
+        // El servidor respondió pero con un error: no es "inalcanzable". Sin código HTTP crudo en el texto.
+        else -> RemotePrintResult.Error("El servidor de impresión devolvió un error", RemotePrintCode.HTTP)
     }
 
     private fun mapException(e: Exception): String = when (e) {
@@ -181,6 +191,6 @@ class PrintServerClient @Inject constructor(
     }
 
     companion object {
-        private val RETRYABLE_CODES = setOf("connection_error", "timeout", "server_stopped")
+        private val RETRYABLE_CODES = setOf("connection_error", "timeout", "server_stopped", RemotePrintCode.HTTP)
     }
 }

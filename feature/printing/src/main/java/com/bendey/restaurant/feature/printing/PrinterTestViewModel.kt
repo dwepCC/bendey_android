@@ -14,6 +14,9 @@ import com.bendey.restaurant.core.data.printer.printserver.PrintServerDiscovery
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerSelection
 import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.data.printer.printserver.manualPrintServerSelection
+import com.bendey.restaurant.core.data.printer.printserver.toPrintOutcome
+import com.bendey.restaurant.core.data.printer.toPrintOutcome
+import com.bendey.restaurant.core.domain.print.PrintOutcome
 import com.bendey.restaurant.core.data.printer.printserver.withManualEndpoint
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
@@ -335,7 +338,7 @@ class PrinterTestViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         loading = false,
-                        error = "No responde en http://${server.resolvedHost()}:${server.port}/v1/health",
+                        error = PrintOutcome.ServerUnreachable.message,
                     )
                 }
                 return@launch
@@ -350,7 +353,7 @@ class PrinterTestViewModel @Inject constructor(
                     it.copy(loading = false, statusMessage = "Prueba enviada al servidor")
                 }
                 is RemotePrintResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
+                    it.copy(loading = false, error = result.toPrintOutcome().message)
                 }
             }
         }
@@ -377,7 +380,7 @@ class PrinterTestViewModel @Inject constructor(
                     _uiState.update { it.copy(loading = false, statusMessage = "Bluetooth conectado") }
                 }
                 is PrintResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
+                    it.copy(loading = false, error = result.toPrintOutcome().message)
                 }
             }
         }
@@ -414,7 +417,7 @@ class PrinterTestViewModel @Inject constructor(
                     it.copy(loading = false, statusMessage = "Comanda de prueba ($areaKey) enviada")
                 }
                 is PrintResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
+                    it.copy(loading = false, error = result.toPrintOutcome().message)
                 }
             }
         }
@@ -456,7 +459,7 @@ class PrinterTestViewModel @Inject constructor(
                         )
                     }
                     is RemotePrintResult.Error -> _uiState.update { state ->
-                        state.copy(loading = false, error = remoteResult.message)
+                        state.copy(loading = false, error = remoteResult.toPrintOutcome().message)
                     }
                 }
                 return@launch
@@ -528,7 +531,7 @@ class PrinterTestViewModel @Inject constructor(
                     )
                 }
                 is PrintResult.Error -> _uiState.update {
-                    it.copy(loading = false, error = result.message)
+                    it.copy(loading = false, error = result.toPrintOutcome().message)
                 }
             }
         }

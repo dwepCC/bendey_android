@@ -7,7 +7,7 @@ import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.printer.ComandaPrintAlert
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
 import com.bendey.restaurant.core.data.printer.comandaPrintFeedback
-import com.bendey.restaurant.core.data.printer.PrecuentaPrintOutcome
+import com.bendey.restaurant.core.domain.print.PrintOutcome
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
 import com.bendey.restaurant.core.data.receipt.ReceiptPdfFormat
@@ -968,9 +968,10 @@ class PosViewModel @Inject constructor(
                 waiterName = alert.waiterName,
                 comandas = alert.comandas,
             )
-            if (result == true) alert.orderId?.let { posRepository.markTableOrderPrinted(it) }
+            // Solo se confirma como impresa una ronda que de verdad salió en papel.
+            if (result?.isPrinted == true) alert.orderId?.let { posRepository.markTableOrderPrinted(it) }
             _uiState.update {
-                if (result == true) {
+                if (result?.isPrinted == true) {
                     it.copy(
                         comandaPrintAlert = null,
                         reprintingFromAlert = false,
@@ -981,7 +982,7 @@ class PosViewModel @Inject constructor(
                     it.copy(
                         reprintingFromAlert = false,
                         comandaPrintAlert = alert.copy(
-                            message = "No se pudo reimprimir. Revisa que la impresora esté encendida, con papel y conectada.",
+                            message = result?.message ?: alert.message,
                         ),
                     )
                 }
@@ -1085,11 +1086,7 @@ class PosViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     reprintingOrderId = null,
-                    snackMessage = when (result) {
-                        true -> "Comanda #${order.orderNumber} reimpresa"
-                        false -> "No se pudo reimprimir"
-                        null -> "Configura impresora de comandas"
-                    },
+                    snackMessage = result?.message,
                 )
             }
         }
@@ -1112,11 +1109,7 @@ class PosViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     reprintingAll = false,
-                    snackMessage = when (result) {
-                        true -> "Comandas reimpresas"
-                        false -> "No se pudo reimprimir"
-                        null -> "Configura impresora de comandas"
-                    },
+                    snackMessage = result?.message,
                 )
             }
         }
@@ -1570,11 +1563,7 @@ class PosViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     receiptBusy = null,
-                    snackMessage = when (ok) {
-                        true -> "Comprobante enviado a la ticketera"
-                        false -> "No se pudo imprimir"
-                        null -> "Configura la impresora en Ajustes"
-                    },
+                    snackMessage = ok?.message,
                 )
             }
         }
@@ -1865,13 +1854,8 @@ class PosViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             printingPrecuenta = false,
-                            snackMessage = when (outcome) {
-                                PrecuentaPrintOutcome.Success -> "Precuenta enviada a impresora"
-                                PrecuentaPrintOutcome.Skipped -> "Error al imprimir precuenta"
-                                // Mensaje real del servidor/impresora en vez del genérico de
-                                // siempre — así el mozo sabe qué pasó sin tener que adivinar.
-                                is PrecuentaPrintOutcome.Failed -> outcome.message
-                            },
+                            // Texto unificado (R10.4): OK / FAILED(motivo) / sin configurar / servidor inalcanzable o caído.
+                            snackMessage = outcome.message,
                         )
                     }
                 }
@@ -2045,8 +2029,5 @@ private fun productMatchesBarcode(productCode: String, scanned: String): Boolean
     return stripProduct.isNotEmpty() && stripProduct == stripCode
 }
 
-private fun documentPrintNote(result: Boolean?): String? = when (result) {
-    true -> "Documento enviado a impresora"
-    false -> "Documento no impreso · revisa impresora"
-    null -> null
-}
+/** Nota del comprobante tras el cobro: null = no se intentó imprimir (impresión automática apagada). */
+private fun documentPrintNote(result: PrintOutcome?): String? = result?.message

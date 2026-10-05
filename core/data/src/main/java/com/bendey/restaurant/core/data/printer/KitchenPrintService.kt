@@ -12,7 +12,11 @@ import com.bendey.restaurant.core.data.kitchen.toPrintItem
 import com.bendey.restaurant.core.data.printer.printserver.PrintDeliveryMode
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerClient
 import com.bendey.restaurant.core.data.printer.printserver.PrintServerConnectionManager
-import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
+import com.bendey.restaurant.core.data.printer.printserver.toPrintOutcome
+import com.bendey.restaurant.core.domain.print.PrintOutcome
+import com.bendey.restaurant.core.domain.print.PrintStatus
+import com.bendey.restaurant.core.domain.print.combinePrintOutcomes
+import com.bendey.restaurant.core.domain.print.comandaSentNotPrinted
 import com.bendey.restaurant.core.domain.restaurant.ComandaLine
 import com.bendey.restaurant.core.domain.restaurant.PrecuentaData
 import com.bendey.restaurant.platform.printing.escpos.ComandaComboDisplay
@@ -27,30 +31,31 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Resultado de imprimir precuenta. A diferencia de comandas (Boolean?/tri-estado simple), acá
- *  interesa propagar el motivo real del error hasta la UI — antes se perdía en un `false` plano
- *  y el mozo veía siempre el mismo mensaje genérico sin importar la causa (impresora sin
- *  configurar, servidor caído, etc). Ver incidente El Braserito, 2026-09-07. */
-sealed class PrecuentaPrintOutcome {
-    data object Success : PrecuentaPrintOutcome()
-    /** Nada que hacer: precuenta sin líneas, o sin impresora/servidor configurado — mismos casos
-     *  que antes colapsaban en `null`. */
-    data object Skipped : PrecuentaPrintOutcome()
-    data class Failed(val message: String) : PrecuentaPrintOutcome()
+/** Qué pasó al imprimir la comanda de una ronda recién enviada. Distingue "falló" de "no hay con qué". */
+sealed interface ComandaPrintOutcome {
+    /** Se imprimió completa. */
+    data object Printed : ComandaPrintOutcome
+    /** Hay impresora/servidor configurado y la impresión falló (total o parcialmente). */
+    data class Failed(val reason: String?) : ComandaPrintOutcome
+    /** No hay impresora de comandas (ni servidor) configurado. */
+    data object NotConfigured : ComandaPrintOutcome
+    /** Hay servidor de impresión elegido pero no se lo encontró en la red. */
+    data object ServerUnreachable : ComandaPrintOutcome
+    /** Se encontró el servidor de impresión pero no atendió el trabajo. */
+    data object ServerDown : ComandaPrintOutcome
+    /** El usuario desactivó la impresión automática: no es un fallo. */
+    data object AutoPrintOff : ComandaPrintOutcome
+    /** La ronda no tiene comandas que imprimir. */
+    data object NothingToPrint : ComandaPrintOutcome
 }
 
-/** Qué pasó al imprimir la comanda de una ronda recién enviada. Distingue "falló" de "no hay con qué". */
-enum class ComandaPrintOutcome {
-    /** Se imprimió completa. */
-    Printed,
-    /** Hay impresora/servidor configurado y la impresión falló (total o parcialmente). */
-    Failed,
-    /** No hay impresora de comandas (ni servidor) configurado. */
-    NotConfigured,
-    /** El usuario desactivó la impresión automática: no es un fallo. */
-    AutoPrintOff,
-    /** La ronda no tiene comandas que imprimir. */
-    NothingToPrint,
+/** Estado de impresión unificado -> resultado de una comanda recién enviada. */
+fun PrintOutcome.toComandaOutcome(): ComandaPrintOutcome = when (status) {
+    PrintStatus.OK -> ComandaPrintOutcome.Printed
+    PrintStatus.NOT_CONFIGURED -> ComandaPrintOutcome.NotConfigured
+    PrintStatus.SERVER_UNREACHABLE -> ComandaPrintOutcome.ServerUnreachable
+    PrintStatus.SERVER_DOWN -> ComandaPrintOutcome.ServerDown
+    PrintStatus.FAILED -> ComandaPrintOutcome.Failed(reason)
 }
 
 /**
@@ -73,25 +78,26 @@ fun comandaPrintFeedback(
     orderNumber: Int,
     /** Suma de cantidades de la ronda; con valor > 0 el aviso dice "Comanda #3 enviada · 4 ítems" (igual que Tauri). */
     itemCount: Int = 0,
-): ComandaPrintFeedback = when (outcome) {
-    ComandaPrintOutcome.Printed -> ComandaPrintFeedback(comandaSentMessage(orderNumber, itemCount), null, false, true)
-    ComandaPrintOutcome.AutoPrintOff -> ComandaPrintFeedback(
-        if (itemCount > 0) comandaSentMessage(orderNumber, itemCount) else "Comanda #$orderNumber enviada a cocina",
-        null, false, false,
-    )
-    ComandaPrintOutcome.NothingToPrint -> ComandaPrintFeedback("Pedido #$orderNumber enviado", null, false, false)
-    ComandaPrintOutcome.Failed -> ComandaPrintFeedback(
+): ComandaPrintFeedback {
+    // "Comanda #n enviada, pero no se imprimió." + el motivo (mismos textos print.* que Tauri).
+    fun notPrinted(print: PrintOutcome, canReprint: Boolean) = ComandaPrintFeedback(
         snack = null,
-        alert = "El pedido se envió a cocina, pero la comanda no se imprimió. Revisa la impresora.",
-        canReprint = true,
+        alert = comandaSentNotPrinted(orderNumber) + " " + print.message,
+        canReprint = canReprint,
         markPrinted = false,
     )
-    ComandaPrintOutcome.NotConfigured -> ComandaPrintFeedback(
-        snack = null,
-        alert = "El pedido se envió a cocina, pero no hay una impresora de comandas configurada. Configúrala en Ajustes.",
-        canReprint = false,
-        markPrinted = false,
-    )
+    return when (outcome) {
+        ComandaPrintOutcome.Printed -> ComandaPrintFeedback(comandaSentMessage(orderNumber, itemCount), null, false, true)
+        ComandaPrintOutcome.AutoPrintOff -> ComandaPrintFeedback(
+            if (itemCount > 0) comandaSentMessage(orderNumber, itemCount) else "Comanda #$orderNumber enviada a cocina",
+            null, false, false,
+        )
+        ComandaPrintOutcome.NothingToPrint -> ComandaPrintFeedback("Pedido #$orderNumber enviado", null, false, false)
+        is ComandaPrintOutcome.Failed -> notPrinted(PrintOutcome.failed(outcome.reason), canReprint = true)
+        ComandaPrintOutcome.NotConfigured -> notPrinted(PrintOutcome.NotConfigured, canReprint = false)
+        ComandaPrintOutcome.ServerUnreachable -> notPrinted(PrintOutcome.ServerUnreachable, canReprint = true)
+        ComandaPrintOutcome.ServerDown -> notPrinted(PrintOutcome.ServerDown, canReprint = true)
+    }
 }
 
 /** Aviso pendiente de una comanda que no salió en papel, con lo necesario para reimprimirla desde el propio aviso. */
@@ -113,23 +119,9 @@ class KitchenPrintService @Inject constructor(
     private val printServerClient: PrintServerClient,
     private val printServerConnectionManager: PrintServerConnectionManager,
 ) {
-    /** null = sin impresora / auto-print off; true = OK; false = error de impresión. */
-    suspend fun printComandaRound(
-        tableName: String?,
-        orderNumber: Int,
-        waiterName: String?,
-        comandas: List<ComandaLine>,
-    ): Boolean? {
-        if (comandas.isEmpty()) return null
-        val settings = printerPreferencesStore.settings.first()
-        if (!settings.autoPrintComandas) return null
-        if (!settings.isComandaPrintReady()) return null
-        return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
-    }
-
     /**
-     * Igual que [printComandaRound] pero sin colapsar los motivos en un `Boolean?`: la UI necesita saber si
-     * la comanda salió, falló o nunca hubo impresora para no marcar como impresa una ronda que no lo está.
+     * Imprime la comanda de una ronda recién enviada, sin colapsar los motivos: la UI necesita saber si
+     * salió, falló (y por qué), o nunca hubo impresora, para no marcar como impresa una ronda que no lo está.
      */
     suspend fun printComandaRoundOutcome(
         tableName: String?,
@@ -141,23 +133,22 @@ class KitchenPrintService @Inject constructor(
         val settings = printerPreferencesStore.settings.first()
         if (!settings.autoPrintComandas) return ComandaPrintOutcome.AutoPrintOff
         if (!settings.isComandaPrintReady()) return ComandaPrintOutcome.NotConfigured
-        return if (printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)) {
-            ComandaPrintOutcome.Printed
-        } else {
-            ComandaPrintOutcome.Failed
-        }
+        return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas).toComandaOutcome()
     }
 
-    /** Reimpresión manual: ignora auto-print pero requiere impresora de comandas configurada. */
+    /**
+     * Reimpresión manual: ignora auto-print. null = no hay comandas que imprimir; si no, el resultado
+     * unificado (sin impresora configurada = NOT_CONFIGURED, no un silencio).
+     */
     suspend fun reprintComandaRound(
         tableName: String?,
         orderNumber: Int,
         waiterName: String?,
         comandas: List<ComandaLine>,
-    ): Boolean? {
+    ): PrintOutcome? {
         if (comandas.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
-        if (!settings.isComandaPrintReady()) return null
+        if (!settings.isComandaPrintReady()) return PrintOutcome.NotConfigured
         return printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
     }
 
@@ -165,23 +156,16 @@ class KitchenPrintService @Inject constructor(
         tableName: String?,
         waiterName: String?,
         orders: List<Pair<Int, List<ComandaLine>>>,
-    ): Boolean? {
+    ): PrintOutcome? {
         if (orders.isEmpty()) return null
         val settings = printerPreferencesStore.settings.first()
-        if (!settings.isComandaPrintReady()) return null
-        var anySuccess = false
-        var anyError = false
-        for ((orderNumber, comandas) in orders) {
-            when (printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)) {
-                true -> anySuccess = true
-                false -> anyError = true
-            }
-        }
-        return when {
-            anyError && !anySuccess -> false
-            anySuccess -> true
-            else -> false
-        }
+        if (!settings.isComandaPrintReady()) return PrintOutcome.NotConfigured
+        // Solo cuenta como reimpresas si TODAS las rondas salieron.
+        return combinePrintOutcomes(
+            orders.map { (orderNumber, comandas) ->
+                printComandaRoundInternal(settings, tableName, orderNumber, waiterName, comandas)
+            },
+        )
     }
 
     private suspend fun printComandaRoundInternal(
@@ -190,94 +174,77 @@ class KitchenPrintService @Inject constructor(
         orderNumber: Int,
         waiterName: String?,
         comandas: List<ComandaLine>,
-    ): Boolean {
+    ): PrintOutcome {
         if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
-            val server = printServerConnectionManager.resolveServer(settings) ?: return false
-            return when (
-                printServerClient.printComandaRound(
-                    server = server,
-                    tableName = tableName,
-                    orderNumber = orderNumber,
-                    waiterName = waiterName,
-                    comandas = comandas,
-                )
-            ) {
-                RemotePrintResult.Success -> true
-                is RemotePrintResult.Error -> false
-            }
+            val server = printServerConnectionManager.resolveServer(settings) ?: return PrintOutcome.NotConfigured
+            return printServerClient.printComandaRound(
+                server = server,
+                tableName = tableName,
+                orderNumber = orderNumber,
+                waiterName = waiterName,
+                comandas = comandas,
+            ).toPrintOutcome()
         }
 
         val baseName = tableName ?: "Mostrador"
         val groups = groupLinesByPreparationArea(comandasToRoutingLines(comandas))
-        var printed = 0
-        var hadError = false
+        val outcomes = mutableListOf<PrintOutcome>()
         for ((areaKey, areaLines) in groups) {
             // Ajuste local: cómo se presentan los combos en el ticket de esta área.
             val printableLines = comboLinesForPrint(areaLines, settings.comandaComboDisplay)
             if (printableLines.isEmpty()) continue
             val prepArea = if (areaKey == PRINT_DEFAULT_AREA_KEY) null else areaKey
-            val target = settings.targetForComandaArea(prepArea) ?: continue
-            val ticketLabel = areaTicketLabel(baseName, areaKey)
-            when (
-                printerRepository.printComanda(
-                    target,
-                    ComandaPrintInput(
-                        tableName = ticketLabel,
-                        orderNumber = orderNumber,
-                        waiterName = waiterName,
-                        items = printableLines.map { it.toPrintItem() },
-                        paperWidth = target.paperWidth,
-                        textSize = settings.comandaTextSize,
-                    ),
-                )
-            ) {
-                is PrintResult.Success -> printed++
-                is PrintResult.Error -> hadError = true
+            val target = settings.targetForComandaArea(prepArea)
+            if (target == null) {
+                // Un área sin impresora a la que mandar: esa parte de la comanda NO salió.
+                outcomes += PrintOutcome.NotConfigured
+                continue
             }
+            val ticketLabel = areaTicketLabel(baseName, areaKey)
+            outcomes += printerRepository.printComanda(
+                target,
+                ComandaPrintInput(
+                    tableName = ticketLabel,
+                    orderNumber = orderNumber,
+                    waiterName = waiterName,
+                    items = printableLines.map { it.toPrintItem() },
+                    paperWidth = target.paperWidth,
+                    textSize = settings.comandaTextSize,
+                ),
+            ).toPrintOutcome()
         }
-        return when {
-            printed > 0 && !hadError -> true
-            printed > 0 -> false
-            else -> false
-        }
+        return combinePrintOutcomes(outcomes)
     }
 
-    suspend fun printPrecuenta(precuenta: PrecuentaData): PrecuentaPrintOutcome {
-        if (precuenta.lines.isEmpty()) return PrecuentaPrintOutcome.Skipped
+    /**
+     * Imprime la precuenta. La lista vacía no es "sin impresora": es un FAILED con motivo propio.
+     * El motivo del servidor ("Impresora de precuenta no configurada", etc.) se traduce a los
+     * estados unificados (incidente El Braserito, 2026-09-07: el mozo debe saber qué pasó).
+     */
+    suspend fun printPrecuenta(precuenta: PrecuentaData): PrintOutcome {
+        if (precuenta.lines.isEmpty()) return PrintOutcome.failed("la cuenta todavía no tiene productos")
         val settings = printerPreferencesStore.settings.first()
         if (settings.deliveryMode == PrintDeliveryMode.SERVER) {
-            val server = printServerConnectionManager.resolveServer(settings)
-                ?: return PrecuentaPrintOutcome.Skipped
-            return when (val result = printServerClient.printPrecuenta(server, precuenta)) {
-                RemotePrintResult.Success -> PrecuentaPrintOutcome.Success
-                // El servidor (PC con Tauri) ya manda el motivo real ("Impresora de precuenta no
-                // configurada", etc.) — antes se descartaba acá y el mozo siempre veía el mismo
-                // genérico sin importar la causa. Ver incidente El Braserito, 2026-09-07.
-                is RemotePrintResult.Error -> PrecuentaPrintOutcome.Failed(result.message)
-            }
+            val server = printServerConnectionManager.resolveServer(settings) ?: return PrintOutcome.NotConfigured
+            return printServerClient.printPrecuenta(server, precuenta).toPrintOutcome()
         }
         val target = settings.targetFor(PrinterSlot.PRECUENTA)
             ?: settings.targetFor(PrinterSlot.COMANDAS)
-            ?: return PrecuentaPrintOutcome.Skipped
-        return when (
-            val result = printerRepository.printPrecuenta(
-                target,
-                PrecuentaPrintInput(
-                    tableName = precuenta.tableName,
-                    items = precuenta.lines.map {
-                        PrecuentaItem(
-                            productName = it.productName,
-                            quantity = it.quantity,
-                            unitPrice = it.unitPrice,
-                        )
-                    },
-                    total = precuenta.total,
-                ),
-            )
-        ) {
-            is PrintResult.Success -> PrecuentaPrintOutcome.Success
-            is PrintResult.Error -> PrecuentaPrintOutcome.Failed(result.message)
-        }
+            ?: return PrintOutcome.NotConfigured
+        return printerRepository.printPrecuenta(
+            target,
+            PrecuentaPrintInput(
+                tableName = precuenta.tableName,
+                items = precuenta.lines.map {
+                    PrecuentaItem(
+                        productName = it.productName,
+                        quantity = it.quantity,
+                        unitPrice = it.unitPrice,
+                    )
+                },
+                total = precuenta.total,
+            ),
+        ).toPrintOutcome()
     }
 
     suspend fun printWithTarget(

@@ -1133,11 +1133,7 @@ class VentasViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     detailPrinting = false,
-                    snackMessage = when (printed) {
-                        true -> "Documento reimpreso"
-                        false -> "Error al reimprimir"
-                        null -> "Configura impresora de documentos"
-                    },
+                    snackMessage = printed?.message,
                 )
             }
         }
@@ -1177,11 +1173,7 @@ class VentasViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     receiptBusy = null,
-                    snackMessage = when (ok) {
-                        true -> "Comprobante enviado a la ticketera"
-                        false -> "No se pudo imprimir"
-                        null -> "Configura impresora en Ajustes"
-                    },
+                    snackMessage = ok?.message,
                 )
             }
         }
