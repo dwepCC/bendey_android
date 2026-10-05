@@ -51,13 +51,14 @@ class DrawerVisibilityTest {
 
     @Test
     fun `cocina solo ve impresoras`() {
-        assertEquals(setOf(BendeyDrawerDestination.IMPRESORAS), visible(cook, "cook"))
+        // La ayuda (R10.7) la ve cualquier puesto.
+        assertEquals(setOf(BendeyDrawerDestination.IMPRESORAS, BendeyDrawerDestination.AYUDA), visible(cook, "cook"))
     }
 
     @Test
     fun `repartidor ve repartidores e impresoras`() {
         assertEquals(
-            setOf(BendeyDrawerDestination.REPARTIDORES, BendeyDrawerDestination.IMPRESORAS),
+            setOf(BendeyDrawerDestination.REPARTIDORES, BendeyDrawerDestination.IMPRESORAS, BendeyDrawerDestination.AYUDA),
             visible(driver, "driver"),
         )
     }
@@ -93,5 +94,12 @@ class DrawerVisibilityTest {
             BendeyDrawerGroup.entries.map { it.title } +
             TopLevelDestination.entries.flatMap { listOf(it.label, it.shortLabel) }
         texts.forEach { assertFalse(retired.containsMatchIn(it), "término retirado en «$it»") }
+    }
+
+    @Test
+    fun `la ayuda la ve cualquier puesto`() {
+        for ((p, t) in listOf(listOf("t.o") to "waiter", listOf("c.v") to "cashier", listOf("k.v") to "cook", listOf("d.v") to "driver", listOf("s.m") to "admin")) {
+            assertTrue(BendeyDrawerDestination.AYUDA in visible(p, t), t)
+        }
     }
 }

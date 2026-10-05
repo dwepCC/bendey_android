@@ -14,7 +14,8 @@ fun TopLevelDestination.requiredFeature(): RestaurantFeature = when (this) {
     TopLevelDestination.CLIENTES -> RestaurantFeature.CLIENTES
 }
 
-fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
+/** null = la entrada no exige ninguna función (la ayuda es para todos los puestos). */
+fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature? = when (this) {
     BendeyDrawerDestination.CAJA -> RestaurantFeature.CAJA
     BendeyDrawerDestination.VENTAS -> RestaurantFeature.VENTAS
     BendeyDrawerDestination.REPORTES -> RestaurantFeature.REPORTES
@@ -28,6 +29,7 @@ fun BendeyDrawerDestination.requiredFeature(): RestaurantFeature = when (this) {
     BendeyDrawerDestination.IMPRESORAS -> RestaurantFeature.IMPRESORAS
     // Suscripción: solo quien administra el negocio (s.m); mismo gating que la ruta (R2a).
     BendeyDrawerDestination.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
+    BendeyDrawerDestination.AYUDA -> null
 }
 
 fun routeRequiredFeature(route: String?): RestaurantFeature? = when {

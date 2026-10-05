@@ -74,6 +74,7 @@ dependencies {
     implementation(project(":feature:combos"))
     implementation(project(":feature:configuracion"))
     implementation(project(":feature:repartidores"))
+    implementation(project(":feature:ayuda"))
     implementation(project(":feature:subscription"))
     implementation(project(":feature:printing"))
     implementation(project(":feature:onboarding"))

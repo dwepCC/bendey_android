@@ -10,12 +10,14 @@ fun NavGraphBuilder.configuracionGraph(
     onBack: () -> Unit = {},
     onOpenPrinting: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
+    onOpenHelp: () -> Unit = {},
 ) {
     composable(BendeyRoutes.CONFIGURACION) {
         ConfiguracionScreen(
             onBack = onBack,
             onOpenPrinting = onOpenPrinting,
             onNavigateToSubscription = onNavigateToSubscription,
+            onOpenHelp = onOpenHelp,
         )
     }
 }

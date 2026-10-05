@@ -32,6 +32,8 @@ object BendeyRoutes {
     const val SUSCRIPCION = "suscripcion"
     const val COMPRAS = "compras"
     const val PROVEEDORES = "proveedores"
+    /** Centro de ayuda (R10.7): lo ve cualquier puesto. */
+    const val AYUDA = "ayuda"
 
     fun pin(station: String): String = "pin/$station"
 
@@ -46,7 +48,7 @@ object BendeyRoutes {
 
     private val managementRoutes = setOf(
         CAJA, VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES, REPORTES,
-        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES,
+        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES, AYUDA,
     )
 
     fun showsBottomBar(route: String?): Boolean {

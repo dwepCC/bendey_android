@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -67,6 +68,7 @@ fun ConfiguracionScreen(
     onBack: () -> Unit = {},
     onOpenPrinting: () -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
+    onOpenHelp: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ConfiguracionViewModel = hiltViewModel(),
 ) {
@@ -79,6 +81,11 @@ fun ConfiguracionScreen(
                 subtitle = state.config?.tradeName?.ifBlank { state.config?.businessName }.orEmpty(),
                 onBack = onBack,
                 actions = {
+                    BendeyIconButton(
+                        onClick = onOpenHelp,
+                        icon = Icons.AutoMirrored.Filled.HelpOutline,
+                        contentDescription = "Ayuda",
+                    )
                     BendeyIconButton(
                         onClick = { viewModel.refresh(forceNetwork = true) },
                         icon = Icons.Default.Refresh,

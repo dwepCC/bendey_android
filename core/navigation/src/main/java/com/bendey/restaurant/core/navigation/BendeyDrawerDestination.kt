@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.People
@@ -21,6 +22,7 @@ enum class BendeyDrawerGroup(val title: String) {
     CATALOG("Mi carta"),
     PURCHASES("Compras e insumos"),
     CONFIGURATION("Configuración"),
+    HELP("Ayuda"),
 }
 
 /** Gestión — menú lateral exclusivamente administrativo. */
@@ -42,6 +44,7 @@ enum class BendeyDrawerDestination(
     IMPRESORAS(BendeyRoutes.PRINTING_TEST, "Impresoras", Icons.Default.Print, BendeyDrawerGroup.CONFIGURATION),
     CONFIGURACION(BendeyRoutes.CONFIGURACION, "Configuración", Icons.Default.Settings, BendeyDrawerGroup.CONFIGURATION),
     SUSCRIPCION(BendeyRoutes.SUSCRIPCION, "Suscripción", Icons.Default.WorkspacePremium, BendeyDrawerGroup.CONFIGURATION),
+    AYUDA(BendeyRoutes.AYUDA, "Ayuda", Icons.AutoMirrored.Filled.HelpOutline, BendeyDrawerGroup.HELP),
     ;
 
     companion object {
@@ -50,6 +53,7 @@ enum class BendeyDrawerDestination(
             BendeyDrawerGroup.CATALOG,
             BendeyDrawerGroup.PURCHASES,
             BendeyDrawerGroup.CONFIGURATION,
+            BendeyDrawerGroup.HELP,
         )
     }
 }
