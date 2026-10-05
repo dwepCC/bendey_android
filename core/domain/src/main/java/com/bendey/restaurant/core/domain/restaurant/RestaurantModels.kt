@@ -271,7 +271,14 @@ data class KitchenItem(
     val preparationArea: String? = null,
     val comboSnapshotJson: String? = null,
     val createdAt: String? = null,
+    /** Ultima actividad de la comanda (ENTREGADO se acota por esta fecha). */
+    val updatedAt: String? = null,
     val sessionOpenedAt: String? = null,
+    /** Pedido (ronda) al que pertenece la comanda: una ronda = un `orderId`. */
+    val orderId: Int? = null,
+    val sessionId: Int? = null,
+    /** Minutos estimados del área de preparación (0 = no configurado -> umbral de respaldo). */
+    val areaEstimatedMinutes: Int = 0,
     val displayKey: String = "",
     val displayName: String = "",
     val displayQuantity: Double = 0.0,

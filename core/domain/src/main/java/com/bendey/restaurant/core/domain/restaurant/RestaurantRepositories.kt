@@ -81,5 +81,12 @@ data class BranchOperationalStatus(
 interface KitchenRepository {
     suspend fun loadKitchen(): AppResult<List<KitchenItem>>
     suspend fun updateComandaStatus(comandaId: Int, status: ComandaStatus): AppResult<Unit>
+
+    /**
+     * Cambia el estado de varias comandas de UNA ronda. Usa el endpoint masivo
+     * (`PUT /orders/:orderId/comandas/status`, una transaccion) y, si el backend es viejo
+     * (404/405), cae a un PUT por comanda.
+     */
+    suspend fun updateOrderComandasStatus(orderId: Int?, comandaIds: List<Int>, status: ComandaStatus): AppResult<Unit>
     suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit>
 }
