@@ -1,6 +1,5 @@
 package com.bendey.restaurant
 
-import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
@@ -19,7 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.bendey.restaurant.core.data.session.SessionExpiryCoordinator
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyTheme
-import com.bendey.restaurant.core.ui.layout.BendeyDeviceFormFactor
+import com.bendey.restaurant.core.ui.layout.BendeyOrientationPolicy
 import com.bendey.restaurant.navigation.BendeyAppNavHost
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -70,16 +69,6 @@ class MainActivity : ComponentActivity() {
         applyOrientationPolicy()
     }
 
-    /**
-     * Teléfonos: solo portrait.
-     * Tablets (smallestScreenWidthDp ≥ 600): portrait y landscape.
-     */
-    private fun applyOrientationPolicy() {
-        val smallestWidth = resources.configuration.smallestScreenWidthDp
-        requestedOrientation = if (BendeyDeviceFormFactor.isTablet(smallestWidth)) {
-            ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-    }
+    /** Telefonos: vertical. Tablets: libre, y horizontal fijo solo mientras esta la pantalla de cocina (KDS). */
+    private fun applyOrientationPolicy() = BendeyOrientationPolicy.apply(this)
 }

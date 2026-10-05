@@ -2,20 +2,36 @@ package com.bendey.restaurant.feature.cocina
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.data.kitchen.KitchenPreferencesStore
+import com.bendey.restaurant.core.domain.kitchen.KdsAction
+import com.bendey.restaurant.core.domain.kitchen.KdsColumn
+import com.bendey.restaurant.core.domain.kitchen.KdsCopy
+import com.bendey.restaurant.core.domain.kitchen.kdsTicketTitle
+import com.bendey.restaurant.core.domain.kitchen.KdsRound
+import com.bendey.restaurant.core.domain.kitchen.KdsThresholds
+import com.bendey.restaurant.core.domain.kitchen.applyKdsOverrides
+import com.bendey.restaurant.core.domain.kitchen.kdsFilterItems
+import com.bendey.restaurant.core.domain.kitchen.kdsIdsStillBehind
+import com.bendey.restaurant.core.domain.kitchen.kdsIdsToAdvance
+import com.bendey.restaurant.core.domain.kitchen.kdsShouldPlayEscalation
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.domain.permission.RestaurantFeature
+import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.ComandaStatus
-import com.bendey.restaurant.core.domain.restaurant.collectPreparationAreas
-import com.bendey.restaurant.core.domain.restaurant.collectTableNames
 import com.bendey.restaurant.core.domain.restaurant.KitchenItem
 import com.bendey.restaurant.core.domain.restaurant.KitchenRepository
+import com.bendey.restaurant.core.domain.restaurant.collectPreparationAreas
+import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.realtime.NewOrderSoundPlayer
 import com.bendey.restaurant.core.realtime.UiPresence
 import com.bendey.restaurant.core.realtime.recovery.RestaurantHydrators
 import com.bendey.restaurant.core.realtime.store.KitchenStore
-import com.bendey.restaurant.core.domain.restaurant.normalizePreparationAreaKey
-import com.bendey.restaurant.core.domain.permission.RestaurantFeature
-import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
-import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,11 +41,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class CocinaViewMode(val label: String) {
-    ITEMS("Por ítem"),
-    ORDERS("Por pedido"),
-}
-
 enum class CocinaOrderTab(val apiValue: String?, val label: String) {
     ALL(null, "Todos"),
     DINE_IN("dine_in", "Mesas"),
@@ -37,22 +48,26 @@ enum class CocinaOrderTab(val apiValue: String?, val label: String) {
     TAKEAWAY("takeaway", "Llevar"),
 }
 
-data class KitchenOrderGroup(
-    val key: String,
-    val title: String,
-    val subtitle: String?,
-    val orderType: String?,
-    val items: List<KitchenItem>,
+/** Cambio de ronda pendiente de enviar (ventana de "Deshacer" de 5 s). */
+data class PendingAdvance(
+    val token: Long,
+    val orderId: Int?,
+    val ids: List<Int>,
+    val target: ComandaStatus,
+    /** Texto de la barra de deshacer: "MESA 5 · Comanda #2 → LISTO" (mismo que Tauri). */
+    val label: String,
 )
 
 data class CocinaUiState(
     val loading: Boolean = false,
-    val updatingId: Int? = null,
-    val items: List<KitchenItem> = emptyList(),
-    val viewMode: CocinaViewMode = CocinaViewMode.ITEMS,
+    /** Items del servidor (store realtime), SIN overrides optimistas. */
+    val serverItems: List<KitchenItem> = emptyList(),
+    /** comandaId -> estado que ya mostramos aunque el servidor aun no lo confirme. */
+    val overrides: Map<Int, ComandaStatus> = emptyMap(),
+    val pending: PendingAdvance? = null,
     val orderTab: CocinaOrderTab = CocinaOrderTab.ALL,
     val areaFilter: String = "all",
-    val tableFilter: String = "all",
+    val snoozedUntilMs: Long = 0L,
     val voidItem: KitchenItem? = null,
     val voidReason: String = "",
     val voidPin: String = "",
@@ -61,33 +76,15 @@ data class CocinaUiState(
     val canAnularComanda: Boolean = false,
     val canManageKitchenComandas: Boolean = false,
 ) {
-    val availableAreas: List<String> get() = collectPreparationAreas(items)
-    val availableTables: List<String> get() = collectTableNames(items)
+    /** Lo que se pinta: servidor + capa optimista. */
+    val items: List<KitchenItem> get() = applyKdsOverrides(serverItems, overrides)
 
-    fun count(status: ComandaStatus): Int = baseItems.count { it.status == status }
+    /** Areas con items, mas la guardada aunque hoy no tenga (para poder verla seleccionada). */
+    val availableAreas: List<String>
+        get() = (collectPreparationAreas(serverItems) + areaFilter.takeIf { it != "all" }).filterNotNull().distinct().sorted()
 
-    private val baseItems: List<KitchenItem>
-        get() = items.let { list ->
-            list.filter { item ->
-                val areaOk = areaFilter == "all" ||
-                    normalizePreparationAreaKey(item.preparationArea) == areaFilter
-                val tableOk = tableFilter == "all" || item.tableName == tableFilter
-                areaOk && tableOk
-            }
-        }
-
-    fun itemsFor(status: ComandaStatus): List<KitchenItem> =
-        baseItems.filter { it.status == status }
-
-    fun filteredItems(status: ComandaStatus): List<KitchenItem> {
-        val byStatus = itemsFor(status)
-        val tab = orderTab
-        if (tab == CocinaOrderTab.ALL) return byStatus
-        return byStatus.filter { it.orderType == tab.apiValue }
-    }
-
-    fun orderGroups(status: ComandaStatus): List<KitchenOrderGroup> =
-        groupKitchenItems(filteredItems(status))
+    /** Items ya filtrados por area y tipo de pedido. */
+    val visibleItems: List<KitchenItem> get() = kdsFilterItems(items, areaFilter, orderTab.apiValue)
 }
 
 @HiltViewModel
@@ -96,10 +93,23 @@ class CocinaViewModel @Inject constructor(
     private val kitchenStore: KitchenStore,
     private val restaurantHydrators: RestaurantHydrators,
     private val sessionStore: UserSessionStore,
+    private val kitchenPrefs: KitchenPreferencesStore,
+    private val soundPlayer: NewOrderSoundPlayer,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CocinaUiState())
     val uiState: StateFlow<CocinaUiState> = _uiState.asStateFlow()
+
+    /**
+     * Scope propio para ENVIAR cambios: NO se cancela con el ViewModel, asi un cambio que esta en
+     * su ventana de "Deshacer" se envia igual si el usuario sale de la pantalla.
+     */
+    private val commitScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var pendingJob: Job? = null
+    private var tokenSeq = 0L
+
+    private var lastEscalationMs: Long? = null
+    private var alertedRed: Set<String> = emptySet()
 
     init {
         viewModelScope.launch {
@@ -114,9 +124,13 @@ class CocinaViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            val saved = runCatching { kitchenPrefs.areaFilter() }.getOrDefault("all")
+            _uiState.update { it.copy(areaFilter = saved) }
+        }
+        viewModelScope.launch {
             kitchenStore.state.collect { snapshot ->
                 val items = snapshot.ids.mapNotNull { snapshot.entities[it] }
-                _uiState.update { it.copy(items = items) }
+                _uiState.update { it.copy(serverItems = items) }
             }
         }
         viewModelScope.launch {
@@ -132,13 +146,20 @@ class CocinaViewModel @Inject constructor(
                     if (canAccess) {
                         refresh()
                     } else {
-                        _uiState.update { it.copy(loading = false, items = emptyList(), error = null) }
+                        _uiState.update { it.copy(loading = false, serverItems = emptyList(), error = null) }
                         kitchenStore.reset()
                     }
                 }
         }
     }
 
+    override fun onCleared() {
+        // La pantalla ya no esta: lo pendiente se envia de inmediato (no se pierde el toque).
+        flushPending()
+        super.onCleared()
+    }
+
+    /** Carga visible (pull-to-refresh / boton): muestra el indicador. */
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null) }
@@ -149,64 +170,112 @@ class CocinaViewModel @Inject constructor(
         }
     }
 
-    fun setViewMode(mode: CocinaViewMode) {
-        _uiState.update { it.copy(viewMode = mode) }
-    }
-
     fun setOrderTab(tab: CocinaOrderTab) {
         _uiState.update { it.copy(orderTab = tab) }
     }
 
     fun setAreaFilter(area: String) {
         _uiState.update { it.copy(areaFilter = area) }
+        viewModelScope.launch { runCatching { kitchenPrefs.saveAreaFilter(area) } }
     }
 
-    fun setTableFilter(table: String) {
-        _uiState.update { it.copy(tableFilter = table) }
+    /** Campana: con la alerta activa, silencia el atraso 5 min; silenciada, la reactiva. Los pedidos nuevos siguen sonando. */
+    fun toggleBell(nowMs: Long) {
+        _uiState.update {
+            it.copy(snoozedUntilMs = if (nowMs < it.snoozedUntilMs) 0L else nowMs + KdsThresholds.ESCALATION_SNOOZE_MS)
+        }
     }
 
-    fun advanceItem(item: KitchenItem) {
+    fun dismissError() {
+        _uiState.update { it.copy(error = null) }
+    }
+
+    // ---------------------------------------------------------------- avance de ronda (optimista)
+
+    /**
+     * Un toque por ronda. La tarjeta se mueve YA (override); el PUT se retrasa 5 s para poder
+     * deshacer. Un segundo toque envia de inmediato el anterior (solo el ultimo es deshacible).
+     */
+    fun advanceRound(round: KdsRound, action: KdsAction) {
         if (!_uiState.value.canManageKitchenComandas) return
-        val next = ComandaStatus.next(item.status.backendValue) ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(updatingId = item.id, error = null) }
-            when (val result = kitchenRepository.updateComandaStatus(item.id, next)) {
-                is AppResult.Success -> {
-                    _uiState.update { it.copy(updatingId = null) }
-                    refresh()
-                }
-                is AppResult.Error -> _uiState.update {
-                    it.copy(updatingId = null, error = result.message)
-                }
-                AppResult.Loading -> Unit
+        val ids = kdsIdsToAdvance(round.items, action.target)
+        if (ids.isEmpty()) return
+        flushPending()
+        val pending = PendingAdvance(
+            token = ++tokenSeq,
+            orderId = round.orderId,
+            ids = ids,
+            target = action.target,
+            label = KdsCopy.undoMoved(kdsTicketTitle(round), round.orderNumber ?: 0, KdsColumn.of(action.target).label),
+        )
+        _uiState.update {
+            it.copy(
+                error = null,
+                pending = pending,
+                overrides = it.overrides + ids.associateWith { action.target },
+            )
+        }
+        pendingJob = viewModelScope.launch {
+            delay(KdsThresholds.UNDO_WINDOW_MS)
+            commit(pending)
+        }
+    }
+
+    /** "Deshacer": no se llego a enviar nada, solo se quita la capa optimista. */
+    fun undo() {
+        val pending = _uiState.value.pending ?: return
+        pendingJob?.cancel()
+        pendingJob = null
+        _uiState.update {
+            it.copy(pending = null, overrides = it.overrides - pending.ids.toSet())
+        }
+    }
+
+    /** Envia ya lo pendiente (nuevo toque, salida de pantalla o cierre del ViewModel). */
+    fun flushPending() {
+        val pending = _uiState.value.pending ?: return
+        pendingJob?.cancel()
+        pendingJob = null
+        commit(pending)
+    }
+
+    private fun commit(pending: PendingAdvance) {
+        _uiState.update { if (it.pending?.token == pending.token) it.copy(pending = null) else it }
+        commitScope.launch {
+            // Estado ACTUAL del servidor: otra pantalla pudo adelantarse (el backend no retrocede).
+            val current = _uiState.value.serverItems.associate { it.id to it.status }
+            val ids = kdsIdsStillBehind(pending.ids, current, pending.target)
+            var failure: String? = null
+            if (ids.isNotEmpty()) {
+                val result = kitchenRepository.updateOrderComandasStatus(pending.orderId, ids, pending.target)
+                if (result is AppResult.Error) failure = result.message
+            }
+            // Refresco silencioso (sin indicador): trae la verdad del servidor y recien entonces
+            // se quita la capa optimista, para que la tarjeta no "salte" hacia atras y adelante.
+            runCatching { restaurantHydrators.hydrateKitchen() }
+            _uiState.update {
+                it.copy(
+                    overrides = it.overrides - pending.ids.toSet(),
+                    error = failure ?: it.error,
+                )
             }
         }
     }
 
-    fun markRoundReady(items: List<KitchenItem>) {
-        if (!_uiState.value.canManageKitchenComandas) return
-        val pending = items.filter {
-            it.status == ComandaStatus.PENDIENTE || it.status == ComandaStatus.PREPARACION
-        }
-        if (pending.isEmpty()) return
-        val unique = pending.distinctBy { it.id }
-        viewModelScope.launch {
-            _uiState.update { it.copy(updatingId = -1, error = null) }
-            var failed = false
-            for (item in unique) {
-                when (kitchenRepository.updateComandaStatus(item.id, ComandaStatus.LISTA)) {
-                    is AppResult.Success -> Unit
-                    is AppResult.Error -> failed = true
-                    AppResult.Loading -> Unit
-                }
-            }
-            _uiState.update { it.copy(updatingId = null) }
-            if (failed) {
-                _uiState.update { it.copy(error = "No se pudo marcar la ronda como lista") }
-            }
-            refresh()
+    // ---------------------------------------------------------------- escalada sonora de atrasos
+
+    /** La pantalla informa cada tick (30 s) que rondas estan en rojo; aqui se decide si suena. */
+    fun onRedRounds(redKeys: Set<String>, nowMs: Long) {
+        val state = _uiState.value
+        val hasNew = redKeys.any { it !in alertedRed }
+        alertedRed = redKeys
+        if (kdsShouldPlayEscalation(hasNew, redKeys.isNotEmpty(), lastEscalationMs, state.snoozedUntilMs, nowMs)) {
+            lastEscalationMs = nowMs
+            soundPlayer.play()
         }
     }
+
+    // ---------------------------------------------------------------- anular (con PIN)
 
     fun openVoidItem(item: KitchenItem) {
         if (!_uiState.value.canAnularComanda) return
@@ -258,31 +327,6 @@ class CocinaViewModel @Inject constructor(
             }
         }
     }
-}
-
-fun groupKitchenItems(items: List<KitchenItem>): List<KitchenOrderGroup> {
-    if (items.isEmpty()) return emptyList()
-    return items
-        .groupBy { item ->
-            item.orderCode?.takeIf { it.isNotBlank() }
-                ?: item.tableName?.takeIf { it.isNotBlank() }?.let { "mesa-$it" }
-                ?: "item-${item.id}"
-        }
-        .map { (key, groupItems) ->
-            val first = groupItems.first()
-            KitchenOrderGroup(
-                key = key,
-                title = first.tableName ?: first.orderCode ?: first.customerName ?: "Pedido",
-                subtitle = listOfNotNull(
-                    first.orderCode?.takeIf { first.tableName != null },
-                    first.waiterName,
-                    first.floorName,
-                ).joinToString(" · ").ifBlank { null },
-                orderType = first.orderType,
-                items = groupItems,
-            )
-        }
-        .sortedBy { it.title }
 }
 
 fun orderTypeLabel(type: String?): String = when (type) {
