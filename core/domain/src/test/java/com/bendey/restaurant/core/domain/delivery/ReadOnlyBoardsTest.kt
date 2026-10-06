@@ -9,69 +9,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.Instant
 
-/** R10.9: tablero de entregas y aviso de comprobantes que necesitan atención (ambos solo lectura). */
+/** R10.9: aviso de comprobantes que necesitan atención (solo lectura). El tablero de Delivery vive en DeliveryBoardLogicTest. */
 class ReadOnlyBoardsTest {
-    private val now = Instant.parse("2026-10-04T15:00:00Z")
-
-    private fun item(status: String, assignedAt: String?) = DeliveryBoardItem(
-        assignmentId = 1, sessionId = 1, status = status, assignedAt = assignedAt,
-        driverId = 1, driverName = "Luis", customerName = "Ana", deliveryAddress = "Av. Sol 123",
-    )
-
-    // ---- tablero de entregas ----
-    @Test fun etiquetas_identicas_a_tauri() {
-        val esperado = mapOf(
-            "assigned" to "Asignado", "accepted" to "Aceptado", "rejected" to "Rechazado",
-            "picked_up" to "Recogido", "on_the_way" to "En camino", "delivered" to "Entregado", "failed" to "Incidencia",
-        )
-        esperado.forEach { (k, v) -> assertEquals(v, deliveryStatusLabel(k)) }
-        assertEquals("En curso", deliveryStatusLabel("otro"))
-    }
-
-    @Test fun tiempo_desde_que_se_asigno() {
-        assertEquals("hace 12 min", deliveryElapsedText("2026-10-04T14:48:00Z", now))
-        assertEquals("hace 1 h 05 min", deliveryElapsedText("2026-10-04T13:55:00Z", now))
-        assertEquals("recién asignada", deliveryElapsedText("2026-10-04T14:59:30Z", now))
-        assertEquals("", deliveryElapsedText(null, now))
-        assertEquals("", deliveryElapsedText("no es fecha", now))
-    }
-
-    @Test fun acepta_fechas_con_zona_horaria_de_lima() {
-        assertEquals("hace 30 min", deliveryElapsedText("2026-10-04T09:30:00-05:00", now))
-    }
-
-    @Test fun una_entrega_sin_aceptar_mucho_rato_pide_atencion() {
-        assertTrue(deliveryNeedsAttention(item("assigned", "2026-10-04T14:45:00Z"), now))
-        assertFalse(deliveryNeedsAttention(item("assigned", "2026-10-04T14:55:00Z"), now))
-        assertFalse(deliveryNeedsAttention(item("on_the_way", "2026-10-04T10:00:00Z"), now))
-        assertFalse(deliveryNeedsAttention(item("assigned", null), now))
-    }
-
-    @Test fun titulo_segun_cantidad() {
-        assertEquals("Entregas activas", deliveryBoardTitle(0))
-        assertEquals("Entregas activas · 1 en curso", deliveryBoardTitle(1))
-        assertEquals("Entregas activas · 4 en curso", deliveryBoardTitle(4))
-    }
-
-    @Test fun refresco_cada_60_segundos() {
-        assertEquals(60_000L, DELIVERY_BOARD_REFRESH_MS)
-    }
-
-    @Test fun linea_de_repartidor_sin_datos_no_dice_null() {
-        assertEquals("Av. Sol 123 · Repartidor: Luis", DeliveryBoardCopy.driverLine("Av. Sol 123", "Luis"))
-        assertEquals("Sin dirección · Repartidor: sin asignar", DeliveryBoardCopy.driverLine("", ""))
-    }
-
-    @Test fun textos_del_tablero_sin_usted_ni_jerga() {
-        val textos = listOf(
-            DeliveryBoardCopy.TITLE, DeliveryBoardCopy.EMPTY_TITLE, DeliveryBoardCopy.EMPTY_DESCRIPTION,
-            DeliveryBoardCopy.ERROR_TITLE, DeliveryBoardCopy.ERROR_DESCRIPTION, DeliveryBoardCopy.READ_ONLY_HINT,
-        )
-        for (t in textos) assertTrue(t, ForbiddenTerms.find(t).isEmpty())
-    }
-
     // ---- aviso de comprobantes ----
     private fun nc(id: Int, stalled: Boolean, msg: String = "") = StuckVoidCreditNote(
         originalSaleId = id, originalNumber = "B001-$id", originalDocType = "BOLETA", originalTotal = 59.9,

@@ -177,6 +177,28 @@ class ErrorCatalogTest {
         assertEquals("PIN_INCORRECT · HTTP 400", http(400, "PIN_INCORRECT").supportCode)
     }
 
+    /** D1: los 7 errores nuevos de Delivery, con el mismo texto que `errorCatalog.ts` de Tauri y la acción correcta. */
+    @Test fun erroresDeDeliveryTienenTextoYAccion() {
+        val esperado = mapOf(
+            "DELIVERY_CANCEL_REASON_REQUIRED" to Pair("Escribe el motivo de la cancelación (mínimo 3 letras) y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
+            "DRIVER_INACTIVE" to Pair("Ese repartidor ya no está activo. Elige a otro.", ErrorAction.BACK_TO_TRY),
+            "DRIVER_UNAVAILABLE" to Pair("Ese repartidor está marcado como no disponible. Elige a otro o espera a que se conecte.", ErrorAction.BACK_TO_TRY),
+            "SESSION_ALREADY_CLOSED" to Pair("Este pedido ya fue cobrado o cerrado y no se puede cancelar. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "SESSION_NOT_ASSIGNABLE" to Pair("Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "SESSION_NOT_DELIVERY" to Pair("Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "USE_DELIVERY_ASSIGNMENT" to Pair("Este pedido ya tiene un repartidor. Cambia su estado desde Delivery.", ErrorAction.REFRESH),
+        )
+        for ((code, want) in esperado) {
+            val info = http(409, code)
+            assertEquals(code, want.first, info.message)
+            assertEquals(code, listOf(want.second), info.actions)
+            assertTrue(code, code in ErrorCatalog.knownCodes)
+        }
+        // Mismo orden que el bloque final de Tauri (alfabético): DELIVERY_*, DRIVER_*, SESSION_*, USE_*.
+        val tail = ErrorCatalog.knownCodes.toList().takeLast(esperado.size)
+        assertEquals(esperado.keys.toList(), tail)
+    }
+
     /** Las cadenas del catalogo y las de docs/ERROR_CATALOG_COPY.md (que copia Tauri) no pueden divergir. */
     @Test fun copyDocumentMatchesCatalog() {
         val doc = listOf("../../docs/ERROR_CATALOG_COPY.md", "docs/ERROR_CATALOG_COPY.md")

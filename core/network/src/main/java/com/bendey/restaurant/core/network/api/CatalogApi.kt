@@ -9,7 +9,9 @@ import com.bendey.restaurant.core.network.dto.ComboUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
 import com.bendey.restaurant.core.network.dto.UbiItemDto
-import com.bendey.restaurant.core.network.dto.DeliveryBoardItemDto
+import com.bendey.restaurant.core.network.dto.DeliveryBoardDto
+import com.bendey.restaurant.core.network.dto.DeliveryCancelRequestDto
+import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
@@ -134,9 +136,23 @@ interface DeliveryApi {
         @Body body: AssignDeliveryDriverRequestDto,
     ): SuccessResponseDto
 
-    // Tablero de entregas activas de la sucursal (R10.9, solo lectura).
-    @GET("/api/restaurant/delivery-assignments")
-    suspend fun listDeliveryBoard(): ListResponseDto<DeliveryBoardItemDto>
+    // Tablero de Delivery (D1): 5 secciones + repartidores de la sucursal activa (permiso d.v).
+    @GET("/api/restaurant/delivery/board")
+    suspend fun getDeliveryBoard(): DeliveryBoardDto
+
+    // Cancelar un pedido delivery con motivo (D1, permiso d.u). Idempotente en el backend.
+    @POST("/api/restaurant/sessions/{id}/delivery/cancel")
+    suspend fun cancelDeliveryOrder(
+        @Path("id") sessionId: Int,
+        @Body body: DeliveryCancelRequestDto,
+    ): SuccessResponseDto
+
+    // Cambio de estado de una asignación por staff (D1): delivered | failed (el staff no necesita foto).
+    @PUT("/api/delivery/assignments/{id}/status")
+    suspend fun updateDeliveryAssignmentStatus(
+        @Path("id") assignmentId: Int,
+        @Body body: DeliveryStatusRequestDto,
+    ): SuccessResponseDto
 
     @GET("/api/restaurant/delivery-companies")
     suspend fun listDeliveryCompanies(

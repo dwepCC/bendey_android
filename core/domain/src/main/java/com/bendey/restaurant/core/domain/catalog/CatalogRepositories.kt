@@ -38,8 +38,17 @@ interface DeliveryRepository {
     suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit>
     suspend fun deleteDriver(id: Int): AppResult<Unit>
 
-    /** Entregas activas de la sucursal, solo lectura (R10.9). */
-    suspend fun listActiveAssignments(): AppResult<List<com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem>>
+    /** Tablero de Delivery (D1): 5 secciones + repartidores. `GET /api/restaurant/delivery/board`. */
+    suspend fun getDeliveryBoard(): AppResult<com.bendey.restaurant.core.domain.delivery.DeliveryBoardData>
+
+    /** Asignar / reasignar. `POST /api/restaurant/sessions/:id/delivery/assign` (permiso d.u). */
+    suspend fun assignDriver(sessionId: Int, driverId: Int): AppResult<Unit>
+
+    /** Cancelar un pedido delivery con motivo (3-255). `POST /api/restaurant/sessions/:id/delivery/cancel` (d.u). */
+    suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit>
+
+    /** Cambio de estado por staff (delivered | failed). `PUT /api/delivery/assignments/:id/status` (d.u). */
+    suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String? = null): AppResult<Unit>
 
     suspend fun listCompanies(): AppResult<List<DeliveryCompany>>
     suspend fun createCompany(input: DeliveryCompanyFormInput): AppResult<Unit>

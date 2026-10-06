@@ -253,16 +253,90 @@ data class DeliveryDriverDto(
     @SerialName("staff_id") val staffId: Int? = null,
 )
 
+/**
+ * Tablero de Delivery (D1) -- `GET /api/restaurant/delivery/board`. Todo tiene valor por defecto y los nulos se
+ * convierten en el defecto (ApiJson: coerceInputValues): un campo ausente o nulo NUNCA rompe el parseo.
+ * Acepta un posible envoltorio `{ "data": {...} }` por si el servidor lo agrega.
+ */
 @Serializable
-data class DeliveryBoardItemDto(
-    @SerialName("assignment_id") val assignmentId: Int,
+data class DeliveryBoardDto(
+    @SerialName("generated_at") val generatedAt: String? = null,
+    val counts: DeliveryBoardCountsDto? = null,
+    val unassigned: List<DeliveryCardDto>? = null,
+    val assigned: List<DeliveryCardDto>? = null,
+    @SerialName("in_transit") val inTransit: List<DeliveryCardDto>? = null,
+    val incidents: List<DeliveryCardDto>? = null,
+    @SerialName("delivered_today") val deliveredToday: List<DeliveryCardDto>? = null,
+    val drivers: List<DeliveryBoardDriverDto>? = null,
+    val data: DeliveryBoardDto? = null,
+)
+
+@Serializable
+data class DeliveryBoardCountsDto(
+    val unassigned: Int? = null,
+    val assigned: Int? = null,
+    @SerialName("in_transit") val inTransit: Int? = null,
+    val incidents: Int? = null,
+    @SerialName("delivered_today") val deliveredToday: Int? = null,
+)
+
+@Serializable
+data class DeliveryPersonDto(
+    val id: Int = 0,
+    val name: String? = null,
+    val phone: String? = null,
+)
+
+@Serializable
+data class DeliveryIncidentDto(
+    val kind: String? = null,
+    val reason: String? = null,
+    val at: String? = null,
+)
+
+@Serializable
+data class DeliveryCardDto(
     @SerialName("session_id") val sessionId: Int = 0,
-    val status: String = "",
-    @SerialName("assigned_at") val assignedAt: String? = null,
-    @SerialName("driver_id") val driverId: Int = 0,
-    @SerialName("driver_name") val driverName: String? = null,
+    @SerialName("assignment_id") val assignmentId: Int? = null,
+    val source: String? = null,
     @SerialName("customer_name") val customerName: String? = null,
-    @SerialName("delivery_address") val deliveryAddress: String? = null,
+    @SerialName("customer_phone") val customerPhone: String? = null,
+    val address: String? = null,
+    val reference: String? = null,
+    @SerialName("items_count") val itemsCount: Int? = null,
+    @SerialName("total_amount") val totalAmount: Double? = null,
+    @SerialName("order_status") val orderStatus: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("sent_to_kitchen_at") val sentToKitchenAt: String? = null,
+    @SerialName("ready_at") val readyAt: String? = null,
+    @SerialName("estimated_minutes") val estimatedMinutes: Int? = null,
+    val driver: DeliveryPersonDto? = null,
+    @SerialName("assignment_status") val assignmentStatus: String? = null,
+    @SerialName("assigned_at") val assignedAt: String? = null,
+    @SerialName("accepted_at") val acceptedAt: String? = null,
+    @SerialName("picked_up_at") val pickedUpAt: String? = null,
+    @SerialName("on_the_way_at") val onTheWayAt: String? = null,
+    @SerialName("delivered_at") val deliveredAt: String? = null,
+    val incident: DeliveryIncidentDto? = null,
+    val paid: Boolean? = null,
+)
+
+@Serializable
+data class DeliveryBoardDriverDto(
+    val id: Int = 0,
+    val name: String? = null,
+    val phone: String? = null,
+    @SerialName("vehicle_type") val vehicleType: String? = null,
+    @SerialName("is_available") val isAvailable: Boolean? = null,
+    @SerialName("active_count") val activeCount: Int? = null,
+)
+
+@Serializable
+data class DeliveryCancelRequestDto(val reason: String)
+
+@Serializable
+data class DeliveryStatusRequestDto(
+    val status: String,
     @SerialName("failed_reason") val failedReason: String? = null,
 )
 

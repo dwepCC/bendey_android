@@ -49,7 +49,11 @@ import com.bendey.restaurant.core.domain.catalog.RestaurantSettings
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
 import com.bendey.restaurant.core.domain.catalog.SunatConfigFormInput
+import com.bendey.restaurant.core.domain.delivery.DeliveryBoardData
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.network.dto.AssignDeliveryDriverRequestDto
+import com.bendey.restaurant.core.network.dto.DeliveryCancelRequestDto
+import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
 import com.bendey.restaurant.core.network.api.CombosApi
 import com.bendey.restaurant.core.network.api.DeliveryApi
 import com.bendey.restaurant.core.network.api.ModifierGroupsApi
@@ -238,20 +242,23 @@ class DeliveryRepositoryImpl @Inject constructor(
         api.deleteDeliveryDriver(id)
     }
 
-    override suspend fun listActiveAssignments(): AppResult<List<com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem>> = apiCall {
-        api.listDeliveryBoard().data.map {
-            com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem(
-                assignmentId = it.assignmentId,
-                sessionId = it.sessionId,
-                status = it.status,
-                assignedAt = it.assignedAt,
-                driverId = it.driverId,
-                driverName = it.driverName.orEmpty(),
-                customerName = it.customerName.orEmpty(),
-                deliveryAddress = it.deliveryAddress.orEmpty(),
-                failedReason = it.failedReason?.takeIf { r -> r.isNotBlank() },
-            )
-        }
+    override suspend fun getDeliveryBoard(): AppResult<DeliveryBoardData> = apiCall {
+        api.getDeliveryBoard().toDomain()
+    }
+
+    override suspend fun assignDriver(sessionId: Int, driverId: Int): AppResult<Unit> = apiCall {
+        api.assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId))
+        Unit
+    }
+
+    override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit> = apiCall {
+        api.cancelDeliveryOrder(sessionId, DeliveryCancelRequestDto(reason.trim()))
+        Unit
+    }
+
+    override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?): AppResult<Unit> = apiCall {
+        api.updateDeliveryAssignmentStatus(assignmentId, DeliveryStatusRequestDto(status, failedReason?.trim()?.takeIf { it.isNotEmpty() }))
+        Unit
     }
 
     override suspend fun listCompanies(): AppResult<List<DeliveryCompany>> = apiCall {
