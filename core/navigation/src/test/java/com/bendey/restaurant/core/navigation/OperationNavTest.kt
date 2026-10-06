@@ -50,6 +50,25 @@ class OperationNavTest {
     }
 
     @Test
+    fun `cajero con permiso de delivery (d v) ve Entregas al final de la barra`() {
+        val cashierWithDelivery = cashier + listOf("d.v", "d.u")
+        assertEquals(
+            listOf(
+                TopLevelDestination.DASHBOARD, TopLevelDestination.MESAS, TopLevelDestination.POS,
+                TopLevelDestination.COCINA, TopLevelDestination.CAJA, TopLevelDestination.ENTREGAS,
+            ),
+            bar(cashierWithDelivery, "cashier"),
+        )
+        // Con Vender al centro, Entregas va en el lado derecho (Cocina, Caja, Entregas).
+        val layout = BottomBarLayout.of(bar(cashierWithDelivery, "cashier"))
+        assertEquals(TopLevelDestination.POS, layout.center)
+        assertEquals(listOf(TopLevelDestination.COCINA, TopLevelDestination.CAJA, TopLevelDestination.ENTREGAS), layout.right)
+        // Sin d.v no aparece (mozo y cajero de antes).
+        assertFalse(TopLevelDestination.ENTREGAS in bar(waiter, "waiter"))
+        assertFalse(TopLevelDestination.ENTREGAS in bar(cashier, "cashier"))
+    }
+
+    @Test
     fun `admin ve las mismas 5 mas Mi negocio, sin Entregas en la barra`() {
         assertEquals(bar(cashier, "cashier"), bar(admin, "admin"))
         assertFalse(TopLevelDestination.ENTREGAS in bar(admin, "admin"))

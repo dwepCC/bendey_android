@@ -5,7 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
+import com.bendey.restaurant.core.domain.delivery.canViewDelivery
+import com.bendey.restaurant.core.domain.delivery.isDeliveryDriver
 import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalLogic
+import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardStore
 import com.bendey.restaurant.core.realtime.dispatcher.RealtimeObservability
 import com.bendey.restaurant.core.realtime.pending.PendingApprovalStore
 import com.bendey.restaurant.core.ui.components.BendeyAppHeaderState
@@ -35,10 +38,22 @@ class AppHeaderViewModel @Inject constructor(
     networkStatusMonitor: NetworkStatusMonitor,
     reachabilityMonitor: BackendReachabilityMonitor,
     pendingApprovalStore: PendingApprovalStore,
+    deliveryBoardStore: DeliveryBoardStore,
 ) : ViewModel() {
 
     /** Pedidos del QR que acaban de llegar (nombre de mesa o null), para avisar en pantalla. */
     val pendingArrivals = pendingApprovalStore.arrivals
+
+    /** D1: pedidos de delivery que acaban de aparecer en "Por asignar" (nunca en la carga inicial). Para avisar en pantalla. */
+    val deliveryArrivals = deliveryBoardStore.arrivals
+
+    /**
+     * D1: contador del ítem Entregas de la barra = pedidos de delivery por asignar. Solo con `d.v` y no para el
+     * repartidor (su vista es de solo lectura y a él no le toca asignar). 0 = sin globo.
+     */
+    val deliveryBadgeCount: StateFlow<Int> = combine(sessionStore.userSessionFlow, deliveryBoardStore.state) { session, board ->
+        if (session != null && !isDeliveryDriver(session.user.employeeType) && canViewDelivery(session.restaurantPermissions)) board.unassignedCount else 0
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     init {
         reachabilityMonitor.start()

@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -268,12 +270,24 @@ private fun BendeyOperationalNavTabs(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
             ) {
-                Icon(
-                    destination.icon,
-                    contentDescription = destination.label,
-                    tint = contentColor,
-                    modifier = Modifier.size(18.dp),
-                )
+                val badge = destination.badge
+                if (badge != null && badge.count > 0) {
+                    BadgedBox(badge = { Badge { Text(badge.label) } }) {
+                        Icon(
+                            destination.icon,
+                            contentDescription = badge.description,
+                            tint = contentColor,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else {
+                    Icon(
+                        destination.icon,
+                        contentDescription = destination.label,
+                        tint = contentColor,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
                 if (showLabels) {
                     Text(
                         text = destination.shortLabel,

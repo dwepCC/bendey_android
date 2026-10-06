@@ -51,6 +51,10 @@ import com.bendey.restaurant.core.navigation.navigateToDrawerDestination
 import com.bendey.restaurant.core.navigation.routeRequiredFeature
 import com.bendey.restaurant.core.navigation.showsOperationalTopBar
 import com.bendey.restaurant.core.navigation.toOperationalNavItems
+import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
+import com.bendey.restaurant.core.domain.delivery.deliveryBadgeDescription
+import com.bendey.restaurant.core.domain.delivery.deliveryBadgeLabel
+import com.bendey.restaurant.core.ui.components.BendeyNavBadge
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.bendey.restaurant.core.ui.components.BendeyAppHeader
 import com.bendey.restaurant.core.ui.components.BendeyKioskHeader
@@ -226,6 +230,10 @@ private fun MainShell(
     var showPendingSheet by remember { mutableStateOf(false) }
     val canSeePending = PendingApprovalLogic.canView(permissions.permissions)
     val onBellClick: (() -> Unit)? = if (canSeePending) ({ showPendingSheet = true }) else null
+    // D1: aviso en pantalla de un pedido de delivery nuevo por asignar (el store ya filtra: solo con d.u + alertas).
+    LaunchedEffect(Unit) {
+        headerViewModel.deliveryArrivals.collect { onShowMessage(DeliveryCopy.text("toast.new_unassigned")) }
+    }
     LaunchedEffect(canSeePending) {
         if (!canSeePending) return@LaunchedEffect
         headerViewModel.pendingArrivals.collect { table -> onShowMessage(PendingApprovalLogic.arrivedMessage(table)) }
@@ -351,8 +359,23 @@ private fun MainShell(
         adaptiveProfile,
         physicalPortrait,
     )
-    val operationalNavItems = remember(visibleBottomBar) {
-        visibleBottomBar.toOperationalNavItems()
+    // D1: globo con los pedidos de delivery por asignar sobre el ítem Entregas (solo con d.v).
+    val deliveryBadgeCount by headerViewModel.deliveryBadgeCount.collectAsStateWithLifecycle()
+    val navBadges = remember(deliveryBadgeCount) {
+        if (deliveryBadgeCount > 0) {
+            mapOf(
+                BendeyRoutes.ENTREGAS to BendeyNavBadge(
+                    count = deliveryBadgeCount,
+                    description = deliveryBadgeDescription(deliveryBadgeCount),
+                    label = deliveryBadgeLabel(deliveryBadgeCount),
+                ),
+            )
+        } else {
+            emptyMap()
+        }
+    }
+    val operationalNavItems = remember(visibleBottomBar, navBadges) {
+        visibleBottomBar.toOperationalNavItems(navBadges)
     }
     val snackbarBottomPadding = rememberBendeySnackbarBottomPadding(
         currentRoute = currentRoute,
@@ -381,6 +404,7 @@ private fun MainShell(
         currentRoute = currentRoute ?: mainStartRoute,
         showBottomBar = BendeyRoutes.showsBottomBar(currentRoute) && !kioskMode,
         visibleBottomBarDestinations = visibleBottomBar,
+        badges = navBadges,
         topBar = {
             when {
                 // Cocina en modo quiosco: cabecera mínima (restaurante, conexión, Salir), sin menú ni avatar.
@@ -587,7 +611,7 @@ private fun MainShell(
                 onBack = { mainNavController.popBackStack() },
                 onShowMessage = onShowMessage,
             )
-            repartidoresGraph(onBack = { mainNavController.popBackStack() })
+            repartidoresGraph(onBack = { mainNavController.popBackStack() }, onShowMessage = onShowMessage)
             composable(BendeyRoutes.MI_NEGOCIO) {
                 val groups = remember(permissions.permissions, permissions.employeeType) {
                     MiNegocioCard.visibleGrouped(permissions.permissions, permissions.employeeType)

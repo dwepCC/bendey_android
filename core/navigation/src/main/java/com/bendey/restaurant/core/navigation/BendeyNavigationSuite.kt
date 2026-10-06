@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.bendey.restaurant.core.ui.components.BendeyBottomNavigationBar
+import com.bendey.restaurant.core.ui.components.BendeyNavBadge
 import com.bendey.restaurant.core.ui.components.BendeyNavItem
 import com.bendey.restaurant.core.ui.components.BendeyScrollHintProvider
 import com.bendey.restaurant.core.ui.layout.BendeyRestaurantShell
@@ -22,6 +23,8 @@ fun BendeyNavigationSuite(
     onNavigate: (TopLevelDestination) -> Unit,
     modifier: Modifier = Modifier,
     visibleBottomBarDestinations: List<TopLevelDestination> = TopLevelDestination.bottomBarDestinations,
+    /** Globos con contador por ruta (D1: Entregas = pedidos por asignar). */
+    badges: Map<String, BendeyNavBadge> = emptyMap(),
     topBar: @Composable () -> Unit = {},
     showBottomBar: Boolean = true,
     content: @Composable (Modifier) -> Unit,
@@ -34,7 +37,7 @@ fun BendeyNavigationSuite(
         physicalPortrait = physicalPortrait,
     )
     val layout = BottomBarLayout.of(visibleBottomBarDestinations)
-    fun TopLevelDestination.toItem() = BendeyNavItem(route, label, shortLabel, icon)
+    fun TopLevelDestination.toItem() = BendeyNavItem(route, label, shortLabel, icon, badges[route])
 
     BendeyScrollHintProvider {
         BendeyRestaurantShell(

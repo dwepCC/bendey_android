@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,11 +44,21 @@ import com.bendey.restaurant.core.ui.layout.BendeyBottomBarHeight
 import com.bendey.restaurant.core.ui.layout.BendeyBottomBarInset
 import com.bendey.restaurant.core.ui.layout.BendeyNavigationBarScrim
 
+/** Globo con contador sobre un ítem de la barra (D1: pedidos de delivery por asignar). Sin contador no se pinta. */
+data class BendeyNavBadge(
+    val count: Int,
+    /** Lo que lee TalkBack en lugar del nombre del ítem (p. ej. "3 pedidos de delivery por asignar"). */
+    val description: String,
+    /** Texto del globo ("3", "99+"). */
+    val label: String,
+)
+
 data class BendeyNavItem(
     val route: String,
     val label: String,
     val shortLabel: String,
     val icon: ImageVector,
+    val badge: BendeyNavBadge? = null,
 )
 
 /**
@@ -93,6 +105,7 @@ fun BendeyBottomNavigationBar(
                             selected = currentRoute == item.route,
                             icon = item.icon,
                             label = item.shortLabel,
+                            badge = item.badge,
                             onClick = { onNavigate(item) },
                             modifier = Modifier.weight(1f),
                         )
@@ -105,6 +118,7 @@ fun BendeyBottomNavigationBar(
                             selected = currentRoute == item.route,
                             icon = item.icon,
                             label = item.shortLabel,
+                            badge = item.badge,
                             onClick = { onNavigate(item) },
                             modifier = Modifier.weight(1f),
                         )
@@ -140,6 +154,7 @@ private fun BottomNavTab(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    badge: BendeyNavBadge? = null,
 ) {
     val iconTint by animateColorAsState(
         targetValue = if (selected) BendeyColors.Primary else BendeyColors.NavInactive,
@@ -161,12 +176,23 @@ private fun BottomNavTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = iconTint,
-            modifier = Modifier.size(22.dp),
-        )
+        if (badge != null && badge.count > 0) {
+            BadgedBox(badge = { Badge { Text(badge.label) } }) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = badge.description,
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        } else {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = iconTint,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
