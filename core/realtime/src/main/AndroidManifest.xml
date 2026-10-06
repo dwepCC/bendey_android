@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- D1: vibración corta al llegar un pedido de delivery por asignar. Permiso normal (sin diálogo). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+</manifest>

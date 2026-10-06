@@ -25,4 +25,4 @@ val dashboardDomain = createStubDomain("dashboard", listOf("dashboard."))
 val cashDomain = createStubDomain("cash", listOf("cash."))
 val purchasesDomain = createStubDomain("purchases", listOf("purchase."))
 val contactsDomain = createStubDomain("contacts", listOf("contact."))
-val deliveryDomain = createStubDomain("delivery", listOf("delivery."))
+// delivery: dominio real en `domains/delivery/DeliveryDomain.kt` (D1).

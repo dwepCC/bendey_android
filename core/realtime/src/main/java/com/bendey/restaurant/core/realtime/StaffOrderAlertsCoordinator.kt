@@ -1,6 +1,10 @@
 package com.bendey.restaurant.core.realtime
 
+import com.bendey.restaurant.core.domain.delivery.DeliveryThresholds
+import com.bendey.restaurant.core.domain.delivery.canOperateDeliveryBoard
+import com.bendey.restaurant.core.domain.delivery.canViewDelivery
 import com.bendey.restaurant.core.domain.pendingapproval.PendingApprovalLogic
+import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardStore
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.realtime.pending.PendingApprovalStore
 import kotlinx.coroutines.delay
@@ -42,6 +46,8 @@ class StaffOrderAlertsCoordinator @Inject constructor(
     private val restaurantStores: RestaurantStores,
     private val appForeground: AppForeground,
     private val pendingApprovalStore: PendingApprovalStore,
+    private val deliveryBoardStore: DeliveryBoardStore,
+    private val soundPlayer: NewOrderSoundPlayer,
 ) {
     private val latestPermissions = MutableStateFlow<List<String>>(emptyList())
     private val latestBranchId = MutableStateFlow<Int?>(null)
@@ -63,6 +69,38 @@ class StaffOrderAlertsCoordinator @Inject constructor(
                 pendingApprovalStore.setEnabled(
                     session?.activeBranch?.id != null && PendingApprovalLogic.canView(session.restaurantPermissions),
                 )
+                applyDeliveryPolicy(session?.activeBranch?.id, session?.restaurantPermissions.orEmpty(), session?.user?.employeeType)
+            }
+        }
+
+        scope.launch {
+            // D1: tablero de Delivery al día desde cualquier pantalla (badge de Entregas + sonido). Carga al
+            // entrar / volver a primer plano / cambiar de sucursal / reconectar el tiempo real; el respaldo de
+            // 60 s corre SOLO mientras el tiempo real está caído (con el WebSocket arriba no hay polling).
+            combine(sessionStore.userSessionFlow, appForeground.enPantalla, realtimeClient.connected) { session, enPantalla, connected ->
+                val branchId = session?.activeBranch?.id
+                val perms = session?.restaurantPermissions.orEmpty()
+                applyDeliveryPolicy(branchId, perms, session?.user?.employeeType)
+                if (enPantalla && branchId != null && canViewDelivery(perms)) DeliverySyncKey(branchId, connected) else null
+            }
+                .distinctUntilChanged()
+                .collectLatest { key ->
+                    if (key == null) return@collectLatest
+                    deliveryBoardStore.refresh()
+                    if (!key.realtimeUp) {
+                        while (true) {
+                            delay(DeliveryThresholds.BACKUP_POLL_MS)
+                            deliveryBoardStore.refresh()
+                        }
+                    }
+                }
+        }
+
+        scope.launch {
+            // Aviso de "pedido nuevo por asignar": nunca en la carga inicial (el store solo emite por diferencia).
+            deliveryBoardStore.arrivals.collect {
+                soundPlayer.play()
+                soundPlayer.vibrateShort()
             }
         }
 
@@ -136,9 +174,25 @@ class StaffOrderAlertsCoordinator @Inject constructor(
                 .collect { branchId ->
                     realtimeRecovery.resetAllStores()
                     pendingApprovalStore.reset()
+                    deliveryBoardStore.reset()
+                    deliveryBoardStore.refreshAsync()
                     if (branchId != null) realtimeRecovery.restoreForBranch(branchId)
                 }
         }
+    }
+
+    private data class DeliverySyncKey(val branchId: Int, val realtimeUp: Boolean)
+
+    /**
+     * D1: quién consulta el tablero y quién oye la alerta. Ver (badge, vista) = `d.v` con sucursal; la alerta
+     * (sonido/vibración/aviso) solo a quien puede asignar (`d.u`) y recibe alertas de pedido nuevo, y nunca al
+     * repartidor (su vista es de solo lectura). Idempotente.
+     */
+    private fun applyDeliveryPolicy(branchId: Int?, perms: List<String>, employeeType: String?) {
+        val canView = branchId != null && canViewDelivery(perms)
+        deliveryBoardStore.setEnabled(canView)
+        deliveryBoardStore.alertsEnabled = canView && canOperateDeliveryBoard(perms, employeeType) &&
+            RestaurantPermissions.canReceiveNewOrderSound(perms)
     }
 
     private fun wireProviders() {

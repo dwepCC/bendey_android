@@ -3,6 +3,8 @@ package com.bendey.restaurant.core.realtime
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.os.VibrationEffect
+import android.os.Vibrator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,6 +13,7 @@ import javax.inject.Singleton
 class NewOrderSoundPlayer @Inject constructor(
     @ApplicationContext context: Context,
 ) {
+    private val vibrator: Vibrator? = context.getSystemService(Vibrator::class.java)
     private val soundPool: SoundPool
     private val soundId: Int
 
@@ -28,6 +31,16 @@ class NewOrderSoundPlayer @Inject constructor(
 
     fun play() {
         soundPool.play(soundId, 0.9f, 0.9f, 1, 0, 1f)
+    }
+
+    /** Vibración corta (D1: pedido de delivery nuevo por asignar). Sin vibrador o sin permiso no hace nada. */
+    fun vibrateShort() {
+        try {
+            val v = vibrator ?: return
+            if (v.hasVibrator()) v.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE))
+        } catch (_: Exception) {
+            /* sin permiso o sin vibrador: el sonido ya avisó */
+        }
     }
 }
 

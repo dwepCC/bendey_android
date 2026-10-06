@@ -1,12 +1,12 @@
 package com.bendey.restaurant.core.realtime
 
 import com.bendey.restaurant.core.realtime.domains.DomainRegistry
+import com.bendey.restaurant.core.realtime.domains.delivery.DeliveryDomain
 import com.bendey.restaurant.core.realtime.domains.restaurant.RestaurantDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.billingDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.cashDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.contactsDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.dashboardDomain
-import com.bendey.restaurant.core.realtime.domains.stubs.deliveryDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.inventoryDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.purchasesDomain
 import com.bendey.restaurant.core.realtime.domains.stubs.salesDomain
@@ -26,6 +26,7 @@ import javax.inject.Singleton
 class RealtimePlatform @Inject constructor(
     private val domainRegistry: DomainRegistry,
     private val restaurantDomain: RestaurantDomain,
+    private val deliveryDomain: DeliveryDomain,
     private val sideEffectRunner: SideEffectRunner,
     private val soundSideEffect: SoundSideEffect,
     private val pendingApprovalSideEffect: PendingApprovalSideEffect,
