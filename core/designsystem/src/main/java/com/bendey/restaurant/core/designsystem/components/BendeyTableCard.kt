@@ -3,7 +3,9 @@ package com.bendey.restaurant.core.designsystem.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -98,10 +100,13 @@ fun BendeyTableCard(
                 ) {
                     StatusDot(color = accent)
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
+                        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs, Alignment.End),
                     ) {
-                        BendeyStatusChip(label = statusLabel, tone = state)
+                        // weight(fill = false): el chip se recorta en una línea antes que partirse en
+                        // «Ocup / ada» cuando la tarjeta es angosta.
+                        BendeyStatusChip(label = statusLabel, tone = state, modifier = Modifier.weight(1f, fill = false))
                         if (menuActions.isNotEmpty()) {
                             TableCardOverflowMenu(
                                 tableName = table.name,
@@ -214,9 +219,11 @@ private fun MetaLine(label: String, value: String, accent: Color, emphasize: Boo
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = accent)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = accent, maxLines = 1, softWrap = false)
         Text(
             value,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).padding(start = BendeySpacing.xxs),
             style = if (emphasize) MaterialTheme.typography.labelLarge else MaterialTheme.typography.labelMedium,
             fontWeight = if (emphasize) FontWeight.Bold else FontWeight.SemiBold,
             color = accent,
@@ -247,7 +254,7 @@ fun BendeyTableStatsRow(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xxs),
     ) {
         StatDot("Libres", libre, BendeyColors.StateMesaLibre)
@@ -279,6 +286,8 @@ private fun StatDot(label: String, count: Int, state: BendeyStateColors) {
             text = "$count $label",
             style = MaterialTheme.typography.labelSmall,
             color = state.onTint,
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }

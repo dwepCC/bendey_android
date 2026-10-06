@@ -76,7 +76,12 @@ fun BendeyHeaderActions(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        leadingContent?.invoke()
+        // weight(1f, fill = false): el chip de caja se mide DESPUÉS de sync, campana y avatar y cede ancho
+        // (se recorta con «…»). Sin esto, con «Conectando…» visible el chip tomaba todo el ancho y la
+        // campana y el avatar quedaban fuera de la pantalla en el teléfono.
+        if (leadingContent != null) {
+            Box(modifier = Modifier.weight(1f, fill = false)) { leadingContent() }
+        }
         if (showSyncIndicator) {
             BendeyHeaderSyncIndicator(
                 status = state.connection,

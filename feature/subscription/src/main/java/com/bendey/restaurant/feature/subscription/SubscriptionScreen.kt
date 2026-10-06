@@ -40,6 +40,7 @@ import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.SubscriptionPayment
+import com.bendey.restaurant.core.domain.time.PeruDateTime
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
@@ -110,16 +111,16 @@ fun SubscriptionScreen(
                         BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         hub.subscription.planName.ifBlank { "Sin plan" },
                                         style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                     Text(
-                                        "Vence: ${hub.subscription.nextBillingDate ?: "—"}",
+                                        "Vence: ${hub.subscription.nextBillingDate?.let { PeruDateTime.formatDateOrRaw(it) } ?: "—"}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = BendeyColors.OnSurfaceVariant,
                                     )
@@ -349,8 +350,8 @@ fun SubscriptionScreen(
 @Composable
 private fun PlanCard(plan: AvailablePlan, isCurrent: Boolean, onSelect: () -> Unit) {
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Row {
                     Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     if (plan.featured) {
@@ -399,17 +400,19 @@ private fun PlanCard(plan: AvailablePlan, isCurrent: Boolean, onSelect: () -> Un
 @Composable
 private fun InvoiceRow(inv: BillingInvoice) {
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+            // weight(1f): el texto largo cede ante el monto y el estado; sin él la columna toma todo el
+            // ancho y empuja «S/ 99.00» y el chip a una columna de una letra por línea en el teléfono.
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    inv.periodStart + " → " + inv.periodEnd,
+                    PeruDateTime.formatDateOrRaw(inv.periodStart) + " → " + PeruDateTime.formatDateOrRaw(inv.periodEnd),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
                     // Pagado dice CUANDO; pendiente dice HASTA CUANDO. Es la pregunta distinta que
                     // tiene el cliente en cada caso.
-                    if (inv.paidAt.isNotBlank()) "Pagado el " + inv.paidAt else "Vence " + inv.dueDate,
+                    if (inv.paidAt.isNotBlank()) "Pagado el " + PeruDateTime.formatDateOrRaw(inv.paidAt) else "Vence " + PeruDateTime.formatDateOrRaw(inv.dueDate),
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -432,15 +435,15 @@ private fun InvoiceRow(inv: BillingInvoice) {
 private fun PaymentRow(payment: SubscriptionPayment, assetsBaseUrl: String?) {
     var verComprobante by remember { mutableStateOf(false) }
     BendeyCard(contentPadding = PaddingValues(BendeySpacing.md)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     payment.newPlanName?.let { "Cambio a $it" } ?: "Renovación",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    payment.createdAt,
+                    PeruDateTime.formatDateTimeOrRaw(payment.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -542,7 +545,7 @@ private fun PaymentFormDialog(
         if (periodos.isNotEmpty()) {
             BendeySimpleSelect(
                 options = periodos.map {
-                    BendeyOption(it.id.toString(), "Vence " + it.periodEnd + " · S/ " + "%.2f".format(it.amount))
+                    BendeyOption(it.id.toString(), "Vence " + PeruDateTime.formatDateOrRaw(it.periodEnd) + " · S/ " + "%.2f".format(it.amount))
                 },
                 selectedValue = form.cicloId?.toString(),
                 onSelect = { v -> v.toIntOrNull()?.let(onPeriodoChange) },

@@ -175,7 +175,7 @@ object AdaptiveGrid {
     }
 
     fun tableGridColumns(profile: BendeyAdaptiveProfile): Int = when (profile) {
-        BendeyAdaptiveProfile.CompactPortrait -> 3
+        BendeyAdaptiveProfile.CompactPortrait -> 2
         BendeyAdaptiveProfile.CompactLandscape -> 4
         BendeyAdaptiveProfile.MediumPortrait -> 4
         BendeyAdaptiveProfile.MediumLandscape -> 5

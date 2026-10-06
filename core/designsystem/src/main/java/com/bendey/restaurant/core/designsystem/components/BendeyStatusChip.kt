@@ -48,6 +48,8 @@ fun BendeyStatusChip(
             text = label,
             style = MaterialTheme.typography.labelLarge,
             color = tone.onTint,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
 }
