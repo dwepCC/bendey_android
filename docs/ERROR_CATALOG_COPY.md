@@ -62,13 +62,6 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `SESSION_UPDATED` | La mesa cambió | Otra persona modificó esta mesa mientras armabas el pedido. Actualiza para ver lo último y vuelve a intentar. | [Actualizar] |
 | `SESSION_NOT_FOUND` | Cuenta no encontrada | No encontramos esta cuenta. Actualiza las mesas para ver el estado. | [Actualizar] · [Ir a Mesas] |
 | `SESSION_NOT_OPEN` | Cuenta cerrada | Esta cuenta ya no está abierta. Actualiza para ver el estado. | [Actualizar] · [Ir a Mesas] |
-| `DRIVER_UNAVAILABLE` | Repartidor no disponible | Ese repartidor está marcado como no disponible. Elige a otro o espera a que se conecte. | [Volver a intentar] · [Actualizar] |
-| `DRIVER_INACTIVE` | Repartidor desactivado | Ese repartidor está desactivado. Elige a otro o pide al administrador que lo active. | [Volver a intentar] · [Hablar con el administrador] |
-| `SESSION_NOT_ASSIGNABLE` | No se puede asignar | Este pedido ya no se puede asignar: puede estar cancelado, entregado o cerrado. Actualiza para ver el estado. | [Actualizar] |
-| `DELIVERY_CANCEL_REASON_REQUIRED` | Falta el motivo | Escribe por qué cancelas el pedido (mínimo 3 letras). No se canceló. | [Volver a intentar] |
-| `SESSION_NOT_DELIVERY` | No es un pedido de delivery | Este pedido no es de delivery. No se hizo ningún cambio. Actualiza para ver el estado. | [Actualizar] |
-| `SESSION_ALREADY_CLOSED` | Pedido ya cobrado | Este pedido ya fue cobrado o cerrado, por eso no se puede cancelar. Si hay que devolver el dinero, hazlo desde Ventas. | [Ver Ventas] · [Actualizar] |
-| `USE_DELIVERY_ASSIGNMENT` | Cambia el estado desde Delivery | Este pedido ya tiene un repartidor. Cambia su estado desde Delivery. | [Actualizar] |
 | `SESSION_MOVED` | Cuenta movida | La cuenta ya no está en esa mesa. Actualiza e intenta de nuevo. | [Actualizar] |
 | `TABLE_OCCUPIED` | Mesa ocupada | No se pudo abrir la mesa. Puede que otro mozo la acabe de ocupar. Actualiza las mesas. | [Actualizar] |
 | `TABLE_NOT_FOUND` | Mesa no encontrada | Esa mesa ya no existe. Actualiza las mesas. | [Actualizar] |
@@ -144,6 +137,13 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `LOGIN_PIN_AMBIGUOUS` | PIN repetido | Este PIN está repetido en el sistema. Avisa a tu administrador para que lo cambie. | [Hablar con el administrador] |
 | `LOGIN_PIN_RATE_LIMITED` | Demasiados intentos | Demasiados intentos. Espera unos minutos y vuelve a intentar. | [Volver a intentar] |
 | `LOGIN_STATION_INVALID` | Estación no válida | Esa estación no existe. Elige tu estación de nuevo. | [Cambiar estación] |
+| `DELIVERY_CANCEL_REASON_REQUIRED` | Falta el motivo | Escribe el motivo de la cancelación (mínimo 3 letras) y vuelve a intentar. | [Volver a intentar] |
+| `DRIVER_INACTIVE` | Repartidor dado de baja | Ese repartidor ya no está activo. Elige a otro. | [Volver a intentar] |
+| `DRIVER_UNAVAILABLE` | Repartidor no disponible | Ese repartidor está marcado como no disponible. Elige a otro o espera a que se conecte. | [Volver a intentar] |
+| `SESSION_ALREADY_CLOSED` | Pedido ya cerrado | Este pedido ya fue cobrado o cerrado y no se puede cancelar. Actualiza para ver el estado. | [Actualizar] |
+| `SESSION_NOT_ASSIGNABLE` | No se puede asignar | Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado. | [Actualizar] |
+| `SESSION_NOT_DELIVERY` | No es un pedido de delivery | Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado. | [Actualizar] |
+| `USE_DELIVERY_ASSIGNMENT` | Cambia el estado desde Delivery | Este pedido ya tiene un repartidor. Cambia su estado desde Delivery. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).

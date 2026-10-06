@@ -160,42 +160,6 @@ object ErrorCatalog {
         ),
         "SESSION_NOT_FOUND" to e("Cuenta no encontrada", "No encontramos esta cuenta. Actualiza las mesas para ver el estado.", ErrorAction.REFRESH, ErrorAction.GO_TABLES),
         "SESSION_NOT_OPEN" to e("Cuenta cerrada", "Esta cuenta ya no está abierta. Actualiza para ver el estado.", ErrorAction.REFRESH, ErrorAction.GO_TABLES),
-        // --- Delivery (D0/D1): asignar, cancelar y estados del pedido ---
-        "DRIVER_UNAVAILABLE" to e(
-            "Repartidor no disponible",
-            "Ese repartidor está marcado como no disponible. Elige a otro o espera a que se conecte.",
-            ErrorAction.BACK_TO_TRY, ErrorAction.REFRESH,
-        ),
-        "DRIVER_INACTIVE" to e(
-            "Repartidor desactivado",
-            "Ese repartidor está desactivado. Elige a otro o pide al administrador que lo active.",
-            ErrorAction.BACK_TO_TRY, ErrorAction.CONTACT_ADMIN,
-        ),
-        "SESSION_NOT_ASSIGNABLE" to e(
-            "No se puede asignar",
-            "Este pedido ya no se puede asignar: puede estar cancelado, entregado o cerrado. Actualiza para ver el estado.",
-            ErrorAction.REFRESH,
-        ),
-        "DELIVERY_CANCEL_REASON_REQUIRED" to e(
-            "Falta el motivo",
-            "Escribe por qué cancelas el pedido (mínimo 3 letras). No se canceló.",
-            ErrorAction.BACK_TO_TRY,
-        ),
-        "SESSION_NOT_DELIVERY" to e(
-            "No es un pedido de delivery",
-            "Este pedido no es de delivery. No se hizo ningún cambio. Actualiza para ver el estado.",
-            ErrorAction.REFRESH,
-        ),
-        "SESSION_ALREADY_CLOSED" to e(
-            "Pedido ya cobrado",
-            "Este pedido ya fue cobrado o cerrado, por eso no se puede cancelar. Si hay que devolver el dinero, hazlo desde Ventas.",
-            ErrorAction.GO_SALES, ErrorAction.REFRESH,
-        ),
-        "USE_DELIVERY_ASSIGNMENT" to e(
-            "Cambia el estado desde Delivery",
-            "Este pedido ya tiene un repartidor. Cambia su estado desde Delivery.",
-            ErrorAction.REFRESH,
-        ),
         "SESSION_MOVED" to e("Cuenta movida", "La cuenta ya no está en esa mesa. Actualiza e intenta de nuevo.", ErrorAction.REFRESH),
         "TABLE_OCCUPIED" to e(
             "Mesa ocupada",
@@ -367,6 +331,14 @@ object ErrorCatalog {
             ErrorAction.BACK_TO_TRY,
         ),
         "LOGIN_STATION_INVALID" to e("Estación no válida", "Esa estación no existe. Elige tu estación de nuevo.", ErrorAction.CHANGE_STATION),
+        // --- Delivery (D0/D1): bloque al final, alfabético por clave (mismo orden que Tauri) ---
+        "DELIVERY_CANCEL_REASON_REQUIRED" to e("Falta el motivo", "Escribe el motivo de la cancelación (mínimo 3 letras) y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
+        "DRIVER_INACTIVE" to e("Repartidor dado de baja", "Ese repartidor ya no está activo. Elige a otro.", ErrorAction.BACK_TO_TRY),
+        "DRIVER_UNAVAILABLE" to e("Repartidor no disponible", "Ese repartidor está marcado como no disponible. Elige a otro o espera a que se conecte.", ErrorAction.BACK_TO_TRY),
+        "SESSION_ALREADY_CLOSED" to e("Pedido ya cerrado", "Este pedido ya fue cobrado o cerrado y no se puede cancelar. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "SESSION_NOT_ASSIGNABLE" to e("No se puede asignar", "Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "SESSION_NOT_DELIVERY" to e("No es un pedido de delivery", "Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "USE_DELIVERY_ASSIGNMENT" to e("Cambia el estado desde Delivery", "Este pedido ya tiene un repartidor. Cambia su estado desde Delivery.", ErrorAction.REFRESH),
     )
 
     private fun seriesMissing() = e(
