@@ -30,7 +30,7 @@ class HelpCatalogTest {
     @Test fun el_asset_existe_y_se_lee() {
         assertTrue("falta ${asset.absolutePath}: corre node scripts/sync-help.mjs", asset.isFile)
         val catalog = HelpCatalogParser.parse(raw())
-        assertEquals(60, catalog.articles.size)
+        assertEquals(61, catalog.articles.size)
         assertEquals(12, catalog.categories.size)
     }
 
