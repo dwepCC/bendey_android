@@ -1,0 +1,199 @@
+package com.bendey.restaurant.feature.repartidores
+
+import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
+import com.bendey.restaurant.core.domain.delivery.DELIVERY_REASON_OTHER
+import com.bendey.restaurant.core.domain.delivery.DeliveryCard
+import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
+import com.bendey.restaurant.core.domain.delivery.DeliveryReasonKind
+import com.bendey.restaurant.core.domain.delivery.DeliverySection
+import com.bendey.restaurant.core.domain.delivery.DeliveryThresholds
+import com.bendey.restaurant.core.domain.delivery.canOperateDeliveryBoard
+import com.bendey.restaurant.core.domain.delivery.deliveryReasonError
+import com.bendey.restaurant.core.domain.delivery.deliveryResolveReason
+import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
+
+/** Qué diálogo está abierto sobre una tarjeta (a lo sumo uno). */
+sealed interface DeliveryDialog {
+    val card: DeliveryCard
+
+    /** Elegir repartidor (asignar o reasignar). */
+    data class Assign(override val card: DeliveryCard) : DeliveryDialog
+
+    /** Cancelar el pedido (motivo obligatorio). */
+    data class Cancel(override val card: DeliveryCard) : DeliveryDialog
+
+    /** Marcar la entrega como fallida (motivo obligatorio). */
+    data class Failed(override val card: DeliveryCard) : DeliveryDialog
+
+    /** Confirmar "Marcar entregado". */
+    data class Delivered(override val card: DeliveryCard) : DeliveryDialog
+}
+
+/** Estado de la pantalla Delivery que NO es del tablero (el tablero vive en [DeliveryBoardStore]). */
+data class DeliveryUiState(
+    /** Sección elegida en teléfono (pestañas con contador). */
+    val selected: DeliverySection = DeliverySection.UNASSIGNED,
+    /** En teléfono, la pestaña "Repartidores" (panel de disponibilidad, solo lectura) en lugar de una sección. */
+    val showDrivers: Boolean = false,
+    /** `d.u`: sin esto la vista es de solo lectura (solo "Llamar"). */
+    val canAssign: Boolean = false,
+    val dialog: DeliveryDialog? = null,
+    /** Motivo rápido elegido, [DELIVERY_REASON_OTHER] o null. */
+    val reasonChoice: String? = null,
+    val reasonText: String = "",
+    val reasonShowError: Boolean = false,
+    /** Hay una acción en curso: todos los botones quedan deshabilitados (no se doble-envía). */
+    val busy: Boolean = false,
+    /** Error de la última acción, visible dentro del diálogo abierto. */
+    val dialogError: String? = null,
+)
+
+/**
+ * Reductor de las acciones de la vista Delivery (asignar, cancelar, entregado, fallido). Sin Android: lo usa
+ * [DeliveryViewModel] con `viewModelScope` y los tests con un scope propio.
+ *
+ * Reglas: solo con `d.u` se puede operar; una acción en curso bloquea las demás; tras CADA acción (con éxito o
+ * con error) se recarga el tablero; los errores llegan ya traducidos por el catálogo (`AppResult.Error.message`)
+ * y salen por [messages] (Snackbar del DS) y, si hay diálogo abierto, también dentro de él.
+ */
+class DeliveryPresenter(
+    private val scope: CoroutineScope,
+    private val store: DeliveryBoardStore,
+    private val repository: DeliveryRepository,
+) {
+    private val _state = MutableStateFlow(DeliveryUiState())
+    val state: StateFlow<DeliveryUiState> = _state.asStateFlow()
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+
+    /** Avisos para el Snackbar (éxito y error). */
+    val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    fun setPermissions(permissions: List<String>, employeeType: String? = null) {
+        _state.update { it.copy(canAssign = canOperateDeliveryBoard(permissions, employeeType)) }
+    }
+
+    fun selectSection(section: DeliverySection) = _state.update { it.copy(selected = section, showDrivers = false) }
+
+    fun selectDrivers() = _state.update { it.copy(showDrivers = true) }
+
+    fun refresh() {
+        scope.launch { store.refresh() }
+    }
+
+    // --- Diálogos -------------------------------------------------------------------------------
+
+    private fun open(dialog: DeliveryDialog) {
+        if (!_state.value.canAssign || _state.value.busy) return
+        _state.update {
+            it.copy(dialog = dialog, reasonChoice = null, reasonText = "", reasonShowError = false, dialogError = null)
+        }
+    }
+
+    fun openAssign(card: DeliveryCard) = open(DeliveryDialog.Assign(card))
+
+    fun openCancel(card: DeliveryCard) = open(DeliveryDialog.Cancel(card))
+
+    fun openFailed(card: DeliveryCard) {
+        // Sin asignación no hay a qué marcarle el fallo.
+        if (card.assignmentId != null) open(DeliveryDialog.Failed(card))
+    }
+
+    fun openDelivered(card: DeliveryCard) {
+        if (card.assignmentId != null) open(DeliveryDialog.Delivered(card))
+    }
+
+    fun dismissDialog() {
+        if (_state.value.busy) return
+        _state.update { it.copy(dialog = null, dialogError = null, reasonShowError = false) }
+    }
+
+    fun chooseReason(reason: String?) =
+        _state.update { it.copy(reasonChoice = reason, reasonShowError = false, dialogError = null) }
+
+    fun setReasonText(text: String) =
+        _state.update { it.copy(reasonText = text.take(DeliveryThresholds.REASON_MAX), reasonShowError = false) }
+
+    // --- Acciones -------------------------------------------------------------------------------
+
+    fun assign(driverId: Int) {
+        val dialog = _state.value.dialog as? DeliveryDialog.Assign ?: return
+        run(okMessage = DeliveryCopy.text("ok.assigned")) {
+            repository.assignDriver(dialog.card.sessionId, driverId)
+        }
+    }
+
+    fun confirmCancel() {
+        val dialog = _state.value.dialog as? DeliveryDialog.Cancel ?: return
+        val reason = currentReason()
+        if (deliveryReasonError(reason, DeliveryReasonKind.CANCEL) != null) {
+            _state.update { it.copy(reasonShowError = true) }
+            return
+        }
+        run(okMessage = DeliveryCopy.text("ok.cancelled")) {
+            repository.cancelDeliveryOrder(dialog.card.sessionId, reason)
+        }
+    }
+
+    fun confirmFailed() {
+        val dialog = _state.value.dialog as? DeliveryDialog.Failed ?: return
+        val assignmentId = dialog.card.assignmentId ?: return
+        val reason = currentReason()
+        if (deliveryReasonError(reason, DeliveryReasonKind.FAILED) != null) {
+            _state.update { it.copy(reasonShowError = true) }
+            return
+        }
+        run(okMessage = DeliveryCopy.text("ok.failed")) {
+            repository.updateAssignmentStatus(assignmentId, "failed", reason)
+        }
+    }
+
+    fun confirmDelivered() {
+        val dialog = _state.value.dialog as? DeliveryDialog.Delivered ?: return
+        val assignmentId = dialog.card.assignmentId ?: return
+        run(okMessage = DeliveryCopy.text("ok.delivered")) {
+            repository.updateAssignmentStatus(assignmentId, "delivered")
+        }
+    }
+
+    private fun currentReason(): String =
+        _state.value.let { deliveryResolveReason(it.reasonChoice, it.reasonText) }
+
+    private fun run(okMessage: String, block: suspend () -> AppResult<Unit>) {
+        val s = _state.value
+        if (!s.canAssign || s.busy) return
+        _state.update { it.copy(busy = true, dialogError = null) }
+        scope.launch {
+            val result = try {
+                block()
+            } catch (e: CancellationException) {
+                _state.update { it.copy(busy = false) }
+                throw e
+            }
+            when (result) {
+                is AppResult.Success -> {
+                    _state.update { it.copy(busy = false, dialog = null) }
+                    _messages.tryEmit(okMessage)
+                }
+                is AppResult.Error -> {
+                    _state.update { it.copy(busy = false, dialogError = result.message) }
+                    _messages.tryEmit(result.message)
+                }
+                AppResult.Loading -> _state.update { it.copy(busy = false) }
+            }
+            // Recarga SIEMPRE: tras un error (p. ej. "ya no se puede asignar") el tablero cambió y hay que verlo.
+            store.refresh()
+        }
+    }
+}

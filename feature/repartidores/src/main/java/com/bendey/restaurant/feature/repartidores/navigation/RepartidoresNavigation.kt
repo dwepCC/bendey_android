@@ -6,11 +6,11 @@ import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.repartidores.EntregasScreen
 import com.bendey.restaurant.feature.repartidores.RepartidoresScreen
 
-fun NavGraphBuilder.repartidoresGraph(onBack: () -> Unit = {}) {
+fun NavGraphBuilder.repartidoresGraph(onBack: () -> Unit = {}, onShowMessage: (String) -> Unit = {}) {
     composable(BendeyRoutes.REPARTIDORES) {
-        RepartidoresScreen(onBack = onBack)
+        RepartidoresScreen(onBack = onBack, onShowMessage = onShowMessage)
     }
     composable(BendeyRoutes.ENTREGAS) {
-        EntregasScreen()
+        EntregasScreen(onShowMessage = onShowMessage)
     }
 }

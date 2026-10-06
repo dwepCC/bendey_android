@@ -52,8 +52,7 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompany
-import com.bendey.restaurant.core.domain.delivery.DELIVERY_BOARD_REFRESH_MS
-import com.bendey.restaurant.core.domain.delivery.deliveryBoardTitle
+import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
 import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
@@ -75,19 +74,18 @@ import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 @Composable
 fun RepartidoresScreen(
     onBack: () -> Unit = {},
+    onShowMessage: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: RepartidoresViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-
-    val now = rememberDeliveryBoardClock(onRefresh = viewModel::refreshBoard)
 
     PullToRefreshBox(isRefreshing = state.loading, onRefresh = viewModel::refresh, modifier = modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             BendeyScreenToolbar(
                 title = "Repartidores",
                 subtitle = when (state.tab) {
-                    RepartidoresTabKind.BOARD -> deliveryBoardTitle(state.board.size)
+                    RepartidoresTabKind.BOARD -> DeliveryCopy.text("title")
                     RepartidoresTabKind.DRIVERS -> "${state.drivers.size} repartidores"
                     RepartidoresTabKind.COMPANIES -> "${state.companies.size} empresas"
                 },
@@ -128,12 +126,10 @@ fun RepartidoresScreen(
             val driversPlaceholder = state.tab == RepartidoresTabKind.DRIVERS && driversViewState.showsPlaceholder
             state.error?.takeIf { !driversPlaceholder && state.tab != RepartidoresTabKind.BOARD }?.let { Text(it, color = BendeyColors.Error, modifier = Modifier.padding(BendeySpacing.md)) }
             when (state.tab) {
-                RepartidoresTabKind.BOARD -> DeliveryBoard(
-                    items = state.board,
-                    loading = state.boardLoading,
-                    error = state.boardError,
-                    now = now,
-                    onRetry = viewModel::refreshBoard,
+                // D1: el mismo tablero de Delivery que la pantalla Entregas (su propio ViewModel, el mismo store).
+                RepartidoresTabKind.BOARD -> DeliveryContent(
+                    viewModel = hiltViewModel(),
+                    onShowMessage = onShowMessage,
                     modifier = Modifier.weight(1f),
                 )
                 RepartidoresTabKind.DRIVERS -> if (driversPlaceholder) {

@@ -9,7 +9,6 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
-import com.bendey.restaurant.core.domain.delivery.DeliveryBoardItem
 import com.bendey.restaurant.core.domain.model.AppResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +18,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** BOARD = tablero de entregas activas (solo lectura, R10.9). */
+/** BOARD = tablero de Delivery (D1; lo dibuja [DeliveryContent] con su propio ViewModel). */
 enum class RepartidoresTabKind { BOARD, DRIVERS, COMPANIES }
 
 data class RepartidoresUiState(
@@ -42,11 +41,6 @@ data class RepartidoresUiState(
     val error: String? = null,
     /** Fallo al CARGAR repartidores (no de guardar): la pantalla muestra Reintentar en vez de «Aún no tienes repartidores». */
     val driversLoadError: String? = null,
-    /** Entregas activas de la sucursal (solo lectura). */
-    val board: List<DeliveryBoardItem> = emptyList(),
-    val boardLoading: Boolean = false,
-    /** Fallo al CARGAR el tablero: se muestra Reintentar, nunca «No hay entregas». */
-    val boardError: String? = null,
 )
 
 @HiltViewModel
@@ -60,26 +54,12 @@ class RepartidoresViewModel @Inject constructor(
 
     init { refresh() }
 
-    /** Solo el tablero: se llama al entrar y cada 60 s mientras la pantalla está visible. */
-    fun refreshBoard() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(boardLoading = true) }
-            when (val result = repository.listActiveAssignments()) {
-                is AppResult.Success -> _uiState.update { it.copy(boardLoading = false, board = result.data, boardError = null) }
-                // Si ya había datos se conservan en pantalla; solo se avisa del fallo.
-                is AppResult.Error -> _uiState.update { it.copy(boardLoading = false, boardError = result.message) }
-                AppResult.Loading -> Unit
-            }
-        }
-    }
-
     fun selectTab(name: String) {
         val tab = RepartidoresTabKind.valueOf(name)
         _uiState.update { it.copy(tab = tab, error = null) }
     }
 
     fun refresh() {
-        refreshBoard()
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true, error = null, driversLoadError = null) }
             val drivers = repository.listDrivers()
@@ -104,7 +84,7 @@ class RepartidoresViewModel @Inject constructor(
 
     fun openCreate() {
         when (_uiState.value.tab) {
-            // El tablero es solo de lectura: no hay nada que crear desde ahí.
+            // El tablero no crea nada: asignar y cancelar se hacen desde sus tarjetas.
             RepartidoresTabKind.BOARD -> Unit
             RepartidoresTabKind.DRIVERS -> _uiState.update { it.copy(driverFormOpen = true, editingDriverId = null, driverForm = DeliveryDriverFormInput(), error = null) }
             RepartidoresTabKind.COMPANIES -> _uiState.update { it.copy(companyFormOpen = true, editingCompanyId = null, companyForm = DeliveryCompanyFormInput(), error = null) }
