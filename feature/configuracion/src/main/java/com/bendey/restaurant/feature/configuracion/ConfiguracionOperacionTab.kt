@@ -22,7 +22,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
+import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +93,7 @@ fun OperacionTab(
             }
         }
         DeliveryFeeCard(viewModel)
+        CodCard(viewModel)
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))
     }
 }
@@ -120,6 +124,60 @@ private fun DeliveryFeeCard(viewModel: ConfiguracionViewModel) {
                 )
             }
         }
+    }
+}
+
+/**
+ * "Pago contra entrega" (D2b): interruptor con su texto de apoyo. Solo `s.m` lo mueve; sin él es solo lectura.
+ * Encender pide confirmación; un rechazo del servidor (503) se muestra aquí y el interruptor queda apagado.
+ */
+@Composable
+private fun CodCard(viewModel: ConfiguracionViewModel) {
+    val cod by viewModel.cod.collectAsState()
+    BendeyManagementCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeySectionTitle(text = DeliveryCopy.text("cod.title"))
+            BendeySwitchRow(
+                label = DeliveryCopy.text("cod.switch"),
+                checked = cod.enabled,
+                onCheckedChange = viewModel::toggleCod,
+                enabled = cod.canEdit && !cod.saving,
+            )
+            Text(
+                DeliveryCopy.text("cod.help"),
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            if (!cod.canEdit) {
+                Text(
+                    DeliveryCopy.text("cod.read_only"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            cod.error?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.ErrorText)
+            }
+        }
+    }
+    if (cod.confirmOpen) {
+        BendeyAlertDialog(
+            onDismissRequest = viewModel::dismissCodConfirm,
+            title = { Text(DeliveryCopy.text("cod.confirm_title")) },
+            text = { Text(DeliveryCopy.text("cod.confirm_text")) },
+            confirmButton = {
+                BendeyPrimaryButton(
+                    text = DeliveryCopy.text("cod.confirm_action"),
+                    onClick = viewModel::confirmCodEnable,
+                    fillWidth = false,
+                )
+            },
+            dismissButton = { BendeyTextButton(text = "Volver", onClick = viewModel::dismissCodConfirm) },
+        )
     }
 }
 

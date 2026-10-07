@@ -133,6 +133,13 @@ class ConfiguracionViewModel @Inject constructor(
     fun setDeliveryFeeAffectation(code: String) = deliveryFeePresenter.setAffectation(code)
     fun saveDeliveryFee() = deliveryFeePresenter.save()
 
+    /** "Pago contra entrega" (D2b): su lógica vive en [CodSettingsPresenter] (testeable sin Android). */
+    private val codPresenter = CodSettingsPresenter(viewModelScope, deliveryRepository)
+    val cod: StateFlow<CodSettingsState> = codPresenter.state
+    fun toggleCod(value: Boolean) = codPresenter.toggle(value)
+    fun dismissCodConfirm() = codPresenter.dismissConfirm()
+    fun confirmCodEnable() = codPresenter.confirmEnable()
+
     init {
         applyCachedSettings()
         // El checklist de Inicio puede pedir una pestaña concreta (no hay deep-link a pestañas).
@@ -155,6 +162,7 @@ class ConfiguracionViewModel @Inject constructor(
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
                 deliveryFeePresenter.setPermissions(perms)
+                codPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -164,6 +172,7 @@ class ConfiguracionViewModel @Inject constructor(
             }
         }
         deliveryFeePresenter.load()
+        codPresenter.load()
         refresh(forceNetwork = false)
     }
 
