@@ -83,6 +83,8 @@ fun BendeyPosCartPane(
     workspaceLines: Boolean = false,
     lineStepperSize: Dp = BendeySpacing.touchMin,
     lineInnerPadding: Dp = BendeySpacing.sm,
+    /** Tarifa de delivery (D2.0) que ya incluye `total`; 0 no muestra la línea. */
+    deliveryFee: Double = 0.0,
 ) {
     Column(
         modifier = modifier
@@ -197,6 +199,9 @@ fun BendeyPosCartPane(
                     },
                 ),
         ) {
+            if (showTotal && deliveryFee > 0.0) {
+                BendeyDeliveryFeeLine(deliveryFee, currency)
+            }
             if (showTotal) {
                 Text(
                     text = "Total",
@@ -523,5 +528,28 @@ fun BendeyCartActionGrid(
                 }
             }
         }
+    }
+}
+
+/** "Servicio de delivery S/ X": la línea de tarifa de delivery (D2.0), que el total ya incluye. */
+@Composable
+fun BendeyDeliveryFeeLine(fee: Double, currency: NumberFormat, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Servicio de delivery",
+            style = MaterialTheme.typography.bodyMedium,
+            color = BendeyColors.OnSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = currency.format(fee),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = BendeyColors.OnSurface,
+        )
     }
 }

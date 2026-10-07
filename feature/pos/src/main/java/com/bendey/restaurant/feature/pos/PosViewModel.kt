@@ -92,6 +92,8 @@ import com.bendey.restaurant.core.domain.products.toFormInput
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
+import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
+import com.bendey.restaurant.core.domain.delivery.DeliverySettings
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.OrderItemInput
@@ -175,6 +177,8 @@ data class PosUiState(
     val pendingOrders: List<OpenOrderSummary> = emptyList(),
     val pendingOrdersOpen: Boolean = false,
     val deliveryDrivers: List<DeliveryDriverBrief> = emptyList(),
+    /** Ajustes de delivery (D2.0), solo para la VISTA PREVIA de la tarifa: el servidor es quien la cobra. */
+    val deliverySettings: DeliverySettings? = null,
     val deliveryDriversLoading: Boolean = false,
     val reprintingOrderId: Int? = null,
     val reprintingAll: Boolean = false,
@@ -231,9 +235,46 @@ data class PosUiState(
     val isRestaurantOrder: Boolean get() = !isDirectSale
     val cartTotal: Double get() = cart.sumOf { it.lineTotal }
     val cartCount: Int get() = cart.sumOf { it.quantity }
-    val checkoutRawTotal: Double get() = roundMoney(sessionTotal + cartTotal)
-    val canClearCart: Boolean get() = cart.isNotEmpty() && sessionOrders.isEmpty()
-    val hasSentComandas: Boolean get() = sessionOrders.any { it.comandas.isNotEmpty() }
+
+    /**
+     * Tarifa de delivery (D2.0) que YA está en la sesión: el backend la agrega como una línea más ("Servicio de
+     * delivery", código DELIVERY) y `sessionTotal` ya la incluye. Solo cuenta la línea vigente (no anulada ni cobrada).
+     */
+    val deliveryFeeInSession: Double
+        get() = roundMoney(
+            sessionOrders.sumOf { order ->
+                order.comandas
+                    .filter { it.isDeliveryFee && it.cancelledAt == null && it.billedSaleId == null }
+                    .sumOf { it.unitPrice * it.quantity }
+            },
+        )
+
+    /**
+     * Vista previa: pedido delivery todavía SIN sesión y con la tarifa encendida en Ajustes. Al crear la sesión el
+     * servidor agrega la línea y su total manda al cobrar; esto solo evita mostrar un total corto antes.
+     */
+    val deliveryFeePreview: Double
+        get() {
+            val s = deliverySettings ?: return 0.0
+            return if (orderType == PosOrderType.DELIVERY && activeSessionId == null && cart.isNotEmpty() && s.feeEnabled && s.deliveryFee > 0.0) {
+                roundMoney(s.deliveryFee)
+            } else {
+                0.0
+            }
+        }
+
+    /** Tarifa que se muestra como "Servicio de delivery S/ X": la de la sesión o, si aún no hay sesión, la vista previa. */
+    val deliveryFeeShown: Double get() = if (deliveryFeeInSession > 0.0) deliveryFeeInSession else deliveryFeePreview
+
+    /** "Ya en cocina": la línea de tarifa NO es un plato, no se manda ni se reimprime en cocina. */
+    val kitchenOrders: List<SessionOrderSummary>
+        get() = sessionOrders
+            .map { o -> o.copy(comandas = o.comandas.filterNot { it.isDeliveryFee }) }
+            .filter { it.comandas.isNotEmpty() }
+
+    val checkoutRawTotal: Double get() = roundMoney(sessionTotal + cartTotal + deliveryFeePreview)
+    val canClearCart: Boolean get() = cart.isNotEmpty() && kitchenOrders.isEmpty()
+    val hasSentComandas: Boolean get() = kitchenOrders.isNotEmpty()
     val pendingOrdersCount: Int get() = pendingOrders.size
 
     private val discountNumeric: Double
@@ -294,6 +335,7 @@ class PosViewModel @Inject constructor(
     private val restaurantHydrators: RestaurantHydrators,
     private val ordersStore: OrdersStore,
     private val contactsRepository: ContactsRepository,
+    private val deliveryRepository: DeliveryRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -463,7 +505,10 @@ class PosViewModel @Inject constructor(
                 orderDetailsModal = if (type == PosOrderType.QUICK_SALE) null else it.orderDetailsModal,
             )
         }
-        if (type == PosOrderType.DELIVERY) loadDeliveryDriversIfNeeded()
+        if (type == PosOrderType.DELIVERY) {
+            loadDeliveryDriversIfNeeded()
+            loadDeliverySettings()
+        }
     }
 
     fun openOrderDetailsModal() {
@@ -472,7 +517,10 @@ class PosViewModel @Inject constructor(
             PosOrderType.DELIVERY -> PosOrderDetailsModal.DELIVERY
             PosOrderType.QUICK_SALE -> return
         }
-        if (modal == PosOrderDetailsModal.DELIVERY) loadDeliveryDriversIfNeeded()
+        if (modal == PosOrderDetailsModal.DELIVERY) {
+            loadDeliveryDriversIfNeeded()
+            loadDeliverySettings()
+        }
         _uiState.update { it.copy(orderDetailsModal = modal) }
     }
 
@@ -1072,7 +1120,9 @@ class PosViewModel @Inject constructor(
 
     fun reprintComanda(order: SessionOrderSummary) {
         val state = _uiState.value
-        if (order.comandas.isEmpty()) return
+        // La línea de tarifa de delivery no es un plato: nunca sale en la comanda de cocina.
+        val dishes = order.comandas.filterNot { it.isDeliveryFee }
+        if (dishes.isEmpty()) return
         viewModelScope.launch {
             _uiState.update { it.copy(reprintingOrderId = order.id) }
             val userName = sessionStore.userSessionFlow.first()?.user?.name
@@ -1081,7 +1131,7 @@ class PosViewModel @Inject constructor(
                 tableName = tableLabel,
                 orderNumber = order.orderNumber,
                 waiterName = userName,
-                comandas = order.comandas.map { it.toComandaLine() },
+                comandas = dishes.map { it.toComandaLine() },
             )
             _uiState.update {
                 it.copy(
@@ -1094,7 +1144,7 @@ class PosViewModel @Inject constructor(
 
     fun reprintAllComandas() {
         val state = _uiState.value
-        val orders = state.sessionOrders.filter { it.comandas.isNotEmpty() }
+        val orders = state.kitchenOrders
         if (orders.isEmpty()) return
         viewModelScope.launch {
             _uiState.update { it.copy(reprintingAll = true) }
@@ -1636,6 +1686,7 @@ class PosViewModel @Inject constructor(
                 checkoutMetaLoading = it.checkoutMetaLoading,
                 pendingOrders = it.pendingOrders,
                 deliveryDrivers = it.deliveryDrivers,
+                deliverySettings = it.deliverySettings,
                 snackMessage = snack,
                 checkoutSuccess = checkoutSuccess ?: it.checkoutSuccess,
                 checkoutPrintNote = checkoutPrintNote ?: it.checkoutPrintNote,
@@ -1897,6 +1948,22 @@ class PosViewModel @Inject constructor(
                     it.copy(comandaNoteSubmitting = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * Lee los ajustes de delivery (caché compartida) para la vista previa de la tarifa. Un fallo no molesta: sin
+     * ajustes no hay vista previa y el total sale del servidor al crear el pedido.
+     */
+    private fun loadDeliverySettings() {
+        deliveryRepository.peekDeliverySettings()?.let { cached ->
+            _uiState.update { it.copy(deliverySettings = cached) }
+        }
+        viewModelScope.launch {
+            when (val r = deliveryRepository.getDeliverySettings()) {
+                is AppResult.Success -> _uiState.update { it.copy(deliverySettings = r.data) }
+                else -> Unit
             }
         }
     }

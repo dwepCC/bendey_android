@@ -57,6 +57,8 @@ fun BendeyPosCartPanel(
     content: @Composable () -> Unit,
     footerActions: @Composable () -> Unit = {},
     checkoutAction: (@Composable () -> Unit)? = null,
+    /** Tarifa de delivery (D2.0) que ya incluye `total`; 0 no muestra la línea. */
+    deliveryFee: Double = 0.0,
 ) {
     val padding = AdaptivePos.cartPanelPadding(profile)
 
@@ -95,6 +97,7 @@ fun BendeyPosCartPanel(
                 profile = profile,
                 footerActions = footerActions,
                 checkoutAction = checkoutAction,
+                deliveryFee = deliveryFee,
             )
         }
     }
@@ -157,6 +160,7 @@ private fun BendeyPosCartPanelFooter(
     profile: BendeyAdaptiveProfile,
     footerActions: @Composable () -> Unit,
     checkoutAction: (@Composable () -> Unit)?,
+    deliveryFee: Double = 0.0,
 ) {
     val amountStyle = when (AdaptivePos.cartSummaryAmountStyle(profile)) {
         CartSummaryAmountStyle.HeadlineLarge -> MaterialTheme.typography.headlineLarge
@@ -170,6 +174,9 @@ private fun BendeyPosCartPanelFooter(
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.25f))
+        if (deliveryFee > 0.0) {
+            com.bendey.restaurant.core.ui.components.BendeyDeliveryFeeLine(deliveryFee, currency)
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()

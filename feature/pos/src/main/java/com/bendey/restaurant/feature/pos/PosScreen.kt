@@ -988,7 +988,9 @@ private fun CartPane(
         append("Carrito (${state.cartCount})")
         state.orderCode?.let { append(" · $it") }
     }
-    val cartTotal = if (state.sessionTotal > 0) state.sessionTotal + state.cartTotal else state.cartTotal
+    // `deliveryFeePreview` es 0 salvo en un pedido delivery nuevo (sin sesión) con la tarifa encendida: el total del
+    // servidor manda al cobrar. Con sesión, `sessionTotal` ya trae la línea "Servicio de delivery".
+    val cartTotal = (if (state.sessionTotal > 0) state.sessionTotal + state.cartTotal else state.cartTotal) + state.deliveryFeePreview
     val cartSubtitle = buildString {
         if (state.pendingOrdersCount > 0) {
             append("${state.pendingOrdersCount} pedidos pendientes")
@@ -999,7 +1001,7 @@ private fun CartPane(
         Column(modifier = Modifier.fillMaxSize()) {
             if (state.hasSentComandas) {
                 PosSentOrdersSection(
-                    orders = state.sessionOrders.filter { it.comandas.isNotEmpty() },
+                    orders = state.kitchenOrders,
                     reprintingOrderId = state.reprintingOrderId,
                     reprintingAll = state.reprintingAll,
                     onReprint = onReprint,
@@ -1013,6 +1015,7 @@ private fun CartPane(
                 title = cartTitle,
                 lines = state.cart,
                 total = cartTotal,
+                deliveryFee = state.deliveryFeeShown,
                 currency = currency,
                 sending = state.sending,
                 onIncrement = onIncrement,
@@ -1069,6 +1072,7 @@ private fun CartPane(
             title = cartTitle,
             subtitle = cartSubtitle,
             total = cartTotal,
+            deliveryFee = state.deliveryFeeShown,
             currency = currency,
             profile = profile,
             modifier = modifier,
