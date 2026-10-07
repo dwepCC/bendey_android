@@ -126,6 +126,7 @@ fun ConfiguracionScreen(
     if (state.sunatFormOpen) SunatFormDialog(state, viewModel)
     if (state.pinDialogOpen) PinDialog(state, viewModel)
     if (state.earningDialogOpen) EarningDialog(state, viewModel)
+    DeliveryFeeDialog(viewModel)
     StaffCreateDialog(state, viewModel)
     StaffEditDialog(state, viewModel)
     if (state.branchFormOpen) BranchFormDialog(state, viewModel)

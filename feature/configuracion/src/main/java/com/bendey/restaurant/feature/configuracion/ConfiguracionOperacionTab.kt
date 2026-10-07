@@ -18,6 +18,12 @@ import androidx.compose.material3.MaterialTheme
 import com.bendey.restaurant.core.ui.components.BendeySwitchRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeRules
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -83,7 +89,88 @@ fun OperacionTab(
                 }
             }
         }
+        DeliveryFeeCard(viewModel)
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))
+    }
+}
+
+/** "Tarifa de delivery" (D2.0): resumen + botón que abre el diálogo (solo con `s.m`; sin él es solo lectura). */
+@Composable
+private fun DeliveryFeeCard(viewModel: ConfiguracionViewModel) {
+    val fee by viewModel.deliveryFee.collectAsState()
+    BendeyManagementCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeySectionTitle(text = DeliveryFeeCopy.SECTION_TITLE)
+            Text(
+                fee.summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+            )
+            if (fee.canEdit) {
+                BendeyPrimaryButton("Configurar tarifa", viewModel::openDeliveryFeeDialog, modifier = Modifier.fillMaxWidth())
+            } else {
+                Text(
+                    DeliveryFeeCopy.READ_ONLY_HINT,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/** Diálogo de la tarifa: interruptor, monto y "Opciones fiscales" (afectación al IGV). */
+@Composable
+fun DeliveryFeeDialog(viewModel: ConfiguracionViewModel) {
+    val fee by viewModel.deliveryFee.collectAsState()
+    if (!fee.dialogOpen) return
+    BendeyFormDialog(
+        onDismissRequest = viewModel::dismissDeliveryFeeDialog,
+        title = DeliveryFeeCopy.SECTION_TITLE,
+        confirmText = if (fee.saving) "Guardando…" else "Guardar",
+        onConfirm = viewModel::saveDeliveryFee,
+        onDismiss = viewModel::dismissDeliveryFeeDialog,
+        confirmEnabled = !fee.saving,
+        loading = fee.saving,
+        enableContentScroll = true,
+        validationError = fee.error,
+    ) {
+        BendeySwitchRow(
+            label = DeliveryFeeCopy.SWITCH_LABEL,
+            checked = fee.enabled,
+            onCheckedChange = viewModel::setDeliveryFeeEnabled,
+            enabled = !fee.saving,
+        )
+        BendeyTextField(
+            value = fee.amountText,
+            onValueChange = viewModel::setDeliveryFeeAmount,
+            label = DeliveryFeeCopy.AMOUNT_LABEL,
+            placeholder = "0.00",
+            enabled = !fee.saving,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        )
+        BendeySectionTitle(text = DeliveryFeeCopy.FISCAL_TITLE)
+        BendeySimpleSelect(
+            options = DeliveryFeeRules.affectations.map { BendeyOption(it.first, it.second) },
+            selectedValue = fee.affectation,
+            onSelect = viewModel::setDeliveryFeeAffectation,
+            label = DeliveryFeeCopy.AFFECTATION_LABEL,
+            enabled = !fee.saving,
+        )
+        Text(
+            DeliveryFeeCopy.FISCAL_HINT,
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
+        Text(
+            DeliveryFeeCopy.NEW_ORDERS_NOTICE,
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
     }
 }
 

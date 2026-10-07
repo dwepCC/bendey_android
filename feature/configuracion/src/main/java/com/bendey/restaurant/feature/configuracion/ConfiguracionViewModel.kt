@@ -7,6 +7,7 @@ import com.bendey.restaurant.core.domain.catalog.BranchFormInput
 import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.domain.catalog.CompanyConfig
 import com.bendey.restaurant.core.domain.catalog.CompanyConfigFormInput
+import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.catalog.UbiItem
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
 import com.bendey.restaurant.core.domain.catalog.RestaurantSettings
@@ -116,10 +117,21 @@ class ConfiguracionViewModel @Inject constructor(
     private val repository: SettingsRepository,
     private val sessionStore: UserSessionStore,
     private val onboardingRepository: OnboardingRepository,
+    deliveryRepository: DeliveryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
     val uiState: StateFlow<ConfiguracionUiState> = _uiState.asStateFlow()
+
+    /** "Tarifa de delivery" (D2.0): su lógica vive en [DeliveryFeeSettingsPresenter] (testeable sin Android). */
+    private val deliveryFeePresenter = DeliveryFeeSettingsPresenter(viewModelScope, deliveryRepository)
+    val deliveryFee: StateFlow<DeliveryFeeSettingsState> = deliveryFeePresenter.state
+    fun openDeliveryFeeDialog() = deliveryFeePresenter.openDialog()
+    fun dismissDeliveryFeeDialog() = deliveryFeePresenter.dismissDialog()
+    fun setDeliveryFeeEnabled(value: Boolean) = deliveryFeePresenter.setEnabled(value)
+    fun setDeliveryFeeAmount(text: String) = deliveryFeePresenter.setAmountText(text)
+    fun setDeliveryFeeAffectation(code: String) = deliveryFeePresenter.setAffectation(code)
+    fun saveDeliveryFee() = deliveryFeePresenter.save()
 
     init {
         applyCachedSettings()
@@ -142,6 +154,7 @@ class ConfiguracionViewModel @Inject constructor(
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
+                deliveryFeePresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -150,6 +163,7 @@ class ConfiguracionViewModel @Inject constructor(
                 }
             }
         }
+        deliveryFeePresenter.load()
         refresh(forceNetwork = false)
     }
 
