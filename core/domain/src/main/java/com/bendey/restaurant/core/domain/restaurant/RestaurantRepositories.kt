@@ -38,7 +38,7 @@ interface PosRepository {
      * cerrado en el POS de escritorio/Tauri, pero no acá). Se llama después de crear/actualizar
      * la sesión, siempre que el tipo de pedido sea delivery y haya un repartidor elegido.
      */
-    suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int): AppResult<Unit>
+    suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int, deliveryFee: Double? = null): AppResult<Unit>
 }
 
 interface MesasRepository {

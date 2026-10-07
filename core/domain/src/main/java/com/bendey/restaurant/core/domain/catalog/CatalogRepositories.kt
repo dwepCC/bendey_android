@@ -42,7 +42,22 @@ interface DeliveryRepository {
     suspend fun getDeliveryBoard(): AppResult<com.bendey.restaurant.core.domain.delivery.DeliveryBoardData>
 
     /** Asignar / reasignar. `POST /api/restaurant/sessions/:id/delivery/assign` (permiso d.u). */
-    suspend fun assignDriver(sessionId: Int, driverId: Int): AppResult<Unit>
+    suspend fun assignDriver(sessionId: Int, driverId: Int, deliveryFee: Double? = null): AppResult<Unit>
+
+    /**
+     * Ajustes de delivery (D2.0). `GET /api/restaurant/delivery/settings`. Usa la caché compartida salvo
+     * [forceRefresh]; un fallo de red devuelve error (quien llama decide si sigue sin tarifa).
+     */
+    suspend fun getDeliverySettings(forceRefresh: Boolean = false): AppResult<com.bendey.restaurant.core.domain.delivery.DeliverySettings>
+
+    /** Guarda cambios parciales (`PUT`, permiso s.m), deja la respuesta en la caché y la devuelve. */
+    suspend fun updateDeliverySettings(update: com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate): AppResult<com.bendey.restaurant.core.domain.delivery.DeliverySettings>
+
+    /** Valor ya conocido de los ajustes (sin red), o null. */
+    fun peekDeliverySettings(): com.bendey.restaurant.core.domain.delivery.DeliverySettings?
+
+    /** Tarifa de UN pedido: `PUT /api/restaurant/sessions/:id/delivery/fee` (o.ch / s.m). 0 quita la línea. */
+    suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit>
 
     /** Cancelar un pedido delivery con motivo (3-255). `POST /api/restaurant/sessions/:id/delivery/cancel` (d.u). */
     suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit>

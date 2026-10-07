@@ -54,6 +54,10 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.network.dto.AssignDeliveryDriverRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryCancelRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
+import com.bendey.restaurant.core.network.dto.DeliverySettingsUpdateRequestDto
+import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeRequestDto
+import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.network.api.CombosApi
 import com.bendey.restaurant.core.network.api.DeliveryApi
 import com.bendey.restaurant.core.network.api.ModifierGroupsApi
@@ -221,6 +225,7 @@ class CombosRepositoryImpl @Inject constructor(
 @Singleton
 class DeliveryRepositoryImpl @Inject constructor(
     private val tenantRetrofitProvider: TenantRetrofitProvider,
+    private val operationalDataCache: OperationalDataCache,
 ) : DeliveryRepository {
 
     private val api: DeliveryApi
@@ -246,8 +251,30 @@ class DeliveryRepositoryImpl @Inject constructor(
         api.getDeliveryBoard().toDomain()
     }
 
-    override suspend fun assignDriver(sessionId: Int, driverId: Int): AppResult<Unit> = apiCall {
-        api.assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId))
+    override suspend fun assignDriver(sessionId: Int, driverId: Int, deliveryFee: Double?): AppResult<Unit> = apiCall {
+        api.assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId, deliveryFee))
+        Unit
+    }
+
+    override suspend fun getDeliverySettings(forceRefresh: Boolean): AppResult<DeliverySettings> {
+        if (!forceRefresh) operationalDataCache.deliverySettings.fresh()?.let { return AppResult.Success(it) }
+        return apiCall {
+            api.getDeliverySettings().toDomain().also { operationalDataCache.deliverySettings.put(it) }
+        }
+    }
+
+    override suspend fun updateDeliverySettings(update: DeliverySettingsUpdate): AppResult<DeliverySettings> = apiCall {
+        val saved = api.updateDeliverySettings(
+            DeliverySettingsUpdateRequestDto(update.feeEnabled, update.deliveryFee, update.feeIgvAffectation),
+        ).toDomain()
+        operationalDataCache.deliverySettings.put(saved)
+        saved
+    }
+
+    override fun peekDeliverySettings(): DeliverySettings? = operationalDataCache.deliverySettings.value.value
+
+    override suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit> = apiCall {
+        api.setSessionDeliveryFee(sessionId, SessionDeliveryFeeRequestDto(amount))
         Unit
     }
 

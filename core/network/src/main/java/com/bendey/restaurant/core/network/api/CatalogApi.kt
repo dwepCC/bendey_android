@@ -12,6 +12,10 @@ import com.bendey.restaurant.core.network.dto.UbiItemDto
 import com.bendey.restaurant.core.network.dto.DeliveryBoardDto
 import com.bendey.restaurant.core.network.dto.DeliveryCancelRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
+import com.bendey.restaurant.core.network.dto.DeliverySettingsDto
+import com.bendey.restaurant.core.network.dto.DeliverySettingsUpdateRequestDto
+import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeRequestDto
+import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeResponseDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryEarningSettingsUpdateRequestDto
@@ -146,6 +150,20 @@ interface DeliveryApi {
         @Path("id") sessionId: Int,
         @Body body: DeliveryCancelRequestDto,
     ): SuccessResponseDto
+
+    // Ajustes de delivery (D2.0): tarifa por pedido. GET para cualquier staff de delivery; PUT solo s.m.
+    @GET("/api/restaurant/delivery/settings")
+    suspend fun getDeliverySettings(): DeliverySettingsDto
+
+    @PUT("/api/restaurant/delivery/settings")
+    suspend fun updateDeliverySettings(@Body body: DeliverySettingsUpdateRequestDto): DeliverySettingsDto
+
+    // Tarifa de UN pedido (D2.0, o.ch o s.m). amount 0 elimina la línea.
+    @PUT("/api/restaurant/sessions/{id}/delivery/fee")
+    suspend fun setSessionDeliveryFee(
+        @Path("id") sessionId: Int,
+        @Body body: SessionDeliveryFeeRequestDto,
+    ): SessionDeliveryFeeResponseDto
 
     // Cambio de estado de una asignación por staff (D1): delivered | failed (el staff no necesita foto).
     @PUT("/api/delivery/assignments/{id}/status")

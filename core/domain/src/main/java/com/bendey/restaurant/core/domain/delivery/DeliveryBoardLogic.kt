@@ -62,6 +62,8 @@ data class DeliveryCard(
     val deliveredAt: String? = null,
     val incident: DeliveryIncident? = null,
     val paid: Boolean = false,
+    /** Tarifa de delivery del pedido (D2.0); null si no tiene. `totalAmount` ya la incluye. */
+    val deliveryFee: Double? = null,
 )
 
 data class DeliveryBoardDriver(

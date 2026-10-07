@@ -64,6 +64,7 @@ private fun DeliveryCardDto.toDomain() = DeliveryCard(
     deliveredAt = deliveredAt,
     incident = incident?.let { DeliveryIncident(it.kind.orEmpty(), it.reason.orEmpty(), it.at) },
     paid = paid ?: false,
+    deliveryFee = deliveryFee?.takeIf { it > 0.0 },
 )
 
 private fun DeliveryBoardDriverDto.toDomain() = DeliveryBoardDriver(

@@ -5,6 +5,7 @@ import com.bendey.restaurant.core.domain.catalog.BranchItem
 import com.bendey.restaurant.core.domain.catalog.CompanyConfig
 import com.bendey.restaurant.core.domain.catalog.RestaurantSettings
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
+import com.bendey.restaurant.core.domain.delivery.DeliverySettingsCache
 import com.bendey.restaurant.core.domain.restaurant.ProductCategory
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -28,6 +29,9 @@ class OperationalDataCache @Inject constructor() {
     private var categories: List<ProductCategory>? = null
     @Volatile
     private var tenantSettings: CachedTenantSettings? = null
+
+    /** Ajustes de delivery (D2.0), compartidos por Ajustes, la hoja de asignar y el POS. Se vacía con [clearAll]. */
+    val deliverySettings = DeliverySettingsCache()
 
     fun getCheckoutMeta(branchId: Int): CheckoutMeta? = checkoutMetaByBranch[branchId]
 
@@ -80,5 +84,6 @@ class OperationalDataCache @Inject constructor() {
         checkoutMetaByBranch.clear()
         categories = null
         tenantSettings = null
+        deliverySettings.invalidate()
     }
 }

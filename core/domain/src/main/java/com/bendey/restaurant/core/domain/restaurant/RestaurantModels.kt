@@ -177,7 +177,13 @@ data class SessionComandaSummary(
     val priceIncludesIgv: Boolean? = null,
     val cancelledAt: String? = null,
     val billedSaleId: Int? = null,
-)
+    /** Código del producto (la línea "Servicio de delivery" de D2.0 lleva `DELIVERY`). */
+    val productCode: String? = null,
+) {
+    /** Línea de tarifa de delivery: no es un plato (no va a cocina, no se anula ni se edita desde el POS). */
+    val isDeliveryFee: Boolean
+        get() = com.bendey.restaurant.core.domain.delivery.isDeliveryFeeLine(productCode, productName)
+}
 
 fun SessionComandaSummary.toComandaLine() = ComandaLine(
     id = id,

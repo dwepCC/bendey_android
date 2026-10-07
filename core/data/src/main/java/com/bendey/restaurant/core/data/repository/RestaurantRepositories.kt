@@ -155,9 +155,9 @@ class PosRepositoryImpl @Inject constructor(
             .map { DeliveryDriverBrief(id = it.id, name = it.name) }
     }
 
-    override suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int): AppResult<Unit> = apiCall {
+    override suspend fun assignDeliveryDriver(sessionId: Int, driverId: Int, deliveryFee: Double?): AppResult<Unit> = apiCall {
         tenantRetrofitProvider.create<DeliveryApi>()
-            .assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId))
+            .assignDeliveryDriver(sessionId, AssignDeliveryDriverRequestDto(driverId, deliveryFee))
         Unit
     }
 
@@ -553,6 +553,7 @@ private fun SessionOrderDto.toDomain() = SessionOrderSummary(
             priceIncludesIgv = comanda.priceIncludesIgv,
             cancelledAt = comanda.cancelledAt,
             billedSaleId = comanda.billedSaleId,
+            productCode = comanda.productCode,
         )
     },
 )

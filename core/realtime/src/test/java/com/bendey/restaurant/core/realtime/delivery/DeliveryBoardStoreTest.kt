@@ -5,6 +5,8 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryCompanyFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriver
 import com.bendey.restaurant.core.domain.catalog.DeliveryDriverFormInput
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
+import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.domain.delivery.DeliveryBoardCounts
 import com.bendey.restaurant.core.domain.delivery.DeliveryBoardData
 import com.bendey.restaurant.core.domain.delivery.DeliveryCard
@@ -52,7 +54,11 @@ class DeliveryBoardStoreTest {
             if (latencyMs > 0) delay(latencyMs)
             return result
         }
-        override suspend fun assignDriver(sessionId: Int, driverId: Int): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun assignDriver(sessionId: Int, driverId: Int, deliveryFee: Double?): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun getDeliverySettings(forceRefresh: Boolean): AppResult<DeliverySettings> = AppResult.Success(DeliverySettings())
+        override suspend fun updateDeliverySettings(update: DeliverySettingsUpdate): AppResult<DeliverySettings> = AppResult.Success(DeliverySettings())
+        override fun peekDeliverySettings(): DeliverySettings? = null
+        override suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = AppResult.Success(emptyList())

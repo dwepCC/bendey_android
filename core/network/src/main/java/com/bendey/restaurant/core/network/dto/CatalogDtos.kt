@@ -319,6 +319,8 @@ data class DeliveryCardDto(
     @SerialName("delivered_at") val deliveredAt: String? = null,
     val incident: DeliveryIncidentDto? = null,
     val paid: Boolean? = null,
+    // D2.0: tarifa de delivery del pedido (null si no tiene); total_amount ya la incluye.
+    @SerialName("delivery_fee") val deliveryFee: Double? = null,
 )
 
 @Serializable
@@ -350,6 +352,42 @@ data class DeliveryCompanyUpsertRequestDto(
 @Serializable
 data class AssignDeliveryDriverRequestDto(
     @SerialName("driver_id") val driverId: Int,
+    // D2.0: solo se envía si el cajero la cambió (null = no se manda y el pedido conserva la suya).
+    @SerialName("delivery_fee") val deliveryFee: Double? = null,
+)
+
+/**
+ * Ajustes de delivery (D2.0) -- `GET/PUT /api/restaurant/delivery/settings`. Todo opcional: sin fila o sin
+ * tabla el servidor manda los valores por defecto, y un envoltorio `{data}` se desenvuelve al mapear.
+ */
+@Serializable
+data class DeliverySettingsDto(
+    @SerialName("fee_enabled") val feeEnabled: Boolean? = null,
+    @SerialName("delivery_fee") val deliveryFee: Double? = null,
+    @SerialName("fee_igv_affectation") val feeIgvAffectation: String? = null,
+    @SerialName("cod_enabled") val codEnabled: Boolean? = null,
+    @SerialName("manual_payment_enabled") val manualPaymentEnabled: Boolean? = null,
+    @SerialName("payment_review_minutes") val paymentReviewMinutes: Int? = null,
+    val data: DeliverySettingsDto? = null,
+)
+
+/** Cuerpo PARCIAL del PUT de ajustes: lo null no se envía (explicitNulls = false). */
+@Serializable
+data class DeliverySettingsUpdateRequestDto(
+    @SerialName("fee_enabled") val feeEnabled: Boolean? = null,
+    @SerialName("delivery_fee") val deliveryFee: Double? = null,
+    @SerialName("fee_igv_affectation") val feeIgvAffectation: String? = null,
+)
+
+/** `PUT /api/restaurant/sessions/:id/delivery/fee`: 0 elimina la línea. */
+@Serializable
+data class SessionDeliveryFeeRequestDto(val amount: Double)
+
+@Serializable
+data class SessionDeliveryFeeResponseDto(
+    @SerialName("session_id") val sessionId: Int? = null,
+    @SerialName("delivery_fee") val deliveryFee: Double? = null,
+    @SerialName("total_amount") val totalAmount: Double? = null,
 )
 
 @Serializable
