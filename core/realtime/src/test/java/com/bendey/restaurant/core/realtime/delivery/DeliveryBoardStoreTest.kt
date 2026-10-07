@@ -60,7 +60,9 @@ class DeliveryBoardStoreTest {
         override fun peekDeliverySettings(): DeliverySettings? = null
         override suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit> = AppResult.Success(Unit)
-        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?, forceReason: String?): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun setSessionPayment(sessionId: Int, mode: String, cashTendered: Double?): AppResult<com.bendey.restaurant.core.domain.delivery.SessionPayment?> = AppResult.Success(null)
+        override suspend fun collectAssignment(assignmentId: Int): AppResult<com.bendey.restaurant.core.domain.delivery.SessionPayment?> = AppResult.Success(null)
         override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = AppResult.Success(emptyList())
         override suspend fun createDriver(input: DeliveryDriverFormInput): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit> = AppResult.Success(Unit)

@@ -17,5 +17,5 @@ inline fun <T> apiCall(flow: ErrorFlow = ErrorFlow.GENERIC, block: () -> T): App
     throw e
 } catch (e: Exception) {
     val mapped = NetworkErrorMapper.map(e, flow)
-    AppResult.Error(mapped.message ?: ErrorCatalog.resolve(Failure(FailureKind.OTHER), flow).message, mapped)
+    AppResult.Error(mapped.message ?: ErrorCatalog.resolve(Failure(FailureKind.OTHER), flow).message, mapped, (mapped as? ApiException)?.apiCode)
 }

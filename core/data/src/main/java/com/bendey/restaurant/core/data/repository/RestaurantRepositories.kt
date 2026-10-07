@@ -489,6 +489,7 @@ private fun SessionDetailDto.toDomain() = TableSessionDetail(
     driverName = driverName,
     notes = notes,
     estimatedMinutes = estimatedMinutes,
+    payment = payment?.toDomain(),
     orders = orders.map { it.toDomain() },
 )
 

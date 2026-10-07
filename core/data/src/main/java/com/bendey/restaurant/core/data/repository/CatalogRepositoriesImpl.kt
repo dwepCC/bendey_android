@@ -57,6 +57,8 @@ import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
 import com.bendey.restaurant.core.network.dto.DeliverySettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeRequestDto
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.SessionPayment
+import com.bendey.restaurant.core.network.dto.SessionPaymentRequestDto
 import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.network.api.CombosApi
 import com.bendey.restaurant.core.network.api.DeliveryApi
@@ -265,7 +267,7 @@ class DeliveryRepositoryImpl @Inject constructor(
 
     override suspend fun updateDeliverySettings(update: DeliverySettingsUpdate): AppResult<DeliverySettings> = apiCall {
         val saved = api.updateDeliverySettings(
-            DeliverySettingsUpdateRequestDto(update.feeEnabled, update.deliveryFee, update.feeIgvAffectation),
+            DeliverySettingsUpdateRequestDto(update.feeEnabled, update.deliveryFee, update.feeIgvAffectation, update.codEnabled),
         ).toDomain()
         operationalDataCache.deliverySettings.put(saved)
         saved
@@ -283,9 +285,29 @@ class DeliveryRepositoryImpl @Inject constructor(
         Unit
     }
 
-    override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?): AppResult<Unit> = apiCall {
-        api.updateDeliveryAssignmentStatus(assignmentId, DeliveryStatusRequestDto(status, failedReason?.trim()?.takeIf { it.isNotEmpty() }))
+    override suspend fun updateAssignmentStatus(
+        assignmentId: Int,
+        status: String,
+        failedReason: String?,
+        forceReason: String?,
+    ): AppResult<Unit> = apiCall {
+        api.updateDeliveryAssignmentStatus(
+            assignmentId,
+            DeliveryStatusRequestDto(
+                status,
+                failedReason?.trim()?.takeIf { it.isNotEmpty() },
+                forceReason?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+        )
         Unit
+    }
+
+    override suspend fun setSessionPayment(sessionId: Int, mode: String, cashTendered: Double?): AppResult<SessionPayment?> = apiCall {
+        api.setSessionPayment(sessionId, SessionPaymentRequestDto(mode, cashTendered)).toPayment()
+    }
+
+    override suspend fun collectAssignment(assignmentId: Int): AppResult<SessionPayment?> = apiCall {
+        api.collectDeliveryAssignment(assignmentId).toPayment()
     }
 
     override suspend fun listCompanies(): AppResult<List<DeliveryCompany>> = apiCall {

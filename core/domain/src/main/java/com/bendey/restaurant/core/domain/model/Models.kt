@@ -67,6 +67,7 @@ enum class PinStation(val routeKey: String, val label: String) {
 
 sealed interface AppResult<out T> {
     data class Success<T>(val data: T) : AppResult<T>
-    data class Error(val message: String, val cause: Throwable? = null) : AppResult<Nothing>
+    /** [code]: `code` del backend si vino (p. ej. `COLLECTION_REQUIRED`); permite reaccionar a un error concreto. */
+    data class Error(val message: String, val cause: Throwable? = null, val code: String? = null) : AppResult<Nothing>
     data object Loading : AppResult<Nothing>
 }

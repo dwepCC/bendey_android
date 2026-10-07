@@ -15,6 +15,8 @@ import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
 import com.bendey.restaurant.core.network.dto.DeliverySettingsDto
 import com.bendey.restaurant.core.network.dto.DeliverySettingsUpdateRequestDto
 import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeRequestDto
+import com.bendey.restaurant.core.network.dto.SessionPaymentRequestDto
+import com.bendey.restaurant.core.network.dto.SessionPaymentResponseDto
 import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeResponseDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyDto
 import com.bendey.restaurant.core.network.dto.DeliveryCompanyUpsertRequestDto
@@ -166,11 +168,23 @@ interface DeliveryApi {
     ): SessionDeliveryFeeResponseDto
 
     // Cambio de estado de una asignación por staff (D1): delivered | failed (el staff no necesita foto).
+    // D2b: con efectivo contra entrega sin cobrar responde 409 COLLECTION_REQUIRED, salvo `force_reason` (o.ch / s.m).
     @PUT("/api/delivery/assignments/{id}/status")
     suspend fun updateDeliveryAssignmentStatus(
         @Path("id") assignmentId: Int,
         @Body body: DeliveryStatusRequestDto,
     ): SuccessResponseDto
+
+    // Pago contra entrega de UN pedido del POS (D2b, o.c / o.ch / s.m). mode "none" lo quita.
+    @PUT("/api/restaurant/sessions/{id}/payment")
+    suspend fun setSessionPayment(
+        @Path("id") sessionId: Int,
+        @Body body: SessionPaymentRequestDto,
+    ): SessionPaymentResponseDto
+
+    // "Cobrado" (D2b, d.u): sin cuerpo; idempotente. No mueve caja: solo registra.
+    @POST("/api/delivery/assignments/{id}/collect")
+    suspend fun collectDeliveryAssignment(@Path("id") assignmentId: Int): SessionPaymentResponseDto
 
     @GET("/api/restaurant/delivery-companies")
     suspend fun listDeliveryCompanies(

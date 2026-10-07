@@ -69,6 +69,10 @@ import com.bendey.restaurant.core.domain.delivery.deliveryAcceptAlertLabel
 import com.bendey.restaurant.core.domain.delivery.deliveryActionLabel
 import com.bendey.restaurant.core.domain.delivery.deliveryAssignmentLabel
 import com.bendey.restaurant.core.domain.delivery.deliveryBoardCounts
+import com.bendey.restaurant.core.domain.delivery.deliveryCollectedLine
+import com.bendey.restaurant.core.domain.delivery.deliveryPaymentLine
+import com.bendey.restaurant.core.domain.delivery.deliveryPaymentWarning
+import com.bendey.restaurant.core.domain.delivery.forceReasonError
 import com.bendey.restaurant.core.domain.delivery.deliveryCardActions
 import com.bendey.restaurant.core.domain.delivery.deliveryCardClock
 import com.bendey.restaurant.core.domain.delivery.deliveryDriverChoice
@@ -200,6 +204,7 @@ private fun DeliveryBoardBody(
             onAssign = viewModel::openAssign,
             onCancel = viewModel::openCancel,
             onDelivered = viewModel::openDelivered,
+            onCollect = viewModel::openCollect,
             onFailed = viewModel::openFailed,
             onCall = { phone -> dial(context, phone) },
         )
@@ -414,6 +419,7 @@ internal class CardCallbacks(
     val onAssign: (DeliveryCard) -> Unit,
     val onCancel: (DeliveryCard) -> Unit,
     val onDelivered: (DeliveryCard) -> Unit,
+    val onCollect: (DeliveryCard) -> Unit,
     val onFailed: (DeliveryCard) -> Unit,
     val onCall: (String) -> Unit,
 )
@@ -470,6 +476,12 @@ private fun DeliveryCardView(
                 BendeyStatusChip(deliveryKitchenLabel(card.orderStatus), chipColor(deliveryKitchenTone(card.orderStatus)))
             }
             if (card.paid) BendeyStatusChip(DeliveryCopy.text("chip.paid"), BendeyColors.Success)
+            // D2b: efectivo contra entrega; con el cobro marcado, "Cobrado".
+            val payment = card.payment
+            if (payment?.isCashOnDelivery == true) {
+                BendeyStatusChip(DeliveryCopy.text("chip.cod"), BendeyColors.Info)
+                if (payment.isCollected) BendeyStatusChip(DeliveryCopy.text("chip.collected"), BendeyColors.Success)
+            }
         }
 
         // Cliente (a la izquierda, con weight) + tiempo transcurrido con semáforo (a la derecha).
@@ -524,6 +536,26 @@ private fun DeliveryCardView(
             )
         }
 
+        // D2b: cuánto cobrar y con cuánto paga el cliente, o quién y cuándo cobró. Texto que se parte (375 dp).
+        val paymentLine = deliveryPaymentLine(card.payment)
+        if (paymentLine.isNotEmpty()) {
+            Text(
+                paymentLine,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = BendeyColors.OnSurface,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        val paymentWarning = deliveryPaymentWarning(card.payment)
+        if (paymentWarning.isNotEmpty()) {
+            Text(paymentWarning, style = MaterialTheme.typography.bodySmall, color = BendeyColors.WarningText, modifier = Modifier.fillMaxWidth())
+        }
+        val collectedLine = deliveryCollectedLine(card.payment, PeruDateTime.formatTimeOrRaw(card.payment?.collectedAt))
+        if (collectedLine.isNotEmpty()) {
+            Text(collectedLine, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant, modifier = Modifier.fillMaxWidth())
+        }
+
         // Repartidor + su estado de asignación + llamarlo.
         card.driver?.let { driver ->
             Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8), verticalAlignment = Alignment.CenterVertically) {
@@ -571,6 +603,10 @@ private fun DeliveryCardView(
                     val label = deliveryActionLabel(action)
                     val mod = Modifier.heightIn(min = BendeySpacing.touchMin)
                     when (action) {
+                        DeliveryAction.COLLECT -> BendeyPrimaryButton(
+                            text = label, onClick = { callbacks.onCollect(card) },
+                            modifier = mod, enabled = !busy, fillWidth = false,
+                        )
                         DeliveryAction.ASSIGN, DeliveryAction.DELIVERED -> BendeyPrimaryButton(
                             text = label, onClick = {
                                 if (action == DeliveryAction.ASSIGN) callbacks.onAssign(card) else callbacks.onDelivered(card)
@@ -631,6 +667,59 @@ private fun DeliveryDialogs(ui: DeliveryUiState, board: DeliveryBoardData?, view
             viewModel = viewModel,
             onConfirm = viewModel::confirmFailed,
         )
+        is DeliveryDialog.Collect -> BendeyAlertDialog(
+            onDismissRequest = viewModel::dismissDialog,
+            title = { Text(DeliveryCopy.text("collect.title")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
+                    Text(dialog.card.customerName.ifBlank { "Sin nombre" }, fontWeight = FontWeight.SemiBold)
+                    deliveryPaymentLine(dialog.card.payment).takeIf { it.isNotEmpty() }?.let { Text(it) }
+                    Text(DeliveryCopy.text("collect.confirm"))
+                    ui.dialogError?.let { Text(it, color = BendeyColors.ErrorText, style = MaterialTheme.typography.bodyMedium) }
+                }
+            },
+            confirmButton = {
+                BendeyPrimaryButton(
+                    text = DeliveryCopy.text("action.collect"),
+                    onClick = viewModel::confirmCollect,
+                    enabled = !ui.busy,
+                    loading = ui.busy,
+                    fillWidth = false,
+                )
+            },
+            dismissButton = { BendeyTextButton(text = "Volver", onClick = viewModel::dismissDialog, enabled = !ui.busy) },
+        )
+        is DeliveryDialog.ForceDelivered -> {
+            val reasonError = if (ui.reasonShowError) forceReasonError(ui.reasonText) else null
+            BendeyAlertDialog(
+                onDismissRequest = viewModel::dismissDialog,
+                title = { Text(DeliveryCopy.text("force.title")) },
+                text = {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
+                        Text(dialog.card.customerName.ifBlank { "Sin nombre" }, fontWeight = FontWeight.SemiBold)
+                        deliveryPaymentLine(dialog.card.payment).takeIf { it.isNotEmpty() }?.let { Text(it) }
+                        Text(DeliveryCopy.text("force.hint"))
+                        BendeyTextField(
+                            value = ui.reasonText,
+                            onValueChange = viewModel::setReasonText,
+                            label = DeliveryCopy.text("force.reason_label"),
+                            singleLine = false,
+                        )
+                        (reasonError ?: ui.dialogError)?.let { Text(it, color = BendeyColors.ErrorText, style = MaterialTheme.typography.bodyMedium) }
+                    }
+                },
+                confirmButton = {
+                    BendeyPrimaryButton(
+                        text = DeliveryCopy.text("force.confirm"),
+                        onClick = viewModel::confirmForceDelivered,
+                        enabled = !ui.busy,
+                        loading = ui.busy,
+                        fillWidth = false,
+                    )
+                },
+                dismissButton = { BendeyTextButton(text = "Volver", onClick = viewModel::dismissDialog, enabled = !ui.busy) },
+            )
+        }
         is DeliveryDialog.Delivered -> BendeyAlertDialog(
             onDismissRequest = viewModel::dismissDialog,
             title = { Text(DeliveryCopy.text("action.delivered")) },

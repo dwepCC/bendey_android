@@ -64,6 +64,8 @@ data class DeliveryCard(
     val paid: Boolean = false,
     /** Tarifa de delivery del pedido (D2.0); null si no tiene. `totalAmount` ya la incluye. */
     val deliveryFee: Double? = null,
+    /** Pago registrado del pedido (D2b, efectivo contra entrega); null si la sesión no tiene pago. */
+    val payment: SessionPayment? = null,
 )
 
 data class DeliveryBoardDriver(
@@ -228,6 +230,41 @@ object DeliveryCopy {
         "badge.aria_one" to "1 pedido de delivery por asignar",
         "badge.aria_many" to "{n} pedidos de delivery por asignar",
         "toast.new_unassigned" to "Nuevo pedido de delivery por asignar",
+        // D2b: efectivo contra entrega. Tauri alinea estas claves después (mismas claves y textos).
+        "chip.cod" to "Contra entrega",
+        "chip.collected" to "Cobrado",
+        "payment.collect" to "Cobrar {amount}",
+        "payment.tendered" to "Paga con {amount}",
+        "payment.change" to "Vuelto {amount}",
+        "payment.exact" to "Paga justo",
+        "payment.insufficient" to "El total subió: revisa con cuánto paga",
+        "action.collect" to "Marcar cobrado",
+        "collect.title" to "Marcar cobrado",
+        "collect.confirm" to "Confirma que ya recibiste el efectivo del cliente.",
+        "ok.collected" to "Pedido marcado como cobrado.",
+        "force.title" to "Aún no está cobrado",
+        "force.hint" to "Este pedido es de pago contra entrega y todavía no se marcó como cobrado. Si igual vas a marcar la entrega, escribe el motivo.",
+        "force.reason_label" to "Motivo",
+        "force.reason_required" to "Escribe el motivo (mínimo 3 letras).",
+        "force.confirm" to "Marcar entregado igual",
+        "cod.title" to "Pago contra entrega",
+        "cod.switch" to "Permitir pago en efectivo contra entrega",
+        "cod.help" to "Tus clientes del marketplace podrán elegir pagar en efectivo al recibir. El repartidor cobra y tú lo ves en Entregas. El registro del efectivo en caja se hará en una próxima actualización; el comprobante lo sigues emitiendo tú.",
+        "cod.confirm_title" to "¿Activar el pago contra entrega?",
+        "cod.confirm_text" to "Desde ahora tus clientes del marketplace podrán elegir pagar en efectivo al recibir. El pedido entra directo a cocina y el repartidor cobra al entregar.",
+        "cod.confirm_action" to "Activar",
+        "cod.read_only" to "Solo el administrador puede cambiar el pago contra entrega.",
+        "cod.saved_on" to "Pago contra entrega activado.",
+        "cod.saved_off" to "Pago contra entrega desactivado.",
+        "cod.on" to "Encendido",
+        "cod.off" to "Apagado",
+        "pos.payment_label" to "Pago",
+        "pos.payment_none" to "Sin definir",
+        "pos.payment_cod" to "Efectivo contra entrega",
+        "pos.tendered_label" to "El cliente paga con (S/)",
+        "pos.tendered_low" to "Debe cubrir el total {amount}",
+        "pos.tendered_invalid" to "Revisa el monto: usa solo números, con hasta 2 decimales.",
+        "pos.change_estimate" to "Vuelto estimado {amount}",
     )
 
     /** Valores numéricos (umbrales) en el mismo formato clave -> texto que usa el documento. */
@@ -467,6 +504,9 @@ enum class DeliveryAction(val key: String) {
     CANCEL("cancel"),
     DELIVERED("delivered"),
     FAILED("failed"),
+
+    /** D2b: "Marcar cobrado" (efectivo contra entrega). */
+    COLLECT("collect"),
 }
 
 fun deliveryActionLabel(action: DeliveryAction): String = DeliveryCopy.text("action.${action.key}")
@@ -483,6 +523,8 @@ fun deliveryCardActions(card: DeliveryCard, section: DeliverySection, canAssign:
         DeliverySection.UNASSIGNED -> { out += DeliveryAction.ASSIGN; out += DeliveryAction.CANCEL }
         DeliverySection.ASSIGNED -> { out += DeliveryAction.REASSIGN; out += DeliveryAction.CANCEL }
         DeliverySection.IN_TRANSIT -> {
+            // D2b: con efectivo contra entrega pendiente, "Marcar cobrado" va antes que "Marcar entregado".
+            if (canCollectDelivery(card.payment, card.assignmentId, card.assignmentStatus)) out += DeliveryAction.COLLECT
             if (card.assignmentId != null) { out += DeliveryAction.DELIVERED; out += DeliveryAction.FAILED }
             out += DeliveryAction.REASSIGN
             out += DeliveryAction.CANCEL

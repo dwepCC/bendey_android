@@ -12,6 +12,7 @@ import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
 import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.domain.delivery.DeliverySection
+import com.bendey.restaurant.core.domain.delivery.SessionPayment
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardStore
 import kotlinx.coroutines.CoroutineScope
@@ -68,8 +69,24 @@ class DeliveryPresenterTest {
         override fun peekDeliverySettings(): DeliverySettings? = settings
         override suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String) = act("cancel:$sessionId:$reason")
-        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?) =
-            act("status:$assignmentId:$status:${failedReason.orEmpty()}")
+        /** D2b: respuestas de `updateAssignmentStatus` en orden (la primera se consume); vacío = `actionResult`. */
+        val statusResults = CopyOnWriteArrayList<AppResult<Unit>>()
+        @Volatile var collectResult: AppResult<SessionPayment?> = AppResult.Success(null)
+
+        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?, forceReason: String?): AppResult<Unit> {
+            val name = "status:$assignmentId:$status:${failedReason.orEmpty()}" + (forceReason?.let { ":force=$it" } ?: "")
+            val queued = if (statusResults.isNotEmpty()) statusResults.removeAt(0) else null
+            val r = act(name)
+            return queued ?: r
+        }
+
+        override suspend fun setSessionPayment(sessionId: Int, mode: String, cashTendered: Double?): AppResult<SessionPayment?> =
+            AppResult.Success(null)
+
+        override suspend fun collectAssignment(assignmentId: Int): AppResult<SessionPayment?> {
+            actions += "collect:$assignmentId"
+            return collectResult
+        }
 
         override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = AppResult.Success(emptyList())
         override suspend fun createDriver(input: DeliveryDriverFormInput): AppResult<Unit> = AppResult.Success(Unit)
@@ -391,6 +408,153 @@ class DeliveryPresenterTest {
         presenter.setReasonText("a".repeat(400))
         assertEquals(255, presenter.state.value.reasonText.length)
         assertNotNull(presenter.state.value)
+    }
+
+    // ---- efectivo contra entrega (D2b) ----
+
+    private fun codPayment(status: String = "pending_collection") = SessionPayment(
+        mode = "cash_on_delivery", status = status, expectedAmount = 83.0, tenderedAmount = 100.0, changeAmount = 17.0,
+    )
+
+    private fun codCard(assignmentStatus: String = "on_the_way", payment: SessionPayment? = codPayment()) =
+        card().copy(assignmentStatus = assignmentStatus, payment = payment)
+
+    private fun admin() = presenter.setPermissions(listOf("d.v", "d.u", "s.m"))
+
+    @Test fun marcarCobradoAbreElDialogoSoloConCobroPendienteYAsignacionRecogida() {
+        operator()
+        presenter.openCollect(codCard("assigned"))
+        assertNull("aún no recogió", presenter.state.value.dialog)
+        presenter.openCollect(codCard(payment = null))
+        assertNull("sin pago contra entrega", presenter.state.value.dialog)
+        presenter.openCollect(codCard(payment = codPayment("collected")))
+        assertNull("ya cobrado", presenter.state.value.dialog)
+        presenter.openCollect(codCard("picked_up"))
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Collect)
+    }
+
+    @Test fun sinPermisoDeOperarNoSePuedeCobrar() {
+        presenter.setPermissions(listOf("d.v"))
+        presenter.openCollect(codCard())
+        assertNull(presenter.state.value.dialog)
+        presenter.confirmCollect()
+        assertTrue(repo.actions.isEmpty())
+    }
+
+    @Test fun cobrarLlamaAlServidorAvisaYRecarga() {
+        operator()
+        presenter.openCollect(codCard())
+        val msgs = CopyOnWriteArrayList<String>()
+        val job = collect(presenter.messages, msgs)
+        presenter.confirmCollect()
+        settle()
+        await { msgs.isNotEmpty() }
+        assertEquals(listOf("collect:7"), repo.actions.toList())
+        assertNull(presenter.state.value.dialog)
+        assertEquals("Pedido marcado como cobrado.", msgs.first())
+        assertTrue(repo.boardCalls.get() >= 1)
+        job.cancel()
+    }
+
+    @Test fun unErrorAlCobrarSeQuedaDentroDelDialogo() {
+        operator()
+        repo.collectResult = AppResult.Error("Solo puedes cobrar cuando ya recogiste el pedido.", code = "COLLECT_STATUS_INVALID")
+        presenter.openCollect(codCard())
+        presenter.confirmCollect()
+        settle()
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Collect)
+        assertEquals("Solo puedes cobrar cuando ya recogiste el pedido.", presenter.state.value.dialogError)
+        assertFalse(presenter.state.value.busy)
+    }
+
+    @Test fun conCobroPendienteYPermisoDeCajaMarcarEntregadoVaDirectoAlMotivo() {
+        cashier()
+        presenter.openDelivered(codCard())
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.ForceDelivered)
+        presenter.dismissDialog()
+        admin()
+        presenter.openDelivered(codCard())
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.ForceDelivered)
+    }
+
+    @Test fun sinPermisoParaForzarSeAbreElDialogoNormal() {
+        operator()
+        assertFalse(presenter.state.value.canForce)
+        presenter.openDelivered(codCard())
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Delivered)
+    }
+
+    @Test fun forzarExigeMotivoDe3A255YLoEnviaComoForceReason() {
+        cashier()
+        presenter.openDelivered(codCard())
+        presenter.confirmForceDelivered()
+        assertTrue(presenter.state.value.reasonShowError)
+        assertTrue(repo.actions.isEmpty())
+        presenter.setReasonText("ab")
+        presenter.confirmForceDelivered()
+        assertTrue(repo.actions.isEmpty())
+        presenter.setReasonText("  El cliente pagó en caja  ")
+        presenter.confirmForceDelivered()
+        settle()
+        await { presenter.state.value.dialog == null }
+        assertEquals(listOf("status:7:delivered::force=El cliente pagó en caja"), repo.actions.toList())
+    }
+
+    @Test fun elServidorPideCobroYConPermisoSeReintentaConMotivo() {
+        cashier()
+        // La tarjeta no traía el pago (p. ej. tablero viejo): el servidor responde COLLECTION_REQUIRED.
+        repo.statusResults += AppResult.Error("Primero marca «Cobrado» antes de marcar la entrega.", code = "COLLECTION_REQUIRED")
+        presenter.openDelivered(codCard(payment = null))
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Delivered)
+        presenter.confirmDelivered()
+        await { presenter.state.value.dialog is DeliveryDialog.ForceDelivered }
+        assertNull("el aviso no se queda pegado", presenter.state.value.dialogError)
+        presenter.setReasonText("Pagó por Yape")
+        presenter.confirmForceDelivered()
+        await { presenter.state.value.dialog == null && !presenter.state.value.busy }
+        assertEquals(
+            listOf("status:7:delivered:", "status:7:delivered::force=Pagó por Yape"),
+            repo.actions.toList(),
+        )
+    }
+
+    @Test fun sinPermisoParaForzarSoloSeMuestraElMensajeDelCatalogo() {
+        operator()
+        repo.statusResults += AppResult.Error("Primero marca «Cobrado» antes de marcar la entrega.", code = "COLLECTION_REQUIRED")
+        presenter.openDelivered(codCard(payment = null))
+        presenter.confirmDelivered()
+        settle()
+        assertTrue("sigue el diálogo normal", presenter.state.value.dialog is DeliveryDialog.Delivered)
+        assertEquals("Primero marca «Cobrado» antes de marcar la entrega.", presenter.state.value.dialogError)
+    }
+
+    @Test fun elRepartidorNuncaFuerza() {
+        presenter.setPermissions(listOf("d.v", "d.u", "o.ch", "s.m"), "driver")
+        assertFalse(presenter.state.value.canForce)
+    }
+
+    @Test fun cancelarConPagoYaCobradoMuestraElErrorDentroSinCerrar() {
+        operator()
+        repo.actionResult = AppResult.Error("Este pedido ya no admite cambios en el pago.", code = "PAYMENT_NOT_EDITABLE")
+        presenter.openCancel(codCard(payment = codPayment("collected")))
+        presenter.chooseReason("El cliente canceló")
+        presenter.confirmCancel()
+        settle()
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Cancel)
+        assertEquals("Este pedido ya no admite cambios en el pago.", presenter.state.value.dialogError)
+    }
+
+    @Test fun conContraEntregaApagadoTodoSigueComoHoy() {
+        operator()
+        // Sin `payment` en la tarjeta: "Marcar entregado" abre el diálogo normal y entrega sin tocar nada de cobro.
+        presenter.openDelivered(card().copy(assignmentStatus = "on_the_way"))
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Delivered)
+        presenter.confirmDelivered()
+        settle()
+        await { presenter.state.value.dialog == null }
+        assertEquals(listOf("status:7:delivered:"), repo.actions.toList())
+        presenter.openCollect(card().copy(assignmentStatus = "on_the_way"))
+        assertNull(presenter.state.value.dialog)
     }
 
     private fun <T> collect(flow: SharedFlow<T>, into: MutableList<T>): Job =

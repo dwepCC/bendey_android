@@ -8,6 +8,7 @@ claves, textos y valores tal cual. `deliveryBoardLogic.test.ts` falla si este do
 
 - Dos tablas de dos columnas: `| \`clave\` | valor |`. Una fila por línea; el texto va literal (sin escapar).
 - `{n}` en un texto es un marcador que se reemplaza por el número.
+- `{amount}` es un monto ya formateado (`S/ 83.00`). Las claves `chip.cod` a `pos.change_estimate` (al final de la tabla de textos) son de D2b (efectivo contra entrega): las definió Android con los textos de la spec y Tauri las alinea después con las mismas claves y el mismo texto.
 - Minutos = minutos enteros transcurridos (suelo). Formato de tiempo: `7 min` / `1 h 05 min` (igual que el KDS).
 
 ## Reglas del semáforo
@@ -115,3 +116,37 @@ claves, textos y valores tal cual. `deliveryBoardLogic.test.ts` falla si este do
 | `badge.aria_one` | 1 pedido de delivery por asignar |
 | `badge.aria_many` | {n} pedidos de delivery por asignar |
 | `toast.new_unassigned` | Nuevo pedido de delivery por asignar |
+| `chip.cod` | Contra entrega |
+| `chip.collected` | Cobrado |
+| `payment.collect` | Cobrar {amount} |
+| `payment.tendered` | Paga con {amount} |
+| `payment.change` | Vuelto {amount} |
+| `payment.exact` | Paga justo |
+| `payment.insufficient` | El total subió: revisa con cuánto paga |
+| `action.collect` | Marcar cobrado |
+| `collect.title` | Marcar cobrado |
+| `collect.confirm` | Confirma que ya recibiste el efectivo del cliente. |
+| `ok.collected` | Pedido marcado como cobrado. |
+| `force.title` | Aún no está cobrado |
+| `force.hint` | Este pedido es de pago contra entrega y todavía no se marcó como cobrado. Si igual vas a marcar la entrega, escribe el motivo. |
+| `force.reason_label` | Motivo |
+| `force.reason_required` | Escribe el motivo (mínimo 3 letras). |
+| `force.confirm` | Marcar entregado igual |
+| `cod.title` | Pago contra entrega |
+| `cod.switch` | Permitir pago en efectivo contra entrega |
+| `cod.help` | Tus clientes del marketplace podrán elegir pagar en efectivo al recibir. El repartidor cobra y tú lo ves en Entregas. El registro del efectivo en caja se hará en una próxima actualización; el comprobante lo sigues emitiendo tú. |
+| `cod.confirm_title` | ¿Activar el pago contra entrega? |
+| `cod.confirm_text` | Desde ahora tus clientes del marketplace podrán elegir pagar en efectivo al recibir. El pedido entra directo a cocina y el repartidor cobra al entregar. |
+| `cod.confirm_action` | Activar |
+| `cod.read_only` | Solo el administrador puede cambiar el pago contra entrega. |
+| `cod.saved_on` | Pago contra entrega activado. |
+| `cod.saved_off` | Pago contra entrega desactivado. |
+| `cod.on` | Encendido |
+| `cod.off` | Apagado |
+| `pos.payment_label` | Pago |
+| `pos.payment_none` | Sin definir |
+| `pos.payment_cod` | Efectivo contra entrega |
+| `pos.tendered_label` | El cliente paga con (S/) |
+| `pos.tendered_low` | Debe cubrir el total {amount} |
+| `pos.tendered_invalid` | Revisa el monto: usa solo números, con hasta 2 decimales. |
+| `pos.change_estimate` | Vuelto estimado {amount} |

@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.delivery.DeliveryBoardData
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.SessionPayment
 import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.domain.model.AppResult
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,7 @@ class DeliveryFeeSettingsPresenterTest {
                     feeEnabled = update.feeEnabled ?: server.feeEnabled,
                     deliveryFee = update.deliveryFee ?: server.deliveryFee,
                     feeIgvAffectation = update.feeIgvAffectation ?: server.feeIgvAffectation,
+                    codEnabled = update.codEnabled ?: server.codEnabled,
                 )
                 cached = server
                 AppResult.Success(server)
@@ -56,7 +58,9 @@ class DeliveryFeeSettingsPresenterTest {
         override suspend fun getDeliveryBoard(): AppResult<DeliveryBoardData> = AppResult.Success(DeliveryBoardData())
         override suspend fun assignDriver(sessionId: Int, driverId: Int, deliveryFee: Double?): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit> = AppResult.Success(Unit)
-        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?, forceReason: String?): AppResult<Unit> = AppResult.Success(Unit)
+        override suspend fun setSessionPayment(sessionId: Int, mode: String, cashTendered: Double?): AppResult<SessionPayment?> = AppResult.Success(null)
+        override suspend fun collectAssignment(assignmentId: Int): AppResult<SessionPayment?> = AppResult.Success(null)
         override suspend fun listDrivers(): AppResult<List<DeliveryDriver>> = AppResult.Success(emptyList())
         override suspend fun createDriver(input: DeliveryDriverFormInput): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun updateDriver(id: Int, input: DeliveryDriverFormInput): AppResult<Unit> = AppResult.Success(Unit)

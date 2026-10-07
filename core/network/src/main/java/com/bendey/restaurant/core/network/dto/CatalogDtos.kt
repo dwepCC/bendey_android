@@ -321,6 +321,8 @@ data class DeliveryCardDto(
     val paid: Boolean? = null,
     // D2.0: tarifa de delivery del pedido (null si no tiene); total_amount ya la incluye.
     @SerialName("delivery_fee") val deliveryFee: Double? = null,
+    // D2b: pago registrado (efectivo contra entrega); null/ausente = la sesión no tiene pago.
+    val payment: SessionPaymentDto? = null,
 )
 
 @Serializable
@@ -340,6 +342,47 @@ data class DeliveryCancelRequestDto(val reason: String)
 data class DeliveryStatusRequestDto(
     val status: String,
     @SerialName("failed_reason") val failedReason: String? = null,
+    // D2b: solo `delivered` de staff con o.ch / s.m cuando el efectivo contra entrega no está cobrado (3-255).
+    @SerialName("force_reason") val forceReason: String? = null,
+)
+
+/**
+ * Objeto `payment` (D2B_COMMON): misma forma en tablero, detalle de sesión y respuestas de pago. Todo opcional:
+ * un campo ausente o nulo NUNCA rompe el parseo.
+ */
+@Serializable
+data class SessionPaymentDto(
+    val mode: String? = null,
+    val status: String? = null,
+    @SerialName("expected_amount") val expectedAmount: Double? = null,
+    @SerialName("tendered_amount") val tenderedAmount: Double? = null,
+    @SerialName("change_amount") val changeAmount: Double? = null,
+    @SerialName("tendered_insufficient") val tenderedInsufficient: Boolean? = null,
+    @SerialName("collected_at") val collectedAt: String? = null,
+    @SerialName("collected_by") val collectedBy: PaymentCollectorDto? = null,
+)
+
+@Serializable
+data class PaymentCollectorDto(
+    val id: Int = 0,
+    val name: String? = null,
+    val kind: String? = null,
+)
+
+/** `PUT /api/restaurant/sessions/:id/payment`: `{"mode":"cash_on_delivery","cash_tendered":100}` o `{"mode":"none"}`. */
+@Serializable
+data class SessionPaymentRequestDto(
+    val mode: String,
+    @SerialName("cash_tendered") val cashTendered: Double? = null,
+)
+
+/** Respuesta del PUT de pago y del "cobrado": `payment` puede ser null (se quitó el pago). Acepta `{data}`. */
+@Serializable
+data class SessionPaymentResponseDto(
+    @SerialName("session_id") val sessionId: Int? = null,
+    @SerialName("assignment_id") val assignmentId: Int? = null,
+    val payment: SessionPaymentDto? = null,
+    val data: SessionPaymentResponseDto? = null,
 )
 
 @Serializable
@@ -377,6 +420,8 @@ data class DeliverySettingsUpdateRequestDto(
     @SerialName("fee_enabled") val feeEnabled: Boolean? = null,
     @SerialName("delivery_fee") val deliveryFee: Double? = null,
     @SerialName("fee_igv_affectation") val feeIgvAffectation: String? = null,
+    // D2b: se envía solo al tocar el interruptor de contra entrega (s.m).
+    @SerialName("cod_enabled") val codEnabled: Boolean? = null,
 )
 
 /** `PUT /api/restaurant/sessions/:id/delivery/fee`: 0 elimina la línea. */

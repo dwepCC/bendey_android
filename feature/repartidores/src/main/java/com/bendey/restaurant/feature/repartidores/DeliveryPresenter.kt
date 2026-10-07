@@ -7,7 +7,11 @@ import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
 import com.bendey.restaurant.core.domain.delivery.assignFeeInitialText
 import com.bendey.restaurant.core.domain.delivery.assignFeeToSend
+import com.bendey.restaurant.core.domain.delivery.canCollectDelivery
 import com.bendey.restaurant.core.domain.delivery.canEditDeliveryFee
+import com.bendey.restaurant.core.domain.delivery.canForceDelivery
+import com.bendey.restaurant.core.domain.delivery.forceReasonError
+import com.bendey.restaurant.core.domain.delivery.isCodPending
 import com.bendey.restaurant.core.domain.delivery.isValidAssignFeeText
 import com.bendey.restaurant.core.domain.delivery.showsAssignFeeField
 import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
@@ -46,7 +50,15 @@ sealed interface DeliveryDialog {
 
     /** Confirmar "Marcar entregado". */
     data class Delivered(override val card: DeliveryCard) : DeliveryDialog
+
+    /** D2b: confirmar "Marcar cobrado" (efectivo contra entrega ya recibido). */
+    data class Collect(override val card: DeliveryCard) : DeliveryDialog
+
+    /** D2b: "Aún no está cobrado": entregar igual con motivo obligatorio (solo `o.ch` / `s.m`). */
+    data class ForceDelivered(override val card: DeliveryCard) : DeliveryDialog
 }
+
+private const val COLLECTION_REQUIRED = "COLLECTION_REQUIRED"
 
 /** Estado de la pantalla Delivery que NO es del tablero (el tablero vive en [DeliveryBoardStore]). */
 data class DeliveryUiState(
@@ -67,6 +79,8 @@ data class DeliveryUiState(
     val dialogError: String? = null,
     /** `o.ch` o `s.m` (D2.0): sin esto el campo de tarifa de la hoja de asignar sale deshabilitado. */
     val canEditFee: Boolean = false,
+    /** `o.ch` o `s.m` (D2b): puede entregar un pedido contra entrega sin cobro marcado, con motivo. */
+    val canForce: Boolean = false,
     /** Ajustes de delivery conocidos (caché compartida); null hasta que se lean. */
     val settings: DeliverySettings? = null,
     /** Texto del campo "Tarifa de delivery (S/)" de la hoja de asignar y el valor con el que se abrió. */
@@ -104,6 +118,7 @@ class DeliveryPresenter(
             it.copy(
                 canAssign = canOperateDeliveryBoard(permissions, employeeType),
                 canEditFee = canEditDeliveryFee(permissions) && !isDeliveryDriver(employeeType),
+                canForce = canForceDelivery(permissions) && !isDeliveryDriver(employeeType),
             )
         }
     }
@@ -169,7 +184,18 @@ class DeliveryPresenter(
     }
 
     fun openDelivered(card: DeliveryCard) {
-        if (card.assignmentId != null) open(DeliveryDialog.Delivered(card))
+        if (card.assignmentId == null) return
+        // D2b: si ya se sabe que el efectivo no está cobrado y se puede forzar, se va directo al motivo.
+        if (card.payment.isCodPending() && _state.value.canForce) {
+            open(DeliveryDialog.ForceDelivered(card))
+        } else {
+            open(DeliveryDialog.Delivered(card))
+        }
+    }
+
+    /** D2b: "Marcar cobrado" solo con efectivo contra entrega pendiente y la asignación recogida o en camino. */
+    fun openCollect(card: DeliveryCard) {
+        if (canCollectDelivery(card.payment, card.assignmentId, card.assignmentStatus)) open(DeliveryDialog.Collect(card))
     }
 
     fun dismissDialog() {
@@ -230,15 +256,59 @@ class DeliveryPresenter(
     fun confirmDelivered() {
         val dialog = _state.value.dialog as? DeliveryDialog.Delivered ?: return
         val assignmentId = dialog.card.assignmentId ?: return
-        run(okMessage = DeliveryCopy.text("ok.delivered")) {
+        run(
+            okMessage = DeliveryCopy.text("ok.delivered"),
+            // D2b: el servidor dice que falta cobrar. Con o.ch / s.m se pasa al diálogo del motivo; sin ellos
+            // solo se muestra el mensaje del catálogo (comportamiento normal).
+            onError = { e ->
+                if (e.code == COLLECTION_REQUIRED && _state.value.canForce) {
+                    _state.update {
+                        it.copy(dialog = DeliveryDialog.ForceDelivered(dialog.card), reasonChoice = null, reasonText = "", reasonShowError = false, dialogError = null)
+                    }
+                    true
+                } else {
+                    false
+                }
+            },
+        ) {
             repository.updateAssignmentStatus(assignmentId, "delivered")
+        }
+    }
+
+    fun confirmForceDelivered() {
+        val dialog = _state.value.dialog as? DeliveryDialog.ForceDelivered ?: return
+        val assignmentId = dialog.card.assignmentId ?: return
+        if (!_state.value.canForce) return
+        val reason = _state.value.reasonText.trim()
+        if (forceReasonError(reason) != null) {
+            _state.update { it.copy(reasonShowError = true) }
+            return
+        }
+        run(okMessage = DeliveryCopy.text("ok.delivered")) {
+            repository.updateAssignmentStatus(assignmentId, "delivered", forceReason = reason)
+        }
+    }
+
+    fun confirmCollect() {
+        val dialog = _state.value.dialog as? DeliveryDialog.Collect ?: return
+        val assignmentId = dialog.card.assignmentId ?: return
+        run(okMessage = DeliveryCopy.text("ok.collected")) {
+            when (val r = repository.collectAssignment(assignmentId)) {
+                is AppResult.Success -> AppResult.Success(Unit)
+                is AppResult.Error -> r
+                AppResult.Loading -> AppResult.Loading
+            }
         }
     }
 
     private fun currentReason(): String =
         _state.value.let { deliveryResolveReason(it.reasonChoice, it.reasonText) }
 
-    private fun run(okMessage: String, block: suspend () -> AppResult<Unit>) {
+    private fun run(
+        okMessage: String,
+        onError: ((AppResult.Error) -> Boolean)? = null,
+        block: suspend () -> AppResult<Unit>,
+    ) {
         val s = _state.value
         if (!s.canAssign || s.busy) return
         _state.update { it.copy(busy = true, dialogError = null) }
@@ -255,8 +325,12 @@ class DeliveryPresenter(
                     _messages.tryEmit(okMessage)
                 }
                 is AppResult.Error -> {
-                    _state.update { it.copy(busy = false, dialogError = result.message) }
-                    _messages.tryEmit(result.message)
+                    if (onError?.invoke(result) == true) {
+                        _state.update { it.copy(busy = false) }
+                    } else {
+                        _state.update { it.copy(busy = false, dialogError = result.message) }
+                        _messages.tryEmit(result.message)
+                    }
                 }
                 AppResult.Loading -> _state.update { it.copy(busy = false) }
             }

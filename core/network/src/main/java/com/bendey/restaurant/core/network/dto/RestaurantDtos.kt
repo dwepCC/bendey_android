@@ -315,6 +315,8 @@ data class SessionDetailDto(
     @SerialName("delivery_driver_id") val deliveryDriverId: Int? = null,
     @SerialName("driver_name") val driverName: String? = null,
     @SerialName("estimated_minutes") val estimatedMinutes: Int? = null,
+    // D2b: pago registrado (efectivo contra entrega); null/ausente = sin pago.
+    val payment: SessionPaymentDto? = null,
     val orders: List<SessionOrderDto> = emptyList(),
 )
 

@@ -220,6 +220,8 @@ data class TableSessionDetail(
     val driverName: String? = null,
     val notes: String? = null,
     val estimatedMinutes: Int? = null,
+    /** D2b: pago registrado (efectivo contra entrega); null si la sesión no tiene. */
+    val payment: com.bendey.restaurant.core.domain.delivery.SessionPayment? = null,
     val orders: List<SessionOrderSummary>,
 )
 

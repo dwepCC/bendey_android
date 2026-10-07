@@ -30,6 +30,13 @@ class DeliverySettingsMapperTest {
         assertEquals(15, s.paymentReviewMinutes)
     }
 
+    @Test fun leeCodEnabledEncendidoYSinDatoQuedaApagado() {
+        assertTrue(parse("""{"cod_enabled":true}""").codEnabled)
+        assertFalse(parse("""{"cod_enabled":null}""").codEnabled)
+        assertFalse(parse("{}").codEnabled)
+        assertTrue(parse("""{"data":{"cod_enabled":true}}""").codEnabled)
+    }
+
     @Test fun sinFilaTodoPorDefectoYApagado() {
         val s = parse("{}")
         assertFalse(s.feeEnabled)

@@ -63,7 +63,22 @@ interface DeliveryRepository {
     suspend fun cancelDeliveryOrder(sessionId: Int, reason: String): AppResult<Unit>
 
     /** Cambio de estado por staff (delivered | failed). `PUT /api/delivery/assignments/:id/status` (d.u). */
-    suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String? = null): AppResult<Unit>
+    suspend fun updateAssignmentStatus(
+        assignmentId: Int,
+        status: String,
+        failedReason: String? = null,
+        /** D2b: motivo para forzar `delivered` sin cobro (o.ch / s.m, 3-255). */
+        forceReason: String? = null,
+    ): AppResult<Unit>
+
+    /**
+     * Pago contra entrega de un pedido del POS (D2b). `PUT /api/restaurant/sessions/:id/payment` (o.c / o.ch / s.m).
+     * [mode] = `cash_on_delivery` | `none`; [cashTendered] null = paga justo. Devuelve el pago ya guardado (null si se quitó).
+     */
+    suspend fun setSessionPayment(sessionId: Int, mode: String, cashTendered: Double? = null): AppResult<com.bendey.restaurant.core.domain.delivery.SessionPayment?>
+
+    /** "Cobrado": `POST /api/delivery/assignments/:id/collect` (d.u). Idempotente; solo registra, no mueve caja. */
+    suspend fun collectAssignment(assignmentId: Int): AppResult<com.bendey.restaurant.core.domain.delivery.SessionPayment?>
 
     suspend fun listCompanies(): AppResult<List<DeliveryCompany>>
     suspend fun createCompany(input: DeliveryCompanyFormInput): AppResult<Unit>

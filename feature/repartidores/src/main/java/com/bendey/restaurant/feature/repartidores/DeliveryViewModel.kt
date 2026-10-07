@@ -54,4 +54,7 @@ class DeliveryViewModel @Inject constructor(
     fun confirmCancel() = presenter.confirmCancel()
     fun confirmFailed() = presenter.confirmFailed()
     fun confirmDelivered() = presenter.confirmDelivered()
+    fun openCollect(card: DeliveryCard) = presenter.openCollect(card)
+    fun confirmCollect() = presenter.confirmCollect()
+    fun confirmForceDelivered() = presenter.confirmForceDelivered()
 }
