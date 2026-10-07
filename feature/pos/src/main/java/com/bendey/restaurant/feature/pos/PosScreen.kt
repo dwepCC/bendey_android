@@ -493,6 +493,7 @@ fun PosScreen(
         allowDiscount = state.allowCheckoutDiscount,
         serviceChargeAmount = checkoutServiceChargeAmount,
         serviceChargeRate = state.serviceChargeRate,
+        nonDiscountableAmount = state.deliveryFeeShown,
         payments = state.checkoutPayments,
         seriesId = state.checkoutSeriesId,
         docType = state.checkoutDocType,

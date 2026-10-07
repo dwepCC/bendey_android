@@ -281,7 +281,7 @@ data class PosUiState(
         get() = checkoutDiscountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
 
     val checkoutDiscountAmount: Double
-        get() = calcCheckoutDiscountAmount(checkoutRawTotal, checkoutDiscountMode, discountNumeric)
+        get() = calcCheckoutDiscountAmount(checkoutRawTotal, checkoutDiscountMode, discountNumeric, deliveryFeeShown)
 
     /**
      * Única fuente de verdad del RC en el ViewModel — antes SOLO existía como un `remember` local
@@ -292,7 +292,7 @@ data class PosUiState(
      */
     val checkoutServiceChargeAmount: Double
         get() = calcServiceChargePreview(
-            total = checkoutRawTotal,
+            total = (checkoutRawTotal - deliveryFeeShown).coerceAtLeast(0.0),
             discountAmount = checkoutDiscountAmount,
             rate = serviceChargeRate,
             enabled = serviceChargeEnabled,
@@ -307,6 +307,7 @@ data class PosUiState(
             serviceChargeRate = serviceChargeRate,
             serviceChargeEnabled = serviceChargeEnabled,
             taxRatePercent = resolveTaxRatePercent(checkoutMeta?.taxRate),
+            nonDiscountableAmount = deliveryFeeShown,
         )
 
     val canCheckout: Boolean get() = canChargeOrders && checkoutRawTotal > 0 && !checkoutSubmitting && !sending

@@ -105,6 +105,8 @@ fun CheckoutDialog(
     serviceChargeAmount: Double = 0.0,
     /** Porcentaje configurado de RC (ej. 5 para 5%), solo para el label ("RC 5%"). */
     serviceChargeRate: Double = 0.0,
+    /** Tarifa de delivery (D2.0): fuera de la base del descuento (el RC ya viene calculado sin ella). */
+    nonDiscountableAmount: Double = 0.0,
     confirmLabel: String = "Confirmar cobro",
     lockedSeries: List<DocumentSeries> = emptyList(),
     onLockedDocTypeSelect: () -> Unit = {},
@@ -128,8 +130,8 @@ fun CheckoutDialog(
     val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
     val series = meta?.series.orEmpty()
     val discountNumeric = discountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
-    val discountAmount = calcCheckoutDiscountAmount(rawTotal, discountMode, discountNumeric)
-    val payableTotal = roundSunat(calcPayableTotal(rawTotal, discountMode, discountNumeric) + serviceChargeAmount)
+    val discountAmount = calcCheckoutDiscountAmount(rawTotal, discountMode, discountNumeric, nonDiscountableAmount)
+    val payableTotal = roundSunat(calcPayableTotal(rawTotal, discountMode, discountNumeric, nonDiscountableAmount) + serviceChargeAmount)
     val paidTotal = payments.sumOf { it.amount.replace(',', '.').trim().toDoubleOrNull() ?: 0.0 }
     val remaining = (payableTotal - paidTotal).coerceAtLeast(0.0)
     val change = (paidTotal - payableTotal).coerceAtLeast(0.0)

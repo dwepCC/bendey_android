@@ -15,8 +15,10 @@ fun calcCheckoutDiscountAmount(
     rawTotal: Double,
     mode: CheckoutDiscountMode,
     value: Double,
+    /** Parte del total que no admite descuento (tarifa de delivery, D2.0): se resta de la base. */
+    nonDiscountableAmount: Double = 0.0,
 ): Double {
-    val base = roundSunat(rawTotal.coerceAtLeast(0.0))
+    val base = roundSunat((rawTotal - nonDiscountableAmount.coerceAtLeast(0.0)).coerceAtLeast(0.0))
     if (base <= 0) return 0.0
     val rawValue = value.coerceAtLeast(0.0)
     return when (mode) {
@@ -32,8 +34,9 @@ fun calcPayableTotal(
     rawTotal: Double,
     mode: CheckoutDiscountMode,
     value: Double,
+    nonDiscountableAmount: Double = 0.0,
 ): Double {
-    val discount = calcCheckoutDiscountAmount(rawTotal, mode, value)
+    val discount = calcCheckoutDiscountAmount(rawTotal, mode, value, nonDiscountableAmount)
     return roundSunat((roundSunat(rawTotal) - discount).coerceAtLeast(0.0))
 }
 
@@ -50,16 +53,19 @@ fun calcPayableTotalWithServiceCharge(
     serviceChargeRate: Double,
     serviceChargeEnabled: Boolean,
     taxRatePercent: Double,
+    /** Tarifa de delivery (D2.0): no entra a la base del descuento ni del RC, se suma después. */
+    nonDiscountableAmount: Double = 0.0,
 ): Double {
-    val discountAmount = calcCheckoutDiscountAmount(rawTotal, mode, value)
+    val nd = nonDiscountableAmount.coerceAtLeast(0.0)
+    val discountAmount = calcCheckoutDiscountAmount(rawTotal, mode, value, nd)
     val serviceCharge = calcServiceChargePreview(
-        total = rawTotal,
+        total = (rawTotal - nd).coerceAtLeast(0.0),
         discountAmount = discountAmount,
         rate = serviceChargeRate,
         enabled = serviceChargeEnabled,
         taxRatePercent = taxRatePercent,
     )
-    return roundSunat(calcPayableTotal(rawTotal, mode, value) + serviceCharge)
+    return roundSunat(calcPayableTotal(rawTotal, mode, value, nd) + serviceCharge)
 }
 
 fun paidCoversTotal(paid: Double, expected: Double): Boolean =
