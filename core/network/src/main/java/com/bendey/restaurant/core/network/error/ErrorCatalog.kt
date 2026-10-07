@@ -343,6 +343,13 @@ object ErrorCatalog {
         "DELIVERY_FEE_FORBIDDEN" to e("Sin permiso para la tarifa", "No tienes permiso para cambiar la tarifa de delivery.", ErrorAction.CONTACT_ADMIN),
         "DELIVERY_FEE_INVALID" to e("Tarifa no válida", "Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99.", ErrorAction.BACK_TO_TRY),
         "DELIVERY_FEE_NOT_EDITABLE" to e("Tarifa no editable", "Este pedido ya no admite cambios en la tarifa de delivery.", ErrorAction.REFRESH),
+        // D2b: efectivo contra entrega, al final del bloque (alfabético entre sí; textos exactos de D2B_COMMON §8).
+        "CASH_TENDERED_TOO_LOW" to e("Monto no válido", "El monto con el que pagas debe cubrir el total del pedido.", ErrorAction.BACK_TO_TRY),
+        "COLLECTION_REQUIRED" to e("Falta cobrar", "Primero marca «Cobrado» antes de marcar la entrega.", ErrorAction.REFRESH),
+        "COLLECT_NOT_APPLICABLE" to e("Sin pago contra entrega", "Este pedido no es de pago contra entrega.", ErrorAction.REFRESH),
+        "COLLECT_STATUS_INVALID" to e("Aún no puedes cobrar", "Solo puedes cobrar cuando ya recogiste el pedido.", ErrorAction.REFRESH),
+        "PAYMENT_MODE_NOT_AVAILABLE" to e("Pago no disponible", "El pago contra entrega no está disponible en este restaurante.", ErrorAction.CONTACT_ADMIN),
+        "PAYMENT_NOT_EDITABLE" to e("Pago no editable", "Este pedido ya no admite cambios en el pago.", ErrorAction.REFRESH),
     )
 
     private fun seriesMissing() = e(

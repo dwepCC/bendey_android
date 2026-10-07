@@ -177,7 +177,7 @@ class ErrorCatalogTest {
         assertEquals("PIN_INCORRECT · HTTP 400", http(400, "PIN_INCORRECT").supportCode)
     }
 
-    /** D1: los errores de Delivery (D1 + tarifa D2.0), con el mismo texto que `errorCatalog.ts` de Tauri y la acción correcta. */
+    /** D1: los errores de Delivery (D1 + tarifa D2.0 + contra entrega D2b), con el mismo texto que `errorCatalog.ts` de Tauri y la acción correcta. */
     @Test fun erroresDeDeliveryTienenTextoYAccion() {
         val esperado = mapOf(
             "DELIVERY_CANCEL_REASON_REQUIRED" to Pair("Escribe el motivo de la cancelación (mínimo 3 letras) y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
@@ -191,6 +191,13 @@ class ErrorCatalogTest {
             "DELIVERY_FEE_FORBIDDEN" to Pair("No tienes permiso para cambiar la tarifa de delivery.", ErrorAction.CONTACT_ADMIN),
             "DELIVERY_FEE_INVALID" to Pair("Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99.", ErrorAction.BACK_TO_TRY),
             "DELIVERY_FEE_NOT_EDITABLE" to Pair("Este pedido ya no admite cambios en la tarifa de delivery.", ErrorAction.REFRESH),
+            // D2b: efectivo contra entrega (textos exactos de D2B_COMMON §8).
+            "CASH_TENDERED_TOO_LOW" to Pair("El monto con el que pagas debe cubrir el total del pedido.", ErrorAction.BACK_TO_TRY),
+            "COLLECTION_REQUIRED" to Pair("Primero marca «Cobrado» antes de marcar la entrega.", ErrorAction.REFRESH),
+            "COLLECT_NOT_APPLICABLE" to Pair("Este pedido no es de pago contra entrega.", ErrorAction.REFRESH),
+            "COLLECT_STATUS_INVALID" to Pair("Solo puedes cobrar cuando ya recogiste el pedido.", ErrorAction.REFRESH),
+            "PAYMENT_MODE_NOT_AVAILABLE" to Pair("El pago contra entrega no está disponible en este restaurante.", ErrorAction.CONTACT_ADMIN),
+            "PAYMENT_NOT_EDITABLE" to Pair("Este pedido ya no admite cambios en el pago.", ErrorAction.REFRESH),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)
@@ -198,7 +205,7 @@ class ErrorCatalogTest {
             assertEquals(code, listOf(want.second), info.actions)
             assertTrue(code, code in ErrorCatalog.knownCodes)
         }
-        // Mismo orden que el bloque final de Tauri: DELIVERY_CANCEL.., DRIVER_*, SESSION_*, USE_* y, al final, DELIVERY_FEE_*.
+        // Mismo orden que el bloque final de Tauri: DELIVERY_CANCEL.., DRIVER_*, SESSION_*, USE_* DELIVERY_FEE_* y, al final, los 6 de D2b (efectivo contra entrega).
         val tail = ErrorCatalog.knownCodes.toList().takeLast(esperado.size)
         assertEquals(esperado.keys.toList(), tail)
     }

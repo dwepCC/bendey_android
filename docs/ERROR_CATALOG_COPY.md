@@ -147,6 +147,12 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `DELIVERY_FEE_FORBIDDEN` | Sin permiso para la tarifa | No tienes permiso para cambiar la tarifa de delivery. | [Hablar con el administrador] |
 | `DELIVERY_FEE_INVALID` | Tarifa no válida | Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99. | [Volver a intentar] |
 | `DELIVERY_FEE_NOT_EDITABLE` | Tarifa no editable | Este pedido ya no admite cambios en la tarifa de delivery. | [Actualizar] |
+| `CASH_TENDERED_TOO_LOW` | Monto no válido | El monto con el que pagas debe cubrir el total del pedido. | [Volver a intentar] |
+| `COLLECTION_REQUIRED` | Falta cobrar | Primero marca «Cobrado» antes de marcar la entrega. | [Actualizar] |
+| `COLLECT_NOT_APPLICABLE` | Sin pago contra entrega | Este pedido no es de pago contra entrega. | [Actualizar] |
+| `COLLECT_STATUS_INVALID` | Aún no puedes cobrar | Solo puedes cobrar cuando ya recogiste el pedido. | [Actualizar] |
+| `PAYMENT_MODE_NOT_AVAILABLE` | Pago no disponible | El pago contra entrega no está disponible en este restaurante. | [Hablar con el administrador] |
+| `PAYMENT_NOT_EDITABLE` | Pago no editable | Este pedido ya no admite cambios en el pago. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).
