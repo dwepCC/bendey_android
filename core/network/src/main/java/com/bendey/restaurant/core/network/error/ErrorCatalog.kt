@@ -339,6 +339,10 @@ object ErrorCatalog {
         "SESSION_NOT_ASSIGNABLE" to e("No se puede asignar", "Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado.", ErrorAction.REFRESH),
         "SESSION_NOT_DELIVERY" to e("No es un pedido de delivery", "Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado.", ErrorAction.REFRESH),
         "USE_DELIVERY_ASSIGNMENT" to e("Cambia el estado desde Delivery", "Este pedido ya tiene un repartidor. Cambia su estado desde Delivery.", ErrorAction.REFRESH),
+        // D2.0: tarifa de delivery, al final del bloque (alfabético entre sí).
+        "DELIVERY_FEE_FORBIDDEN" to e("Sin permiso para la tarifa", "No tienes permiso para cambiar la tarifa de delivery.", ErrorAction.CONTACT_ADMIN),
+        "DELIVERY_FEE_INVALID" to e("Tarifa no válida", "Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_FEE_NOT_EDITABLE" to e("Tarifa no editable", "Este pedido ya no admite cambios en la tarifa de delivery.", ErrorAction.REFRESH),
     )
 
     private fun seriesMissing() = e(

@@ -177,7 +177,7 @@ class ErrorCatalogTest {
         assertEquals("PIN_INCORRECT · HTTP 400", http(400, "PIN_INCORRECT").supportCode)
     }
 
-    /** D1: los 7 errores nuevos de Delivery, con el mismo texto que `errorCatalog.ts` de Tauri y la acción correcta. */
+    /** D1: los errores de Delivery (D1 + tarifa D2.0), con el mismo texto que `errorCatalog.ts` de Tauri y la acción correcta. */
     @Test fun erroresDeDeliveryTienenTextoYAccion() {
         val esperado = mapOf(
             "DELIVERY_CANCEL_REASON_REQUIRED" to Pair("Escribe el motivo de la cancelación (mínimo 3 letras) y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
@@ -187,6 +187,10 @@ class ErrorCatalogTest {
             "SESSION_NOT_ASSIGNABLE" to Pair("Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado.", ErrorAction.REFRESH),
             "SESSION_NOT_DELIVERY" to Pair("Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado.", ErrorAction.REFRESH),
             "USE_DELIVERY_ASSIGNMENT" to Pair("Este pedido ya tiene un repartidor. Cambia su estado desde Delivery.", ErrorAction.REFRESH),
+            // D2.0: tarifa de delivery, al final del bloque (textos exactos de D2_COMMON §8).
+            "DELIVERY_FEE_FORBIDDEN" to Pair("No tienes permiso para cambiar la tarifa de delivery.", ErrorAction.CONTACT_ADMIN),
+            "DELIVERY_FEE_INVALID" to Pair("Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99.", ErrorAction.BACK_TO_TRY),
+            "DELIVERY_FEE_NOT_EDITABLE" to Pair("Este pedido ya no admite cambios en la tarifa de delivery.", ErrorAction.REFRESH),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)
@@ -194,7 +198,7 @@ class ErrorCatalogTest {
             assertEquals(code, listOf(want.second), info.actions)
             assertTrue(code, code in ErrorCatalog.knownCodes)
         }
-        // Mismo orden que el bloque final de Tauri (alfabético): DELIVERY_*, DRIVER_*, SESSION_*, USE_*.
+        // Mismo orden que el bloque final de Tauri: DELIVERY_CANCEL.., DRIVER_*, SESSION_*, USE_* y, al final, DELIVERY_FEE_*.
         val tail = ErrorCatalog.knownCodes.toList().takeLast(esperado.size)
         assertEquals(esperado.keys.toList(), tail)
     }

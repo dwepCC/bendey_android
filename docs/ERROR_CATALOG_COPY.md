@@ -144,6 +144,9 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `SESSION_NOT_ASSIGNABLE` | No se puede asignar | Este pedido ya no se puede asignar: está cerrado, entregado o cancelado. Actualiza para ver el estado. | [Actualizar] |
 | `SESSION_NOT_DELIVERY` | No es un pedido de delivery | Este pedido no es de delivery, así que no se gestiona desde Delivery. Actualiza para ver el estado. | [Actualizar] |
 | `USE_DELIVERY_ASSIGNMENT` | Cambia el estado desde Delivery | Este pedido ya tiene un repartidor. Cambia su estado desde Delivery. | [Actualizar] |
+| `DELIVERY_FEE_FORBIDDEN` | Sin permiso para la tarifa | No tienes permiso para cambiar la tarifa de delivery. | [Hablar con el administrador] |
+| `DELIVERY_FEE_INVALID` | Tarifa no válida | Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99. | [Volver a intentar] |
+| `DELIVERY_FEE_NOT_EDITABLE` | Tarifa no editable | Este pedido ya no admite cambios en la tarifa de delivery. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).
