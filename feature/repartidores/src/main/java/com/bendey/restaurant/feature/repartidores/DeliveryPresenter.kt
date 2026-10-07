@@ -3,11 +3,19 @@ package com.bendey.restaurant.feature.repartidores
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.delivery.DELIVERY_REASON_OTHER
 import com.bendey.restaurant.core.domain.delivery.DeliveryCard
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
+import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.assignFeeInitialText
+import com.bendey.restaurant.core.domain.delivery.assignFeeToSend
+import com.bendey.restaurant.core.domain.delivery.canEditDeliveryFee
+import com.bendey.restaurant.core.domain.delivery.isValidAssignFeeText
+import com.bendey.restaurant.core.domain.delivery.showsAssignFeeField
 import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
 import com.bendey.restaurant.core.domain.delivery.DeliveryReasonKind
 import com.bendey.restaurant.core.domain.delivery.DeliverySection
 import com.bendey.restaurant.core.domain.delivery.DeliveryThresholds
 import com.bendey.restaurant.core.domain.delivery.canOperateDeliveryBoard
+import com.bendey.restaurant.core.domain.delivery.isDeliveryDriver
 import com.bendey.restaurant.core.domain.delivery.deliveryReasonError
 import com.bendey.restaurant.core.domain.delivery.deliveryResolveReason
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -57,7 +65,18 @@ data class DeliveryUiState(
     val busy: Boolean = false,
     /** Error de la última acción, visible dentro del diálogo abierto. */
     val dialogError: String? = null,
-)
+    /** `o.ch` o `s.m` (D2.0): sin esto el campo de tarifa de la hoja de asignar sale deshabilitado. */
+    val canEditFee: Boolean = false,
+    /** Ajustes de delivery conocidos (caché compartida); null hasta que se lean. */
+    val settings: DeliverySettings? = null,
+    /** Texto del campo "Tarifa de delivery (S/)" de la hoja de asignar y el valor con el que se abrió. */
+    val feeText: String = "",
+    val feeInitialText: String = "",
+) {
+    /** La hoja de asignar muestra el campo si la tarifa está encendida o el pedido ya tiene una. */
+    val showFeeField: Boolean
+        get() = (dialog as? DeliveryDialog.Assign)?.let { showsAssignFeeField(settings, it.card.deliveryFee) } ?: false
+}
 
 /**
  * Reductor de las acciones de la vista Delivery (asignar, cancelar, entregado, fallido). Sin Android: lo usa
@@ -81,7 +100,12 @@ class DeliveryPresenter(
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     fun setPermissions(permissions: List<String>, employeeType: String? = null) {
-        _state.update { it.copy(canAssign = canOperateDeliveryBoard(permissions, employeeType)) }
+        _state.update {
+            it.copy(
+                canAssign = canOperateDeliveryBoard(permissions, employeeType),
+                canEditFee = canEditDeliveryFee(permissions) && !isDeliveryDriver(employeeType),
+            )
+        }
     }
 
     fun selectSection(section: DeliverySection) = _state.update { it.copy(selected = section, showDrivers = false) }
@@ -101,7 +125,41 @@ class DeliveryPresenter(
         }
     }
 
-    fun openAssign(card: DeliveryCard) = open(DeliveryDialog.Assign(card))
+    fun openAssign(card: DeliveryCard) {
+        open(DeliveryDialog.Assign(card))
+        if (_state.value.dialog !is DeliveryDialog.Assign) return
+        // Prellenado: la tarifa del pedido o, si es null, la de ajustes (caché compartida).
+        val cached = repository.peekDeliverySettings()
+        val initial = assignFeeInitialText(card.deliveryFee, cached)
+        _state.update { it.copy(settings = cached, feeText = initial, feeInitialText = initial) }
+        if (cached == null) {
+            // Ajustes aún sin leer: se piden (sin bloquear la hoja) y, si el cajero no tocó el campo, se prellena.
+            scope.launch {
+                val r = repository.getDeliverySettings()
+                if (r !is AppResult.Success) return@launch
+                _state.update { st ->
+                    val open = st.dialog as? DeliveryDialog.Assign
+                    if (open?.card?.sessionId != card.sessionId) return@update st.copy(settings = r.data)
+                    val untouched = st.feeText == st.feeInitialText
+                    val newInitial = assignFeeInitialText(card.deliveryFee, r.data)
+                    st.copy(
+                        settings = r.data,
+                        feeInitialText = newInitial,
+                        feeText = if (untouched) newInitial else st.feeText,
+                    )
+                }
+            }
+        }
+    }
+
+    /** Edita el campo de tarifa de la hoja de asignar; solo con `o.ch` o `s.m`. Solo dígitos y un decimal (2). */
+    fun setFeeText(text: String) {
+        if (!_state.value.canEditFee || _state.value.busy) return
+        val clean = text.filter { it.isDigit() || it == '.' || it == ',' }.replace(',', '.')
+        val parts = clean.split('.')
+        val limited = if (parts.size <= 1) clean.take(3) else parts[0].take(3) + "." + parts.drop(1).joinToString("").take(2)
+        _state.update { it.copy(feeText = limited, dialogError = null) }
+    }
 
     fun openCancel(card: DeliveryCard) = open(DeliveryDialog.Cancel(card))
 
@@ -129,8 +187,18 @@ class DeliveryPresenter(
 
     fun assign(driverId: Int) {
         val dialog = _state.value.dialog as? DeliveryDialog.Assign ?: return
+        val st = _state.value
+        // La tarifa solo viaja si el campo se ve, se puede editar y el valor CAMBIÓ: así quien no la toca no la pisa.
+        var fee: Double? = null
+        if (st.showFeeField && st.canEditFee) {
+            if (!isValidAssignFeeText(st.feeText)) {
+                _state.update { it.copy(dialogError = DeliveryFeeCopy.INVALID_AMOUNT) }
+                return
+            }
+            fee = assignFeeToSend(st.feeInitialText, st.feeText)
+        }
         run(okMessage = DeliveryCopy.text("ok.assigned")) {
-            repository.assignDriver(dialog.card.sessionId, driverId)
+            repository.assignDriver(dialog.card.sessionId, driverId, fee)
         }
     }
 

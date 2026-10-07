@@ -59,6 +59,9 @@ import com.bendey.restaurant.core.domain.delivery.DeliveryBoardDriver
 import com.bendey.restaurant.core.domain.delivery.DeliveryCard
 import com.bendey.restaurant.core.domain.delivery.DeliveryChipTone
 import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.bendey.restaurant.core.domain.delivery.DeliveryReasonKind
 import com.bendey.restaurant.core.domain.delivery.DeliverySection
 import com.bendey.restaurant.core.domain.delivery.DeliveryTone
@@ -511,6 +514,15 @@ private fun DeliveryCardView(
             fontWeight = FontWeight.Medium,
             color = BendeyColors.OnSurface,
         )
+        // D2.0: el total ya incluye la tarifa; se avisa cuánto es el envío (texto que se parte, no desborda a 375 dp).
+        card.deliveryFee?.takeIf { it > 0.0 }?.let { fee ->
+            Text(
+                "${DeliveryFeeCopy.CARD_INCLUDES} ${money(fee)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = BendeyColors.OnSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         // Repartidor + su estado de asignación + llamarlo.
         card.driver?.let { driver ->
@@ -709,6 +721,23 @@ private fun AssignSheet(card: DeliveryCard, drivers: List<DeliveryBoardDriver>, 
                 color = BendeyColors.OnSurfaceVariant,
             )
             ui.dialogError?.let { BendeyAlert(message = it, severity = BendeyAlertSeverity.Danger) }
+            if (ui.showFeeField) {
+                BendeyTextField(
+                    value = ui.feeText,
+                    onValueChange = viewModel::setFeeText,
+                    label = DeliveryFeeCopy.AMOUNT_LABEL,
+                    placeholder = "0.00",
+                    enabled = ui.canEditFee && !ui.busy,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+                if (!ui.canEditFee) {
+                    Text(
+                        DeliveryFeeCopy.ASSIGN_LOCKED,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+            }
             if (drivers.isEmpty()) {
                 Text(DeliveryCopy.text("assign.none"), style = MaterialTheme.typography.bodyMedium, color = BendeyColors.OnSurfaceVariant)
             } else {

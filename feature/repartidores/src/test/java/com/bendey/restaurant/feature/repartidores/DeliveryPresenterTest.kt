@@ -8,6 +8,9 @@ import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.delivery.DELIVERY_REASON_OTHER
 import com.bendey.restaurant.core.domain.delivery.DeliveryBoardData
 import com.bendey.restaurant.core.domain.delivery.DeliveryCard
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
+import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.DeliverySettingsUpdate
 import com.bendey.restaurant.core.domain.delivery.DeliverySection
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardStore
@@ -52,7 +55,18 @@ class DeliveryPresenterTest {
             return actionResult
         }
 
-        override suspend fun assignDriver(sessionId: Int, driverId: Int) = act("assign:$sessionId:$driverId")
+        /** Cada asignar se anota con su tarifa: `assign:41:3` sin tarifa, `assign:41:3:fee=7.5` con ella. */
+        override suspend fun assignDriver(sessionId: Int, driverId: Int, deliveryFee: Double?) =
+            act("assign:$sessionId:$driverId" + (deliveryFee?.let { ":fee=$it" } ?: ""))
+
+        @Volatile var settings: DeliverySettings? = null
+        /** Lo que devuelve el GET cuando la caché está vacía (peek = null). */
+        @Volatile var settingsOnFetch: DeliverySettings = DeliverySettings()
+        override suspend fun getDeliverySettings(forceRefresh: Boolean): AppResult<DeliverySettings> =
+            AppResult.Success(settings ?: settingsOnFetch)
+        override suspend fun updateDeliverySettings(update: DeliverySettingsUpdate): AppResult<DeliverySettings> = AppResult.Success(DeliverySettings())
+        override fun peekDeliverySettings(): DeliverySettings? = settings
+        override suspend fun setSessionDeliveryFee(sessionId: Int, amount: Double): AppResult<Unit> = AppResult.Success(Unit)
         override suspend fun cancelDeliveryOrder(sessionId: Int, reason: String) = act("cancel:$sessionId:$reason")
         override suspend fun updateAssignmentStatus(assignmentId: Int, status: String, failedReason: String?) =
             act("status:$assignmentId:$status:${failedReason.orEmpty()}")
@@ -239,6 +253,127 @@ class DeliveryPresenterTest {
         presenter.confirmFailed()
         settle()
         assertEquals(listOf("status:7:failed:El cliente no contesta"), repo.actions.toList())
+    }
+
+    // ---- tarifa de delivery (D2.0) ----
+
+    private fun cardWithFee(fee: Double?) = card().copy(deliveryFee = fee)
+    private fun cashier() = presenter.setPermissions(listOf("d.v", "d.u", "o.ch"))
+    private val feeOn = DeliverySettings(feeEnabled = true, deliveryFee = 5.0)
+
+    @Test fun sinTarifaEncendidaNiEnElPedidoLaHojaNoMuestraElCampo() {
+        cashier()
+        presenter.openAssign(card())
+        assertFalse(presenter.state.value.showFeeField)
+    }
+
+    @Test fun conLaTarifaEncendidaPrellenaConLaDeAjustes() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(card())
+        assertTrue(presenter.state.value.showFeeField)
+        assertEquals("5.00", presenter.state.value.feeText)
+        assertTrue(presenter.state.value.canEditFee)
+    }
+
+    @Test fun laTarifaDelPedidoGanaSobreLaDeAjustes() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(cardWithFee(7.5))
+        assertEquals("7.50", presenter.state.value.feeText)
+    }
+
+    @Test fun siElPedidoYaTieneTarifaElCampoSeMuestraAunqueLosAjustesEstenApagados() {
+        repo.settings = DeliverySettings(feeEnabled = false, deliveryFee = 5.0)
+        cashier()
+        presenter.openAssign(cardWithFee(7.5))
+        assertTrue(presenter.state.value.showFeeField)
+    }
+
+    @Test fun sinAjustesEnCacheLosLeeYPrellenaSiNoSeTocoElCampo() {
+        cashier()
+        repo.settingsOnFetch = feeOn
+        presenter.openAssign(card())
+        await { presenter.state.value.settings != null }
+        assertEquals("5.00", presenter.state.value.feeText)
+        assertTrue(presenter.state.value.showFeeField)
+    }
+
+    @Test fun sinOChNiSMElCampoSaleDeshabilitadoYNoSeEnviaTarifa() {
+        repo.settings = feeOn
+        operator()   // solo d.v y d.u
+        presenter.openAssign(card())
+        assertTrue(presenter.state.value.showFeeField)
+        assertFalse(presenter.state.value.canEditFee)
+        presenter.setFeeText("9")
+        assertEquals("5.00", presenter.state.value.feeText)
+        presenter.assign(3)
+        settle()
+        assertEquals(listOf("assign:41:3"), repo.actions.toList())
+    }
+
+    @Test fun elRepartidorNoEditaLaTarifaAunqueTengaOCh() {
+        presenter.setPermissions(listOf("d.v", "d.u", "o.ch"), "driver")
+        assertFalse(presenter.state.value.canEditFee)
+    }
+
+    @Test fun conSMTambienSePuedeEditar() {
+        presenter.setPermissions(listOf("d.v", "d.u", "s.m"))
+        assertTrue(presenter.state.value.canEditFee)
+    }
+
+    @Test fun asignarSinTocarLaTarifaNoLaEnvia() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(cardWithFee(7.5))
+        presenter.assign(3)
+        settle()
+        assertEquals(listOf("assign:41:3"), repo.actions.toList())
+    }
+
+    @Test fun asignarCambiandoLaTarifaLaEnviaConElAsignar() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(cardWithFee(7.5))
+        presenter.setFeeText("9,25")
+        presenter.assign(3)
+        settle()
+        assertEquals(listOf("assign:41:3:fee=9.25"), repo.actions.toList())
+        assertNull(presenter.state.value.dialog)
+    }
+
+    @Test fun vaciarElCampoEnviaCeroParaQuitarLaTarifa() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(cardWithFee(7.5))
+        presenter.setFeeText("")
+        presenter.assign(3)
+        settle()
+        assertEquals(listOf("assign:41:3:fee=0.0"), repo.actions.toList())
+    }
+
+    @Test fun unMontoIlegibleNoLlamaAlServidorYSeAvisaDentroDeLaHoja() {
+        repo.settings = feeOn
+        cashier()
+        presenter.openAssign(card())
+        presenter.setFeeText(".")
+        presenter.assign(3)
+        assertTrue(repo.actions.isEmpty())
+        assertEquals(DeliveryFeeCopy.INVALID_AMOUNT, presenter.state.value.dialogError)
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Assign)
+    }
+
+    @Test fun unErrorDeTarifaDelServidorSeMuestraDentroYLaHojaSigueAbierta() {
+        repo.settings = feeOn
+        cashier()
+        repo.actionResult = AppResult.Error("No tienes permiso para cambiar la tarifa de delivery.")
+        presenter.openAssign(cardWithFee(7.5))
+        presenter.setFeeText("9")
+        presenter.assign(3)
+        settle()
+        assertTrue(presenter.state.value.dialog is DeliveryDialog.Assign)
+        assertEquals("No tienes permiso para cambiar la tarifa de delivery.", presenter.state.value.dialogError)
+        assertEquals("el valor tecleado se conserva", "9", presenter.state.value.feeText)
     }
 
     // ---- navegación de la vista ----

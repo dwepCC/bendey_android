@@ -50,6 +50,7 @@ class DeliveryViewModel @Inject constructor(
     fun chooseReason(reason: String?) = presenter.chooseReason(reason)
     fun setReasonText(text: String) = presenter.setReasonText(text)
     fun assign(driverId: Int) = presenter.assign(driverId)
+    fun setFeeText(text: String) = presenter.setFeeText(text)
     fun confirmCancel() = presenter.confirmCancel()
     fun confirmFailed() = presenter.confirmFailed()
     fun confirmDelivered() = presenter.confirmDelivered()
