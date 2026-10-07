@@ -1,5 +1,13 @@
 package com.bendey.restaurant.feature.pos
 
+import com.bendey.restaurant.core.domain.delivery.CashTenderedCheck
+import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
+import com.bendey.restaurant.core.domain.delivery.SessionPayment
+import com.bendey.restaurant.core.domain.delivery.cashChangeEstimate
+import com.bendey.restaurant.core.domain.delivery.cashTenderedMessage
+import com.bendey.restaurant.core.domain.delivery.checkCashTenderedAgainstSaved
+import com.bendey.restaurant.core.domain.delivery.isCodCollected
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -135,6 +143,9 @@ fun OrderDetailsDialog(
     details: PosOrderDetails,
     drivers: List<DeliveryDriverBrief>,
     driversLoading: Boolean,
+    showPayment: Boolean,
+    payTotal: Double,
+    payment: SessionPayment?,
     onDetailsChange: (PosOrderDetails) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -238,6 +249,9 @@ fun OrderDetailsDialog(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
             }
+            if (showPayment) {
+                DeliveryPaymentSection(details = details, total = payTotal, payment = payment, onDetailsChange = onDetailsChange)
+            }
         }
         BendeyTextField(
             value = details.orderNotes,
@@ -249,6 +263,65 @@ fun OrderDetailsDialog(
 }
 
 private const val DRIVER_UNASSIGNED = ""
+
+private const val PAY_NONE = "none"
+private const val PAY_COD = "cod"
+
+/**
+ * D2b: "Pago" del pedido de delivery (solo con `cod_enabled`). Sin definir / Efectivo contra entrega y, con
+ * efectivo, "El cliente paga con (S/)" (vacío = paga justo) con el vuelto estimado o el aviso si no cubre el total.
+ * Cobrado ya no se puede cambiar. NO toca cobro, caja ni descuentos: el servidor solo REGISTRA.
+ */
+@Composable
+private fun DeliveryPaymentSection(
+    details: PosOrderDetails,
+    total: Double,
+    payment: SessionPayment?,
+    onDetailsChange: (PosOrderDetails) -> Unit,
+) {
+    val collected = payment.isCodCollected()
+    BendeySimpleSelect(
+        options = listOf(
+            BendeyOption(PAY_NONE, DeliveryCopy.text("pos.payment_none")),
+            BendeyOption(PAY_COD, DeliveryCopy.text("pos.payment_cod")),
+        ),
+        selectedValue = if (details.paymentCod) PAY_COD else PAY_NONE,
+        onSelect = { value -> onDetailsChange(details.copy(paymentCod = value == PAY_COD)) },
+        label = DeliveryCopy.text("pos.payment_label"),
+        enabled = !collected,
+    )
+    if (collected) {
+        Text(
+            DeliveryCopy.text("chip.collected"),
+            style = MaterialTheme.typography.bodySmall,
+            color = BendeyColors.OnSurfaceVariant,
+        )
+        return
+    }
+    if (details.paymentCod) {
+        val check = checkCashTenderedAgainstSaved(details.cashTendered, total, payment)
+        BendeyTextField(
+            value = details.cashTendered,
+            onValueChange = { text ->
+                val clean = text.filter { ch -> ch.isDigit() || ch == '.' || ch == ',' }.take(10)
+                onDetailsChange(details.copy(cashTendered = clean))
+            },
+            label = DeliveryCopy.text("pos.tendered_label"),
+            placeholder = "0.00",
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        )
+        val problem = cashTenderedMessage(check)
+        val hint = cashChangeEstimate(check)
+        when {
+            problem.isNotEmpty() -> Text(
+                problem,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (check is CashTenderedCheck.Stale) BendeyColors.WarningText else BendeyColors.ErrorText,
+            )
+            hint.isNotEmpty() -> Text(hint, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+        }
+    }
+}
 
 // Antes: ExposedDropdownMenuBox propio — select fijo con una opción explícita "Sin asignar" (no
 // solo un estado vacío: hay que poder volver a "Sin asignar" después de haber elegido a alguien),

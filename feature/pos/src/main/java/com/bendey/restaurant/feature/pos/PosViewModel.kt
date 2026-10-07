@@ -93,7 +93,14 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.restaurant.DeliveryDriverBrief
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
+import com.bendey.restaurant.core.domain.delivery.CashTenderedCheck
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
+import com.bendey.restaurant.core.domain.delivery.SessionPayment
+import com.bendey.restaurant.core.domain.delivery.blocksSaving
+import com.bendey.restaurant.core.domain.delivery.cashTenderedMessage
+import com.bendey.restaurant.core.domain.delivery.checkCashTenderedAgainstSaved
+import com.bendey.restaurant.core.domain.delivery.deliveryFeeFieldText
+import com.bendey.restaurant.core.domain.delivery.showsPosPaymentForm
 import com.bendey.restaurant.core.domain.restaurant.MesasRepository
 import com.bendey.restaurant.core.domain.restaurant.OpenOrderSummary
 import com.bendey.restaurant.core.domain.restaurant.OrderItemInput
@@ -142,6 +149,10 @@ data class PosOrderDetails(
     val deliveryReference: String = "",
     val deliveryDriverId: Int? = null,
     val estimatedMinutes: String = "30",
+    /** D2b: "Pago: Efectivo contra entrega" (false = Sin definir). Solo aplica a pedidos de delivery con `cod_enabled`. */
+    val paymentCod: Boolean = false,
+    /** D2b: "El cliente paga con (S/)" tal como se escribe; vacío = paga justo. */
+    val cashTendered: String = "",
 )
 
 sealed class PosVoidTarget {
@@ -180,6 +191,8 @@ data class PosUiState(
     /** Ajustes de delivery (D2.0), solo para la VISTA PREVIA de la tarifa: el servidor es quien la cobra. */
     val deliverySettings: DeliverySettings? = null,
     val deliveryDriversLoading: Boolean = false,
+    /** D2b: pago que el servidor tiene registrado en la sesión activa (null = ninguno). */
+    val sessionPayment: SessionPayment? = null,
     val reprintingOrderId: Int? = null,
     val reprintingAll: Boolean = false,
     val voidTarget: PosVoidTarget? = null,
@@ -263,6 +276,22 @@ data class PosUiState(
             }
         }
 
+    /** D2b: el selector "Pago" solo existe en pedidos de delivery con `cod_enabled` (o con pago ya registrado). */
+    val showPaymentForm: Boolean
+        get() = showsPosPaymentForm(orderType == PosOrderType.DELIVERY, deliverySettings, sessionPayment)
+
+    /** D2b: revisa "El cliente paga con (S/)" contra el total que se ve (sesión + carrito + tarifa). */
+    val cashTenderedCheck: CashTenderedCheck
+        get() = checkCashTenderedAgainstSaved(orderDetails.cashTendered, checkoutRawTotal, sessionPayment)
+
+    /** D2b: aviso que bloquea guardar/enviar (monto ilegible o menor al total); null si todo está bien o no aplica. */
+    val paymentBlockingMessage: String?
+        get() = if (showPaymentForm && orderDetails.paymentCod && cashTenderedCheck.blocksSaving) {
+            cashTenderedMessage(cashTenderedCheck)
+        } else {
+            null
+        }
+
     /** Tarifa que se muestra como "Servicio de delivery S/ X": la de la sesión o, si aún no hay sesión, la vista previa. */
     val deliveryFeeShown: Double get() = if (deliveryFeeInSession > 0.0) deliveryFeeInSession else deliveryFeePreview
 
@@ -341,6 +370,8 @@ class PosViewModel @Inject constructor(
 
     val assetsBaseUrl: String?
         get() = productImageRepository.tenantAssetsBaseUrl()
+
+    private val paymentSyncer = SessionPaymentSyncer(deliveryRepository)
 
     private val _uiState = MutableStateFlow(PosUiState())
     val uiState: StateFlow<PosUiState> = _uiState.asStateFlow()
@@ -539,10 +570,16 @@ class PosViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Ingresa la dirección de delivery") }
             return
         }
+        // D2b: un monto que no cubre el total no se guarda; el aviso ya se ve bajo el campo.
+        state.paymentBlockingMessage?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
+            return
+        }
         _uiState.update { it.copy(orderDetailsModal = null, error = null) }
         viewModelScope.launch {
             state.activeSessionId?.let { sessionId ->
                 posRepository.updatePosSession(sessionId, buildSessionInput(state))
+                syncSessionPayment(sessionId, state)
             }
         }
     }
@@ -1742,7 +1779,10 @@ class PosViewModel @Inject constructor(
                     deliveryReference = detail.deliveryReference.orEmpty(),
                     deliveryDriverId = detail.deliveryDriverId,
                     estimatedMinutes = (detail.estimatedMinutes ?: 30).toString(),
+                    paymentCod = detail.payment?.isCashOnDelivery == true,
+                    cashTendered = deliveryFeeFieldText(detail.payment?.tenderedAmount),
                 ),
+                sessionPayment = detail.payment,
                 checkoutContactId = detail.contactId ?: it.checkoutContactId,
             )
         }
@@ -1778,11 +1818,17 @@ class PosViewModel @Inject constructor(
     }
 
     private suspend fun ensureSession(state: PosUiState, saveAsDraft: Boolean = false): Int? {
+        // D2b: no se crea ni se actualiza el pedido con un "paga con" que no cubre el total.
+        state.paymentBlockingMessage?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
+            return null
+        }
         val input = buildSessionInput(state, saveAsDraft)
         state.activeSessionId?.let { id ->
             when (val update = posRepository.updatePosSession(id, input)) {
                 is AppResult.Success -> {
                     assignDeliveryDriverIfNeeded(id, state)
+                    syncSessionPayment(id, state)
                     return id
                 }
                 is AppResult.Error -> {
@@ -1798,6 +1844,7 @@ class PosViewModel @Inject constructor(
                     it.copy(activeSessionId = open.data.sessionId, orderCode = open.data.orderCode)
                 }
                 assignDeliveryDriverIfNeeded(open.data.sessionId, state)
+                syncSessionPayment(open.data.sessionId, state)
                 open.data.sessionId
             }
             is AppResult.Error -> {
@@ -1825,6 +1872,28 @@ class PosViewModel @Inject constructor(
         when (val result = posRepository.assignDeliveryDriver(sessionId, driverId)) {
             is AppResult.Error -> _uiState.update { it.copy(error = "Repartidor no asignado: ${result.message}") }
             else -> Unit
+        }
+    }
+
+    /**
+     * D2b: guarda el pago contra entrega en la sesión YA creada (`PUT /sessions/:id/payment`) y lo vuelve a mandar
+     * si el cajero lo cambió. Solo se llama si hace falta (nada que mandar = el servidor ya tiene lo mismo, o el
+     * formulario no aplica / `cod_enabled` apagado). Un fallo NO bloquea el pedido (ya existe): se avisa y se puede
+     * reintentar al guardar de nuevo.
+     */
+    private suspend fun syncSessionPayment(sessionId: Int, state: PosUiState) {
+        val result = paymentSyncer.sync(
+            sessionId = sessionId,
+            isDelivery = state.orderType == PosOrderType.DELIVERY,
+            settings = state.deliverySettings,
+            current = _uiState.value.sessionPayment,
+            codSelected = state.orderDetails.paymentCod,
+            tenderedCheck = state.cashTenderedCheck,
+        ) ?: return
+        when (result) {
+            is AppResult.Success -> _uiState.update { it.copy(sessionPayment = result.data) }
+            is AppResult.Error -> _uiState.update { it.copy(error = "Pago no registrado: ${result.message}") }
+            AppResult.Loading -> Unit
         }
     }
 
