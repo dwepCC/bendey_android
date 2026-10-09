@@ -45,6 +45,7 @@ enum class ConfigTab(val label: String) {
     BRANCHES("Sucursales"),
     SERIES("Series"),
     MENU_DIGITAL("Menú Digital"),
+    MARKETPLACE("Marketplace"),
 }
 
 data class ConfiguracionUiState(

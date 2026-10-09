@@ -173,6 +173,7 @@ private fun ConfigTabContent(
         ConfigTab.BRANCHES -> BranchesTab(state, viewModel, modifier)
         ConfigTab.SERIES -> SeriesTab(state, viewModel, onNavigateToSubscription, modifier)
         ConfigTab.MENU_DIGITAL -> MenuDigitalTab(modifier = modifier)
+        ConfigTab.MARKETPLACE -> MarketplaceTab(modifier = modifier)
     }
 }
 
