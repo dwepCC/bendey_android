@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -328,7 +329,8 @@ private fun SectionList(
     }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
+        // El último ítem no debe quedar tapado por la barra de navegación inferior (acciones ocultas).
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.s16, top = BendeySpacing.s8),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.s12),
     ) {
         items(cards, key = { "${section.key}-${it.sessionId}" }) { card ->
@@ -350,7 +352,8 @@ private fun DriversList(drivers: List<DeliveryBoardDriver>, modifier: Modifier =
     }
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
+        // El último ítem no debe quedar tapado por la barra de navegación inferior (acciones ocultas).
+        contentPadding = rememberBendeyLazyListContentPadding(horizontal = BendeySpacing.s16, top = BendeySpacing.s8),
         verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8),
     ) {
         items(deliverySortDrivers(drivers), key = { it.id }) { driver -> DriverInfoRow(driver) }
