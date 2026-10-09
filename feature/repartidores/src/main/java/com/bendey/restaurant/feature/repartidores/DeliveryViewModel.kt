@@ -31,9 +31,17 @@ class DeliveryViewModel @Inject constructor(
     val ui: StateFlow<DeliveryUiState> = presenter.state
     val messages: SharedFlow<String> = presenter.messages
 
+    /** D2c: quien cobra (o.ch) ve la pestaña de Rendiciones; el repartidor no. */
+    private val _canSettle = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val canSettle: StateFlow<Boolean> = _canSettle
+
     init {
         viewModelScope.launch {
-            sessionStore.userSessionFlow.collect { presenter.setPermissions(it?.restaurantPermissions.orEmpty(), it?.user?.employeeType) }
+            sessionStore.userSessionFlow.collect {
+                presenter.setPermissions(it?.restaurantPermissions.orEmpty(), it?.user?.employeeType)
+                _canSettle.value = it?.user?.employeeType != "driver" &&
+                    com.bendey.restaurant.core.domain.permission.RestaurantPermissions.PERM_ORDERS_CHARGE in it?.restaurantPermissions.orEmpty()
+            }
         }
         // Entrar a la vista siempre pide el tablero fresco (coalescido con cualquier consulta en curso).
         presenter.refresh()

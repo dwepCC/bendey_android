@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -143,6 +144,8 @@ fun EntregasScreen(
     viewModel: DeliveryViewModel = hiltViewModel(),
 ) {
     val board by viewModel.board.collectAsStateWithLifecycle()
+    val canSettle by viewModel.canSettle.collectAsStateWithLifecycle()
+    var showSettlements by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxSize()) {
         BendeyScreenToolbar(
             title = DeliveryCopy.text("title"),
@@ -156,7 +159,21 @@ fun EntregasScreen(
                 )
             },
         )
-        DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+        // D2c: con o.ch (cajero o administrador) aparece la pestaña de Rendiciones.
+        if (canSettle) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8),
+            ) {
+                BendeyFilterChip(selected = !showSettlements, onClick = { showSettlements = false }, text = "Pedidos")
+                BendeyFilterChip(selected = showSettlements, onClick = { showSettlements = true }, text = "Rendiciones")
+            }
+        }
+        if (canSettle && showSettlements) {
+            RendicionesPanel(onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+        } else {
+            DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+        }
     }
 }
 

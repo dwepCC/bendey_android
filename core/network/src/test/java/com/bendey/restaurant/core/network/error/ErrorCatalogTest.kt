@@ -198,6 +198,21 @@ class ErrorCatalogTest {
             "COLLECT_STATUS_INVALID" to Pair("Solo puedes cobrar cuando ya recogiste el pedido.", ErrorAction.REFRESH),
             "PAYMENT_MODE_NOT_AVAILABLE" to Pair("El pago contra entrega no está disponible en este restaurante.", ErrorAction.CONTACT_ADMIN),
             "PAYMENT_NOT_EDITABLE" to Pair("Este pedido ya no admite cambios en el pago.", ErrorAction.REFRESH),
+            // Rendición D2c, pausa/cancelación del marketplace y vendedor (mismo orden que Tauri).
+            "SELLER_INVALID" to Pair("El vendedor elegido ya no está disponible. Elige otro.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_INVALID_PAYMENTS" to Pair("Algún pedido ya no se puede rendir: ya se rindió o cambió. Actualiza la lista.", ErrorAction.REFRESH),
+            "SETTLEMENT_MIXED_COLLECTORS" to Pair("Una rendición es de un solo repartidor. Elige los pedidos de una sola persona.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_NO_SERIES" to Pair("No hay una serie de Nota de Venta activa en esta sucursal. Pídele al administrador que la cree en Ajustes.", ErrorAction.CONTACT_ADMIN),
+            "SETTLEMENT_NO_CASH_SESSION" to Pair("Abre tu caja para recibir el efectivo del repartidor.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_REASON_REQUIRED" to Pair("Hay una diferencia con lo esperado: escribe el motivo (mínimo 3 letras) y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_AMOUNT_INVALID" to Pair("Revisa el monto que recibiste: debe ser un número igual o mayor a cero.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_TOO_MANY" to Pair("Puedes rendir hasta 50 pedidos a la vez. Quita algunos y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
+            "SETTLEMENT_PARTIAL" to Pair("Algunos pedidos no pudieron facturarse y siguen por rendir. Los demás ya quedaron rendidos. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "REFUND_NOT_PENDING" to Pair("Este cobro ya no está por devolver. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "MARKETPLACE_PAUSED" to Pair("El restaurante no está recibiendo pedidos por ahora.", ErrorAction.BACK_TO_TRY),
+            "MARKETPLACE_PAUSE_INVALID" to Pair("La pausa debe durar entre 1 minuto y 24 horas, o ser indefinida.", ErrorAction.BACK_TO_TRY),
+            "MARKETPLACE_THRESHOLD_INVALID" to Pair("Los minutos deben estar entre 0 y 240.", ErrorAction.BACK_TO_TRY),
+            "ORDER_NOT_CANCELLABLE" to Pair("Este pedido ya está en preparación y no se puede cancelar desde la app. Actualiza para ver el estado.", ErrorAction.REFRESH),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)

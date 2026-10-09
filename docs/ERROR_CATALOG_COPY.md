@@ -153,6 +153,20 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `COLLECT_STATUS_INVALID` | Aún no puedes cobrar | Solo puedes cobrar cuando ya recogiste el pedido. | [Actualizar] |
 | `PAYMENT_MODE_NOT_AVAILABLE` | Pago no disponible | El pago contra entrega no está disponible en este restaurante. | [Hablar con el administrador] |
 | `PAYMENT_NOT_EDITABLE` | Pago no editable | Este pedido ya no admite cambios en el pago. | [Actualizar] |
+| `SELLER_INVALID` | Vendedor no válido | El vendedor elegido ya no está disponible. Elige otro. | [Volver a intentar] |
+| `SETTLEMENT_INVALID_PAYMENTS` | Pedido ya no rendible | Algún pedido ya no se puede rendir: ya se rindió o cambió. Actualiza la lista. | [Actualizar] |
+| `SETTLEMENT_MIXED_COLLECTORS` | Un solo repartidor | Una rendición es de un solo repartidor. Elige los pedidos de una sola persona. | [Volver a intentar] |
+| `SETTLEMENT_NO_SERIES` | Falta la serie de Nota de Venta | No hay una serie de Nota de Venta activa en esta sucursal. Pídele al administrador que la cree en Ajustes. | [Hablar con el administrador] |
+| `SETTLEMENT_NO_CASH_SESSION` | Abre tu caja | Abre tu caja para recibir el efectivo del repartidor. | [Volver a intentar] |
+| `SETTLEMENT_REASON_REQUIRED` | Falta el motivo | Hay una diferencia con lo esperado: escribe el motivo (mínimo 3 letras) y vuelve a intentar. | [Volver a intentar] |
+| `SETTLEMENT_AMOUNT_INVALID` | Monto no válido | Revisa el monto que recibiste: debe ser un número igual o mayor a cero. | [Volver a intentar] |
+| `SETTLEMENT_TOO_MANY` | Demasiados pedidos | Puedes rendir hasta 50 pedidos a la vez. Quita algunos y vuelve a intentar. | [Volver a intentar] |
+| `SETTLEMENT_PARTIAL` | Rendición incompleta | Algunos pedidos no pudieron facturarse y siguen por rendir. Los demás ya quedaron rendidos. Actualiza para ver el estado. | [Actualizar] |
+| `REFUND_NOT_PENDING` | Devolución ya cerrada | Este cobro ya no está por devolver. Actualiza para ver el estado. | [Actualizar] |
+| `MARKETPLACE_PAUSED` | Pedidos en pausa | El restaurante no está recibiendo pedidos por ahora. | [Volver a intentar] |
+| `MARKETPLACE_PAUSE_INVALID` | Pausa no válida | La pausa debe durar entre 1 minuto y 24 horas, o ser indefinida. | [Volver a intentar] |
+| `MARKETPLACE_THRESHOLD_INVALID` | Minutos no válidos | Los minutos deben estar entre 0 y 240. | [Volver a intentar] |
+| `ORDER_NOT_CANCELLABLE` | No se puede cancelar | Este pedido ya está en preparación y no se puede cancelar desde la app. Actualiza para ver el estado. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).
