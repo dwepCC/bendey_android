@@ -50,7 +50,15 @@ android {
     }
 }
 
+// FCM: el plugin de Google Services solo se aplica si ya copiaste google-services.json en app/.
+// Sin ese archivo la app compila igual (las notificaciones push quedan apagadas).
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
     implementation(project(":core:domain"))

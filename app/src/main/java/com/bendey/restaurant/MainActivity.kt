@@ -1,6 +1,11 @@
 package com.bendey.restaurant
 
+import android.Manifest
 import android.content.res.Configuration
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import com.bendey.restaurant.push.PushRegistrar
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -30,9 +35,18 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionExpiryCoordinator: SessionExpiryCoordinator
 
+    @Inject
+    lateinit var pushRegistrar: PushRegistrar
+
     override fun onCreate(savedInstanceState: Bundle?) {
         applyOrientationPolicy()
         super.onCreate(savedInstanceState)
+        // Android 13+: sin este permiso no se muestra ningun aviso de pedido. FCM: registra el token al haber sesion.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+                .launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        lifecycleScope.launch { pushRegistrar.registerWhileLoggedIn() }
         val systemTomato = BendeyColors.Rest900.toArgb()
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(systemTomato),
