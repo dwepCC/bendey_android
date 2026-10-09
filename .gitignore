@@ -13,3 +13,6 @@
 .kotlin/
 
 **/build/
+
+# Firebase: google-services.json es config de cliente; no se versiona
+google-services.json
