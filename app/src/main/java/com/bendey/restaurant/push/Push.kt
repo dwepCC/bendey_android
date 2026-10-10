@@ -44,12 +44,16 @@ object Push {
         }
     }
 
-    fun show(context: Context, title: String, body: String, id: Int) {
+    fun show(context: Context, title: String, body: String, id: Int, type: String? = null) {
         val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         if (!allowed) return
         val open = PendingIntent.getActivity(
-            context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            context, id,
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP).apply {
+                // Mismo extra que pone el sistema con la app cerrada (data del push): MainActivity lo lee en ambos casos.
+                if (type != null) putExtra("type", type)
+            },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val n = NotificationCompat.Builder(context, CHANNEL_ORDERS)

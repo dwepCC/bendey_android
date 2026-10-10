@@ -422,6 +422,9 @@ data class DeliverySettingsUpdateRequestDto(
     @SerialName("fee_igv_affectation") val feeIgvAffectation: String? = null,
     // D2b: se envía solo al tocar el interruptor de contra entrega (s.m).
     @SerialName("cod_enabled") val codEnabled: Boolean? = null,
+    // D2a: pago con captura (s.m).
+    @SerialName("manual_payment_enabled") val manualPaymentEnabled: Boolean? = null,
+    @SerialName("payment_review_minutes") val paymentReviewMinutes: Int? = null,
 )
 
 /** `PUT /api/restaurant/sessions/:id/delivery/fee`: 0 elimina la línea. */

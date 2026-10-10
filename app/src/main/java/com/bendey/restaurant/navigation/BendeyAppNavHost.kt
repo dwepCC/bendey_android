@@ -38,6 +38,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.navigation.AccountMenuEntry
+import com.bendey.restaurant.core.navigation.DeliveryDeepLink
 import com.bendey.restaurant.core.navigation.MiNegocioCard
 import com.bendey.restaurant.core.navigation.MiNegocioScreen
 import com.bendey.restaurant.core.navigation.OperationNav
@@ -350,6 +351,18 @@ private fun MainShell(
     if (permissions.permissions.isEmpty()) {
         RestaurantNoAccessScreen(onLogout = { sessionViewModel.logout {} })
         return
+    }
+
+    // Push «Pago por validar» (data.type = payment_review): lleva a Entregas; allí se abre la pestaña Pagos.
+    val openPaymentsFromPush by DeliveryDeepLink.openPayments.collectAsStateWithLifecycle()
+    LaunchedEffect(openPaymentsFromPush) {
+        if (openPaymentsFromPush) {
+            if (canAccessRoute(BendeyRoutes.ENTREGAS, permissions.permissions, permissions.employeeType)) {
+                mainNavController.navigateToBottomBarDestination(BendeyRoutes.ENTREGAS)
+            } else {
+                DeliveryDeepLink.consume()
+            }
+        }
     }
 
     val adaptiveProfile = rememberBendeyAdaptiveProfile()

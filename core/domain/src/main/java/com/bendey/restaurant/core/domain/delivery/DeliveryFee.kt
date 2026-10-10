@@ -10,7 +10,7 @@ import kotlin.math.round
  * Lógica PURA (sin red ni Android): la usan el ViewModel de Ajustes, la hoja de asignar y el POS.
  */
 
-/** Ajustes de delivery del restaurante. `codEnabled` se edita desde D2b; el pago manual sigue siendo de solo lectura. */
+/** Ajustes de delivery del restaurante. `codEnabled` (D2b) y el pago con captura (D2a) se editan desde Ajustes. */
 data class DeliverySettings(
     val feeEnabled: Boolean = false,
     val deliveryFee: Double = 0.0,
@@ -28,6 +28,9 @@ data class DeliverySettingsUpdate(
     val feeIgvAffectation: String? = null,
     /** D2b: interruptor de efectivo contra entrega (solo `s.m`). */
     val codEnabled: Boolean? = null,
+    /** D2a: pago con captura (solo `s.m`). */
+    val manualPaymentEnabled: Boolean? = null,
+    val paymentReviewMinutes: Int? = null,
 )
 
 object DeliveryFeeRules {

@@ -119,6 +119,9 @@ class ConfiguracionViewModel @Inject constructor(
     private val sessionStore: UserSessionStore,
     private val onboardingRepository: OnboardingRepository,
     deliveryRepository: DeliveryRepository,
+    manualPaymentRepository: com.bendey.restaurant.core.domain.delivery.ManualPaymentRepository,
+    cashRepository: com.bendey.restaurant.core.domain.cash.CashRepository,
+    productImageRepository: com.bendey.restaurant.core.domain.catalog.ProductImageRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
@@ -140,6 +143,25 @@ class ConfiguracionViewModel @Inject constructor(
     fun toggleCod(value: Boolean) = codPresenter.toggle(value)
     fun dismissCodConfirm() = codPresenter.dismissConfirm()
     fun confirmCodEnable() = codPresenter.confirmEnable()
+
+    /** «Pago con captura» (D2a): su lógica vive en [ManualPaymentSettingsPresenter] (testeable sin Android). */
+    private val manualPayPresenter = ManualPaymentSettingsPresenter(viewModelScope, deliveryRepository, manualPaymentRepository, cashRepository::listPaymentMethods)
+    val manualPay: StateFlow<ManualPaymentSettingsState> = manualPayPresenter.state
+    val assetsBaseUrl: String? = productImageRepository.tenantAssetsBaseUrl()
+    fun toggleManualPay(value: Boolean) = manualPayPresenter.toggle(value)
+    fun setManualPayMinutes(text: String) = manualPayPresenter.setMinutesText(text)
+    fun saveManualPayMinutes() = manualPayPresenter.saveMinutes()
+    fun openPayMethodCreate() = manualPayPresenter.openCreate()
+    fun openPayMethodEdit(m: com.bendey.restaurant.core.domain.delivery.PayMethod) = manualPayPresenter.openEdit(m)
+    fun dismissPayMethodForm() = manualPayPresenter.dismissForm()
+    fun updatePayMethodForm(change: (PayMethodFormState) -> PayMethodFormState) = manualPayPresenter.updateForm(change)
+    fun pickPayMethodQr(bytes: ByteArray, mime: String) = manualPayPresenter.pickQr(bytes, mime)
+    fun clearPayMethodQr() = manualPayPresenter.clearPendingQr()
+    fun savePayMethodForm() = manualPayPresenter.saveForm()
+    fun askPayMethodDelete(m: com.bendey.restaurant.core.domain.delivery.PayMethod) = manualPayPresenter.askDelete(m)
+    fun dismissPayMethodDelete() = manualPayPresenter.dismissDelete()
+    fun confirmPayMethodDelete() = manualPayPresenter.confirmDelete()
+    fun togglePayMethodActive(m: com.bendey.restaurant.core.domain.delivery.PayMethod, active: Boolean) = manualPayPresenter.toggleActive(m, active)
 
     init {
         applyCachedSettings()
@@ -164,6 +186,7 @@ class ConfiguracionViewModel @Inject constructor(
                 val perms = user?.restaurantPermissions.orEmpty()
                 deliveryFeePresenter.setPermissions(perms)
                 codPresenter.setPermissions(perms)
+                manualPayPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -174,6 +197,7 @@ class ConfiguracionViewModel @Inject constructor(
         }
         deliveryFeePresenter.load()
         codPresenter.load()
+        manualPayPresenter.load()
         refresh(forceNetwork = false)
     }
 

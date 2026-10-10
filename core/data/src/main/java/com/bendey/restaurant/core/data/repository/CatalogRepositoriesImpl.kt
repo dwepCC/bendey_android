@@ -267,7 +267,8 @@ class DeliveryRepositoryImpl @Inject constructor(
 
     override suspend fun updateDeliverySettings(update: DeliverySettingsUpdate): AppResult<DeliverySettings> = apiCall {
         val saved = api.updateDeliverySettings(
-            DeliverySettingsUpdateRequestDto(update.feeEnabled, update.deliveryFee, update.feeIgvAffectation, update.codEnabled),
+            DeliverySettingsUpdateRequestDto(update.feeEnabled, update.deliveryFee, update.feeIgvAffectation, update.codEnabled,
+                update.manualPaymentEnabled, update.paymentReviewMinutes),
         ).toDomain()
         operationalDataCache.deliverySettings.put(saved)
         saved

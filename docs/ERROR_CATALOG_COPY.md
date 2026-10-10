@@ -174,6 +174,15 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `DOC_REQUEST_NO_SERIES` | Falta la serie | No hay una serie activa para ese comprobante en esta sucursal. Pídele al administrador que la cree en Ajustes. | [Hablar con el administrador] |
 | `DOC_REQUEST_BOLETA_LIMIT` | Falta el DNI | Una boleta de S/ 700 o más necesita el DNI del cliente. Cancela la solicitud y pídela otra vez con el DNI. | [Volver a intentar] |
 | `CASH_PENDING_SETTLEMENT` | Efectivo por recibir | Tienes efectivo de delivery ya facturado que el repartidor aún no te entrega. Recíbelo en la pestaña Rendiciones de Entregas antes de cerrar la caja. | [Actualizar] |
+| `PAYMENT_NOT_PENDING_REVIEW` | Pago ya atendido | Este pago ya fue validado o rechazado. Actualiza la lista. | [Actualizar] |
+| `PAYMENT_REJECT_REASON_REQUIRED` | Falta el motivo | Indica por qué rechazas el pago (mínimo 3 caracteres). | [Volver a intentar] |
+| `PAY_METHOD_NOT_FOUND` | Medio no encontrado | Ese medio de pago no existe. | [Actualizar] |
+| `PAY_METHOD_CODE_INVALID` | Medio no válido | Elige un medio de pago que no sea efectivo de los registrados en Caja y Bancos. | [Volver a intentar] |
+| `PAY_METHOD_LABEL_REQUIRED` | Falta el nombre | Escribe el nombre del medio de pago. | [Volver a intentar] |
+| `PAY_METHOD_EXISTS` | Medio repetido | Ya ofreces ese medio de pago. | [Volver a intentar] |
+| `MANUAL_PAYMENT_NOT_AVAILABLE` | Pago con captura no disponible | El pago con captura no está disponible en este restaurante. | [Hablar con el administrador] |
+| `PAYMENT_REVIEW_MINUTES_INVALID` | Plazo no válido | El plazo para pagar debe estar entre 5 y 120 minutos. | [Volver a intentar] |
+| `ORDER_PAYMENT_PENDING` | Pago por validar | Este pedido espera la validación del pago. Valídalo o recházalo en Entregas. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).

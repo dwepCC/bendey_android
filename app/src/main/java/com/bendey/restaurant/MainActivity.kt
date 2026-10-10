@@ -1,7 +1,9 @@
 package com.bendey.restaurant
 
 import android.Manifest
+import android.content.Intent
 import android.content.res.Configuration
+import com.bendey.restaurant.core.navigation.DeliveryDeepLink
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
@@ -41,6 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyOrientationPolicy()
         super.onCreate(savedInstanceState)
+        handlePushIntent(intent)
         // Android 13+: sin este permiso no se muestra ningun aviso de pedido. FCM: registra el token al haber sesion.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -76,6 +79,17 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePushIntent(intent)
+    }
+
+    /** Tocar un aviso push abre la pantalla que corresponde a su data.type (hoy: payment_review -> Entregas > Pagos). */
+    private fun handlePushIntent(intent: Intent?) {
+        DeliveryDeepLink.handlePushType(intent?.getStringExtra("type"))
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

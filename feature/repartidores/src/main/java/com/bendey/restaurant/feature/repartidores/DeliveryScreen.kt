@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Badge
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.bendey.restaurant.core.navigation.DeliveryDeepLink
 import com.bendey.restaurant.core.designsystem.components.BendeyFilterChip
 import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -145,7 +147,20 @@ fun EntregasScreen(
 ) {
     val board by viewModel.board.collectAsStateWithLifecycle()
     val canSettle by viewModel.canSettle.collectAsStateWithLifecycle()
-    var showSettlements by rememberSaveable { mutableStateOf(false) }
+    // 0 = Pedidos, 1 = Rendiciones, 2 = Pagos por validar (D2a).
+    var tab by rememberSaveable { mutableStateOf(0) }
+    val pagos: PagosViewModel = hiltViewModel()
+    val pagosState by pagos.state.collectAsStateWithLifecycle()
+    LaunchedEffect(canSettle) { if (canSettle) pagos.start() }
+    // Push «Pago por validar»: abre directo la pestaña Pagos.
+    val openPayments by DeliveryDeepLink.openPayments.collectAsStateWithLifecycle()
+    LaunchedEffect(openPayments, canSettle) {
+        if (openPayments && canSettle) {
+            tab = 2
+            pagos.refresh()
+            DeliveryDeepLink.consume()
+        }
+    }
     Column(modifier.fillMaxSize()) {
         BendeyScreenToolbar(
             title = DeliveryCopy.text("title"),
@@ -159,20 +174,30 @@ fun EntregasScreen(
                 )
             },
         )
-        // D2c: con o.ch (cajero o administrador) aparece la pestaña de Rendiciones.
+        // D2c/D2a: con o.ch (cajero o administrador) aparecen las pestañas Rendiciones y Pagos.
         if (canSettle) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8),
             ) {
-                BendeyFilterChip(selected = !showSettlements, onClick = { showSettlements = false }, text = "Pedidos")
-                BendeyFilterChip(selected = showSettlements, onClick = { showSettlements = true }, text = "Rendiciones")
+                BendeyFilterChip(selected = tab == 0, onClick = { tab = 0 }, text = "Pedidos")
+                BendeyFilterChip(selected = tab == 1, onClick = { tab = 1 }, text = "Rendiciones")
+                BendeyFilterChip(
+                    selected = tab == 2,
+                    onClick = { tab = 2 },
+                    label = { Text("Pagos") },
+                    trailingIcon = if (pagosState.pendingCount > 0) {
+                        { Badge { Text(pagosState.pendingCount.toString()) } }
+                    } else {
+                        null
+                    },
+                )
             }
         }
-        if (canSettle && showSettlements) {
-            RendicionesPanel(onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
-        } else {
-            DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+        when {
+            canSettle && tab == 1 -> RendicionesPanel(onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+            canSettle && tab == 2 -> PagosPanel(viewModel = pagos, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+            else -> DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
         }
     }
 }

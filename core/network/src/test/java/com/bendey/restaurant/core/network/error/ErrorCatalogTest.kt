@@ -220,6 +220,15 @@ class ErrorCatalogTest {
             "DOC_REQUEST_NO_SERIES" to Pair("No hay una serie activa para ese comprobante en esta sucursal. Pídele al administrador que la cree en Ajustes.", ErrorAction.CONTACT_ADMIN),
             "DOC_REQUEST_BOLETA_LIMIT" to Pair("Una boleta de S/ 700 o más necesita el DNI del cliente. Cancela la solicitud y pídela otra vez con el DNI.", ErrorAction.BACK_TO_TRY),
             "CASH_PENDING_SETTLEMENT" to Pair("Tienes efectivo de delivery ya facturado que el repartidor aún no te entrega. Recíbelo en la pestaña Rendiciones de Entregas antes de cerrar la caja.", ErrorAction.REFRESH),
+            "PAYMENT_NOT_PENDING_REVIEW" to Pair("Este pago ya fue validado o rechazado. Actualiza la lista.", ErrorAction.REFRESH),
+            "PAYMENT_REJECT_REASON_REQUIRED" to Pair("Indica por qué rechazas el pago (mínimo 3 caracteres).", ErrorAction.BACK_TO_TRY),
+            "PAY_METHOD_NOT_FOUND" to Pair("Ese medio de pago no existe.", ErrorAction.REFRESH),
+            "PAY_METHOD_CODE_INVALID" to Pair("Elige un medio de pago que no sea efectivo de los registrados en Caja y Bancos.", ErrorAction.BACK_TO_TRY),
+            "PAY_METHOD_LABEL_REQUIRED" to Pair("Escribe el nombre del medio de pago.", ErrorAction.BACK_TO_TRY),
+            "PAY_METHOD_EXISTS" to Pair("Ya ofreces ese medio de pago.", ErrorAction.BACK_TO_TRY),
+            "MANUAL_PAYMENT_NOT_AVAILABLE" to Pair("El pago con captura no está disponible en este restaurante.", ErrorAction.CONTACT_ADMIN),
+            "PAYMENT_REVIEW_MINUTES_INVALID" to Pair("El plazo para pagar debe estar entre 5 y 120 minutos.", ErrorAction.BACK_TO_TRY),
+            "ORDER_PAYMENT_PENDING" to Pair("Este pedido espera la validación del pago. Valídalo o recházalo en Entregas.", ErrorAction.REFRESH),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)

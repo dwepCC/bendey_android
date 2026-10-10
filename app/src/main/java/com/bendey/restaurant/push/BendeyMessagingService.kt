@@ -24,6 +24,6 @@ class BendeyMessagingService : FirebaseMessagingService() {
     /** Con la app abierta FCM no muestra nada solo: la mostramos nosotros. Con la app cerrada la muestra el sistema. */
     override fun onMessageReceived(message: RemoteMessage) {
         val n = message.notification ?: return
-        Push.show(applicationContext, n.title.orEmpty(), n.body.orEmpty(), (message.data["session_id"]?.toIntOrNull() ?: 0) + 3000)
+        Push.show(applicationContext, n.title.orEmpty(), n.body.orEmpty(), (message.data["session_id"]?.toIntOrNull() ?: 0) + 3000, message.data["type"])
     }
 }
