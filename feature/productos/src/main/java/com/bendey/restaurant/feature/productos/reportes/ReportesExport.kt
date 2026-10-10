@@ -154,3 +154,39 @@ fun exportSalesByProductPdf(
 } catch (e: Exception) {
     fileShareService.failureFrom(e)
 }
+
+fun exportValuationCsv(
+    context: Context,
+    fileShareService: BendeyFileShareService,
+    rows: List<com.bendey.restaurant.core.domain.inventory.ValuationRow>,
+    totalValue: Double,
+): ExportShareResult = try {
+    val data = mutableListOf<List<String>>()
+    data += listOf("Código", "Producto", "Cantidad", "Costo promedio", "Valor", "Saldo negativo")
+    rows.forEach { row ->
+        data += listOf(row.code, row.name, fmtQty(row.quantity), fmt2(row.averageCost), fmt2(row.value), if (row.negative) "Sí" else "No")
+    }
+    data += listOf("", "TOTAL", "", "", fmt2(totalValue), "")
+    val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/valorizacion-inventario.csv")
+    ReportCsvWriter.write(file, data)
+    fileShareService.shareFile(context, file, "text/csv", "Exportar valorización Excel")
+} catch (e: Exception) {
+    fileShareService.failureFrom(e)
+}
+
+fun exportValuationPdf(
+    context: Context,
+    fileShareService: BendeyFileShareService,
+    rows: List<com.bendey.restaurant.core.domain.inventory.ValuationRow>,
+    totalValue: Double,
+): ExportShareResult = try {
+    val lines = rows.map { row ->
+        "${row.code.take(10)} | ${row.name.take(22)} | ${fmtQty(row.quantity)} | S/ ${fmt2(row.averageCost)} | S/ ${fmt2(row.value)}" +
+            if (row.negative) " | NEGATIVO" else ""
+    } + "TOTAL VALORIZADO: S/ ${fmt2(totalValue)}"
+    val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/valorizacion-inventario.pdf")
+    ReportPdfWriter.writePortraitA4(file, "Valorización de inventario", lines)
+    fileShareService.shareFile(context, file, "application/pdf", "Exportar valorización PDF")
+} catch (e: Exception) {
+    fileShareService.failureFrom(e)
+}

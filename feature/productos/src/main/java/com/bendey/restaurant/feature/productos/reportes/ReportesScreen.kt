@@ -308,6 +308,8 @@ fun ReportesScreen(
 
                     )
 
+                    ReportesTab.VALORIZACION, ReportesTab.CONTEO -> Unit
+
                     ReportesTab.RECETAS -> RecetasReportFilters(
                         state = state,
                         onFromDate = viewModel::setFromDate,
@@ -417,6 +419,14 @@ fun ReportesScreen(
                 }
 
             }
+
+            ReportesTab.VALORIZACION -> ValorizacionPanel(
+                onNavigateToSubscription = onNavigateToSubscription,
+                onShowMessage = onShowMessage,
+                modifier = contentModifier,
+            )
+
+            ReportesTab.CONTEO -> ConteoPanel(onShowMessage = onShowMessage, modifier = contentModifier)
 
             ReportesTab.RECETAS -> {
 
@@ -734,7 +744,7 @@ private fun ReportFilters(
 
             ReportesTab.VENTAS -> Unit
 
-            ReportesTab.RECETAS -> Unit
+            ReportesTab.RECETAS, ReportesTab.VALORIZACION, ReportesTab.CONTEO -> Unit
 
         }
 

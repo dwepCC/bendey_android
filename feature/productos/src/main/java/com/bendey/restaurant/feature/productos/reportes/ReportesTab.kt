@@ -2,6 +2,8 @@ package com.bendey.restaurant.feature.productos.reportes
 
 enum class ReportesTab(val label: String) {
     KARDEX("Kardex"),
+    VALORIZACION("Valorización"),
+    CONTEO("Conteo físico"),
     PRODUCTOS("Productos"),
     VENTAS("Ventas"),
     RECETAS("Recetas"),

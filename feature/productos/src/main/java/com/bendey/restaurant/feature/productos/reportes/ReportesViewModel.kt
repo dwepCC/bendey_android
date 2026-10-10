@@ -426,6 +426,10 @@ class ReportesViewModel @Inject constructor(
 
             ReportesTab.RECETAS -> loadRecetas()
 
+            // Valorización y Conteo físico tienen su propio ViewModel (InventarioViewModels.kt).
+
+            ReportesTab.VALORIZACION, ReportesTab.CONTEO -> Unit
+
         }
 
     }
@@ -472,7 +476,9 @@ class ReportesViewModel @Inject constructor(
 
                 ReportesTab.VENTAS -> exportSales(context, state, format)
 
-                ReportesTab.RECETAS -> fileShareService.failureFrom(Exception("Este reporte no tiene exportación"))
+                ReportesTab.RECETAS, ReportesTab.VALORIZACION, ReportesTab.CONTEO ->
+
+                    fileShareService.failureFrom(Exception("Este reporte no tiene exportación"))
 
             }
 
