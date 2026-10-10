@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.ContactsRepository
+import com.bendey.restaurant.core.domain.contacts.PurchaseHistoryRules
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
 import com.bendey.restaurant.core.domain.contacts.sanitizeDocNumber
 import com.bendey.restaurant.core.domain.contacts.toFormInput
@@ -35,6 +36,8 @@ data class ClientesUiState(
     val deleteContactId: Int? = null,
     val error: String? = null,
     val snackMessage: String? = null,
+    /** Panel «Historial» del cliente abierto (null = cerrado). */
+    val history: HistorialUiState? = null,
 )
 
 @OptIn(FlowPreview::class)
@@ -125,6 +128,54 @@ class ClientesViewModel @Inject constructor(
                     it.copy(actionLoading = false, error = result.message)
                 }
                 AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /** Abre el panel «Historial» (no aplica al cliente genérico «clientes varios»). */
+    fun openHistory(contactId: Int) {
+        val contact = _uiState.value.contacts.firstOrNull { it.id == contactId } ?: return
+        if (PurchaseHistoryRules.isGenericClient(contact.docNumber, contact.businessName)) return
+        _uiState.update { it.copy(history = HistorialUiState(contactId, contact.displayName)) }
+        loadHistory(contactId, page = 1)
+    }
+
+    fun retryHistory() {
+        val h = _uiState.value.history ?: return
+        _uiState.update { it.copy(history = h.copy(loading = true, error = null)) }
+        loadHistory(h.contactId, page = 1)
+    }
+
+    fun loadMoreHistory() {
+        val h = _uiState.value.history ?: return
+        val page = h.page ?: return
+        if (h.loadingMore || !page.hasMore) return
+        _uiState.update { it.copy(history = h.copy(loadingMore = true, error = null)) }
+        loadHistory(h.contactId, page = page.page + 1)
+    }
+
+    fun dismissHistory() {
+        _uiState.update { it.copy(history = null) }
+    }
+
+    private fun loadHistory(contactId: Int, page: Int) {
+        viewModelScope.launch {
+            val result = contactsRepository.purchaseHistory(contactId, page, PurchaseHistoryRules.PAGE_SIZE)
+            _uiState.update { state ->
+                val h = state.history
+                if (h == null || h.contactId != contactId) return@update state // se cerró o cambió de cliente
+                when (result) {
+                    is AppResult.Success -> state.copy(
+                        history = h.copy(
+                            loading = false,
+                            loadingMore = false,
+                            error = null,
+                            page = h.page?.takeIf { page > 1 }?.let { PurchaseHistoryRules.append(it, result.data) } ?: result.data,
+                        ),
+                    )
+                    is AppResult.Error -> state.copy(history = h.copy(loading = false, loadingMore = false, error = result.message))
+                    AppResult.Loading -> state
+                }
             }
         }
     }

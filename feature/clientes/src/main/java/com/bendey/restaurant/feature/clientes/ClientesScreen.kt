@@ -66,6 +66,8 @@ import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
 import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import com.bendey.restaurant.core.ui.layout.BendeyListScreenLayout
+import com.bendey.restaurant.core.domain.contacts.PurchaseHistoryRules
+import androidx.compose.material.icons.filled.History
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,6 +110,7 @@ fun ClientesScreen(
             ClientesListPane(
                 state = state,
                 onEdit = viewModel::openEdit,
+                onHistory = viewModel::openHistory,
                 onDelete = viewModel::requestDelete,
                 onToggle = viewModel::toggleActive,
                 onSearchChange = viewModel::setSearchQuery,
@@ -129,6 +132,15 @@ fun ClientesScreen(
             onFormChange = viewModel::updateForm,
             onConsult = viewModel::consultDocument,
             onSave = viewModel::saveContact,
+        )
+    }
+
+    state.history?.let { h ->
+        HistorialClienteSheet(
+            state = h,
+            onDismiss = viewModel::dismissHistory,
+            onRetry = viewModel::retryHistory,
+            onLoadMore = viewModel::loadMoreHistory,
         )
     }
 
@@ -157,6 +169,7 @@ private fun clientesSubtitle(state: ClientesUiState): String {
 private fun ClientesListPane(
     state: ClientesUiState,
     onEdit: (Int) -> Unit,
+    onHistory: (Int) -> Unit,
     onDelete: (Int) -> Unit,
     onToggle: (Int) -> Unit,
     onSearchChange: (String) -> Unit,
@@ -226,6 +239,7 @@ private fun ClientesListPane(
                             contact = contact,
                             selected = contact.id == state.editingContactId && state.formOpen,
                             onEdit = { onEdit(contact.id) },
+                            onHistory = { onHistory(contact.id) },
                             onDelete = { onDelete(contact.id) },
                             onToggle = { onToggle(contact.id) },
                         )
@@ -367,12 +381,16 @@ private fun ContactRow(
     contact: CustomerContact,
     selected: Boolean = false,
     onEdit: () -> Unit,
+    onHistory: () -> Unit,
     onDelete: () -> Unit,
     onToggle: () -> Unit,
 ) {
+    val generic = PurchaseHistoryRules.isGenericClient(contact.docNumber, contact.businessName)
     BendeyListRow(
         selected = selected,
-        actions = listOf(
+        actions = listOfNotNull(
+            // El cliente genérico («clientes varios») no tiene historial propio.
+            if (generic) null else BendeyListRowAction(Icons.Default.History, "Historial de compras", onHistory),
             BendeyListRowAction(
                 icon = if (contact.active) Icons.Default.ToggleOn else Icons.Default.ToggleOff,
                 contentDescription = "Cambiar estado",
