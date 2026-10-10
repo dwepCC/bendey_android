@@ -417,6 +417,17 @@ object ErrorCatalog {
         "TIP_NOTHING_TO_PAY" to e("Sin propinas por pagar", "Este mozo no tiene propinas por pagar.", ErrorAction.REFRESH),
         "TIP_NO_CASH_SESSION" to e("Caja cerrada", "Abre tu caja para pagar las propinas.", ErrorAction.BACK_TO_TRY),
         "TIP_STAFF_REQUIRED" to e("Falta el mozo", "Indica a qué mozo pagas las propinas.", ErrorAction.BACK_TO_TRY),
+        "EARNINGS_UNAVAILABLE" to e("Ganancias no disponibles", "Las ganancias de repartidores aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "EARNINGS_NOTHING_TO_PAY" to e("Sin ganancias por pagar", "Este repartidor no tiene ganancias por pagar.", ErrorAction.REFRESH),
+        "EARNINGS_NO_CASH_SESSION" to e("Caja cerrada", "Abre tu caja para pagar las ganancias del repartidor.", ErrorAction.BACK_TO_TRY),
+        "EARNINGS_DRIVER_REQUIRED" to e("Falta el repartidor", "Indica a qué repartidor pagas.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ZONE_CODE_INVALID" to e("Distrito no válido", "El distrito debe ser un código de ubigeo de 6 dígitos.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ZONE_NAME_REQUIRED" to e("Falta el nombre de la zona", "Escribe el nombre de la zona.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ZONE_VALUE_INVALID" to e("Datos de la zona no válidos", "Revisa la tarifa y el pedido mínimo (entre S/ 0 y S/ 999.99) y el tiempo (0 a 240 minutos).", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ZONE_NOT_FOUND" to e("Zona no encontrada", "Esa zona no existe.", ErrorAction.REFRESH),
+        "DELIVERY_ZONES_UNAVAILABLE" to e("Zonas no disponibles", "Las zonas de reparto aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "OUT_OF_DELIVERY_ZONE" to e("Fuera de la zona de reparto", "Este restaurante no reparte en tu zona. Puedes recoger tu pedido en el local o elegir otro restaurante.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ADDRESS_NEEDS_DISTRICT" to e("Falta el distrito", "Edita tu dirección y elige el distrito para saber si este restaurante te reparte.", ErrorAction.BACK_TO_TRY),
     )
 
     private fun seriesMissing() = e(

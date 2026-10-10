@@ -220,6 +220,17 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `TIP_NOTHING_TO_PAY` | Sin propinas por pagar | Este mozo no tiene propinas por pagar. | [Actualizar] |
 | `TIP_NO_CASH_SESSION` | Caja cerrada | Abre tu caja para pagar las propinas. | [Volver a intentar] |
 | `TIP_STAFF_REQUIRED` | Falta el mozo | Indica a qué mozo pagas las propinas. | [Volver a intentar] |
+| `EARNINGS_UNAVAILABLE` | Ganancias no disponibles | Las ganancias de repartidores aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `EARNINGS_NOTHING_TO_PAY` | Sin ganancias por pagar | Este repartidor no tiene ganancias por pagar. | [Actualizar] |
+| `EARNINGS_NO_CASH_SESSION` | Caja cerrada | Abre tu caja para pagar las ganancias del repartidor. | [Volver a intentar] |
+| `EARNINGS_DRIVER_REQUIRED` | Falta el repartidor | Indica a qué repartidor pagas. | [Volver a intentar] |
+| `DELIVERY_ZONE_CODE_INVALID` | Distrito no válido | El distrito debe ser un código de ubigeo de 6 dígitos. | [Volver a intentar] |
+| `DELIVERY_ZONE_NAME_REQUIRED` | Falta el nombre de la zona | Escribe el nombre de la zona. | [Volver a intentar] |
+| `DELIVERY_ZONE_VALUE_INVALID` | Datos de la zona no válidos | Revisa la tarifa y el pedido mínimo (entre S/ 0 y S/ 999.99) y el tiempo (0 a 240 minutos). | [Volver a intentar] |
+| `DELIVERY_ZONE_NOT_FOUND` | Zona no encontrada | Esa zona no existe. | [Actualizar] |
+| `DELIVERY_ZONES_UNAVAILABLE` | Zonas no disponibles | Las zonas de reparto aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `OUT_OF_DELIVERY_ZONE` | Fuera de la zona de reparto | Este restaurante no reparte en tu zona. Puedes recoger tu pedido en el local o elegir otro restaurante. | [Volver a intentar] |
+| `DELIVERY_ADDRESS_NEEDS_DISTRICT` | Falta el distrito | Edita tu dirección y elige el distrito para saber si este restaurante te reparte. | [Volver a intentar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).
