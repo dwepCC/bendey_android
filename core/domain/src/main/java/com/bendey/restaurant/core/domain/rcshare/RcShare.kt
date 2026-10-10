@@ -106,7 +106,7 @@ object RcShareRules {
         empty.forEachIndexed { i, l -> shares[l.staffId] = base + if (i < extra) 1L else 0L }
         return lines.map { l ->
             val s = shares[l.staffId]
-            if (s != null) l.copy(amount = String.format(Locale.US, "%.2f", fromCents(s))) else l
+            if (s != null && s > 0L) l.copy(amount = String.format(Locale.US, "%.2f", fromCents(s))) else l
         }
     }
 
