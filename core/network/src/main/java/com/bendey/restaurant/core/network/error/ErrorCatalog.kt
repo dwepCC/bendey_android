@@ -380,6 +380,15 @@ object ErrorCatalog {
         "MANUAL_PAYMENT_NOT_AVAILABLE" to e("Pago con captura no disponible", "El pago con captura no está disponible en este restaurante.", ErrorAction.CONTACT_ADMIN),
         "PAYMENT_REVIEW_MINUTES_INVALID" to e("Plazo no válido", "El plazo para pagar debe estar entre 5 y 120 minutos.", ErrorAction.BACK_TO_TRY),
         "ORDER_PAYMENT_PENDING" to e("Pago por validar", "Este pedido espera la validación del pago. Valídalo o recházalo en Entregas.", ErrorAction.REFRESH),
+        "MANUAL_PAYMENT_METHOD_INVALID" to e("Medio no disponible", "Elige uno de los medios de pago que ofrece el restaurante.", ErrorAction.BACK_TO_TRY),
+        "PAYMENT_PROOF_NOT_ALLOWED" to e("No admite captura", "Este pedido ya no admite subir la captura del pago.", ErrorAction.REFRESH),
+        "PAYMENT_EXPIRED" to e("Plazo vencido", "El tiempo para pagar venció y el pedido se canceló.", ErrorAction.REFRESH),
+        "PAYMENT_PROOF_TOO_MANY" to e("Demasiadas capturas", "Subiste demasiadas capturas para este pedido. Llama al restaurante.", ErrorAction.CONTACT_ADMIN),
+        "REPORT_RANGE_INVALID" to e("Fechas no válidas", "Revisa las fechas del reporte: usa un rango de hasta 92 días.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_MIN_ORDER_NOT_REACHED" to e("Pedido mínimo", "El pedido no llega al mínimo de delivery del restaurante.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_MIN_ORDER_INVALID" to e("Mínimo no válido", "El pedido mínimo debe estar entre S/ 0 y S/ 9999.99.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_ETA_INVALID" to e("Tiempo no válido", "El tiempo de entrega debe estar entre 0 y 240 minutos.", ErrorAction.BACK_TO_TRY),
+        "DELIVERY_RULES_UNAVAILABLE" to e("Reglas no disponibles", "Las reglas de delivery aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
     )
 
     private fun seriesMissing() = e(

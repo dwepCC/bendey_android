@@ -183,6 +183,15 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `MANUAL_PAYMENT_NOT_AVAILABLE` | Pago con captura no disponible | El pago con captura no está disponible en este restaurante. | [Hablar con el administrador] |
 | `PAYMENT_REVIEW_MINUTES_INVALID` | Plazo no válido | El plazo para pagar debe estar entre 5 y 120 minutos. | [Volver a intentar] |
 | `ORDER_PAYMENT_PENDING` | Pago por validar | Este pedido espera la validación del pago. Valídalo o recházalo en Entregas. | [Actualizar] |
+| `MANUAL_PAYMENT_METHOD_INVALID` | Medio no disponible | Elige uno de los medios de pago que ofrece el restaurante. | [Volver a intentar] |
+| `PAYMENT_PROOF_NOT_ALLOWED` | No admite captura | Este pedido ya no admite subir la captura del pago. | [Actualizar] |
+| `PAYMENT_EXPIRED` | Plazo vencido | El tiempo para pagar venció y el pedido se canceló. | [Actualizar] |
+| `PAYMENT_PROOF_TOO_MANY` | Demasiadas capturas | Subiste demasiadas capturas para este pedido. Llama al restaurante. | [Hablar con el administrador] |
+| `REPORT_RANGE_INVALID` | Fechas no válidas | Revisa las fechas del reporte: usa un rango de hasta 92 días. | [Volver a intentar] |
+| `DELIVERY_MIN_ORDER_NOT_REACHED` | Pedido mínimo | El pedido no llega al mínimo de delivery del restaurante. | [Volver a intentar] |
+| `DELIVERY_MIN_ORDER_INVALID` | Mínimo no válido | El pedido mínimo debe estar entre S/ 0 y S/ 9999.99. | [Volver a intentar] |
+| `DELIVERY_ETA_INVALID` | Tiempo no válido | El tiempo de entrega debe estar entre 0 y 240 minutos. | [Volver a intentar] |
+| `DELIVERY_RULES_UNAVAILABLE` | Reglas no disponibles | Las reglas de delivery aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).
