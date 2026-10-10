@@ -23,5 +23,6 @@ fun DeliverySettingsDto.toDomain(): DeliverySettings {
         paymentReviewMinutes = r.paymentReviewMinutes ?: 15,
         minOrderAmount = (r.minOrderAmount ?: 0.0).coerceAtLeast(0.0),
         etaMinutes = (r.etaMinutes ?: 0).coerceAtLeast(0),
+        restrictToZones = r.restrictToZones ?: false,
     )
 }

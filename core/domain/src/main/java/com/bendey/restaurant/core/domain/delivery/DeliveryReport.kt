@@ -68,6 +68,10 @@ data class DeliveryReportDriver(
     val earnings: Double,
     val cashCollected: Double,
     val cashPending: Double,
+    /** Ganancia ya liquidada al repartidor (§27); 0 si el servidor no la manda. */
+    val earningsPaid: Double = 0.0,
+    /** Ganancia entregada y aún sin pagar. */
+    val earningsPending: Double = 0.0,
 )
 
 data class DeliveryReportRefunds(val pending: Int = 0, val pendingAmount: Double = 0.0)

@@ -39,9 +39,16 @@ class DeliveryViewModel @Inject constructor(
     private val _canSeeReport = kotlinx.coroutines.flow.MutableStateFlow(false)
     val canSeeReport: StateFlow<Boolean> = _canSeeReport
 
+    /** §27: la pestaña Ganancias la ven o.ch y s.m (nunca el repartidor). */
+    private val _canSeeEarnings = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val canSeeEarnings: StateFlow<Boolean> = _canSeeEarnings
+
     init {
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect {
+                _canSeeEarnings.value = com.bendey.restaurant.core.domain.delivery.canSeeDriverEarnings(
+                    it?.restaurantPermissions.orEmpty(), it?.user?.employeeType,
+                )
                 presenter.setPermissions(it?.restaurantPermissions.orEmpty(), it?.user?.employeeType)
                 _canSeeReport.value = com.bendey.restaurant.core.domain.delivery.canSeeDeliveryReport(
                     it?.restaurantPermissions.orEmpty(), it?.user?.employeeType,

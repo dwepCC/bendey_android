@@ -73,6 +73,8 @@ fun DeliveryReportDto.toDomain(): DeliveryReport {
                 earnings = it.earnings ?: 0.0,
                 cashCollected = it.cashCollected ?: 0.0,
                 cashPending = it.cashPending ?: 0.0,
+                earningsPaid = it.earningsPaid ?: 0.0,
+                earningsPending = it.earningsPending ?: 0.0,
             )
         },
         refunds = DeliveryReportRefunds(r.refunds?.pending ?: 0, r.refunds?.pendingAmount ?: 0.0),

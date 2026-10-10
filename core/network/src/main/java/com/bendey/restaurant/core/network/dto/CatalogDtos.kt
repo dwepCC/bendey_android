@@ -416,6 +416,7 @@ data class DeliverySettingsDto(
     @SerialName("payment_review_minutes") val paymentReviewMinutes: Int? = null,
     @SerialName("min_order_amount") val minOrderAmount: Double? = null,
     @SerialName("eta_minutes") val etaMinutes: Int? = null,
+    @SerialName("restrict_to_zones") val restrictToZones: Boolean? = null,
     val data: DeliverySettingsDto? = null,
 )
 
@@ -433,6 +434,8 @@ data class DeliverySettingsUpdateRequestDto(
     // D3: reglas del delivery (s.m).
     @SerialName("min_order_amount") val minOrderAmount: Double? = null,
     @SerialName("eta_minutes") val etaMinutes: Int? = null,
+    // Zonas de reparto: «Repartir solo en estas zonas» (s.m).
+    @SerialName("restrict_to_zones") val restrictToZones: Boolean? = null,
 )
 
 /** `PUT /api/restaurant/sessions/:id/delivery/fee`: 0 elimina la línea. */

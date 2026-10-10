@@ -179,6 +179,7 @@ private fun LazyListScope.reportBody(r: DeliveryReport, refreshing: Boolean) {
                         "Tiempo promedio ${if (d.delivered > 0) String.format(Locale.US, "%.0f", d.avgDeliveryMinutes) + " min" else "sin datos"} · " +
                             "Ganancia ${DeliveryReportText.money(d.earnings)}",
                     )
+                    Muted("Ganancia pagada ${DeliveryReportText.money(d.earningsPaid)} · Por pagar ${DeliveryReportText.money(d.earningsPending)}")
                     Muted("Efectivo cobrado ${DeliveryReportText.money(d.cashCollected)} · Por rendir ${DeliveryReportText.money(d.cashPending)}")
                 }
             }

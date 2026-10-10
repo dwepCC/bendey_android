@@ -211,6 +211,14 @@ abstract class DataModule {
 
     @Binds
     @Singleton
+    abstract fun bindDeliveryZonesRepository(impl: com.bendey.restaurant.core.data.repository.DeliveryZonesRepositoryImpl): com.bendey.restaurant.core.domain.delivery.DeliveryZonesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDeliveryEarningsRepository(impl: com.bendey.restaurant.core.data.repository.DeliveryEarningsRepositoryImpl): com.bendey.restaurant.core.domain.delivery.DeliveryEarningsRepository
+
+    @Binds
+    @Singleton
     abstract fun bindDeliveryReportRepository(impl: DeliveryReportRepositoryImpl): DeliveryReportRepository
 
     @Binds

@@ -123,6 +123,7 @@ class ConfiguracionViewModel @Inject constructor(
     opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
     cashRepository: com.bendey.restaurant.core.domain.cash.CashRepository,
     productImageRepository: com.bendey.restaurant.core.domain.catalog.ProductImageRepository,
+    zonesRepository: com.bendey.restaurant.core.domain.delivery.DeliveryZonesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConfiguracionUiState())
@@ -151,6 +152,30 @@ class ConfiguracionViewModel @Inject constructor(
     fun setRulesMinOrder(text: String) = rulesPresenter.setMinOrderText(text)
     fun setRulesEta(text: String) = rulesPresenter.setEtaText(text)
     fun saveRules() = rulesPresenter.save()
+
+    /** «Zonas de reparto» (§26): lógica en [DeliveryZonesPresenter]. Región/provincia/distrito salen del ubigeo central. */
+    private val zonesPresenter = DeliveryZonesPresenter(
+        viewModelScope, zonesRepository, deliveryRepository,
+        repository::getUbigeoRegiones, repository::getUbigeoProvincias, repository::getUbigeoDistritos,
+    )
+    val zones: StateFlow<DeliveryZonesState> = zonesPresenter.state
+    fun toggleZonesRestrict(value: Boolean) = zonesPresenter.toggleRestrict(value)
+    fun openZoneCreate() = zonesPresenter.openCreate()
+    fun openZoneEdit(z: com.bendey.restaurant.core.domain.delivery.DeliveryZone) = zonesPresenter.openEdit(z)
+    fun dismissZoneForm() = zonesPresenter.dismissForm()
+    fun selectZoneRegion(id: String) = zonesPresenter.selectRegion(id)
+    fun selectZoneProvincia(id: String) = zonesPresenter.selectProvincia(id)
+    fun selectZoneDistrito(code: String) = zonesPresenter.selectDistrito(code)
+    fun setZoneName(text: String) = zonesPresenter.setName(text)
+    fun setZoneFee(text: String) = zonesPresenter.setFee(text)
+    fun setZoneMinOrder(text: String) = zonesPresenter.setMinOrder(text)
+    fun setZoneEta(text: String) = zonesPresenter.setEta(text)
+    fun setZoneActive(value: Boolean) = zonesPresenter.setActive(value)
+    fun saveZoneForm() = zonesPresenter.saveForm()
+    fun toggleZoneActive(z: com.bendey.restaurant.core.domain.delivery.DeliveryZone, active: Boolean) = zonesPresenter.toggleActive(z, active)
+    fun askZoneDelete(z: com.bendey.restaurant.core.domain.delivery.DeliveryZone) = zonesPresenter.askDelete(z)
+    fun dismissZoneDelete() = zonesPresenter.dismissDelete()
+    fun confirmZoneDelete() = zonesPresenter.confirmDelete()
 
     /** «Control de descuentos»: lógica en [DiscountControlPresenter]. */
     private val discountControlPresenter = DiscountControlPresenter(viewModelScope, opsRepository)
@@ -201,6 +226,7 @@ class ConfiguracionViewModel @Inject constructor(
                 codPresenter.setPermissions(perms)
                 manualPayPresenter.setPermissions(perms)
                 rulesPresenter.setPermissions(perms)
+                zonesPresenter.setPermissions(perms)
                 discountControlPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
@@ -214,6 +240,7 @@ class ConfiguracionViewModel @Inject constructor(
         codPresenter.load()
         manualPayPresenter.load()
         rulesPresenter.load()
+        zonesPresenter.load()
         discountControlPresenter.load(forceRefresh = true)
         refresh(forceNetwork = false)
     }

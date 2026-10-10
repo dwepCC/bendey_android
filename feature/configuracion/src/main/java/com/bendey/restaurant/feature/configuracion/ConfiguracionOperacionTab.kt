@@ -96,6 +96,7 @@ fun OperacionTab(
         DeliveryFeeCard(viewModel)
         CodCard(viewModel)
         DeliveryRulesCard(viewModel)
+        DeliveryZonesCard(viewModel)
         DiscountControlCard(viewModel)
         ManualPaymentCard(viewModel)
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))

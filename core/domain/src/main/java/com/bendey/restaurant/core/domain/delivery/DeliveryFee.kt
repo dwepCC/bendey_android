@@ -23,6 +23,8 @@ data class DeliverySettings(
     val minOrderAmount: Double = 0.0,
     /** D3: minutos prometidos de entrega; 0 = no prometer hora. */
     val etaMinutes: Int = 0,
+    /** Zonas: reparte solo en los distritos con zona activa. */
+    val restrictToZones: Boolean = false,
 )
 
 /** Cambio parcial de los ajustes: lo que sea null no se envía. */
@@ -37,6 +39,7 @@ data class DeliverySettingsUpdate(
     val paymentReviewMinutes: Int? = null,
     val minOrderAmount: Double? = null,
     val etaMinutes: Int? = null,
+    val restrictToZones: Boolean? = null,
 )
 
 /** D3: validación local de las reglas del delivery (gemela de la del servidor). */

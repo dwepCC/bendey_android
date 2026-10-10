@@ -82,6 +82,8 @@ data class ReportDriverDto(
     val earnings: Double? = null,
     @SerialName("cash_collected") val cashCollected: Double? = null,
     @SerialName("cash_pending") val cashPending: Double? = null,
+    @SerialName("earnings_paid") val earningsPaid: Double? = null,
+    @SerialName("earnings_pending") val earningsPending: Double? = null,
 )
 
 @Serializable

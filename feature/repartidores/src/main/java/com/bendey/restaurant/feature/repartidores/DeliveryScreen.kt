@@ -63,6 +63,7 @@ import com.bendey.restaurant.core.domain.delivery.DeliveryBoardDriver
 import com.bendey.restaurant.core.domain.delivery.DeliveryCard
 import com.bendey.restaurant.core.domain.delivery.DeliveryChipTone
 import com.bendey.restaurant.core.domain.delivery.DeliveryCopy
+import com.bendey.restaurant.core.domain.delivery.DeliveryEarningsCopy
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeCopy
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -151,7 +152,8 @@ fun EntregasScreen(
     val board by viewModel.board.collectAsStateWithLifecycle()
     val canSettle by viewModel.canSettle.collectAsStateWithLifecycle()
     val canSeeReport by viewModel.canSeeReport.collectAsStateWithLifecycle()
-    // 0 = Pedidos, 1 = Rendiciones, 2 = Pagos por validar (D2a), 3 = Reporte (D5).
+    val canSeeEarnings by viewModel.canSeeEarnings.collectAsStateWithLifecycle()
+    // 0 = Pedidos, 1 = Rendiciones, 2 = Pagos por validar (D2a), 3 = Reporte (D5), 4 = Ganancias (§27).
     var tab by rememberSaveable { mutableStateOf(0) }
     val pagos: PagosViewModel = hiltViewModel()
     val pagosState by pagos.state.collectAsStateWithLifecycle()
@@ -179,7 +181,7 @@ fun EntregasScreen(
             },
         )
         // D2c/D2a: con o.ch (cajero o administrador) aparecen las pestañas Rendiciones y Pagos.
-        if (canSettle || canSeeReport) {
+        if (canSettle || canSeeReport || canSeeEarnings) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8),
@@ -198,12 +200,14 @@ fun EntregasScreen(
                         },
                     )
                 }
+                if (canSeeEarnings) BendeyFilterChip(selected = tab == 4, onClick = { tab = 4 }, text = DeliveryEarningsCopy.TAB)
                 if (canSeeReport) BendeyFilterChip(selected = tab == 3, onClick = { tab = 3 }, text = "Reporte")
             }
         }
         when {
             canSettle && tab == 1 -> RendicionesPanel(onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
             canSeeReport && tab == 3 -> ReportePanel(modifier = Modifier.weight(1f))
+            canSeeEarnings && tab == 4 -> GananciasPanel(viewModel = hiltViewModel(), onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
             canSettle && tab == 2 -> PagosPanel(viewModel = pagos, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
             else -> DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
         }
