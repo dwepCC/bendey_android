@@ -211,6 +211,9 @@ data class PosUiState(
     val checkoutDocType: String = "NOTA DE VENTA",
     val checkoutContactId: Int? = null,
     val checkoutPayments: List<CheckoutPaymentDraft> = emptyList(),
+    /** Propina voluntaria del cobro (no va en el comprobante). */
+    val checkoutTip: com.bendey.restaurant.core.domain.tips.TipDraft = com.bendey.restaurant.core.domain.tips.TipDraft(),
+    val tipStaff: List<com.bendey.restaurant.core.ui.checkout.TipStaffChoice> = emptyList(),
     val checkoutDiscountMode: CheckoutDiscountMode = CheckoutDiscountMode.PERCENT,
     val checkoutDiscountValue: String = "0",
     val allowCheckoutDiscount: Boolean = false,
@@ -1349,6 +1352,7 @@ class PosViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
+                    checkoutTip = com.bendey.restaurant.core.domain.tips.TipDraft(),
                     discountsLocked = locked,
                     allowCheckoutDiscount = allowDiscount && !locked,
                     checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
@@ -1532,6 +1536,28 @@ class PosViewModel @Inject constructor(
         _uiState.update { it.copy(checkoutPayments = payments) }
     }
 
+    fun setCheckoutTip(tip: com.bendey.restaurant.core.domain.tips.TipDraft) {
+        _uiState.update { it.copy(checkoutTip = tip) }
+        if (_uiState.value.tipStaff.isEmpty()) loadTipStaff()
+    }
+
+    private var tipStaffLoading = false
+
+    /** Personal al que se puede dirigir la propina (solo cuando el cajero escribe una). */
+    private fun loadTipStaff() {
+        if (tipStaffLoading) return
+        tipStaffLoading = true
+        viewModelScope.launch {
+            when (val r = mesasRepository.loadStaff()) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(tipStaff = r.data.map { s -> com.bendey.restaurant.core.ui.checkout.TipStaffChoice(s.id, s.displayName) })
+                }
+                else -> Unit
+            }
+            tipStaffLoading = false
+        }
+    }
+
     fun confirmCheckout() {
         val state = _uiState.value
         val meta = state.checkoutMeta
@@ -1575,6 +1601,14 @@ class PosViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El monto pagado debe cubrir el total") }
             return
         }
+        com.bendey.restaurant.core.domain.tips.TipRules.validate(state.checkoutTip.amount)?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
+            return
+        }
+        val tipInput = com.bendey.restaurant.core.domain.tips.TipRules.toInput(
+            state.checkoutTip,
+            paymentLines.firstOrNull()?.method ?: "cash",
+        )
         val methods = meta?.paymentMethods.orEmpty()
 
         viewModelScope.launch {
@@ -1621,6 +1655,7 @@ class PosViewModel @Inject constructor(
                         items = state.cart.map { it.toOrderItemInput() },
                         payments = paymentLines,
                         detailMode = detailMode,
+                        tip = tipInput,
                     ),
                 )
             } else {
@@ -1656,6 +1691,7 @@ class PosViewModel @Inject constructor(
                         discountAmount = discountAmount,
                         payments = paymentLines,
                         detailMode = detailMode,
+                        tip = tipInput,
                     ),
                 )
             }
@@ -1666,6 +1702,7 @@ class PosViewModel @Inject constructor(
                     val hasPrinter = documentPrintService.hasConfiguredPrinter()
                     resetSessionState(
                         newType = PosOrderType.QUICK_SALE,
+                        snack = result.data.tipWarning,
                         checkoutSuccess = result.data,
                         checkoutPrintNote = printNote,
                         receiptHasPrinter = hasPrinter,
@@ -1767,6 +1804,7 @@ class PosViewModel @Inject constructor(
                 deliveryDrivers = it.deliveryDrivers,
                 deliverySettings = it.deliverySettings,
                 snackMessage = snack,
+                tipStaff = it.tipStaff,
                 checkoutSuccess = checkoutSuccess ?: it.checkoutSuccess,
                 checkoutPrintNote = checkoutPrintNote ?: it.checkoutPrintNote,
                 receiptHasPrinter = receiptHasPrinter ?: it.receiptHasPrinter,

@@ -18,5 +18,6 @@ interface ContactsRepository {
     suspend fun deleteCustomer(id: Int): AppResult<Unit>
     suspend fun toggleCustomer(id: Int): AppResult<Unit>
     suspend fun consultDni(tenantRuc: String, dni: String): AppResult<ConsultaDniResult>
+    suspend fun purchaseHistory(id: Int, page: Int = 1, limit: Int = PurchaseHistoryRules.PAGE_SIZE): AppResult<PurchaseHistoryPage>
     suspend fun consultRuc(tenantRuc: String, ruc: String): AppResult<ConsultaRucResult>
 }

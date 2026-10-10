@@ -504,6 +504,12 @@ fun PosScreen(
             lockedCheckoutSeries(state.checkoutMeta?.series.orEmpty(), state.billingModuleEnabled)
         },
         onLockedDocTypeSelect = onNavigateToSubscription,
+        tip = com.bendey.restaurant.core.ui.checkout.CheckoutTipState(
+            draft = state.checkoutTip,
+            staff = state.tipStaff,
+            isTableSession = false,
+            onChange = viewModel::setCheckoutTip,
+        ),
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,

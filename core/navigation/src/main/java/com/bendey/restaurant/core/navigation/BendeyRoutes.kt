@@ -36,6 +36,10 @@ object BendeyRoutes {
     const val SUSCRIPCION = "suscripcion"
     const val COMPRAS = "compras"
     const val PROVEEDORES = "proveedores"
+    /** Propinas: por pagar, reporte y «Mis propinas». */
+    const val PROPINAS = "propinas"
+    /** Reparto del recargo al consumo entre los trabajadores. */
+    const val RC_REPARTO = "reparto_recargo"
     /** Centro de ayuda (R10.7): lo ve cualquier puesto. */
     const val AYUDA = "ayuda"
 
@@ -52,7 +56,7 @@ object BendeyRoutes {
 
     private val managementRoutes = setOf(
         VENTAS, PRODUCTOS, CLIENTES, CONFIGURACION, REPARTIDORES, REPORTES,
-        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES, AYUDA, MI_NEGOCIO,
+        MODIFICADORES, AREAS_PREPARACION, COMBOS, MESAS_ADMIN, COMPRAS, PROVEEDORES, AYUDA, MI_NEGOCIO, PROPINAS, RC_REPARTO,
     )
 
     fun showsBottomBar(route: String?): Boolean {

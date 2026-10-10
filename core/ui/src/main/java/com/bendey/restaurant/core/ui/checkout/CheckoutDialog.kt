@@ -113,6 +113,8 @@ fun CheckoutDialog(
     lockedSeries: List<DocumentSeries> = emptyList(),
     onLockedDocTypeSelect: () -> Unit = {},
     extraBeforePayments: @Composable () -> Unit = {},
+    /** Bloque opcional «Propina» (null = sin propinas, p. ej. cobro que no las admite). */
+    tip: CheckoutTipState? = null,
     onDismiss: () -> Unit,
     onSeriesChange: (Int, String) -> Unit,
     onContactChange: (Int) -> Unit,
@@ -148,6 +150,7 @@ fun CheckoutDialog(
         contactId != null &&
         paidCoversTotal(paidTotal, payableTotal) &&
         payments.isNotEmpty() &&
+        tip.allowsConfirm() &&
         !loading &&
         !metaLoading
 
@@ -282,6 +285,16 @@ fun CheckoutDialog(
                             onPaymentsChange = onPaymentsChange,
                             tablet = tabletLandscape,
                         )
+                        tip?.let {
+                            CheckoutTipSection(
+                                state = it,
+                                payableTotal = payableTotal,
+                                methods = meta?.paymentMethods.orEmpty(),
+                                defaultMethodCode = payments.firstOrNull()?.method?.ifBlank { null }
+                                    ?: meta?.paymentMethods?.firstOrNull()?.code
+                                    ?: "cash",
+                            )
+                        }
                         if (!tabletLandscape) {
                             CheckoutPaymentSummary(
                                 currency = currency,

@@ -6,6 +6,8 @@ import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.DeliveryDining
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Paid
+import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Print
@@ -54,6 +56,8 @@ enum class MiNegocioCard(
     PROVEEDORES(BendeyRoutes.PROVEEDORES, "Proveedores", "Tus proveedores y sus datos de contacto.", Icons.Default.LocalShipping, MiNegocioGroup.COMPRAS),
     VENTAS(BendeyRoutes.VENTAS, "Ventas", "Boletas, facturas, notas de crédito y devoluciones.", Icons.Default.ShoppingCart, MiNegocioGroup.VENTAS),
     REPORTES(BendeyRoutes.REPORTES, "Reportes", "Ventas, cobros, productos y anulaciones.", Icons.Default.Assessment, MiNegocioGroup.VENTAS),
+    PROPINAS(BendeyRoutes.PROPINAS, "Propinas", "Propinas por pagar a los mozos, reporte y lo que lleva cada uno.", Icons.Default.Savings, MiNegocioGroup.VENTAS),
+    RC_REPARTO(BendeyRoutes.RC_REPARTO, "Reparto del recargo", "Deja constancia de cuánto recibió cada trabajador del recargo al consumo.", Icons.Default.Paid, MiNegocioGroup.VENTAS),
     CLIENTES(BendeyRoutes.CLIENTES, "Clientes", "Tu libreta de clientes con documento y datos de contacto.", Icons.Default.People, MiNegocioGroup.CLIENTES),
     REPARTIDORES(BendeyRoutes.REPARTIDORES, "Repartidores y entregas", "Entregas en curso y altas de repartidores y empresas de delivery.", Icons.Default.DeliveryDining, MiNegocioGroup.CLIENTES),
     SALON_Y_MESAS(BendeyRoutes.MESAS_ADMIN, "Salón y mesas", "Crea y ordena las zonas y mesas de tu local.", Icons.Default.Layers, MiNegocioGroup.SALON),
@@ -92,6 +96,8 @@ enum class AccountMenuEntry(val route: String, val label: String, val icon: Imag
     VENTAS(BendeyRoutes.VENTAS, "Ventas", Icons.Default.ShoppingCart),
     REPORTES(BendeyRoutes.REPORTES, "Reportes", Icons.Default.Assessment),
     CLIENTES(BendeyRoutes.CLIENTES, "Clientes", Icons.Default.People),
+    PROPINAS(BendeyRoutes.PROPINAS, "Propinas", Icons.Default.Savings),
+    RC_REPARTO(BendeyRoutes.RC_REPARTO, "Reparto del recargo", Icons.Default.Paid),
     IMPRESORAS(BendeyRoutes.PRINTING_TEST, "Impresoras", Icons.Default.Print),
     MI_PLAN(BendeyRoutes.SUSCRIPCION, "Mi plan", Icons.Default.WorkspacePremium),
     AYUDA(BendeyRoutes.AYUDA, "Ayuda", Icons.AutoMirrored.Filled.HelpOutline),
@@ -102,8 +108,11 @@ enum class AccountMenuEntry(val route: String, val label: String, val icon: Imag
             val manager = OperationNav.isBusinessManager(permissions, employeeType)
             return entries.filter { e ->
                 when (e) {
-                    VENTAS, REPORTES, CLIENTES ->
+                    VENTAS, REPORTES, CLIENTES, RC_REPARTO ->
                         !manager && canAccessRoute(e.route, permissions, employeeType)
+                    // El repartidor no maneja propinas del salón; el administrador las ve en «Mi negocio».
+                    PROPINAS ->
+                        !manager && !employeeType.equals("driver", ignoreCase = true)
                     else -> canAccessRoute(e.route, permissions, employeeType)
                 }
             }

@@ -113,6 +113,9 @@ class BillingRepositoryImpl @Inject constructor(
                     )
                 },
                 detailMode = input.detailMode,
+                tipAmount = input.tip?.amount,
+                tipMethod = input.tip?.method,
+                tipStaffId = input.tip?.staffId,
             ),
         )
         val data = response.data ?: error("Venta no generada")
@@ -122,6 +125,7 @@ class BillingRepositoryImpl @Inject constructor(
             total = data.total,
             printData = response.printData?.toDomain(),
             firstSale = response.isFirstSale,
+            tipWarning = response.tipWarning?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -145,6 +149,9 @@ class BillingRepositoryImpl @Inject constructor(
                     )
                 },
                 detailMode = input.detailMode,
+                tipAmount = input.tip?.amount,
+                tipMethod = input.tip?.method,
+                tipStaffId = input.tip?.staffId,
             ),
         )
         val data = response.data ?: error("Venta no generada")
@@ -154,6 +161,7 @@ class BillingRepositoryImpl @Inject constructor(
             total = data.total,
             printData = response.printData?.toDomain(),
             firstSale = response.isFirstSale,
+            tipWarning = response.tipWarning?.takeIf { it.isNotBlank() },
         )
     }
 

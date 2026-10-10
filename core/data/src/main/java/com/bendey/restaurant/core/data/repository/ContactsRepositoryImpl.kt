@@ -39,6 +39,43 @@ class ContactsRepositoryImpl @Inject constructor(
     private val consultaApi: ConsultaApi
         get() = tenantRetrofitProvider.create()
 
+    override suspend fun purchaseHistory(
+        id: Int,
+        page: Int,
+        limit: Int,
+    ): AppResult<com.bendey.restaurant.core.domain.contacts.PurchaseHistoryPage> = apiCall {
+        val d = contactsApi.purchaseHistory(id, page, limit).data
+        val s = d?.summary
+        com.bendey.restaurant.core.domain.contacts.PurchaseHistoryPage(
+            summary = com.bendey.restaurant.core.domain.contacts.PurchaseHistorySummary(
+                orders = s?.orders ?: 0,
+                totalSpent = s?.totalSpent ?: 0.0,
+                avgTicket = s?.avgTicket ?: 0.0,
+                firstVisit = s?.firstVisit?.takeIf { it.isNotBlank() },
+                lastVisit = s?.lastVisit?.takeIf { it.isNotBlank() },
+            ),
+            topProducts = d?.topProducts.orEmpty().map {
+                com.bendey.restaurant.core.domain.contacts.PurchaseTopProduct(
+                    it.productId ?: 0, it.description.orEmpty(), it.quantity ?: 0.0, it.total ?: 0.0,
+                )
+            },
+            sales = d?.sales.orEmpty().map {
+                com.bendey.restaurant.core.domain.contacts.PurchaseSale(
+                    id = it.id ?: 0,
+                    number = it.number.orEmpty(),
+                    docType = it.docType.orEmpty(),
+                    issueDate = it.issueDate.orEmpty(),
+                    total = it.total ?: 0.0,
+                    status = it.status.orEmpty(),
+                    sessionId = it.sessionId,
+                )
+            },
+            total = d?.total ?: 0,
+            page = d?.page ?: page,
+            limit = d?.limit ?: limit,
+        )
+    }
+
     override suspend fun listCustomers(
         query: String,
         includeInactive: Boolean,

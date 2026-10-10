@@ -22,4 +22,8 @@ enum class RestaurantFeature {
     REPORTES,
     COMPRAS,
     PROVEEDORES,
+    /** Propinas: pantalla abierta a todo el personal (cada pestaña pide su permiso). */
+    PROPINAS,
+    /** Reparto del recargo al consumo: ver con c.v o s.m. */
+    RC_REPARTO,
 }

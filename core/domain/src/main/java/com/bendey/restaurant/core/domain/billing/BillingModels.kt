@@ -88,6 +88,8 @@ data class BillSessionInput(
     val payments: List<CheckoutPaymentLine>,
     /** "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal. */
     val detailMode: String? = null,
+    /** Propina voluntaria: no cambia el total ni el vuelto ni va al comprobante. */
+    val tip: com.bendey.restaurant.core.domain.tips.TipInput? = null,
 )
 
 data class BillSessionResult(
@@ -97,6 +99,8 @@ data class BillSessionResult(
     val printData: SalePrintData? = null,
     /** R6: primer cobro del restaurante (lo decide el servidor, una sola vez). */
     val firstSale: Boolean = false,
+    /** Aviso del servidor si la propina quedó anotada pero algo falló (nunca bloquea el cobro). */
+    val tipWarning: String? = null,
 )
 
 data class VoidCreditNoteResult(
@@ -190,6 +194,7 @@ data class BillQuickSaleInput(
     val payments: List<CheckoutPaymentLine>,
     /** "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal. */
     val detailMode: String? = null,
+    val tip: com.bendey.restaurant.core.domain.tips.TipInput? = null,
 )
 
 interface BillingRepository {

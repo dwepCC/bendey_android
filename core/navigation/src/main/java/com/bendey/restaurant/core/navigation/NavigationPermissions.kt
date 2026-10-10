@@ -37,6 +37,8 @@ fun routeRequiredFeature(route: String?): RestaurantFeature? = when {
     route == BendeyRoutes.PRINTING_TEST -> RestaurantFeature.IMPRESORAS
     route == BendeyRoutes.COMPRAS -> RestaurantFeature.COMPRAS
     route == BendeyRoutes.PROVEEDORES -> RestaurantFeature.PROVEEDORES
+    route == BendeyRoutes.PROPINAS -> RestaurantFeature.PROPINAS
+    route == BendeyRoutes.RC_REPARTO -> RestaurantFeature.RC_REPARTO
     route == BendeyRoutes.SUSCRIPCION -> RestaurantFeature.CONFIGURACION
     else -> null
 }

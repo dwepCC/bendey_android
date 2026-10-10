@@ -414,6 +414,13 @@ fun MesaScreen(
                 )
             }
         },
+        tip = com.bendey.restaurant.core.ui.checkout.CheckoutTipState(
+            draft = state.checkoutTip,
+            staff = state.tipStaff,
+            isTableSession = true,
+            tableWaiterName = state.session?.waiterName,
+            onChange = viewModel::setCheckoutTip,
+        ),
         onDismiss = viewModel::dismissCheckout,
         onSeriesChange = viewModel::setCheckoutSeries,
         onContactChange = viewModel::setCheckoutContact,

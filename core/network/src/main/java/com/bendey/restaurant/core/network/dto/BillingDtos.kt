@@ -18,6 +18,10 @@ data class BillSessionRequestDto(
     val payments: List<BillPaymentDto>,
     // "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal.
     @SerialName("detail_mode") val detailMode: String? = null,
+    // Propina voluntaria (no va en el comprobante ni suma al total).
+    @SerialName("tip_amount") val tipAmount: Double? = null,
+    @SerialName("tip_method") val tipMethod: String? = null,
+    @SerialName("tip_staff_id") val tipStaffId: Int? = null,
 )
 
 @Serializable
@@ -33,6 +37,10 @@ data class BillQuickSaleRequestDto(
     val payments: List<BillPaymentDto>,
     // "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal.
     @SerialName("detail_mode") val detailMode: String? = null,
+    // Propina voluntaria (no va en el comprobante ni suma al total).
+    @SerialName("tip_amount") val tipAmount: Double? = null,
+    @SerialName("tip_method") val tipMethod: String? = null,
+    @SerialName("tip_staff_id") val tipStaffId: Int? = null,
 )
 
 @Serializable
@@ -53,6 +61,8 @@ data class BillSessionResponseDto(
      * valor raro (texto, número, null) nunca rompa la deserialización del cobro; ver [isFirstSale].
      */
     @SerialName("first_sale") val firstSale: JsonElement? = null,
+    /** Texto si la propina quedó anotada pero su movimiento de caja falló (o el monto era inválido). */
+    @SerialName("tip_warning") val tipWarning: String? = null,
 ) {
     /** Booleano estricto: solo el literal JSON `true` cuenta. */
     val isFirstSale: Boolean
@@ -247,6 +257,10 @@ data class IssueElectronicRequestDto(
     // "detailed" | "consumption" — elección del usuario, no el modo de la nota (solo sugerencia
     // prellenada en la UI). El backend revalida contra la sucursal igual que en una venta nueva.
     @SerialName("detail_mode") val detailMode: String? = null,
+    // Propina voluntaria (no va en el comprobante ni suma al total).
+    @SerialName("tip_amount") val tipAmount: Double? = null,
+    @SerialName("tip_method") val tipMethod: String? = null,
+    @SerialName("tip_staff_id") val tipStaffId: Int? = null,
 )
 
 @Serializable

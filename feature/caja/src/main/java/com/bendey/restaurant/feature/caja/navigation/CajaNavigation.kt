@@ -4,6 +4,8 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.bendey.restaurant.core.navigation.BendeyRoutes
 import com.bendey.restaurant.feature.caja.CajaScreen
+import com.bendey.restaurant.feature.caja.propinas.PropinasScreen
+import com.bendey.restaurant.feature.caja.reparto.RcShareScreen
 
 fun NavGraphBuilder.cajaGraph(
     onShowMessage: (String) -> Unit = {},
@@ -11,5 +13,11 @@ fun NavGraphBuilder.cajaGraph(
 ) {
     composable(BendeyRoutes.CAJA) {
         CajaScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription)
+    }
+    composable(BendeyRoutes.PROPINAS) {
+        PropinasScreen(onShowMessage = onShowMessage)
+    }
+    composable(BendeyRoutes.RC_REPARTO) {
+        RcShareScreen(onShowMessage = onShowMessage)
     }
 }

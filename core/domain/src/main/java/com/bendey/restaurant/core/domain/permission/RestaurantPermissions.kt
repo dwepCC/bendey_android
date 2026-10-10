@@ -37,6 +37,10 @@ object RestaurantPermissions {
                 isRestaurantAdmin(permissions)
             RestaurantFeature.IMPRESORAS ->
                 canConfigureDevicePrinters(permissions, null)
+            // Propinas: todo el personal ve al menos «Mis propinas»; las demás pestañas piden su permiso.
+            RestaurantFeature.PROPINAS -> true
+            RestaurantFeature.RC_REPARTO ->
+                hasPermission(permissions, PERM_CAJA) || hasPermission(permissions, PERM_ADMIN)
             // Compras/Proveedores: solo visibles para quien administra el negocio. El acceso REAL
             // a /api/purchases lo exige el backend por rol ("purchases.*"), permisos que solo se
             // emiten en login completo (no PIN) — ver ComprasViewModel, que bloquea la pantalla si
@@ -60,6 +64,8 @@ object RestaurantPermissions {
         RestaurantFeature.REPORTES -> PERM_PRODUCTOS
         RestaurantFeature.CONFIGURACION, RestaurantFeature.IMPRESORAS -> PERM_ADMIN
         RestaurantFeature.COMPRAS, RestaurantFeature.PROVEEDORES -> PERM_ADMIN
+        RestaurantFeature.PROPINAS -> PERM_MESA
+        RestaurantFeature.RC_REPARTO -> PERM_CAJA
     }
 
     fun isRestaurantAdmin(permissions: List<String>): Boolean =

@@ -143,6 +143,9 @@ data class MesaUiState(
     val checkoutDocType: String = "NOTA DE VENTA",
     val checkoutContactId: Int? = null,
     val checkoutPayments: List<CheckoutPaymentDraft> = emptyList(),
+    /** Propina voluntaria del cobro (no va en el comprobante). */
+    val checkoutTip: com.bendey.restaurant.core.domain.tips.TipDraft = com.bendey.restaurant.core.domain.tips.TipDraft(),
+    val tipStaff: List<com.bendey.restaurant.core.ui.checkout.TipStaffChoice> = emptyList(),
     val checkoutDiscountMode: CheckoutDiscountMode = CheckoutDiscountMode.PERCENT,
     val checkoutDiscountValue: String = "0",
     val allowCheckoutDiscount: Boolean = false,
@@ -1030,6 +1033,7 @@ class MesaViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
+                    checkoutTip = com.bendey.restaurant.core.domain.tips.TipDraft(),
                     discountsLocked = locked,
                     allowCheckoutDiscount = allowDiscount && !locked,
                     checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
@@ -1074,6 +1078,28 @@ class MesaViewModel @Inject constructor(
 
     fun dismissCheckout() {
         _uiState.update { it.copy(checkoutOpen = false, error = null) }
+    }
+
+    fun setCheckoutTip(tip: com.bendey.restaurant.core.domain.tips.TipDraft) {
+        _uiState.update { it.copy(checkoutTip = tip) }
+        if (_uiState.value.tipStaff.isEmpty()) loadTipStaff()
+    }
+
+    private var tipStaffLoading = false
+
+    /** Personal al que se puede dirigir la propina (solo cuando el cajero escribe una). */
+    private fun loadTipStaff() {
+        if (tipStaffLoading) return
+        tipStaffLoading = true
+        viewModelScope.launch {
+            when (val r = mesasRepository.loadStaff()) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(tipStaff = r.data.map { s -> com.bendey.restaurant.core.ui.checkout.TipStaffChoice(s.id, s.displayName) })
+                }
+                else -> Unit
+            }
+            tipStaffLoading = false
+        }
     }
 
     fun setCheckoutSeries(seriesId: Int, docType: String) {
@@ -1291,6 +1317,14 @@ class MesaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El monto pagado debe cubrir el total") }
             return
         }
+        com.bendey.restaurant.core.domain.tips.TipRules.validate(state.checkoutTip.amount)?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
+            return
+        }
+        val tipInput = com.bendey.restaurant.core.domain.tips.TipRules.toInput(
+            state.checkoutTip,
+            paymentLines.firstOrNull()?.method ?: "cash",
+        )
         // Mismo candado síncrono que "Enviar a cocina": un doble toque en "Cobrar" no puede cobrar dos veces
         // ni mezclarse con un envío en curso.
         if (!orderSubmitGuard.tryAcquire()) return
@@ -1354,6 +1388,7 @@ class MesaViewModel @Inject constructor(
                         discountAmount = discountAmount,
                         payments = paymentLines,
                         detailMode = if (state.saleDetailEnabled && state.consumptionMode) "consumption" else "detailed",
+                        tip = tipInput,
                     ),
                 )
             ) {
@@ -1374,7 +1409,8 @@ class MesaViewModel @Inject constructor(
                             selectedComandaIds = emptyList(),
                             // Sin aviso: el modal del comprobante ya confirma la venta (R8 paso 8). También
                             // descarta el "Comanda enviada" de la ronda que se mandó en este mismo cobro.
-                            snackMessage = null,
+                            snackMessage = result.data.tipWarning,
+                            checkoutTip = com.bendey.restaurant.core.domain.tips.TipDraft(),
                         )
                     }
                 }

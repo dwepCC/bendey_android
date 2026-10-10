@@ -105,6 +105,24 @@ abstract class DataModule {
 
     @Binds
     @Singleton
+    abstract fun bindInventoryCountRepository(
+        impl: com.bendey.restaurant.core.data.repository.InventoryCountRepositoryImpl,
+    ): com.bendey.restaurant.core.domain.inventory.InventoryCountRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTipsRepository(
+        impl: com.bendey.restaurant.core.data.repository.TipsRepositoryImpl,
+    ): com.bendey.restaurant.core.domain.tips.TipsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRcShareRepository(
+        impl: com.bendey.restaurant.core.data.repository.RcShareRepositoryImpl,
+    ): com.bendey.restaurant.core.domain.rcshare.RcShareRepository
+
+    @Binds
+    @Singleton
     abstract fun bindDashboardRepository(impl: DashboardRepositoryImpl): DashboardRepository
 
     @Binds
