@@ -491,6 +491,7 @@ fun PosScreen(
         discountMode = state.checkoutDiscountMode,
         discountValue = state.checkoutDiscountValue,
         allowDiscount = state.allowCheckoutDiscount,
+        discountLockedHint = if (state.discountsLocked) com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT else null,
         serviceChargeAmount = checkoutServiceChargeAmount,
         serviceChargeRate = state.serviceChargeRate,
         nonDiscountableAmount = state.deliveryFeeShown,
@@ -602,6 +603,18 @@ fun PosScreen(
         onDismiss = viewModel::dismissVoidDialog,
         onConfirm = viewModel::confirmVoid,
     )
+
+    state.servedItemsPrompt?.let { message ->
+        BendeyAlertDialog(
+            onDismissRequest = viewModel::dismissServedItemsPrompt,
+            title = com.bendey.restaurant.core.domain.ops.ServedItemsRules.TITLE,
+            message = message,
+            confirmText = com.bendey.restaurant.core.domain.ops.ServedItemsRules.CONFIRM_LABEL,
+            dismissText = com.bendey.restaurant.core.domain.ops.ServedItemsRules.CANCEL_LABEL,
+            onConfirm = viewModel::confirmVoidServed,
+            destructive = true,
+        )
+    }
 
     ManualProductDialog(
         open = showManualProduct,
@@ -1141,8 +1154,9 @@ private fun buildCartActions(
 ): List<BendeyCartAction> = buildList {
     add(
         BendeyCartAction(
-            text = "Producto manual",
+            text = if (state.discountsLocked) "Producto manual · ${com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT}" else "Producto manual",
             onClick = onManualProduct,
+            enabled = !state.discountsLocked,
             style = BendeyCartActionStyle.SecondaryFilled,
         ),
     )

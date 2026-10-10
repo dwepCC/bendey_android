@@ -119,6 +119,8 @@ import com.bendey.restaurant.core.realtime.store.OrdersStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -199,6 +201,8 @@ data class PosUiState(
     val voidReason: String = "",
     val voidPin: String = "",
     val voidSubmitting: Boolean = false,
+    /** Texto del servidor (cuántos platos) cuando anular exige confirmar «Anular igual». */
+    val servedItemsPrompt: String? = null,
     val checkoutOpen: Boolean = false,
     val checkoutMetaLoading: Boolean = false,
     val checkoutSubmitting: Boolean = false,
@@ -210,6 +214,8 @@ data class PosUiState(
     val checkoutDiscountMode: CheckoutDiscountMode = CheckoutDiscountMode.PERCENT,
     val checkoutDiscountValue: String = "0",
     val allowCheckoutDiscount: Boolean = false,
+    /** Control de descuentos encendido y sin permiso personal: sin descuento ni producto manual (precio libre). */
+    val discountsLocked: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
     val checkoutPrintNote: String? = null,
     // "Venta por consumo": el checkbox solo aparece si la sucursal lo tiene habilitado. El
@@ -366,6 +372,7 @@ class PosViewModel @Inject constructor(
     private val ordersStore: OrdersStore,
     private val contactsRepository: ContactsRepository,
     private val deliveryRepository: DeliveryRepository,
+    private val opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -406,6 +413,18 @@ class PosViewModel @Inject constructor(
                 _uiState.update { it.copy(tenantRuc = tenant?.ruc.orEmpty()) }
             }
         }
+        // Control de descuentos: se vuelve a consultar al iniciar sesión (cambia el usuario o el token).
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.map { it?.token }.distinctUntilChanged().collect { token ->
+                if (token != null) refreshOpsControls()
+            }
+        }
+    }
+
+    private suspend fun refreshOpsControls() {
+        val fresh = (opsRepository.getOpsControls(forceRefresh = true) as? AppResult.Success)?.data
+        val locked = com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(fresh ?: opsRepository.peekOpsControls())
+        _uiState.update { it.copy(discountsLocked = locked) }
     }
 
     override fun onCleared() {
@@ -1085,6 +1104,10 @@ class PosViewModel @Inject constructor(
     }
 
     fun addManualProduct(input: ManualProductInput) {
+        if (com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(opsRepository.peekOpsControls())) {
+            _uiState.update { it.copy(error = "No puedes poner un precio libre. ${com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT}.") }
+            return
+        }
         val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull()
         if (input.description.trim().isBlank() || price == null || price < 0) {
             _uiState.update { it.copy(error = "Completa descripción y precio válido") }
@@ -1243,7 +1266,19 @@ class PosViewModel @Inject constructor(
         _uiState.update { it.copy(voidPin = pin.filter { it.isDigit() }.take(6)) }
     }
 
-    fun confirmVoid() {
+    fun dismissServedItemsPrompt() {
+        _uiState.update { it.copy(servedItemsPrompt = null) }
+    }
+
+    /** «Anular igual»: reenvía la anulación del pedido con `confirm_served: true`. */
+    fun confirmVoidServed() {
+        _uiState.update { it.copy(servedItemsPrompt = null) }
+        submitVoid(confirmServed = true)
+    }
+
+    fun confirmVoid() = submitVoid(confirmServed = false)
+
+    private fun submitVoid(confirmServed: Boolean) {
         val state = _uiState.value
         val reason = state.voidReason.trim()
         val pin = state.voidPin.trim()
@@ -1254,7 +1289,7 @@ class PosViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(voidSubmitting = true, error = null) }
             val result = when (val target = state.voidTarget) {
-                is PosVoidTarget.PendingOrder -> posRepository.cancelSession(target.order.id, reason, pin)
+                is PosVoidTarget.PendingOrder -> posRepository.cancelSession(target.order.id, reason, pin, confirmServed)
                 is PosVoidTarget.Comanda -> posRepository.cancelComanda(target.comanda.id, reason, pin)
                 null -> AppResult.Error("Sin objetivo")
             }
@@ -1276,7 +1311,11 @@ class PosViewModel @Inject constructor(
                     loadPendingOrders()
                 }
                 is AppResult.Error -> _uiState.update {
-                    it.copy(voidSubmitting = false, error = result.message)
+                    if (!confirmServed && com.bendey.restaurant.core.domain.ops.ServedItemsRules.needsConfirmation(result.code)) {
+                        it.copy(voidSubmitting = false, error = null, servedItemsPrompt = result.message)
+                    } else {
+                        it.copy(voidSubmitting = false, error = result.message)
+                    }
                 }
                 AppResult.Loading -> Unit
             }
@@ -1306,10 +1345,12 @@ class PosViewModel @Inject constructor(
                 session?.user?.employeeType,
             )
             val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty(), state.canOperateCash)
+            val locked = com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(opsRepository.peekOpsControls())
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
-                    allowCheckoutDiscount = allowDiscount,
+                    discountsLocked = locked,
+                    allowCheckoutDiscount = allowDiscount && !locked,
                     checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
                     checkoutDiscountValue = "0",
                     checkoutPayments = listOf(

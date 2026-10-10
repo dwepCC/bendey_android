@@ -556,6 +556,9 @@ private fun MainShell(
                 onGoToSell = {
                     mainNavController.navigate(BendeyRoutes.POS) { launchSingleTop = true }
                 },
+                onOpenSession = { sessionId ->
+                    mainNavController.navigate(BendeyRoutes.mesa(sessionId)) { launchSingleTop = true }
+                },
             )
             reportesGraph(
                 onShowMessage = onShowMessage,

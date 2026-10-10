@@ -91,6 +91,8 @@ fun CheckoutDialog(
     discountMode: CheckoutDiscountMode,
     discountValue: String,
     allowDiscount: Boolean,
+    /** Si no es null y el descuento no está permitido, se muestra este motivo en su lugar (control de descuentos). */
+    discountLockedHint: String? = null,
     payments: List<CheckoutPaymentDraft>,
     seriesId: Int?,
     docType: String,
@@ -265,6 +267,7 @@ fun CheckoutDialog(
                         SerieDiscountRow(
                             seriesCode = seriesCodeLabel,
                             allowDiscount = allowDiscount,
+                            discountLockedHint = discountLockedHint,
                             discountMode = discountMode,
                             discountValue = discountValue,
                             onDiscountModeChange = onDiscountModeChange,
@@ -441,6 +444,7 @@ private fun DocTypeSelector(
 private fun SerieDiscountRow(
     seriesCode: String,
     allowDiscount: Boolean,
+    discountLockedHint: String?,
     discountMode: CheckoutDiscountMode,
     discountValue: String,
     onDiscountModeChange: (CheckoutDiscountMode) -> Unit,
@@ -478,6 +482,15 @@ private fun SerieDiscountRow(
                     value = discountValue,
                     onModeChange = onDiscountModeChange,
                     onValueChange = onDiscountValueChange,
+                )
+            }
+        } else if (discountLockedHint != null) {
+            Column(modifier = Modifier.weight(1f)) {
+                CheckoutFieldLabel("Descuento")
+                Text(
+                    text = discountLockedHint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
                 )
             }
         }

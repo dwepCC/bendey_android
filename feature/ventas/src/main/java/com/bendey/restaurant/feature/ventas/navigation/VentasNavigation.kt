@@ -9,8 +9,9 @@ fun NavGraphBuilder.ventasGraph(
     onShowMessage: (String) -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
     onGoToSell: () -> Unit = {},
+    onOpenSession: (Int) -> Unit = {},
 ) {
     composable(BendeyRoutes.VENTAS) {
-        VentasScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription, onGoToSell = onGoToSell)
+        VentasScreen(onShowMessage = onShowMessage, onNavigateToSubscription = onNavigateToSubscription, onGoToSell = onGoToSell, onOpenSession = onOpenSession)
     }
 }

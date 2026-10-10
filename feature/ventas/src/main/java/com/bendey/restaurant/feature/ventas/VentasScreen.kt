@@ -86,6 +86,8 @@ import com.bendey.restaurant.core.domain.sales.canShowCdr
 import com.bendey.restaurant.core.domain.sales.canShowXmlGenerated
 import com.bendey.restaurant.core.domain.sales.canShowXmlSent
 import com.bendey.restaurant.core.domain.sales.canVoidWithCreditNote
+import com.bendey.restaurant.core.domain.sales.canReopenSession
+import com.bendey.restaurant.core.domain.ops.ReopenRules
 import com.bendey.restaurant.core.domain.sales.convertedToLabel
 import com.bendey.restaurant.core.domain.sales.isConverted
 import com.bendey.restaurant.core.domain.sales.notaVentaListStatusLabel
@@ -126,6 +128,7 @@ fun VentasScreen(
     onShowMessage: (String) -> Unit = {},
     onNavigateToSubscription: () -> Unit = {},
     onGoToSell: () -> Unit = {},
+    onOpenSession: (Int) -> Unit = {},
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -138,6 +141,14 @@ fun VentasScreen(
         onShow = onShowMessage,
         onConsume = viewModel::consumeSnackMessage,
     )
+
+    // Pedido reabierto: se lleva a quien cobra directo a su mesa para cobrarlo de nuevo.
+    LaunchedEffect(state.reopenedSessionId) {
+        state.reopenedSessionId?.let {
+            viewModel.consumeReopenedSession()
+            onOpenSession(it)
+        }
+    }
 
     LaunchedEffect(listState, state.hasMore, state.loading) {
         snapshotFlow {
@@ -258,6 +269,8 @@ fun VentasScreen(
                 onVoidCreditNote = viewModel::openVoidCreditNote,
                 onCancelNota = viewModel::openCancelNota,
                 onRefund = viewModel::openRefund,
+                canReopen = state.canCharge,
+                onReopen = viewModel::openReopen,
                 onEmitElectronic = viewModel::openEmitElectronic,
                 onSendSunat = {
                     viewModel.sendToSunat()
@@ -754,6 +767,8 @@ private fun SaleDetailContent(
     onVoidCreditNote: () -> Unit,
     onCancelNota: () -> Unit,
     onRefund: () -> Unit,
+    canReopen: Boolean = false,
+    onReopen: () -> Unit = {},
     onEmitElectronic: () -> Unit,
     onSendSunat: () -> Unit,
     onResendSunat: () -> Unit,
@@ -920,6 +935,13 @@ private fun SaleDetailContent(
                 if (detail.canRegisterRefund()) {
                     OutlinedButton(onClick = onRefund, modifier = Modifier.fillMaxWidth()) {
                         Text("Registrar devolucion", color = BendeyColors.Error)
+                    }
+                }
+                // Una venta ya anulada que vino de una mesa o pedido se puede devolver a «ocupada» para
+                // corregir cliente, comprobante o precio y cobrarla de nuevo.
+                if (detail.canReopenSession(canReopen)) {
+                    OutlinedButton(onClick = onReopen, modifier = Modifier.fillMaxWidth()) {
+                        Text(ReopenRules.ACTION_LABEL)
                     }
                 }
                 HorizontalDivider(modifier = Modifier.padding(bottom = BendeySpacing.md))
@@ -1160,6 +1182,7 @@ private fun VoidReasonDialog(
         VoidAction.CREDIT_NOTE -> "Anular con nota de crédito"
         VoidAction.CANCEL_NOTA -> "Anular nota de venta"
         VoidAction.REFUND -> "Registrar devolución"
+        VoidAction.REOPEN -> ReopenRules.ACTION_LABEL
         null -> "Anular"
     }
     val confirmLabel = when (action) {
@@ -1167,6 +1190,7 @@ private fun VoidReasonDialog(
         VoidAction.CANCEL_NOTA -> if (loading) "Anulando…" else "Confirmar anulación"
         // El boton nombra lo que hace: aca sale dinero, no es un "Aceptar" cualquiera.
         VoidAction.REFUND -> if (loading) "Procesando devolución…" else "Confirmar devolución"
+        VoidAction.REOPEN -> if (loading) "Reabriendo…" else "Reabrir pedido"
         null -> "Confirmar"
     }
     val esDevolucion = action == VoidAction.REFUND
@@ -1176,7 +1200,7 @@ private fun VoidReasonDialog(
         title = title,
         confirmText = confirmLabel,
         confirmEnabled = !loading && reason.isNotBlank() && (esDevolucion || pin.isNotBlank()),
-        destructive = true,
+        destructive = action != VoidAction.REOPEN,
         onConfirm = onConfirm,
         onDismiss = onDismiss,
     ) {
@@ -1197,7 +1221,11 @@ private fun VoidReasonDialog(
                     )
                 }
                 Text(
-                    if (esDevolucion) "Indica el motivo de la devolución." else "Indica el motivo de la anulación.",
+                    when (action) {
+                        VoidAction.REFUND -> "Indica el motivo de la devolución."
+                        VoidAction.REOPEN -> "El pedido vuelve a la mesa para cobrarlo de nuevo. Indica el motivo (mínimo ${ReopenRules.MIN_REASON} caracteres)."
+                        else -> "Indica el motivo de la anulación."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = BendeyColors.OnSurfaceVariant,
                 )

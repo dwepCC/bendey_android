@@ -389,6 +389,20 @@ object ErrorCatalog {
         "DELIVERY_MIN_ORDER_INVALID" to e("Mínimo no válido", "El pedido mínimo debe estar entre S/ 0 y S/ 9999.99.", ErrorAction.BACK_TO_TRY),
         "DELIVERY_ETA_INVALID" to e("Tiempo no válido", "El tiempo de entrega debe estar entre 0 y 240 minutos.", ErrorAction.BACK_TO_TRY),
         "DELIVERY_RULES_UNAVAILABLE" to e("Reglas no disponibles", "Las reglas de delivery aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "COMPANY_ADMIN_REQUIRED" to e("Solo administradores", "Solo un administrador puede cambiar los datos de la empresa, las sucursales y las series.", ErrorAction.CONTACT_ADMIN),
+        "OUTSIDE_BUSINESS_HOURS" to e("Fuera de horario", "El restaurante está cerrado por ahora. Intenta de nuevo cuando abra.", ErrorAction.REFRESH),
+        "BUSINESS_HOURS_INVALID" to e("Horario no válido", "Revisa el horario: cada tramo necesita día, hora de apertura y de cierre distintas (formato HH:MM).", ErrorAction.BACK_TO_TRY),
+        "BUSINESS_HOURS_UNAVAILABLE" to e("Horario no disponible", "El horario de atención aún no está disponible para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "SESSION_HAS_SERVED_ITEMS" to e("Platos ya servidos", "Este pedido tiene platos ya servidos. Si lo anulas se borran igual: confirma para continuar.", ErrorAction.BACK_TO_TRY),
+        "OVERPAYMENT_NOT_CASH" to e("Solo efectivo da vuelto", "Solo el efectivo puede dar vuelto: el pago con Yape, tarjeta o transferencia no puede ser mayor al total.", ErrorAction.BACK_TO_TRY),
+        "OVERPAYMENT_TOO_HIGH" to e("Vuelto muy alto", "El vuelto sería demasiado alto. Revisa el monto recibido.", ErrorAction.BACK_TO_TRY),
+        "DISCOUNT_FORBIDDEN" to e("Sin permiso de descuentos", "No tienes permiso para dar descuentos ni cambiar precios. Pídele a un administrador que lo haga o que te lo autorice.", ErrorAction.CONTACT_ADMIN),
+        "OPS_CONTROLS_UNAVAILABLE" to e("Controles no disponibles", "Los controles de operación aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "REOPEN_SALE_NOT_CANCELLED" to e("Venta sin anular", "Primero anula la venta; después podrás reabrir el pedido para cobrarlo de nuevo.", ErrorAction.REFRESH),
+        "REOPEN_NOT_APPLICABLE" to e("No se puede reabrir", "Esta venta no viene de una mesa o pedido del restaurante, o ya fue reemplazada por otro comprobante.", ErrorAction.REFRESH),
+        "REOPEN_TABLE_OCCUPIED" to e("Mesa ocupada", "La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este.", ErrorAction.REFRESH),
+        "REOPEN_TOO_OLD" to e("Pedido muy antiguo", "Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir.", ErrorAction.REFRESH),
+        "REOPEN_REASON_REQUIRED" to e("Falta el motivo", "Indica el motivo para reabrir el pedido (mínimo 3 caracteres).", ErrorAction.BACK_TO_TRY),
     )
 
     private fun seriesMissing() = e(
@@ -401,6 +415,8 @@ object ErrorCatalog {
     val knownCodes: Set<String> get() = byCode.keys
 
     fun has(code: String?): Boolean = code != null && (byCode.containsKey(code) || isSummaryVoid(code))
+
+    private val SERVER_TEXT_CODES = setOf("SESSION_HAS_SERVED_ITEMS", "OUTSIDE_BUSINESS_HOURS")
 
     private fun isSummaryVoid(code: String) = code.startsWith("SUMMARY_VOID_")
 
@@ -419,7 +435,12 @@ object ErrorCatalog {
         if (code != null) {
             val entry = byCode[code] ?: if (isSummaryVoid(code)) SUMMARY_VOID_ENTRY else null
             if (entry != null) {
-                val message = if (code == "PIN_LOCKED") pinLockedMessage(failure.serverMessage, entry.message) else entry.message
+                val message = when (code) {
+                    "PIN_LOCKED" -> pinLockedMessage(failure.serverMessage, entry.message)
+                    // Texto con datos del momento (cuantos platos, cuando abre): se prefiere el del servidor.
+                    in SERVER_TEXT_CODES -> readableServerMessage(failure.serverMessage) ?: entry.message
+                    else -> entry.message
+                }
                 return ErrorInfo(entry.title, message, entry.actions, support)
             }
         }

@@ -23,7 +23,8 @@ interface PosRepository {
         idempotencyKey: String? = null,
     ): AppResult<AddOrderResult>
     suspend fun listOpenOrders(): AppResult<List<OpenOrderSummary>>
-    suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit>
+    /** [confirmServed] = true reenvía la anulación aceptando perder platos ya servidos (409 SESSION_HAS_SERVED_ITEMS). */
+    suspend fun cancelSession(sessionId: Int, reason: String, pin: String, confirmServed: Boolean = false): AppResult<Unit>
     suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit>
     suspend fun updateComandaNotes(comandaId: Int, notes: String): AppResult<Unit>
     suspend fun markTableOrderPrinted(tableOrderId: Int): AppResult<Unit>

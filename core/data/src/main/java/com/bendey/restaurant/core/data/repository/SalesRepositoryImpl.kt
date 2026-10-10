@@ -275,6 +275,7 @@ private fun SaleDetailResponseDto.toDomain(): SaleDetail {
         electronicIssueSaleId = saleDto.electronicIssueSaleId,
         branchId = saleDto.branchId,
         contactId = saleDto.contactId,
+        restaurantSessionId = saleDto.restaurantSessionId?.takeIf { it > 0 },
         refundable = saleDto.refundable,
         refundableAmount = saleDto.refundableAmount,
         refundedAmount = saleDto.refundedAmount,

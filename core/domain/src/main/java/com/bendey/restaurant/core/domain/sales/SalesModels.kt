@@ -108,6 +108,8 @@ data class SaleDetail(
     val electronicIssueSaleId: Int? = null,
     val branchId: Int? = null,
     val contactId: Int? = null,
+    /** Pedido del restaurante que originó la venta; null en ventas sueltas (ERP, venta directa sin pedido). */
+    val restaurantSessionId: Int? = null,
     val refundable: Boolean = false,
     val refundableAmount: Double = 0.0,
     val refundedAmount: Double = 0.0,

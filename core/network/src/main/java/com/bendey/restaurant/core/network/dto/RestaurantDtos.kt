@@ -73,6 +73,8 @@ data class StaffManagementDto(
     @SerialName("profile_complete") val profileComplete: Boolean = false,
     @SerialName("branch_ids") val branchIds: List<Int> = emptyList(),
     @SerialName("branch_names") val branchNames: List<String> = emptyList(),
+    /** Control de descuentos: puede dar descuentos y cambiar precios (ausente = false). */
+    @SerialName("can_discount") val canDiscount: Boolean = false,
 )
 
 @Serializable
@@ -101,6 +103,8 @@ data class SetUserStaffRequestDto(
     @SerialName("staff_code") val staffCode: String? = null,
     @SerialName("display_name") val displayName: String? = null,
     @SerialName("branch_ids") val branchIds: List<Int>? = null,
+    /** Si se omite el servidor conserva el valor; esta pantalla SIEMPRE lo envía. */
+    @SerialName("can_discount") val canDiscount: Boolean? = null,
 )
 
 @Serializable
@@ -130,6 +134,8 @@ data class OpenSessionRequestDto(
 data class CancelSessionRequestDto(
     val reason: String,
     val pin: String,
+    /** Se envía solo al confirmar «Anular igual» con platos ya servidos (null no viaja). */
+    @SerialName("confirm_served") val confirmServed: Boolean? = null,
 )
 
 @Serializable

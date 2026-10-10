@@ -296,6 +296,7 @@ data class RestaurantStaffManagementRow(
     val profileComplete: Boolean,
     val branchIds: List<Int>,
     val branchNames: List<String>,
+    val canDiscount: Boolean = false,
 )
 
 data class StaffCreateFormInput(
@@ -316,6 +317,8 @@ data class StaffEditFormInput(
     val clearPin: Boolean = false,
     val branchIds: List<Int> = emptyList(),
     val hasPin: Boolean = false,
+    /** «Puede dar descuentos y cambiar precios» (control de descuentos). */
+    val canDiscount: Boolean = false,
 )
 
 enum class RestaurantEmployeeType(val apiValue: String, val label: String) {

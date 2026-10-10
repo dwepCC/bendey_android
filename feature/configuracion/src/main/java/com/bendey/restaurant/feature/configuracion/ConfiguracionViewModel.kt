@@ -120,6 +120,7 @@ class ConfiguracionViewModel @Inject constructor(
     private val onboardingRepository: OnboardingRepository,
     deliveryRepository: DeliveryRepository,
     manualPaymentRepository: com.bendey.restaurant.core.domain.delivery.ManualPaymentRepository,
+    opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
     cashRepository: com.bendey.restaurant.core.domain.cash.CashRepository,
     productImageRepository: com.bendey.restaurant.core.domain.catalog.ProductImageRepository,
 ) : ViewModel() {
@@ -150,6 +151,11 @@ class ConfiguracionViewModel @Inject constructor(
     fun setRulesMinOrder(text: String) = rulesPresenter.setMinOrderText(text)
     fun setRulesEta(text: String) = rulesPresenter.setEtaText(text)
     fun saveRules() = rulesPresenter.save()
+
+    /** «Control de descuentos»: lógica en [DiscountControlPresenter]. */
+    private val discountControlPresenter = DiscountControlPresenter(viewModelScope, opsRepository)
+    val discountControl: StateFlow<DiscountControlState> = discountControlPresenter.state
+    fun setDiscountControl(value: Boolean) = discountControlPresenter.toggle(value)
 
     /** «Pago con captura» (D2a): su lógica vive en [ManualPaymentSettingsPresenter] (testeable sin Android). */
     private val manualPayPresenter = ManualPaymentSettingsPresenter(viewModelScope, deliveryRepository, manualPaymentRepository, cashRepository::listPaymentMethods)
@@ -195,6 +201,7 @@ class ConfiguracionViewModel @Inject constructor(
                 codPresenter.setPermissions(perms)
                 manualPayPresenter.setPermissions(perms)
                 rulesPresenter.setPermissions(perms)
+                discountControlPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -207,6 +214,7 @@ class ConfiguracionViewModel @Inject constructor(
         codPresenter.load()
         manualPayPresenter.load()
         rulesPresenter.load()
+        discountControlPresenter.load(forceRefresh = true)
         refresh(forceNetwork = false)
     }
 
@@ -895,6 +903,7 @@ class ConfiguracionViewModel @Inject constructor(
                     employeeType = row.employeeType.ifBlank { RestaurantEmployeeType.NONE.apiValue },
                     branchIds = row.branchIds,
                     hasPin = row.hasPin,
+                    canDiscount = row.canDiscount,
                 ),
                 error = null,
             )

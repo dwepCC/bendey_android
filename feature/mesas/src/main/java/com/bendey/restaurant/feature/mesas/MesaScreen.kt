@@ -380,6 +380,7 @@ fun MesaScreen(
         discountMode = state.checkoutDiscountMode,
         discountValue = state.checkoutDiscountValue,
         allowDiscount = state.allowDiscountInCheckout,
+        discountLockedHint = if (state.discountsLocked) com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT else null,
         serviceChargeAmount = checkoutServiceChargeAmount,
         serviceChargeRate = state.serviceChargeRate,
         payments = state.checkoutPayments,
@@ -914,7 +915,12 @@ private fun CartSection(
                     )
                     DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Producto manual") },
+                            text = {
+                                Text(
+                                    if (state.discountsLocked) "Producto manual · ${com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT}" else "Producto manual",
+                                )
+                            },
+                            enabled = !state.discountsLocked,
                             onClick = {
                                 moreOpen = false
                                 onManualProduct?.invoke()

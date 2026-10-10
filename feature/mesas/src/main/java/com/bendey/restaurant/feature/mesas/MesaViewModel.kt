@@ -106,6 +106,8 @@ import com.bendey.restaurant.core.realtime.store.SessionsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -144,6 +146,8 @@ data class MesaUiState(
     val checkoutDiscountMode: CheckoutDiscountMode = CheckoutDiscountMode.PERCENT,
     val checkoutDiscountValue: String = "0",
     val allowCheckoutDiscount: Boolean = false,
+    /** Control de descuentos encendido y sin permiso personal: sin descuento ni producto manual (precio libre). */
+    val discountsLocked: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
     val checkoutSessionClosed: Boolean = true,
     val checkoutPrintNote: String? = null,
@@ -290,6 +294,7 @@ class MesaViewModel @Inject constructor(
     private val sessionsStore: SessionsStore,
     private val contactsRepository: ContactsRepository,
     private val settingsRepository: SettingsRepository,
+    private val opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -316,6 +321,12 @@ class MesaViewModel @Inject constructor(
         UiPresence.trackSession(sessionId, true)
         refreshAll()
         warmCheckoutMeta()
+        // Control de descuentos: se vuelve a consultar al iniciar sesión (cambia el usuario o el token).
+        viewModelScope.launch {
+            sessionStore.userSessionFlow.map { it?.token }.distinctUntilChanged().collect { token ->
+                if (token != null) refreshOpsControls()
+            }
+        }
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { session ->
                 val perms = session?.restaurantPermissions.orEmpty()
@@ -940,7 +951,17 @@ class MesaViewModel @Inject constructor(
         }
     }
 
+    private suspend fun refreshOpsControls() {
+        val fresh = (opsRepository.getOpsControls(forceRefresh = true) as? AppResult.Success)?.data
+        val locked = com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(fresh ?: opsRepository.peekOpsControls())
+        _uiState.update { it.copy(discountsLocked = locked) }
+    }
+
     fun addManualProduct(input: ManualProductInput) {
+        if (com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(opsRepository.peekOpsControls())) {
+            _uiState.update { it.copy(error = "No puedes poner un precio libre. ${com.bendey.restaurant.core.domain.ops.OpsControlsCopy.LOCKED_HINT}.") }
+            return
+        }
         val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull()
         if (input.description.trim().isBlank() || price == null || price < 0) {
             _uiState.update { it.copy(error = "Completa descripción y precio válido") }
@@ -1005,10 +1026,12 @@ class MesaViewModel @Inject constructor(
                 session?.user?.employeeType,
             )
             val method = defaultPaymentMethodCode(state.checkoutMeta?.paymentMethods.orEmpty(), state.canOperateCash)
+            val locked = com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(opsRepository.peekOpsControls())
             _uiState.update {
                 it.copy(
                     checkoutOpen = true,
-                    allowCheckoutDiscount = allowDiscount,
+                    discountsLocked = locked,
+                    allowCheckoutDiscount = allowDiscount && !locked,
                     checkoutDiscountMode = CheckoutDiscountMode.PERCENT,
                     checkoutDiscountValue = "0",
                     splitBillEnabled = false,

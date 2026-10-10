@@ -35,7 +35,19 @@ data class MarketplaceUiState(
 class MarketplaceViewModel @Inject constructor(
     private val repository: MarketplaceRepository,
     private val sessionStore: UserSessionStore,
+    opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
 ) : ViewModel() {
+
+    /** Horario de atención (lógica en [BusinessHoursPresenter], testeable sin Android). */
+    private val hoursPresenter = BusinessHoursPresenter(viewModelScope, opsRepository)
+    val hours: StateFlow<BusinessHoursState> = hoursPresenter.state
+    fun setHoursDayOpen(day: Int, open: Boolean) = hoursPresenter.setDayOpen(day, open)
+    fun addHoursSlot(day: Int) = hoursPresenter.addSlot(day)
+    fun removeHoursSlot(day: Int, index: Int) = hoursPresenter.removeSlot(day, index)
+    fun updateHoursSlot(day: Int, index: Int, slot: com.bendey.restaurant.core.domain.ops.SlotDraft) = hoursPresenter.updateSlot(day, index, slot)
+    fun copyHoursToAll(day: Int) = hoursPresenter.copyToAll(day)
+    fun saveHours() = hoursPresenter.save()
+    fun loadHours() = hoursPresenter.load()
 
     private val _uiState = MutableStateFlow(MarketplaceUiState())
     val uiState: StateFlow<MarketplaceUiState> = _uiState.asStateFlow()
@@ -44,9 +56,11 @@ class MarketplaceViewModel @Inject constructor(
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect { user ->
                 val perms = user?.restaurantPermissions.orEmpty()
+                hoursPresenter.setPermissions(perms)
                 _uiState.update { it.copy(canManage = RestaurantPermissions.canManageRestaurantSettings(perms)) }
             }
         }
+        hoursPresenter.load()
         load()
     }
 

@@ -33,6 +33,9 @@ class OperationalDataCache @Inject constructor() {
     /** Ajustes de delivery (D2.0), compartidos por Ajustes, la hoja de asignar y el POS. Se vacía con [clearAll]. */
     val deliverySettings = DeliverySettingsCache()
 
+    /** Control de descuentos del usuario actual (POS, Mesa y Ajustes). Se vacía con [clearAll]. */
+    val opsControls = kotlinx.coroutines.flow.MutableStateFlow<com.bendey.restaurant.core.domain.ops.OpsControls?>(null)
+
     fun getCheckoutMeta(branchId: Int): CheckoutMeta? = checkoutMetaByBranch[branchId]
 
     fun setCheckoutMeta(branchId: Int, meta: CheckoutMeta) {
@@ -85,5 +88,6 @@ class OperationalDataCache @Inject constructor() {
         categories = null
         tenantSettings = null
         deliverySettings.invalidate()
+        opsControls.value = null
     }
 }

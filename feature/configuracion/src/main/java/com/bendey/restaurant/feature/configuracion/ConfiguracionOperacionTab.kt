@@ -36,6 +36,7 @@ import com.bendey.restaurant.core.designsystem.components.BendeyStatusChip
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.catalog.RestaurantEmployeeType
+import com.bendey.restaurant.core.domain.ops.OpsControlsCopy
 import com.bendey.restaurant.core.domain.catalog.RestaurantStaffManagementRow
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
@@ -95,8 +96,39 @@ fun OperacionTab(
         DeliveryFeeCard(viewModel)
         CodCard(viewModel)
         DeliveryRulesCard(viewModel)
+        DiscountControlCard(viewModel)
         ManualPaymentCard(viewModel)
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))
+    }
+}
+
+/** «Control de descuentos»: interruptor del restaurante (solo `s.m`; apagado por defecto). */
+@Composable
+private fun DiscountControlCard(viewModel: ConfiguracionViewModel) {
+    val st by viewModel.discountControl.collectAsState()
+    BendeyManagementCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeySectionTitle(text = OpsControlsCopy.SECTION_TITLE)
+            BendeySwitchRow(
+                label = OpsControlsCopy.SWITCH_LABEL,
+                checked = st.enabled,
+                onCheckedChange = viewModel::setDiscountControl,
+                enabled = st.canEdit && !st.saving && st.controls != null,
+            )
+            Text(OpsControlsCopy.SWITCH_HELP, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            if (!st.canEdit) {
+                Text(
+                    "Solo el administrador puede cambiar este control.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            st.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.ErrorText) }
+        }
     }
 }
 
@@ -395,6 +427,11 @@ private fun StaffEditFields(state: ConfiguracionUiState, viewModel: Configuracio
         onCheckedChange = { checked ->
             viewModel.updateStaffEditForm { it.copy(clearPin = checked, pin = if (checked) "" else it.pin) }
         },
+    )
+    BendeySwitchRow(
+        label = OpsControlsCopy.STAFF_SWITCH_LABEL,
+        checked = form.canDiscount,
+        onCheckedChange = { checked -> viewModel.updateStaffEditForm { it.copy(canDiscount = checked) } },
     )
     if (form.employeeType.isNotBlank()) {
         BranchMultiSelect(state.branches, form.branchIds, viewModel::toggleStaffEditBranch)

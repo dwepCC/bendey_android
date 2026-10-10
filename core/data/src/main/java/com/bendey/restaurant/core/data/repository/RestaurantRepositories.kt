@@ -120,9 +120,9 @@ class PosRepositoryImpl @Inject constructor(
             .map { it.toDomain() }
     }
 
-    override suspend fun cancelSession(sessionId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
+    override suspend fun cancelSession(sessionId: Int, reason: String, pin: String, confirmServed: Boolean): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {
         tenantRetrofitProvider.create<RestaurantApi>()
-            .cancelSession(sessionId, CancelSessionRequestDto(reason = reason.trim(), pin = pin.trim()))
+            .cancelSession(sessionId, CancelSessionRequestDto(reason = reason.trim(), pin = pin.trim(), confirmServed = confirmServed.takeIf { it }))
     }
 
     override suspend fun cancelComanda(comandaId: Int, reason: String, pin: String): AppResult<Unit> = apiCall(ErrorFlow.VOID_REFUND) {

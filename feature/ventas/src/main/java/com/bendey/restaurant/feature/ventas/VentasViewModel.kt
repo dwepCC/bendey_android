@@ -66,6 +66,9 @@ enum class VoidAction {
      * saca plata de la caja, y el dialogo lo dice con sus propias etiquetas.
      */
     REFUND,
+
+    /** Reabrir el pedido de una venta ya anulada para cobrarlo de nuevo. Pide motivo (mín. 3) y PIN, pero no anula nada. */
+    REOPEN,
 }
 
 enum class VentasDatePreset(val label: String) {
@@ -130,6 +133,10 @@ data class VentasUiState(
     val snackMessage: String? = null,
     val exportBusy: String? = null,
     val allowsReportExport: Boolean = false,
+    /** `o.ch`: habilita «Reabrir para cobrar de nuevo». */
+    val canCharge: Boolean = false,
+    /** Pedido recién reabierto: la pantalla navega a su mesa y lo consume. */
+    val reopenedSessionId: Int? = null,
     val xmlViewOpen: Boolean = false,
     val xmlViewTitle: String = "",
     val xmlViewContent: String = "",
@@ -176,6 +183,7 @@ class VentasViewModel @Inject constructor(
     private val sessionStore: UserSessionStore,
     private val contactsRepository: ContactsRepository,
     private val settingsRepository: SettingsRepository,
+    private val opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VentasUiState())
@@ -192,6 +200,12 @@ class VentasViewModel @Inject constructor(
                 .map { it?.allowsReportExport == true }
                 .distinctUntilChanged()
                 .collect { allowed -> _uiState.update { it.copy(allowsReportExport = allowed) } }
+        }
+        viewModelScope.launch {
+            sessionStore.userSessionFlow
+                .map { RestaurantPermissions.hasPermission(it?.restaurantPermissions.orEmpty(), RestaurantPermissions.PERM_ORDERS_CHARGE) }
+                .distinctUntilChanged()
+                .collect { can -> _uiState.update { it.copy(canCharge = can) } }
         }
         viewModelScope.launch {
             sessionStore.userSessionFlow
@@ -480,6 +494,42 @@ class VentasViewModel @Inject constructor(
         }
     }
 
+    fun openReopen() = conPinConfigurado {
+        _uiState.update {
+            it.copy(voidDialogOpen = true, voidAction = VoidAction.REOPEN, voidReason = "", voidPin = "", error = null)
+        }
+    }
+
+    fun consumeReopenedSession() {
+        _uiState.update { it.copy(reopenedSessionId = null) }
+    }
+
+    private fun submitReopen(saleId: Int, reason: String, pin: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(voidSubmitting = true, error = null) }
+            when (val result = opsRepository.reopenSession(saleId, pin, reason)) {
+                is AppResult.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            voidSubmitting = false,
+                            voidDialogOpen = false,
+                            voidAction = null,
+                            voidReason = "",
+                            voidPin = "",
+                            selectedSaleId = null,
+                            detail = null,
+                            snackMessage = com.bendey.restaurant.core.domain.ops.ReopenRules.SUCCESS_MESSAGE,
+                            reopenedSessionId = result.data.sessionId.takeIf { result.data.reopened && it > 0 },
+                        )
+                    }
+                    refresh()
+                }
+                is AppResult.Error -> _uiState.update { it.copy(voidSubmitting = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
     fun dismissVoidDialog() {
         if (_uiState.value.voidSubmitting) return
         _uiState.update { it.copy(voidDialogOpen = false, voidAction = null, voidReason = "", voidPin = "") }
@@ -497,6 +547,15 @@ class VentasViewModel @Inject constructor(
         val state = _uiState.value
         val detail = state.detail ?: return
         val reason = state.voidReason.trim()
+        if (state.voidAction == VoidAction.REOPEN) {
+            val problem = com.bendey.restaurant.core.domain.ops.ReopenRules.validate(reason, state.voidPin)
+            if (problem != null) {
+                _uiState.update { it.copy(error = problem) }
+            } else {
+                submitReopen(detail.id, reason, state.voidPin.trim())
+            }
+            return
+        }
         if (reason.isBlank()) {
             _uiState.update { it.copy(error = "Indica el motivo de la anulación") }
             return
@@ -530,7 +589,7 @@ class VentasViewModel @Inject constructor(
                 }
                 submitRefund(detail.id, reason)
             }
-            null -> Unit
+            VoidAction.REOPEN, null -> Unit
         }
     }
 

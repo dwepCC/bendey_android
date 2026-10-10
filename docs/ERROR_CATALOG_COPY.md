@@ -192,6 +192,20 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `DELIVERY_MIN_ORDER_INVALID` | Mínimo no válido | El pedido mínimo debe estar entre S/ 0 y S/ 9999.99. | [Volver a intentar] |
 | `DELIVERY_ETA_INVALID` | Tiempo no válido | El tiempo de entrega debe estar entre 0 y 240 minutos. | [Volver a intentar] |
 | `DELIVERY_RULES_UNAVAILABLE` | Reglas no disponibles | Las reglas de delivery aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `COMPANY_ADMIN_REQUIRED` | Solo administradores | Solo un administrador puede cambiar los datos de la empresa, las sucursales y las series. | [Hablar con el administrador] |
+| `OUTSIDE_BUSINESS_HOURS` | Fuera de horario | El restaurante está cerrado por ahora. Intenta de nuevo cuando abra. | [Actualizar] |
+| `BUSINESS_HOURS_INVALID` | Horario no válido | Revisa el horario: cada tramo necesita día, hora de apertura y de cierre distintas (formato HH:MM). | [Volver a intentar] |
+| `BUSINESS_HOURS_UNAVAILABLE` | Horario no disponible | El horario de atención aún no está disponible para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `SESSION_HAS_SERVED_ITEMS` | Platos ya servidos | Este pedido tiene platos ya servidos. Si lo anulas se borran igual: confirma para continuar. | [Volver a intentar] |
+| `OVERPAYMENT_NOT_CASH` | Solo efectivo da vuelto | Solo el efectivo puede dar vuelto: el pago con Yape, tarjeta o transferencia no puede ser mayor al total. | [Volver a intentar] |
+| `OVERPAYMENT_TOO_HIGH` | Vuelto muy alto | El vuelto sería demasiado alto. Revisa el monto recibido. | [Volver a intentar] |
+| `DISCOUNT_FORBIDDEN` | Sin permiso de descuentos | No tienes permiso para dar descuentos ni cambiar precios. Pídele a un administrador que lo haga o que te lo autorice. | [Hablar con el administrador] |
+| `OPS_CONTROLS_UNAVAILABLE` | Controles no disponibles | Los controles de operación aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `REOPEN_SALE_NOT_CANCELLED` | Venta sin anular | Primero anula la venta; después podrás reabrir el pedido para cobrarlo de nuevo. | [Actualizar] |
+| `REOPEN_NOT_APPLICABLE` | No se puede reabrir | Esta venta no viene de una mesa o pedido del restaurante, o ya fue reemplazada por otro comprobante. | [Actualizar] |
+| `REOPEN_TABLE_OCCUPIED` | Mesa ocupada | La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este. | [Actualizar] |
+| `REOPEN_TOO_OLD` | Pedido muy antiguo | Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir. | [Actualizar] |
+| `REOPEN_REASON_REQUIRED` | Falta el motivo | Indica el motivo para reabrir el pedido (mínimo 3 caracteres). | [Volver a intentar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).

@@ -51,6 +51,16 @@ fun SaleDetail.canCancelNotaVenta(): Boolean =
         isNotaVenta(docType, sunatCode) &&
         !isConverted()
 
+/**
+ * «Reabrir para cobrar de nuevo»: la venta ya está anulada (nota de venta anulada o comprobante con nota de
+ * crédito aceptada), viene de un pedido del restaurante y quien mira puede cobrar (`o.ch`).
+ */
+fun SaleDetail.canReopenSession(canCharge: Boolean): Boolean = com.bendey.restaurant.core.domain.ops.ReopenRules.isOffered(
+    cancelled = isSaleCancelled(status) || billingStatus.equals("voided", ignoreCase = true),
+    restaurantSessionId = restaurantSessionId,
+    canCharge = canCharge,
+)
+
 fun SaleSummary.canVoidWithCreditNote(): Boolean =
     !isSaleCancelled(status) &&
         isElectronicAccepted(billingStatus) &&

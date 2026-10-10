@@ -578,6 +578,7 @@ class SettingsRepositoryImpl @Inject constructor(
                 pin = input.pin.filter { it.isDigit() }.takeIf { it.isNotBlank() },
                 clearPin = input.clearPin.takeIf { it },
                 branchIds = input.branchIds.takeIf { it.isNotEmpty() },
+                canDiscount = input.canDiscount,
             ),
         )
     }
@@ -628,6 +629,7 @@ private fun StaffManagementDto.toDomain() = RestaurantStaffManagementRow(
     profileComplete = profileComplete,
     branchIds = branchIds,
     branchNames = branchNames,
+    canDiscount = canDiscount,
 )
 
 

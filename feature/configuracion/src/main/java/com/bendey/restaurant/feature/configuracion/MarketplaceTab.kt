@@ -38,6 +38,7 @@ fun MarketplaceTab(
     viewModel: MarketplaceViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val hours by viewModel.hours.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(state.snackMessage) {
@@ -92,6 +93,19 @@ fun MarketplaceTab(
                     )
                 }
             }
+        }
+
+        item {
+            BusinessHoursCard(
+                state = hours,
+                onDayOpen = viewModel::setHoursDayOpen,
+                onAddSlot = viewModel::addHoursSlot,
+                onRemoveSlot = viewModel::removeHoursSlot,
+                onUpdateSlot = viewModel::updateHoursSlot,
+                onCopyToAll = viewModel::copyHoursToAll,
+                onSave = viewModel::saveHours,
+                onRetry = viewModel::loadHours,
+            )
         }
 
         val ops = state.ops

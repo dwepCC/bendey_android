@@ -297,6 +297,8 @@ data class SaleDto(
     @SerialName("electronic_issue_sale_id") val electronicIssueSaleId: Int? = null,
     @SerialName("branch_id") val branchId: Int? = null,
     @SerialName("contact_id") val contactId: Int? = null,
+    // Pedido del restaurante que originó la venta (habilita «Reabrir para cobrar de nuevo»).
+    @SerialName("restaurant_session_id") val restaurantSessionId: Int? = null,
     @SerialName("created_at") val createdAt: String? = null,
     // Como se atendio la venta y en que mesa: los resuelve el backend desde la sesion del pedido.
     @SerialName("table_name") val tableName: String? = null,

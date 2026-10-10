@@ -238,6 +238,20 @@ class ErrorCatalogTest {
             "DELIVERY_MIN_ORDER_INVALID" to Pair("El pedido mínimo debe estar entre S/ 0 y S/ 9999.99.", ErrorAction.BACK_TO_TRY),
             "DELIVERY_ETA_INVALID" to Pair("El tiempo de entrega debe estar entre 0 y 240 minutos.", ErrorAction.BACK_TO_TRY),
             "DELIVERY_RULES_UNAVAILABLE" to Pair("Las reglas de delivery aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+            "COMPANY_ADMIN_REQUIRED" to Pair("Solo un administrador puede cambiar los datos de la empresa, las sucursales y las series.", ErrorAction.CONTACT_ADMIN),
+            "OUTSIDE_BUSINESS_HOURS" to Pair("El restaurante está cerrado por ahora. Intenta de nuevo cuando abra.", ErrorAction.REFRESH),
+            "BUSINESS_HOURS_INVALID" to Pair("Revisa el horario: cada tramo necesita día, hora de apertura y de cierre distintas (formato HH:MM).", ErrorAction.BACK_TO_TRY),
+            "BUSINESS_HOURS_UNAVAILABLE" to Pair("El horario de atención aún no está disponible para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+            "SESSION_HAS_SERVED_ITEMS" to Pair("Este pedido tiene platos ya servidos. Si lo anulas se borran igual: confirma para continuar.", ErrorAction.BACK_TO_TRY),
+            "OVERPAYMENT_NOT_CASH" to Pair("Solo el efectivo puede dar vuelto: el pago con Yape, tarjeta o transferencia no puede ser mayor al total.", ErrorAction.BACK_TO_TRY),
+            "OVERPAYMENT_TOO_HIGH" to Pair("El vuelto sería demasiado alto. Revisa el monto recibido.", ErrorAction.BACK_TO_TRY),
+            "DISCOUNT_FORBIDDEN" to Pair("No tienes permiso para dar descuentos ni cambiar precios. Pídele a un administrador que lo haga o que te lo autorice.", ErrorAction.CONTACT_ADMIN),
+            "OPS_CONTROLS_UNAVAILABLE" to Pair("Los controles de operación aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+            "REOPEN_SALE_NOT_CANCELLED" to Pair("Primero anula la venta; después podrás reabrir el pedido para cobrarlo de nuevo.", ErrorAction.REFRESH),
+            "REOPEN_NOT_APPLICABLE" to Pair("Esta venta no viene de una mesa o pedido del restaurante, o ya fue reemplazada por otro comprobante.", ErrorAction.REFRESH),
+            "REOPEN_TABLE_OCCUPIED" to Pair("La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este.", ErrorAction.REFRESH),
+            "REOPEN_TOO_OLD" to Pair("Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir.", ErrorAction.REFRESH),
+            "REOPEN_REASON_REQUIRED" to Pair("Indica el motivo para reabrir el pedido (mínimo 3 caracteres).", ErrorAction.BACK_TO_TRY),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)
@@ -248,6 +262,16 @@ class ErrorCatalogTest {
         // Mismo orden que el bloque final de Tauri: DELIVERY_CANCEL.., DRIVER_*, SESSION_*, USE_* DELIVERY_FEE_* y, al final, los 6 de D2b (efectivo contra entrega).
         val tail = ErrorCatalog.knownCodes.toList().takeLast(esperado.size)
         assertEquals(esperado.keys.toList(), tail)
+    }
+
+    /** Platos servidos y fuera de horario traen datos del momento (cuantos platos, cuando abre): gana el texto del servidor. */
+    @Test fun serverTextWinsForDynamicCodes() {
+        val served = "Este pedido tiene 2 plato(s) ya servido(s). Si lo anulas se borran igual: confirma para continuar."
+        assertEquals(served, http(409, "SESSION_HAS_SERVED_ITEMS", served).message)
+        val closed = "El restaurante está cerrado por ahora. Abre mañana a las 11:00."
+        assertEquals(closed, http(409, "OUTSIDE_BUSINESS_HOURS", closed).message)
+        // Sin texto legible del servidor cae al texto fijo del catálogo.
+        assertTrue(http(409, "OUTSIDE_BUSINESS_HOURS").message.startsWith("El restaurante está cerrado"))
     }
 
     /** Las cadenas del catalogo y las de docs/ERROR_CATALOG_COPY.md (que copia Tauri) no pueden divergir. */

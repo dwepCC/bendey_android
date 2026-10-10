@@ -197,6 +197,10 @@ abstract class DataModule {
 
     @Binds
     @Singleton
+    abstract fun bindOpsRepository(impl: com.bendey.restaurant.core.data.repository.OpsRepositoryImpl): com.bendey.restaurant.core.domain.ops.OpsRepository
+
+    @Binds
+    @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
 
     @Binds
