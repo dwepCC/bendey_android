@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.domain.delivery.DocRequest
 import com.bendey.restaurant.core.domain.delivery.RefundPending
 import com.bendey.restaurant.core.domain.delivery.SettlementGroup
 import com.bendey.restaurant.core.domain.delivery.SettlementOrder
@@ -7,6 +8,7 @@ import com.bendey.restaurant.core.domain.delivery.SettlementRecord
 import com.bendey.restaurant.core.domain.delivery.SettlementRepository
 import com.bendey.restaurant.core.domain.delivery.SettlementsPending
 import com.bendey.restaurant.core.domain.model.AppResult
+import com.bendey.restaurant.core.network.api.CancelDocRequestDto
 import com.bendey.restaurant.core.network.api.ReceiveSettlementRequestDto
 import com.bendey.restaurant.core.network.api.RefundResolvedRequestDto
 import com.bendey.restaurant.core.network.api.SettlementApi
@@ -29,7 +31,7 @@ class SettlementRepositoryImpl @Inject constructor(
             groups = d.groups.map { g ->
                 SettlementGroup(
                     g.collectorKind, g.collectorId, g.collectorName, g.total,
-                    g.orders.map { SettlementOrder(it.paymentId, it.orderCode, it.customerName, it.amount) },
+                    g.orders.map { SettlementOrder(it.paymentId, it.orderCode, it.customerName, it.amount, it.alreadyBilled, it.saleNumber) },
                 )
             },
             refunds = d.refunds.map { RefundPending(it.paymentId, it.orderCode, it.amount, it.collectorName, it.cancelReason) },
@@ -46,6 +48,21 @@ class SettlementRepositoryImpl @Inject constructor(
         api.receive(
             ReceiveSettlementRequestDto(group.collectorKind, group.collectorId, paymentIds, received, reason?.takeIf { it.isNotBlank() }),
         ).data?.differenceWarning
+    }
+
+    override suspend fun docRequests(): AppResult<List<DocRequest>> = apiCall {
+        api.docRequests().data.map {
+            DocRequest(it.id, it.orderCode, it.docKind, it.clientDocNumber, it.clientName.ifBlank { it.customerName }, it.amount)
+        }
+    }
+
+    override suspend fun issueDocRequest(id: Int): AppResult<String> = apiCall {
+        api.issueDocRequest(id).sale?.number.orEmpty()
+    }
+
+    override suspend fun cancelDocRequest(id: Int, reason: String): AppResult<Unit> = apiCall {
+        api.cancelDocRequest(id, CancelDocRequestDto(reason))
+        Unit
     }
 
     override suspend fun resolveRefund(paymentId: Int, note: String): AppResult<Unit> = apiCall {

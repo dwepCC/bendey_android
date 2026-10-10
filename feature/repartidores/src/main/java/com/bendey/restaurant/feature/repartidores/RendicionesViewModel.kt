@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.repartidores
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bendey.restaurant.core.domain.delivery.DocRequest
 import com.bendey.restaurant.core.domain.delivery.RefundPending
 import com.bendey.restaurant.core.domain.delivery.SettlementGroup
 import com.bendey.restaurant.core.domain.delivery.SettlementRecord
@@ -37,6 +38,8 @@ data class ReceiveDialogState(
     val hasDifference: Boolean get() = receivedValue?.let { settlementHasDifference(expected, it) } ?: false
 }
 
+data class CancelDocDialogState(val item: DocRequest, val reason: String = "", val busy: Boolean = false, val error: String? = null)
+
 data class RefundDialogState(val item: RefundPending, val note: String = "", val busy: Boolean = false, val error: String? = null)
 
 data class RendicionesUiState(
@@ -46,6 +49,9 @@ data class RendicionesUiState(
     val history: List<SettlementRecord> = emptyList(),
     val receive: ReceiveDialogState? = null,
     val refund: RefundDialogState? = null,
+    val docRequests: List<DocRequest> = emptyList(),
+    val issuingId: Int? = null,
+    val cancelDoc: CancelDocDialogState? = null,
 ) {
     val pendingOrders: Int get() = pending.groups.sumOf { it.orders.size }
 }
@@ -72,7 +78,8 @@ class RendicionesViewModel @Inject constructor(
             when (val p = repository.pending()) {
                 is AppResult.Success -> {
                     val h = (repository.history() as? AppResult.Success)?.data.orEmpty()
-                    _state.update { it.copy(loading = false, pending = p.data, history = h) }
+                    val d = (repository.docRequests() as? AppResult.Success)?.data.orEmpty()
+                    _state.update { it.copy(loading = false, pending = p.data, history = h, docRequests = d) }
                 }
                 is AppResult.Error -> _state.update { it.copy(loading = false, loadError = p.message) }
                 AppResult.Loading -> Unit
@@ -123,6 +130,51 @@ class RendicionesViewModel @Inject constructor(
                     refresh()
                 }
                 is AppResult.Error -> _state.update { it.copy(receive = _state.value.receive?.copy(busy = false, error = res.message)) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    // ---- boleta / factura pedida en la puerta
+    fun issueDoc(item: DocRequest) {
+        if (_state.value.issuingId != null) return
+        _state.update { it.copy(issuingId = item.id) }
+        viewModelScope.launch {
+            when (val res = repository.issueDocRequest(item.id)) {
+                is AppResult.Success -> {
+                    _messages.tryEmit("${item.label} emitida ${res.data}. Imprimela o enviala por WhatsApp desde Ventas.")
+                    _state.update { it.copy(issuingId = null) }
+                    refresh()
+                }
+                is AppResult.Error -> {
+                    _messages.tryEmit(res.message)
+                    _state.update { it.copy(issuingId = null) }
+                }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    fun openCancelDoc(item: DocRequest) = _state.update { it.copy(cancelDoc = CancelDocDialogState(item)) }
+    fun setCancelDocReason(text: String) = _state.update { st -> st.copy(cancelDoc = st.cancelDoc?.copy(reason = text.take(255), error = null)) }
+    fun dismissCancelDoc() = _state.update { it.copy(cancelDoc = null) }
+
+    fun confirmCancelDoc() {
+        val d = _state.value.cancelDoc ?: return
+        if (d.busy) return
+        if (d.reason.trim().length < 3) {
+            _state.update { it.copy(cancelDoc = d.copy(error = "Escribe el motivo (minimo 3 caracteres).")) }
+            return
+        }
+        _state.update { it.copy(cancelDoc = d.copy(busy = true, error = null)) }
+        viewModelScope.launch {
+            when (val res = repository.cancelDocRequest(d.item.id, d.reason.trim())) {
+                is AppResult.Success -> {
+                    _messages.tryEmit("Solicitud cancelada")
+                    _state.update { it.copy(cancelDoc = null) }
+                    refresh()
+                }
+                is AppResult.Error -> _state.update { it.copy(cancelDoc = _state.value.cancelDoc?.copy(busy = false, error = res.message)) }
                 AppResult.Loading -> Unit
             }
         }

@@ -66,6 +66,36 @@ fun RendicionesPanel(
                     color = BendeyColors.OnSurfaceVariant,
                 )
             }
+            if (state.docRequests.isNotEmpty()) {
+                item { Text("Comprobantes pedidos en la puerta", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) }
+                items(state.docRequests, key = { "d-${it.id}" }) { r ->
+                    BendeyManagementCard {
+                        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
+                            Text("${r.label} · #${r.orderCode} · ${soles(r.amount)}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                (if (r.clientDocNumber.isNotBlank()) "${r.clientDocNumber} · " else "Sin documento · ") + r.clientName.ifBlank { "Cliente" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                            )
+                            Text(
+                                "Al emitirla, el efectivo entra a tu caja; el repartidor te lo entrega luego en la rendicion.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BendeyColors.OnSurfaceVariant,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
+                                BendeyOutlinedButton(text = "Cancelar", onClick = { viewModel.openCancelDoc(r) }, enabled = state.issuingId == null)
+                                BendeyPrimaryButton(
+                                    text = "Emitir",
+                                    onClick = { viewModel.issueDoc(r) },
+                                    enabled = state.issuingId == null,
+                                    loading = state.issuingId == r.id,
+                                    fillWidth = false,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             if (!state.loading && state.pending.groups.isEmpty()) {
                 item { Text("No hay efectivo pendiente de rendir.", style = MaterialTheme.typography.bodyMedium, color = BendeyColors.OnSurfaceVariant) }
             }
@@ -81,7 +111,7 @@ fun RendicionesPanel(
                         g.orders.forEach { o ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    "#${o.orderCode} · ${o.customerName.ifBlank { "Sin nombre" }}",
+                                    "#${o.orderCode} · ${o.customerName.ifBlank { "Sin nombre" }}" + if (o.alreadyBilled) " · ya facturado ${o.saleNumber}" else "",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.weight(1f),
                                 )
@@ -131,6 +161,7 @@ fun RendicionesPanel(
 
     state.receive?.let { ReceiveDialog(it, viewModel) }
     state.refund?.let { RefundDialog(it, viewModel) }
+    state.cancelDoc?.let { CancelDocDialog(it, viewModel) }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -205,5 +236,28 @@ private fun RefundDialog(d: RefundDialogState, viewModel: RendicionesViewModel) 
             BendeyPrimaryButton(text = "Ya devuelto", onClick = viewModel::confirmRefund, enabled = !d.busy, loading = d.busy, fillWidth = false)
         },
         dismissButton = { BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissRefund, enabled = !d.busy) },
+    )
+}
+
+@Composable
+private fun CancelDocDialog(d: CancelDocDialogState, viewModel: RendicionesViewModel) {
+    BendeyAlertDialog(
+        onDismissRequest = { if (!d.busy) viewModel.dismissCancelDoc() },
+        title = { Text("Cancelar solicitud #${d.item.orderCode}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
+                BendeyTextField(
+                    value = d.reason,
+                    onValueChange = viewModel::setCancelDocReason,
+                    label = "Motivo",
+                    enabled = !d.busy,
+                )
+                d.error?.let { BendeyAlert(message = it, severity = BendeyAlertSeverity.Danger) }
+            }
+        },
+        confirmButton = {
+            BendeyPrimaryButton(text = "Cancelar solicitud", onClick = viewModel::confirmCancelDoc, enabled = !d.busy, loading = d.busy, fillWidth = false)
+        },
+        dismissButton = { BendeyTextButton(text = "Volver", onClick = viewModel::dismissCancelDoc, enabled = !d.busy) },
     )
 }

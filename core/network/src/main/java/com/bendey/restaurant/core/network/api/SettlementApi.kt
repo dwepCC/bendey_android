@@ -15,6 +15,8 @@ data class SettlementOrderDto(
     @SerialName("order_code") val orderCode: String = "",
     @SerialName("customer_name") val customerName: String = "",
     val amount: Double = 0.0,
+    @SerialName("already_billed") val alreadyBilled: Boolean = false,
+    @SerialName("sale_number") val saleNumber: String = "",
 )
 
 @Serializable
@@ -74,6 +76,29 @@ data class ReceiveSettlementDataDto(@SerialName("difference_warning") val differ
 data class ReceiveSettlementResponseDto(val success: Boolean = false, val data: ReceiveSettlementDataDto? = null)
 
 @Serializable
+data class DocRequestDto(
+    val id: Int,
+    @SerialName("order_code") val orderCode: String = "",
+    @SerialName("doc_kind") val docKind: String = "boleta",
+    @SerialName("client_doc_number") val clientDocNumber: String = "",
+    @SerialName("client_name") val clientName: String = "",
+    @SerialName("customer_name") val customerName: String = "",
+    val amount: Double = 0.0,
+)
+
+@Serializable
+data class DocRequestsEnvelopeDto(val data: List<DocRequestDto> = emptyList())
+
+@Serializable
+data class IssueDocSaleDto(val number: String = "", val total: Double = 0.0)
+
+@Serializable
+data class IssueDocResponseDto(val success: Boolean = false, val sale: IssueDocSaleDto? = null)
+
+@Serializable
+data class CancelDocRequestDto(val reason: String)
+
+@Serializable
 data class RefundResolvedRequestDto(val note: String)
 
 @Serializable
@@ -89,6 +114,16 @@ interface SettlementApi {
 
     @POST("/api/restaurant/delivery/settlements")
     suspend fun receive(@Body body: ReceiveSettlementRequestDto): ReceiveSettlementResponseDto
+
+    // D2c fase 2: boleta/factura pedida en la puerta.
+    @GET("/api/restaurant/delivery/document-requests")
+    suspend fun docRequests(): DocRequestsEnvelopeDto
+
+    @POST("/api/restaurant/delivery/document-requests/{id}/issue")
+    suspend fun issueDocRequest(@Path("id") id: Int, @Body body: Map<String, String> = emptyMap()): IssueDocResponseDto
+
+    @POST("/api/restaurant/delivery/document-requests/{id}/cancel")
+    suspend fun cancelDocRequest(@Path("id") id: Int, @Body body: CancelDocRequestDto): SuccessOnlyDto
 
     @POST("/api/restaurant/delivery/payments/{id}/refund-resolved")
     suspend fun resolveRefund(@Path("id") paymentId: Int, @Body body: RefundResolvedRequestDto): SuccessOnlyDto

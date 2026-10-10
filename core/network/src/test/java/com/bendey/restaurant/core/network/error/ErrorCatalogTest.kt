@@ -213,6 +213,13 @@ class ErrorCatalogTest {
             "MARKETPLACE_PAUSE_INVALID" to Pair("La pausa debe durar entre 1 minuto y 24 horas, o ser indefinida.", ErrorAction.BACK_TO_TRY),
             "MARKETPLACE_THRESHOLD_INVALID" to Pair("Los minutos deben estar entre 0 y 240.", ErrorAction.BACK_TO_TRY),
             "ORDER_NOT_CANCELLABLE" to Pair("Este pedido ya está en preparación y no se puede cancelar desde la app. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "DOC_REQUEST_NOT_COLLECTED" to Pair("Primero marca «Cobrado»: el comprobante se pide cuando el cliente ya pagó.", ErrorAction.REFRESH),
+            "DOC_REQUEST_INVALID" to Pair("Revisa los datos del comprobante: boleta con DNI de 8 dígitos o factura con RUC de 11 dígitos y razón social.", ErrorAction.BACK_TO_TRY),
+            "DOC_REQUEST_EXISTS" to Pair("Este pedido ya tiene una solicitud de comprobante. Actualiza para ver el estado.", ErrorAction.REFRESH),
+            "DOC_REQUEST_NOT_PENDING" to Pair("Esta solicitud ya fue emitida o cancelada. Actualiza la lista.", ErrorAction.REFRESH),
+            "DOC_REQUEST_NO_SERIES" to Pair("No hay una serie activa para ese comprobante en esta sucursal. Pídele al administrador que la cree en Ajustes.", ErrorAction.CONTACT_ADMIN),
+            "DOC_REQUEST_BOLETA_LIMIT" to Pair("Una boleta de S/ 700 o más necesita el DNI del cliente. Cancela la solicitud y pídela otra vez con el DNI.", ErrorAction.BACK_TO_TRY),
+            "CASH_PENDING_SETTLEMENT" to Pair("Tienes efectivo de delivery ya facturado que el repartidor aún no te entrega. Recíbelo en la pestaña Rendiciones de Entregas antes de cerrar la caja.", ErrorAction.REFRESH),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)

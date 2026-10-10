@@ -364,6 +364,13 @@ object ErrorCatalog {
         "MARKETPLACE_PAUSE_INVALID" to e("Pausa no válida", "La pausa debe durar entre 1 minuto y 24 horas, o ser indefinida.", ErrorAction.BACK_TO_TRY),
         "MARKETPLACE_THRESHOLD_INVALID" to e("Minutos no válidos", "Los minutos deben estar entre 0 y 240.", ErrorAction.BACK_TO_TRY),
         "ORDER_NOT_CANCELLABLE" to e("No se puede cancelar", "Este pedido ya está en preparación y no se puede cancelar desde la app. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "DOC_REQUEST_NOT_COLLECTED" to e("Primero marca «Cobrado»", "Primero marca «Cobrado»: el comprobante se pide cuando el cliente ya pagó.", ErrorAction.REFRESH),
+        "DOC_REQUEST_INVALID" to e("Revisa los datos", "Revisa los datos del comprobante: boleta con DNI de 8 dígitos o factura con RUC de 11 dígitos y razón social.", ErrorAction.BACK_TO_TRY),
+        "DOC_REQUEST_EXISTS" to e("Ya hay una solicitud", "Este pedido ya tiene una solicitud de comprobante. Actualiza para ver el estado.", ErrorAction.REFRESH),
+        "DOC_REQUEST_NOT_PENDING" to e("Solicitud ya atendida", "Esta solicitud ya fue emitida o cancelada. Actualiza la lista.", ErrorAction.REFRESH),
+        "DOC_REQUEST_NO_SERIES" to e("Falta la serie", "No hay una serie activa para ese comprobante en esta sucursal. Pídele al administrador que la cree en Ajustes.", ErrorAction.CONTACT_ADMIN),
+        "DOC_REQUEST_BOLETA_LIMIT" to e("Falta el DNI", "Una boleta de S/ 700 o más necesita el DNI del cliente. Cancela la solicitud y pídela otra vez con el DNI.", ErrorAction.BACK_TO_TRY),
+        "CASH_PENDING_SETTLEMENT" to e("Efectivo por recibir", "Tienes efectivo de delivery ya facturado que el repartidor aún no te entrega. Recíbelo en la pestaña Rendiciones de Entregas antes de cerrar la caja.", ErrorAction.REFRESH),
     )
 
     private fun seriesMissing() = e(

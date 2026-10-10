@@ -167,6 +167,13 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `MARKETPLACE_PAUSE_INVALID` | Pausa no válida | La pausa debe durar entre 1 minuto y 24 horas, o ser indefinida. | [Volver a intentar] |
 | `MARKETPLACE_THRESHOLD_INVALID` | Minutos no válidos | Los minutos deben estar entre 0 y 240. | [Volver a intentar] |
 | `ORDER_NOT_CANCELLABLE` | No se puede cancelar | Este pedido ya está en preparación y no se puede cancelar desde la app. Actualiza para ver el estado. | [Actualizar] |
+| `DOC_REQUEST_NOT_COLLECTED` | Primero marca «Cobrado» | Primero marca «Cobrado»: el comprobante se pide cuando el cliente ya pagó. | [Actualizar] |
+| `DOC_REQUEST_INVALID` | Revisa los datos | Revisa los datos del comprobante: boleta con DNI de 8 dígitos o factura con RUC de 11 dígitos y razón social. | [Volver a intentar] |
+| `DOC_REQUEST_EXISTS` | Ya hay una solicitud | Este pedido ya tiene una solicitud de comprobante. Actualiza para ver el estado. | [Actualizar] |
+| `DOC_REQUEST_NOT_PENDING` | Solicitud ya atendida | Esta solicitud ya fue emitida o cancelada. Actualiza la lista. | [Actualizar] |
+| `DOC_REQUEST_NO_SERIES` | Falta la serie | No hay una serie activa para ese comprobante en esta sucursal. Pídele al administrador que la cree en Ajustes. | [Hablar con el administrador] |
+| `DOC_REQUEST_BOLETA_LIMIT` | Falta el DNI | Una boleta de S/ 700 o más necesita el DNI del cliente. Cancela la solicitud y pídela otra vez con el DNI. | [Volver a intentar] |
+| `CASH_PENDING_SETTLEMENT` | Efectivo por recibir | Tienes efectivo de delivery ya facturado que el repartidor aún no te entrega. Recíbelo en la pestaña Rendiciones de Entregas antes de cerrar la caja. | [Actualizar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).

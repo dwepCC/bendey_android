@@ -2,8 +2,28 @@ package com.bendey.restaurant.core.domain.delivery
 
 import com.bendey.restaurant.core.domain.model.AppResult
 
+/** D2c fase 2: el cliente pidio boleta o factura en la puerta. */
+data class DocRequest(
+    val id: Int,
+    val orderCode: String,
+    val docKind: String,
+    val clientDocNumber: String,
+    val clientName: String,
+    val amount: Double,
+) {
+    val label: String get() = if (docKind == "factura") "Factura" else "Boleta"
+}
+
 /** Un pedido cobrado en efectivo contra entrega que aun no se rindio. */
-data class SettlementOrder(val paymentId: Int, val orderCode: String, val customerName: String, val amount: Double)
+data class SettlementOrder(
+    val paymentId: Int,
+    val orderCode: String,
+    val customerName: String,
+    val amount: Double,
+    /** Boleta/factura ya emitida en la puerta: el efectivo ya entro a caja; solo falta confirmarlo. */
+    val alreadyBilled: Boolean = false,
+    val saleNumber: String = "",
+)
 
 /** Lo pendiente de rendir de un repartidor (o de quien cobro). */
 data class SettlementGroup(
@@ -37,6 +57,12 @@ interface SettlementRepository {
     /** Devuelve un aviso (o null) cuando la rendicion se registro pero la diferencia no pudo anotarse en caja. */
     suspend fun receive(group: SettlementGroup, paymentIds: List<Int>, received: Double, reason: String?): AppResult<String?>
     suspend fun resolveRefund(paymentId: Int, note: String): AppResult<Unit>
+
+    suspend fun docRequests(): AppResult<List<DocRequest>>
+
+    /** Emite la boleta/factura; devuelve su numero. El efectivo entra a la caja abierta de quien emite. */
+    suspend fun issueDocRequest(id: Int): AppResult<String>
+    suspend fun cancelDocRequest(id: Int, reason: String): AppResult<Unit>
 }
 
 /** Diferencia = recibido - esperado, redondeada a centimos; negativa = faltante. */
