@@ -206,6 +206,20 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `REOPEN_TABLE_OCCUPIED` | Mesa ocupada | La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este. | [Actualizar] |
 | `REOPEN_TOO_OLD` | Pedido muy antiguo | Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir. | [Actualizar] |
 | `REOPEN_REASON_REQUIRED` | Falta el motivo | Indica el motivo para reabrir el pedido (mínimo 3 caracteres). | [Volver a intentar] |
+| `COUNT_EMPTY` | Conteo vacío | Cuenta al menos un producto. | [Volver a intentar] |
+| `COUNT_TOO_MANY` | Demasiados productos | Un conteo admite hasta 500 productos a la vez. | [Volver a intentar] |
+| `COUNT_INVALID` | Cantidades inválidas | Revisa las cantidades contadas: no pueden ser negativas ni vacías. | [Volver a intentar] |
+| `RC_SHARE_UNAVAILABLE` | Reparto no disponible | El reparto del recargo al consumo aún no está disponible para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `RC_SHARE_PERIOD_INVALID` | Período no válido | Elige un período válido (de hasta 92 días, sin fechas futuras). | [Volver a intentar] |
+| `RC_SHARE_LINES_INVALID` | Montos del reparto | Indica cuánto recibe cada trabajador (montos mayores a cero y sin repetir personas). | [Volver a intentar] |
+| `RC_SHARE_EXCEEDS_PENDING` | Reparto excedido | El reparto supera lo que queda por repartir de ese período. | [Actualizar] |
+| `RC_SHARE_NO_CASH_SESSION` | Caja cerrada | Abre tu caja para pagar el reparto en efectivo. | [Volver a intentar] |
+| `RC_SHARE_NOTHING` | Nada por repartir | En ese período no hay recargo al consumo por repartir. | [Actualizar] |
+| `TIP_AMOUNT_INVALID` | Propina no válida | La propina debe ser mayor a S/ 0 y no pasar de S/ 5000. | [Volver a intentar] |
+| `TIPS_UNAVAILABLE` | Propinas no disponibles | Las propinas aún no están disponibles para este restaurante; intenta de nuevo en unos minutos. | [Actualizar] |
+| `TIP_NOTHING_TO_PAY` | Sin propinas por pagar | Este mozo no tiene propinas por pagar. | [Actualizar] |
+| `TIP_NO_CASH_SESSION` | Caja cerrada | Abre tu caja para pagar las propinas. | [Volver a intentar] |
+| `TIP_STAFF_REQUIRED` | Falta el mozo | Indica a qué mozo pagas las propinas. | [Volver a intentar] |
 | `SUMMARY_VOID_*` | No se pudo anular en SUNAT | No se pudo anular el comprobante en SUNAT. Revisa su estado en Ventas antes de volver a intentar. | [Ver Ventas] · [Contactar a soporte] |
 
 `PIN_LOCKED`: si el servidor trae `espera N minuto(s)`, el mensaje pasa a "Demasiados intentos. Espera N minutos o pídele al administrador que restablezca el PIN." ("minuto" si N = 1).

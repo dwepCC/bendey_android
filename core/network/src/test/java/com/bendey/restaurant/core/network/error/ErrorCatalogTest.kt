@@ -252,6 +252,20 @@ class ErrorCatalogTest {
             "REOPEN_TABLE_OCCUPIED" to Pair("La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este.", ErrorAction.REFRESH),
             "REOPEN_TOO_OLD" to Pair("Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir.", ErrorAction.REFRESH),
             "REOPEN_REASON_REQUIRED" to Pair("Indica el motivo para reabrir el pedido (mínimo 3 caracteres).", ErrorAction.BACK_TO_TRY),
+            "COUNT_EMPTY" to Pair("Cuenta al menos un producto.", ErrorAction.BACK_TO_TRY),
+            "COUNT_TOO_MANY" to Pair("Un conteo admite hasta 500 productos a la vez.", ErrorAction.BACK_TO_TRY),
+            "COUNT_INVALID" to Pair("Revisa las cantidades contadas: no pueden ser negativas ni vacías.", ErrorAction.BACK_TO_TRY),
+            "RC_SHARE_UNAVAILABLE" to Pair("El reparto del recargo al consumo aún no está disponible para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+            "RC_SHARE_PERIOD_INVALID" to Pair("Elige un período válido (de hasta 92 días, sin fechas futuras).", ErrorAction.BACK_TO_TRY),
+            "RC_SHARE_LINES_INVALID" to Pair("Indica cuánto recibe cada trabajador (montos mayores a cero y sin repetir personas).", ErrorAction.BACK_TO_TRY),
+            "RC_SHARE_EXCEEDS_PENDING" to Pair("El reparto supera lo que queda por repartir de ese período.", ErrorAction.REFRESH),
+            "RC_SHARE_NO_CASH_SESSION" to Pair("Abre tu caja para pagar el reparto en efectivo.", ErrorAction.BACK_TO_TRY),
+            "RC_SHARE_NOTHING" to Pair("En ese período no hay recargo al consumo por repartir.", ErrorAction.REFRESH),
+            "TIP_AMOUNT_INVALID" to Pair("La propina debe ser mayor a S/ 0 y no pasar de S/ 5000.", ErrorAction.BACK_TO_TRY),
+            "TIPS_UNAVAILABLE" to Pair("Las propinas aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+            "TIP_NOTHING_TO_PAY" to Pair("Este mozo no tiene propinas por pagar.", ErrorAction.REFRESH),
+            "TIP_NO_CASH_SESSION" to Pair("Abre tu caja para pagar las propinas.", ErrorAction.BACK_TO_TRY),
+            "TIP_STAFF_REQUIRED" to Pair("Indica a qué mozo pagas las propinas.", ErrorAction.BACK_TO_TRY),
         )
         for ((code, want) in esperado) {
             val info = http(409, code)

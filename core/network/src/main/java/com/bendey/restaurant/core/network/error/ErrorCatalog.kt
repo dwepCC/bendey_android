@@ -403,6 +403,20 @@ object ErrorCatalog {
         "REOPEN_TABLE_OCCUPIED" to e("Mesa ocupada", "La mesa ya tiene otro pedido abierto. Libérala antes de reabrir este.", ErrorAction.REFRESH),
         "REOPEN_TOO_OLD" to e("Pedido muy antiguo", "Pasaron más de 48 horas desde que se cerró este pedido y ya no se puede reabrir.", ErrorAction.REFRESH),
         "REOPEN_REASON_REQUIRED" to e("Falta el motivo", "Indica el motivo para reabrir el pedido (mínimo 3 caracteres).", ErrorAction.BACK_TO_TRY),
+        "COUNT_EMPTY" to e("Conteo vacío", "Cuenta al menos un producto.", ErrorAction.BACK_TO_TRY),
+        "COUNT_TOO_MANY" to e("Demasiados productos", "Un conteo admite hasta 500 productos a la vez.", ErrorAction.BACK_TO_TRY),
+        "COUNT_INVALID" to e("Cantidades inválidas", "Revisa las cantidades contadas: no pueden ser negativas ni vacías.", ErrorAction.BACK_TO_TRY),
+        "RC_SHARE_UNAVAILABLE" to e("Reparto no disponible", "El reparto del recargo al consumo aún no está disponible para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "RC_SHARE_PERIOD_INVALID" to e("Período no válido", "Elige un período válido (de hasta 92 días, sin fechas futuras).", ErrorAction.BACK_TO_TRY),
+        "RC_SHARE_LINES_INVALID" to e("Montos del reparto", "Indica cuánto recibe cada trabajador (montos mayores a cero y sin repetir personas).", ErrorAction.BACK_TO_TRY),
+        "RC_SHARE_EXCEEDS_PENDING" to e("Reparto excedido", "El reparto supera lo que queda por repartir de ese período.", ErrorAction.REFRESH),
+        "RC_SHARE_NO_CASH_SESSION" to e("Caja cerrada", "Abre tu caja para pagar el reparto en efectivo.", ErrorAction.BACK_TO_TRY),
+        "RC_SHARE_NOTHING" to e("Nada por repartir", "En ese período no hay recargo al consumo por repartir.", ErrorAction.REFRESH),
+        "TIP_AMOUNT_INVALID" to e("Propina no válida", "La propina debe ser mayor a S/ 0 y no pasar de S/ 5000.", ErrorAction.BACK_TO_TRY),
+        "TIPS_UNAVAILABLE" to e("Propinas no disponibles", "Las propinas aún no están disponibles para este restaurante; intenta de nuevo en unos minutos.", ErrorAction.REFRESH),
+        "TIP_NOTHING_TO_PAY" to e("Sin propinas por pagar", "Este mozo no tiene propinas por pagar.", ErrorAction.REFRESH),
+        "TIP_NO_CASH_SESSION" to e("Caja cerrada", "Abre tu caja para pagar las propinas.", ErrorAction.BACK_TO_TRY),
+        "TIP_STAFF_REQUIRED" to e("Falta el mozo", "Indica a qué mozo pagas las propinas.", ErrorAction.BACK_TO_TRY),
     )
 
     private fun seriesMissing() = e(
