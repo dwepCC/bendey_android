@@ -19,6 +19,10 @@ data class DeliverySettings(
     val codEnabled: Boolean = false,
     val manualPaymentEnabled: Boolean = false,
     val paymentReviewMinutes: Int = 15,
+    /** D3: pedido mínimo del delivery (sin envío); 0 = sin mínimo. */
+    val minOrderAmount: Double = 0.0,
+    /** D3: minutos prometidos de entrega; 0 = no prometer hora. */
+    val etaMinutes: Int = 0,
 )
 
 /** Cambio parcial de los ajustes: lo que sea null no se envía. */
@@ -31,7 +35,27 @@ data class DeliverySettingsUpdate(
     /** D2a: pago con captura (solo `s.m`). */
     val manualPaymentEnabled: Boolean? = null,
     val paymentReviewMinutes: Int? = null,
+    val minOrderAmount: Double? = null,
+    val etaMinutes: Int? = null,
 )
+
+/** D3: validación local de las reglas del delivery (gemela de la del servidor). */
+object DeliveryRulesRules {
+    const val MAX_MIN_ORDER = 9999.99
+    const val MAX_ETA = 240
+
+    /** Monto válido (0 a 9999.99, hasta 2 decimales; acepta coma) o null. */
+    fun parseMinOrder(text: String): Double? {
+        val t = text.trim().replace(',', '.')
+        if (t.isEmpty() || !Regex("""\d{1,4}(\.\d{1,2})?""").matches(t)) return null
+        return t.toDoubleOrNull()?.takeIf { it in 0.0..MAX_MIN_ORDER }
+    }
+
+    /** Minutos válidos (entero 0 a 240) o null. */
+    fun parseEta(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in 0..MAX_ETA }
+
+    fun formatAmount(v: Double): String = if (v <= 0.0) "0" else String.format(java.util.Locale.US, "%.2f", v)
+}
 
 object DeliveryFeeRules {
     const val MIN = 0.0

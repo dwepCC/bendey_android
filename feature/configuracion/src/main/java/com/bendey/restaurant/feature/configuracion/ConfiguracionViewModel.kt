@@ -144,6 +144,13 @@ class ConfiguracionViewModel @Inject constructor(
     fun dismissCodConfirm() = codPresenter.dismissConfirm()
     fun confirmCodEnable() = codPresenter.confirmEnable()
 
+    /** «Pedido mínimo y tiempo de entrega» (D3): lógica en [DeliveryRulesPresenter]. */
+    private val rulesPresenter = DeliveryRulesPresenter(viewModelScope, deliveryRepository)
+    val rules: StateFlow<DeliveryRulesState> = rulesPresenter.state
+    fun setRulesMinOrder(text: String) = rulesPresenter.setMinOrderText(text)
+    fun setRulesEta(text: String) = rulesPresenter.setEtaText(text)
+    fun saveRules() = rulesPresenter.save()
+
     /** «Pago con captura» (D2a): su lógica vive en [ManualPaymentSettingsPresenter] (testeable sin Android). */
     private val manualPayPresenter = ManualPaymentSettingsPresenter(viewModelScope, deliveryRepository, manualPaymentRepository, cashRepository::listPaymentMethods)
     val manualPay: StateFlow<ManualPaymentSettingsState> = manualPayPresenter.state
@@ -187,6 +194,7 @@ class ConfiguracionViewModel @Inject constructor(
                 deliveryFeePresenter.setPermissions(perms)
                 codPresenter.setPermissions(perms)
                 manualPayPresenter.setPermissions(perms)
+                rulesPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -198,6 +206,7 @@ class ConfiguracionViewModel @Inject constructor(
         deliveryFeePresenter.load()
         codPresenter.load()
         manualPayPresenter.load()
+        rulesPresenter.load()
         refresh(forceNetwork = false)
     }
 

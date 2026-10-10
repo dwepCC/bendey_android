@@ -108,6 +108,9 @@ import com.bendey.restaurant.core.ui.components.BendeySkeletonListRow
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import kotlinx.coroutines.delay
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.bendey.restaurant.core.domain.delivery.DeliveryLateness
 import java.time.Instant
 import java.util.Locale
 
@@ -147,7 +150,8 @@ fun EntregasScreen(
 ) {
     val board by viewModel.board.collectAsStateWithLifecycle()
     val canSettle by viewModel.canSettle.collectAsStateWithLifecycle()
-    // 0 = Pedidos, 1 = Rendiciones, 2 = Pagos por validar (D2a).
+    val canSeeReport by viewModel.canSeeReport.collectAsStateWithLifecycle()
+    // 0 = Pedidos, 1 = Rendiciones, 2 = Pagos por validar (D2a), 3 = Reporte (D5).
     var tab by rememberSaveable { mutableStateOf(0) }
     val pagos: PagosViewModel = hiltViewModel()
     val pagosState by pagos.state.collectAsStateWithLifecycle()
@@ -175,27 +179,31 @@ fun EntregasScreen(
             },
         )
         // D2c/D2a: con o.ch (cajero o administrador) aparecen las pestañas Rendiciones y Pagos.
-        if (canSettle) {
+        if (canSettle || canSeeReport) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.s16, vertical = BendeySpacing.s8),
                 horizontalArrangement = Arrangement.spacedBy(BendeySpacing.s8),
             ) {
                 BendeyFilterChip(selected = tab == 0, onClick = { tab = 0 }, text = "Pedidos")
-                BendeyFilterChip(selected = tab == 1, onClick = { tab = 1 }, text = "Rendiciones")
-                BendeyFilterChip(
-                    selected = tab == 2,
-                    onClick = { tab = 2 },
-                    label = { Text("Pagos") },
-                    trailingIcon = if (pagosState.pendingCount > 0) {
-                        { Badge { Text(pagosState.pendingCount.toString()) } }
-                    } else {
-                        null
-                    },
-                )
+                if (canSettle) {
+                    BendeyFilterChip(selected = tab == 1, onClick = { tab = 1 }, text = "Rendiciones")
+                    BendeyFilterChip(
+                        selected = tab == 2,
+                        onClick = { tab = 2 },
+                        label = { Text("Pagos") },
+                        trailingIcon = if (pagosState.pendingCount > 0) {
+                            { Badge { Text(pagosState.pendingCount.toString()) } }
+                        } else {
+                            null
+                        },
+                    )
+                }
+                if (canSeeReport) BendeyFilterChip(selected = tab == 3, onClick = { tab = 3 }, text = "Reporte")
             }
         }
         when {
             canSettle && tab == 1 -> RendicionesPanel(onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
+            canSeeReport && tab == 3 -> ReportePanel(modifier = Modifier.weight(1f))
             canSettle && tab == 2 -> PagosPanel(viewModel = pagos, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
             else -> DeliveryContent(viewModel = viewModel, onShowMessage = onShowMessage, modifier = Modifier.weight(1f))
         }
@@ -520,6 +528,14 @@ private fun DeliveryCardView(
             if (section != DeliverySection.DELIVERED_TODAY) {
                 BendeyStatusChip(deliveryKitchenLabel(card.orderStatus), chipColor(deliveryKitchenTone(card.orderStatus)))
             }
+            // D3: pedido pasado de la hora prometida (rojo, con texto: no depende solo del color).
+            DeliveryLateness.lateLabel(card)?.let { late ->
+                BendeyStatusChip(
+                    late,
+                    BendeyColors.Error,
+                    modifier = Modifier.semantics { contentDescription = "Pedido retrasado ${card.lateMinutes} minutos" },
+                )
+            }
             if (card.paid) BendeyStatusChip(DeliveryCopy.text("chip.paid"), BendeyColors.Success)
             // D2b: efectivo contra entrega; con el cobro marcado, "Cobrado".
             val payment = card.payment
@@ -557,6 +573,10 @@ private fun DeliveryCardView(
                     BendeyStatusChip(clock.label, toneColor(clock.tone))
                 }
             }
+        }
+
+        DeliveryLateness.promisedLabel(card)?.let { promised ->
+            Text(promised, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         }
 
         if (card.address.isNotBlank()) {

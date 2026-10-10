@@ -30,6 +30,8 @@ import com.bendey.restaurant.core.data.repository.SalesRepositoryImpl
 import com.bendey.restaurant.core.data.repository.DigitalMenuRepositoryImpl
 import com.bendey.restaurant.core.data.repository.MarketplaceRepositoryImpl
 import com.bendey.restaurant.core.data.repository.ManualPaymentRepositoryImpl
+import com.bendey.restaurant.core.data.repository.DeliveryReportRepositoryImpl
+import com.bendey.restaurant.core.domain.delivery.DeliveryReportRepository
 import com.bendey.restaurant.core.data.repository.SettlementRepositoryImpl
 import com.bendey.restaurant.core.domain.delivery.ManualPaymentRepository
 import com.bendey.restaurant.core.domain.delivery.SettlementRepository
@@ -188,6 +190,10 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindManualPaymentRepository(impl: ManualPaymentRepositoryImpl): ManualPaymentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDeliveryReportRepository(impl: DeliveryReportRepositoryImpl): DeliveryReportRepository
 
     @Binds
     @Singleton

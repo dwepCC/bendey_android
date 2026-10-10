@@ -310,6 +310,9 @@ data class DeliveryCardDto(
     @SerialName("sent_to_kitchen_at") val sentToKitchenAt: String? = null,
     @SerialName("ready_at") val readyAt: String? = null,
     @SerialName("estimated_minutes") val estimatedMinutes: Int? = null,
+    // D3: hora prometida y minutos de retraso (> 0 = ya pasó la hora y no se entregó).
+    @SerialName("promised_at") val promisedAt: String? = null,
+    @SerialName("late_minutes") val lateMinutes: Int? = null,
     val driver: DeliveryPersonDto? = null,
     @SerialName("assignment_status") val assignmentStatus: String? = null,
     @SerialName("assigned_at") val assignedAt: String? = null,
@@ -411,6 +414,8 @@ data class DeliverySettingsDto(
     @SerialName("cod_enabled") val codEnabled: Boolean? = null,
     @SerialName("manual_payment_enabled") val manualPaymentEnabled: Boolean? = null,
     @SerialName("payment_review_minutes") val paymentReviewMinutes: Int? = null,
+    @SerialName("min_order_amount") val minOrderAmount: Double? = null,
+    @SerialName("eta_minutes") val etaMinutes: Int? = null,
     val data: DeliverySettingsDto? = null,
 )
 
@@ -425,6 +430,9 @@ data class DeliverySettingsUpdateRequestDto(
     // D2a: pago con captura (s.m).
     @SerialName("manual_payment_enabled") val manualPaymentEnabled: Boolean? = null,
     @SerialName("payment_review_minutes") val paymentReviewMinutes: Int? = null,
+    // D3: reglas del delivery (s.m).
+    @SerialName("min_order_amount") val minOrderAmount: Double? = null,
+    @SerialName("eta_minutes") val etaMinutes: Int? = null,
 )
 
 /** `PUT /api/restaurant/sessions/:id/delivery/fee`: 0 elimina la línea. */

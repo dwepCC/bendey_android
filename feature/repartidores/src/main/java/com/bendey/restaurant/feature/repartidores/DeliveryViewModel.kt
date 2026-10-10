@@ -35,10 +35,17 @@ class DeliveryViewModel @Inject constructor(
     private val _canSettle = kotlinx.coroutines.flow.MutableStateFlow(false)
     val canSettle: StateFlow<Boolean> = _canSettle
 
+    /** D5: el reporte lo ven c.v o s.m, y nunca el repartidor. */
+    private val _canSeeReport = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val canSeeReport: StateFlow<Boolean> = _canSeeReport
+
     init {
         viewModelScope.launch {
             sessionStore.userSessionFlow.collect {
                 presenter.setPermissions(it?.restaurantPermissions.orEmpty(), it?.user?.employeeType)
+                _canSeeReport.value = com.bendey.restaurant.core.domain.delivery.canSeeDeliveryReport(
+                    it?.restaurantPermissions.orEmpty(), it?.user?.employeeType,
+                )
                 _canSettle.value = it?.user?.employeeType != "driver" &&
                     com.bendey.restaurant.core.domain.permission.RestaurantPermissions.PERM_ORDERS_CHARGE in it?.restaurantPermissions.orEmpty()
             }

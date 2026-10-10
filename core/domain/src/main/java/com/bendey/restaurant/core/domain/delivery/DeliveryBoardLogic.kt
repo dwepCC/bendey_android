@@ -53,6 +53,9 @@ data class DeliveryCard(
     val sentToKitchenAt: String? = null,
     val readyAt: String? = null,
     val estimatedMinutes: Int? = null,
+    /** D3: hora prometida al cliente (ISO) y minutos de retraso (> 0 = retrasado). */
+    val promisedAt: String? = null,
+    val lateMinutes: Int = 0,
     val driver: DeliveryPerson? = null,
     val assignmentStatus: String? = null,
     val assignedAt: String? = null,
