@@ -6,13 +6,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -25,6 +29,7 @@ fun BendeySecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
 ) {
     // Antes, un BendeySecondaryButton deshabilitado no cambiaba fondo ni borde — solo el texto
     // se atenuaba, así que un botón "apagado" seguía viéndose clickeable. Ahora fondo/borde/texto
@@ -41,6 +46,15 @@ fun BendeySecondaryButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = BendeyColors.OnSurface.copy(alpha = disabledAlpha),
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.size(BendeySpacing.xxs))
+        }
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,

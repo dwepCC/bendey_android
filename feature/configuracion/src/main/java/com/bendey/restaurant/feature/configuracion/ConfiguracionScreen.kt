@@ -198,7 +198,7 @@ private fun GeneralTab(
                         Text(config.businessName, style = MaterialTheme.typography.bodyMedium)
                         if (config.address.isNotBlank()) Text(config.address, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     }
-                    BendeyPrimaryButton("Editar datos de contacto", viewModel::openEditConfig, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings)
+                    BendeyPrimaryButton("Editar", viewModel::openEditConfig, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings, icon = Icons.Default.Edit)
                 }
             }
         }

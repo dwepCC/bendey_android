@@ -294,7 +294,7 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissForm,
         title = "Nueva compra",
-        confirmText = if (state.saving) "Guardando…" else "Registrar compra",
+        confirmText = if (state.saving) "Guardando…" else "Guardar",
         onConfirm = viewModel::save,
         onDismiss = viewModel::dismissForm,
         confirmEnabled = !state.saving,

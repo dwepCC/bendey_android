@@ -92,7 +92,7 @@ fun BusinessHoursCard(
                         }
                         state.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.ErrorText) }
                         BendeyPrimaryButton(
-                            text = if (state.saving) "Guardando…" else "Guardar horario",
+                            text = if (state.saving) "Guardando…" else "Guardar",
                             onClick = onSave,
                             enabled = state.canSave,
                             modifier = Modifier.fillMaxWidth(),

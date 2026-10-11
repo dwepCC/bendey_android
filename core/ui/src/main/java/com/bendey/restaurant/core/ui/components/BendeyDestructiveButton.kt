@@ -2,12 +2,15 @@ package com.bendey.restaurant.core.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +43,7 @@ fun BendeyDestructiveButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     fillWidth: Boolean = true,
+    icon: ImageVector? = null,
 ) {
     Button(
         onClick = onClick,
@@ -62,6 +66,10 @@ fun BendeyDestructiveButton(
                 strokeWidth = 2.dp,
             )
         } else {
+            if (icon != null) {
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(BendeySpacing.xxs))
+            }
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelLarge,

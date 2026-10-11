@@ -364,7 +364,7 @@ fun StaffCreateDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewM
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissCreateStaff,
         title = "Nuevo usuario",
-        confirmText = if (state.actionLoading) "Guardando…" else "Crear",
+        confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
         onConfirm = viewModel::confirmCreateStaff,
         onDismiss = viewModel::dismissCreateStaff,
         confirmEnabled = !state.actionLoading,

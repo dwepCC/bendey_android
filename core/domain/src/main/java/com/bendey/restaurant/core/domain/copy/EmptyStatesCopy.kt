@@ -21,17 +21,17 @@ object EmptyStatesCopy {
     val productos = EmptyCopy(
         title = "Tu carta está vacía",
         description = "Los mozos no pueden tomar pedidos hasta que cargues al menos un plato. Súbelos desde tu Excel o créalos uno por uno.",
-        action = "Crear un producto",
+        action = "Nuevo",
     )
     val categorias = EmptyCopy(
         title = "Aún no tienes categorías",
         description = "Sirven para ordenar tu carta (Entradas, Platos de fondo, Bebidas) y que el mozo encuentre rápido cada plato.",
-        action = "Crear categoría",
+        action = "Nueva",
     )
     val salas = EmptyCopy(
         title = "Todavía no hay mesas",
         description = "Sin mesas no se pueden abrir cuentas en salón. Crea tu primera mesa o usa Vender para mostrador.",
-        action = "Crear mi primera mesa",
+        action = "Nueva",
         noPermissionDescription = "Pídele al administrador que cree las mesas.",
     )
     val ventas = EmptyCopy(
@@ -42,12 +42,12 @@ object EmptyStatesCopy {
     val clientes = EmptyCopy(
         title = "Aún no registras clientes",
         description = "Los necesitas para emitir facturas con RUC; en boletas simples no hace falta.",
-        action = "Agregar cliente",
+        action = "Nuevo",
     )
     val repartidores = EmptyCopy(
         title = "Aún no tienes repartidores",
         description = "Regístralos para asignarles los pedidos de delivery.",
-        action = "Agregar repartidor",
+        action = "Nuevo",
     )
     val cajaCerrada = EmptyCopy(
         title = "Tu caja está cerrada",
@@ -66,37 +66,37 @@ object EmptyStatesCopy {
     val compras = EmptyCopy(
         title = "Aún no registras compras",
         description = "Regístralas para llevar tu stock de insumos y saber cuánto cuesta cada plato.",
-        action = "Registrar compra",
+        action = "Nueva",
     )
     val proveedores = EmptyCopy(
         title = "Aún no tienes proveedores",
         description = "Los usarás al registrar compras.",
-        action = "Agregar proveedor",
+        action = "Nuevo",
     )
     val combos = EmptyCopy(
         title = "Aún no tienes combos",
         description = "Un combo agrupa platos (ej. Menú del día) a un precio especial.",
-        action = "Crear combo",
+        action = "Nuevo",
     )
     val modificadores = EmptyCopy(
         title = "Aún no tienes modificadores",
         description = "Sirven para cosas como «Término de la carne» o «Extras».",
-        action = "Crear grupo de opciones",
+        action = "Nuevo",
     )
     val areas = EmptyCopy(
         title = "Sin áreas, todos los pedidos salen a una sola impresora",
         description = "Crea áreas (Cocina, Barra) para que cada plato vaya a la suya.",
-        action = "Crear área",
+        action = "Nueva",
     )
     val transferencias = EmptyCopy(
         title = "Aún no mueves stock entre locales",
         description = "Aquí verás cada transferencia con su origen y destino.",
-        action = "Nueva transferencia",
+        action = "Nueva",
     )
     val personal = EmptyCopy(
         title = "Aún no tienes personal",
         description = "Crea un usuario con PIN para cada mozo, cajero o cocinero.",
-        action = "Crear usuario",
+        action = "Nuevo",
     )
     val impresoras = EmptyCopy(
         title = "Aún no se imprimió nada desde este equipo",
@@ -106,7 +106,7 @@ object EmptyStatesCopy {
     val sucursales = EmptyCopy(
         title = "Tu local principal aún no está configurado",
         description = "Crea tu primera sucursal para empezar a vender.",
-        action = "Crear sucursal",
+        action = "Nueva",
     )
     val pedidosEnEspera = EmptyCopy(
         title = "No hay pedidos en espera",

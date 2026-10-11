@@ -400,7 +400,7 @@ private fun ManualPage(state: WizardUiState, vm: WizardViewModel, onOpenProducto
         }
     }
     state.error?.let { BendeyAlert(message = it, severity = BendeyAlertSeverity.Danger) }
-    BendeyPrimaryButton(text = "Guardar plato", onClick = vm::saveManual, loading = state.busy)
+    BendeyPrimaryButton(text = "Guardar", onClick = vm::saveManual, loading = state.busy)
     BendeyOutlinedButton(text = "Más opciones (IGV, código, stock…)", onClick = onOpenProductos, fillWidth = true)
     BendeyTextButton(
         text = if (state.manualCreated > 0) "Listo" else "Volver",

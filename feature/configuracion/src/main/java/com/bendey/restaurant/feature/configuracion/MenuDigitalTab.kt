@@ -331,7 +331,7 @@ fun MenuDigitalTab(
                     )
 
                     BendeyPrimaryButton(
-                        text = if (state.saving) "Guardando…" else "Guardar apariencia",
+                        text = if (state.saving) "Guardando…" else "Guardar",
                         onClick = viewModel::save,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = state.canManage && !state.saving,

@@ -9,11 +9,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +56,13 @@ fun BendeyFormDialog(
     // BendeyDestructiveButton (color Error) — misma semántica que el resto del sistema para una
     // operación irreversible, en vez de cada flujo decidiendo su propio color a mano.
     destructive: Boolean = false,
+    // Icono del botón de confirmar. Por defecto solo "Guardar" lleva uno; Eliminar/Anular/Agregar…
+    // lo declaran cada uno (o no llevan), para no pintar un disquete en una operación que no guarda.
+    confirmIcon: ImageVector? = when (confirmText) {
+        "Guardar" -> Icons.Default.Save
+        "Eliminar" -> Icons.Default.Delete
+        else -> null
+    },
     onConfirm: () -> Unit,
     onDismiss: () -> Unit = onDismissRequest,
     content: @Composable () -> Unit,
@@ -187,6 +199,7 @@ fun BendeyFormDialog(
                 ) {
                     BendeySecondaryButton(
                         text = dismissText,
+                        icon = Icons.Default.Close,
                         onClick = onDismiss,
                         enabled = !loading,
                         modifier = Modifier.weight(1f),
@@ -197,6 +210,7 @@ fun BendeyFormDialog(
                             onClick = onConfirm,
                             enabled = confirmEnabled && !loading,
                             fillWidth = true,
+                            icon = confirmIcon,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
@@ -205,6 +219,7 @@ fun BendeyFormDialog(
                             onClick = onConfirm,
                             enabled = confirmEnabled && !loading,
                             fillWidth = true,
+                            icon = confirmIcon,
                             modifier = Modifier.weight(1f),
                         )
                     }

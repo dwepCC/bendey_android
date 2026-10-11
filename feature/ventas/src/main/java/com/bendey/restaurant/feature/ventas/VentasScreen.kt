@@ -934,7 +934,7 @@ private fun SaleDetailContent(
                 // tener plata pendiente de entregar. Anular y devolver son cosas distintas.
                 if (detail.canRegisterRefund()) {
                     OutlinedButton(onClick = onRefund, modifier = Modifier.fillMaxWidth()) {
-                        Text("Registrar devolucion", color = BendeyColors.Error)
+                        Text("Registrar devolución", color = BendeyColors.Error)
                     }
                 }
                 // Una venta ya anulada que vino de una mesa o pedido se puede devolver a «ocupada» para
@@ -1119,7 +1119,7 @@ private fun EmitClientQuickAddDialog(
     BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = "Registrar cliente",
-        confirmText = if (saving) "Registrando…" else "Registrar",
+        confirmText = if (saving) "Guardando…" else "Guardar",
         confirmEnabled = !saving && !consulting && form.businessName.isNotBlank() && form.docNumber.isNotBlank(),
         onConfirm = onSave,
         onDismiss = onDismiss,
