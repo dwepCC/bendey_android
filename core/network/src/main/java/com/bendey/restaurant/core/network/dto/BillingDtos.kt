@@ -443,4 +443,6 @@ data class StuckVoidCreditNoteDto(
     @SerialName("created_at") val createdAt: String? = null,
     /** true = no está rechazada, solo lleva demasiado tiempo sin resolverse. */
     val stalled: Boolean = false,
+    /** La venta ya se anuló en el sistema (dinero y stock devueltos); falta solo que SUNAT acepte una NC. */
+    @SerialName("original_cancelled") val originalCancelled: Boolean = false,
 )

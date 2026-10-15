@@ -13,17 +13,35 @@ import org.junit.Test
 /** R10.9: aviso de comprobantes que necesitan atención (solo lectura). El tablero de Delivery vive en DeliveryBoardLogicTest. */
 class ReadOnlyBoardsTest {
     // ---- aviso de comprobantes ----
-    private fun nc(id: Int, stalled: Boolean, msg: String = "") = StuckVoidCreditNote(
+    private fun nc(id: Int, stalled: Boolean, msg: String = "", cancelled: Boolean = true) = StuckVoidCreditNote(
         originalSaleId = id, originalNumber = "B001-$id", originalDocType = "BOLETA", originalTotal = 59.9,
         creditNoteId = id + 100, creditNoteNumber = "", sunatMessage = msg, stalled = stalled,
-        createdAt = "2026-09-30T10:15:00-05:00",
+        createdAt = "2026-09-30T10:15:00-05:00", originalCancelled = cancelled,
     )
 
     @Test fun titulo_del_aviso_singular_y_plural() {
         assertEquals("1 comprobante necesita atención", StuckVoidCopy.title(1))
         assertEquals("3 comprobantes necesitan atención", StuckVoidCopy.title(3))
-        assertTrue(StuckVoidCopy.description(1).contains("esta venta sigue vigente"))
-        assertTrue(StuckVoidCopy.description(2).contains("estas ventas siguen vigentes"))
+    }
+
+    @Test fun la_descripcion_distingue_sunat_del_sistema() {
+        // Anulación nueva: anulada en el sistema en el acto, vigente solo ante SUNAT.
+        assertEquals(
+            "SUNAT no aceptó la nota de crédito: ante SUNAT este comprobante sigue vigente. " +
+                "En el sistema ya está anulada y el dinero devuelto.",
+            StuckVoidCopy.description(listOf(nc(1, false))),
+        )
+        // Anulación antigua: vigente también en el sistema, así que cuenta en los reportes.
+        assertTrue(StuckVoidCopy.description(listOf(nc(1, false, cancelled = false))).contains("aún cuenta en tus reportes"))
+        val nuevas = StuckVoidCopy.description(listOf(nc(1, false), nc(2, true)))
+        assertTrue(nuevas.contains("estos comprobantes siguen vigentes"))
+        assertTrue(nuevas.contains("ya están anuladas"))
+        // Nunca vuelve a decir que una venta ya anulada en el sistema cuenta en los reportes.
+        assertFalse(nuevas.contains("reportes"))
+        assertTrue(
+            StuckVoidCopy.description(listOf(nc(1, false), nc(2, true, cancelled = false)))
+                .contains("Las marcadas «vigente en el sistema» aún cuentan en tus reportes."),
+        )
     }
 
     @Test fun el_aviso_no_aparece_sin_sunat_ni_sin_pendientes() {
@@ -50,16 +68,26 @@ class ReadOnlyBoardsTest {
     @Test fun lineas_de_detalle() {
         val r = nc(7, stalled = false)
         assertEquals("BOLETA B001-7 · S/ 59.90", StuckVoidCopy.line1(r, "S/ 59.90"))
-        assertEquals("NC #107 · rechazada por SUNAT · 30/09/2026", StuckVoidCopy.line2(r, StuckVoidCopy.date(r.createdAt)))
-        val s = nc(8, stalled = true).copy(creditNoteNumber = "BC01-5")
-        assertEquals("NC BC01-5 · sin respuesta de SUNAT · 30/09/2026", StuckVoidCopy.line2(s, StuckVoidCopy.date(s.createdAt)))
+        assertEquals(
+            "NC #107 · rechazada por SUNAT · anulada en el sistema · 30/09/2026",
+            StuckVoidCopy.line2(r, StuckVoidCopy.date(r.createdAt)),
+        )
+        val s = nc(8, stalled = true, cancelled = false).copy(creditNoteNumber = "BC01-5")
+        assertEquals(
+            "NC BC01-5 · sin respuesta de SUNAT · vigente en el sistema · 30/09/2026",
+            StuckVoidCopy.line2(s, StuckVoidCopy.date(s.createdAt)),
+        )
         assertEquals("", StuckVoidCopy.date(null))
         assertEquals("", StuckVoidCopy.date("basura"))
     }
 
     @Test fun textos_del_aviso_sin_usted_ni_jerga() {
         val textos = listOf(
-            StuckVoidCopy.title(1), StuckVoidCopy.title(2), StuckVoidCopy.description(1), StuckVoidCopy.description(2),
+            StuckVoidCopy.title(1), StuckVoidCopy.title(2),
+            StuckVoidCopy.description(listOf(nc(1, false))),
+            StuckVoidCopy.description(listOf(nc(1, false, cancelled = false))),
+            StuckVoidCopy.description(listOf(nc(1, false), nc(2, true))),
+            StuckVoidCopy.description(listOf(nc(1, false), nc(2, true, cancelled = false))),
             StuckVoidCopy.RESOLVE_HINT, StuckVoidCopy.SHOW, StuckVoidCopy.HIDE, StuckVoidCopy.LOAD_ERROR,
         )
         for (t in textos) assertTrue(t, ForbiddenTerms.find(t).isEmpty())

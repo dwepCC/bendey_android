@@ -208,6 +208,7 @@ class BillingRepositoryImpl @Inject constructor(
                 sunatMessage = it.sunatMessage.orEmpty(),
                 stalled = it.stalled,
                 createdAt = it.createdAt,
+                originalCancelled = it.originalCancelled,
             )
         }
     }

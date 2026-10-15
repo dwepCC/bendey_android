@@ -26,8 +26,9 @@ import java.text.NumberFormat
 
 /**
  * Aviso «N comprobantes necesitan atención» (R10.9, SOLO LECTURA): anulaciones cuya nota de crédito SUNAT no
- * aceptó, así que la venta sigue vigente y cuenta en los reportes. Equivale a `StuckVoidCreditNotesPanel` de
- * Tauri. No ocupa lugar si no hay nada; si la consulta falla lo dice y ofrece Reintentar.
+ * aceptó, así que ante SUNAT el comprobante sigue vigente (en el sistema la venta ya suele estar anulada; cada
+ * fila dice cuál es el caso). Equivale a `StuckVoidCreditNotesPanel` de Tauri. No ocupa lugar si no hay nada;
+ * si la consulta falla lo dice y ofrece Reintentar.
  */
 @Composable
 internal fun StuckVoidBanner(
@@ -55,7 +56,7 @@ internal fun StuckVoidBanner(
                         color = BendeyColors.OnSurface,
                     )
                     Text(
-                        StuckVoidCopy.description(state.rows.size),
+                        StuckVoidCopy.description(state.rows),
                         style = MaterialTheme.typography.bodySmall,
                         color = BendeyColors.OnSurface,
                     )
