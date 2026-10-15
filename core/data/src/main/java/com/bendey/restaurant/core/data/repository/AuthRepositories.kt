@@ -137,7 +137,7 @@ class AuthRepositoryImpl @Inject constructor(
         sessionManager.applyUserSession(session)
         val enriched = enrichSession(session)
         if (enriched != session) {
-            sessionManager.applyUserSession(enriched)
+            sessionManager.updateCurrentUserSession(enriched)
         }
         enriched
     }.recoverCatching { throw NetworkErrorMapper.map(it, ErrorFlow.LOGIN_EMAIL) }
@@ -155,36 +155,43 @@ class AuthRepositoryImpl @Inject constructor(
         sessionManager.applyUserSession(session)
         val enriched = enrichSession(session)
         if (enriched != session) {
-            sessionManager.applyUserSession(enriched)
+            sessionManager.updateCurrentUserSession(enriched)
         }
         enriched
     }.recoverCatching { throw NetworkErrorMapper.map(it, ErrorFlow.LOGIN_PIN) }
 
     override suspend fun refreshRestaurantPermissions(): Result<UserSession> = runCatching {
         val session = sessionManager.getUserSession() ?: error("Sin sesión activa")
-        val enriched = enrichSession(session)
-        sessionManager.applyUserSession(enriched)
+        // Si el servidor rechaza el refresco (p. ej. 401 con el token vencido) el error sube y NO se
+        // escribe nada: antes se tragaba, se volvía a guardar la sesión con applyUserSession y eso
+        // resucitaba la sesión que la red acababa de cerrar, en bucle (ver SessionRefreshPolicy).
+        val enriched = fetchEnrichedSession(session)
+        sessionManager.updateCurrentUserSession(enriched)
         enriched
     }.recoverCatching { throw NetworkErrorMapper.map(it) }
 
-    /** Refresca permisos restaurante (paridad Capacitor `getSessionPermissions`). */
-    private suspend fun enrichSession(session: UserSession): UserSession {
-        return try {
-            val api = tenantRetrofitProvider.create<AuthApi>()
-            val dto = api.getSessionPermissions()
-            val perms = dto.permissions.orEmpty()
-            session.copy(
-                restaurantPermissions = perms.ifEmpty { session.restaurantPermissions },
-                user = session.user.copy(
-                    employeeType = dto.employeeType?.takeIf { it.isNotBlank() } ?: session.user.employeeType,
-                    staffId = dto.staffId ?: session.user.staffId,
-                    // claims.AuthMethod viene del JWT vivo: "" en login completo, "pin" en PIN.
-                    authMethod = dto.authMethod ?: session.user.authMethod,
-                ),
-            )
+    /** Tras un login: si el refresco de permisos falla, se sigue con lo que trajo el login. */
+    private suspend fun enrichSession(session: UserSession): UserSession =
+        try {
+            fetchEnrichedSession(session)
         } catch (_: Exception) {
             session
         }
+
+    /** Refresca permisos restaurante (paridad Capacitor `getSessionPermissions`). Lanza si falla. */
+    private suspend fun fetchEnrichedSession(session: UserSession): UserSession {
+        val api = tenantRetrofitProvider.create<AuthApi>()
+        val dto = api.getSessionPermissions()
+        val perms = dto.permissions.orEmpty()
+        return session.copy(
+            restaurantPermissions = perms.ifEmpty { session.restaurantPermissions },
+            user = session.user.copy(
+                employeeType = dto.employeeType?.takeIf { it.isNotBlank() } ?: session.user.employeeType,
+                staffId = dto.staffId ?: session.user.staffId,
+                // claims.AuthMethod viene del JWT vivo: "" en login completo, "pin" en PIN.
+                authMethod = dto.authMethod ?: session.user.authMethod,
+            ),
+        )
     }
 
     override suspend fun logout() {

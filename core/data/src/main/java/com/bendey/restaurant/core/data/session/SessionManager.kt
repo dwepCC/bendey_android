@@ -137,6 +137,11 @@ class SessionManager @Inject constructor(
         clearUserSession()
     }
 
+    /**
+     * SOLO PARA UN LOGIN (sesión nueva con token recién emitido). Para actualizar los datos de la sesión
+     * vigente usar [updateCurrentUserSession]: este método reabre la compuerta de red y vuelve a guardar
+     * el token, así que con un token vencido resucitaría la sesión que la capa de red acaba de cerrar.
+     */
     suspend fun applyUserSession(session: UserSession) {
         // Sesión nueva: reabre la compuerta para volver a permitir peticiones autenticadas
         // (se había cerrado al expirar el token anterior).
@@ -145,6 +150,29 @@ class SessionManager @Inject constructor(
         context.sessionDataStore.edit {
             it[keyUserSession] = json.encodeToString(session.toStored())
         }
+    }
+
+    /**
+     * Guarda una versión actualizada de la sesión VIGENTE (permisos, tipo de empleado…) sin reabrir la
+     * compuerta ni tocar el token. No escribe si la sesión ya se cerró o cambió entre medio
+     * (ver [SessionRefreshPolicy]). Devuelve si escribió.
+     */
+    suspend fun updateCurrentUserSession(session: UserSession): Boolean {
+        var escrita = false
+        context.sessionDataStore.edit { prefs ->
+            val guardada = prefs[keyUserSession]?.let { decodeUserSession(it) }
+            val puede = SessionRefreshPolicy.puedeGuardarActualizacion(
+                compuertaCerrada = invalidationGate.isInvalidated(),
+                tokenDeLaSesionGuardada = guardada?.token,
+                tokenVigente = tokenManager.getToken(),
+                tokenRefrescado = session.token,
+            )
+            if (puede) {
+                prefs[keyUserSession] = json.encodeToString(session.toStored())
+                escrita = true
+            }
+        }
+        return escrita
     }
 
     suspend fun clearUserSession() {
