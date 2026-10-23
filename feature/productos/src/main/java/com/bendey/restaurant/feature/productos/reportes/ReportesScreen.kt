@@ -308,7 +308,7 @@ fun ReportesScreen(
 
                     )
 
-                    ReportesTab.VALORIZACION, ReportesTab.CONTEO -> Unit
+                    ReportesTab.VALORIZACION, ReportesTab.CONTEO, ReportesTab.VENDIDOS -> Unit
 
                     ReportesTab.RECETAS -> RecetasReportFilters(
                         state = state,
@@ -427,6 +427,12 @@ fun ReportesScreen(
             )
 
             ReportesTab.CONTEO -> ConteoPanel(onShowMessage = onShowMessage, modifier = contentModifier)
+
+            ReportesTab.VENDIDOS -> VendidosPanel(
+                onNavigateToSubscription = onNavigateToSubscription,
+                onShowMessage = onShowMessage,
+                modifier = contentModifier,
+            )
 
             ReportesTab.RECETAS -> {
 
@@ -744,7 +750,7 @@ private fun ReportFilters(
 
             ReportesTab.VENTAS -> Unit
 
-            ReportesTab.RECETAS, ReportesTab.VALORIZACION, ReportesTab.CONTEO -> Unit
+            ReportesTab.RECETAS, ReportesTab.VALORIZACION, ReportesTab.CONTEO, ReportesTab.VENDIDOS -> Unit
 
         }
 

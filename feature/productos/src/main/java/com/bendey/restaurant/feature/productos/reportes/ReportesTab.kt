@@ -6,6 +6,7 @@ enum class ReportesTab(val label: String) {
     CONTEO("Conteo físico"),
     PRODUCTOS("Productos"),
     VENTAS("Ventas"),
+    VENDIDOS("Vendidos"),
     RECETAS("Recetas"),
 }
 

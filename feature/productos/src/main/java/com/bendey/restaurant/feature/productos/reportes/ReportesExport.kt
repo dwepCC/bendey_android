@@ -190,3 +190,55 @@ fun exportValuationPdf(
 } catch (e: Exception) {
     fileShareService.failureFrom(e)
 }
+
+private fun soldServiceLabel(row: com.bendey.restaurant.core.domain.sales.SoldExportRow): String =
+    com.bendey.restaurant.core.domain.sales.SoldReportRules.serviceLabel(row.service, row.orderType, row.tableName)
+
+/** Reportes → Vendidos: una fila por producto con los datos de su venta. */
+fun exportSoldCsv(
+    context: Context,
+    fileShareService: BendeyFileShareService,
+    rows: List<com.bendey.restaurant.core.domain.sales.SoldExportRow>,
+    from: String,
+    to: String,
+): ExportShareResult = try {
+    val rules = com.bendey.restaurant.core.domain.sales.SoldReportRules
+    val time = com.bendey.restaurant.core.domain.time.PeruDateTime
+    val data = mutableListOf<List<String>>()
+    data += listOf(
+        "Fecha", "Hora", "Comprobante", "Número", "Estado", "Atención", "Cobró", "Mozo", "Pagos",
+        "Producto", "Cantidad", "P. unit.", "Total línea", "Total venta",
+    )
+    rows.forEach { r ->
+        data += listOf(
+            time.formatDateOrRaw(r.issueDate), time.formatTimeOrRaw(r.registeredAt), rules.docKindLabel(r.docKind), r.number,
+            if (r.valid) "Válida" else "Anulada", soldServiceLabel(r), r.cashierName, r.waiterName.orEmpty(), r.payments,
+            r.description, rules.qty(r.quantity), fmt2(r.unitPrice), fmt2(r.lineTotal), fmt2(r.saleTotal),
+        )
+    }
+    val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/productos-vendidos-$from-$to.csv")
+    ReportCsvWriter.write(file, data)
+    fileShareService.shareFile(context, file, "text/csv", "Exportar productos vendidos Excel")
+} catch (e: Exception) {
+    fileShareService.failureFrom(e)
+}
+
+fun exportSoldPdf(
+    context: Context,
+    fileShareService: BendeyFileShareService,
+    rows: List<com.bendey.restaurant.core.domain.sales.SoldExportRow>,
+    from: String,
+    to: String,
+): ExportShareResult = try {
+    val rules = com.bendey.restaurant.core.domain.sales.SoldReportRules
+    val time = com.bendey.restaurant.core.domain.time.PeruDateTime
+    val lines = rows.map { r ->
+        "${time.formatTimeOrRaw(r.registeredAt)} | ${r.number}${if (r.valid) "" else " ANULADA"} | ${soldServiceLabel(r).take(14)} | " +
+            "${r.cashierName.take(14)} | ${rules.qty(r.quantity)}× ${r.description.take(28)} | S/ ${fmt2(r.lineTotal)}"
+    }
+    val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/productos-vendidos-$from-$to.pdf")
+    ReportPdfWriter.writePortraitA4(file, "Productos vendidos $from al $to", lines)
+    fileShareService.shareFile(context, file, "application/pdf", "Exportar productos vendidos PDF")
+} catch (e: Exception) {
+    fileShareService.failureFrom(e)
+}
