@@ -41,6 +41,11 @@ class OpsPresentersTest {
             return AppResult.Success(controls)
         }
 
+        override suspend fun setShowPosStock(enabled: Boolean): AppResult<OpsControls> {
+            controls = controls.copy(showPosStock = enabled)
+            return AppResult.Success(controls)
+        }
+
         override suspend fun getBusinessHours(): AppResult<BusinessHours> = AppResult.Success(hours)
         override suspend fun saveBusinessHours(intervals: List<BusinessInterval>): AppResult<BusinessHours> {
             saves += intervals

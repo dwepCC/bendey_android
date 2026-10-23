@@ -108,6 +108,8 @@ fun BendeyPosCatalogPane(
     hasMoreProducts: Boolean = false,
     productsLoadingMore: Boolean = false,
     onLoadMoreProducts: (() -> Unit)? = null,
+    /** Ícono «ver stock» en las tarjetas de productos que controlan stock; null = sin ícono. */
+    onProductStockClick: ((PosProduct) -> Unit)? = null,
     sidebarCategories: Boolean = false,
     compactCards: Boolean = true,
     posCatalogStyle: Boolean = false,
@@ -150,6 +152,7 @@ fun BendeyPosCatalogPane(
                 hasMoreProducts = hasMoreProducts,
                 productsLoadingMore = productsLoadingMore,
                 onLoadMoreProducts = onLoadMoreProducts,
+                onProductStockClick = onProductStockClick,
                 compactCards = compactCards,
                 posCatalogStyle = posCatalogStyle,
                 barcodeScanEnabled = barcodeScanEnabled,
@@ -173,6 +176,7 @@ fun BendeyPosCatalogPane(
             hasMoreProducts = hasMoreProducts,
             productsLoadingMore = productsLoadingMore,
             onLoadMoreProducts = onLoadMoreProducts,
+            onProductStockClick = onProductStockClick,
             compactCards = compactCards,
             posCatalogStyle = posCatalogStyle,
             barcodeScanEnabled = barcodeScanEnabled,
@@ -195,6 +199,8 @@ private fun CatalogGridBody(
     hasMoreProducts: Boolean = false,
     productsLoadingMore: Boolean = false,
     onLoadMoreProducts: (() -> Unit)? = null,
+    /** Ícono «ver stock» en las tarjetas de productos que controlan stock; null = sin ícono. */
+    onProductStockClick: ((PosProduct) -> Unit)? = null,
     categories: List<ProductCategory> = emptyList(),
     selectedCategoryId: Int? = null,
     onCategorySelect: ((Int?) -> Unit)? = null,
@@ -289,6 +295,7 @@ private fun CatalogGridBody(
                                 imageUrl = product.imageUrl,
                                 assetsBaseUrl = assetsBaseUrl,
                                 onClick = { onProductClick(product) },
+                                onStockClick = onProductStockClick?.takeIf { product.manageStock }?.let { cb -> { cb(product) } },
                                 enabled = product.availableForSale,
                                 profile = profile,
                             )

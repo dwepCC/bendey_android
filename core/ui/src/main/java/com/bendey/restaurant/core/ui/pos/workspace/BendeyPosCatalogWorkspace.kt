@@ -65,6 +65,8 @@ fun BendeyPosCatalogWorkspace(
     hasMoreProducts: Boolean = false,
     productsLoadingMore: Boolean = false,
     onLoadMoreProducts: (() -> Unit)? = null,
+    /** Ícono «ver stock» en las tarjetas de productos que controlan stock; null = sin ícono. */
+    onProductStockClick: ((PosProduct) -> Unit)? = null,
     catalogBody: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val horizontalPad = AdaptivePos.catalogHorizontalPadding(profile)
@@ -140,6 +142,7 @@ fun BendeyPosCatalogWorkspace(
                                 imageUrl = product.imageUrl,
                                 assetsBaseUrl = assetsBaseUrl,
                                 onClick = { onProductClick(product) },
+                                onStockClick = onProductStockClick?.takeIf { product.manageStock }?.let { cb -> { cb(product) } },
                                 enabled = product.availableForSale,
                                 variant = BendeyPosProductCardVariant.Workspace,
                                 profile = profile,

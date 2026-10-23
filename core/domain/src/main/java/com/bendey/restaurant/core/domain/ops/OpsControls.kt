@@ -10,6 +10,8 @@ import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 data class OpsControls(
     val discountControl: Boolean = false,
     val canDiscount: Boolean = true,
+    /** «Mostrar stock en el POS» (del restaurante, apagado por defecto): ícono de stock en la tarjeta del producto. */
+    val showPosStock: Boolean = false,
 )
 
 object OpsControlsCopy {
@@ -18,6 +20,11 @@ object OpsControlsCopy {
         "Encendido, solo administradores, supervisores y quienes tengan \"Puede dar descuentos\" pueden dar descuentos o cambiar precios al tomar el pedido."
     const val SECTION_TITLE = "Control de descuentos"
     const val STAFF_SWITCH_LABEL = "Puede dar descuentos y cambiar precios"
+
+    const val POS_STOCK_TITLE = "Stock en el POS"
+    const val POS_STOCK_LABEL = "Mostrar stock en el POS"
+    const val POS_STOCK_HELP =
+        "Encendido, las tarjetas de los productos que controlan stock muestran un ícono para consultar cuánto queda, en el POS y al tomar el pedido de una mesa. Lo ve todo el personal."
 
     /** Motivo que se muestra donde el descuento o el cambio de precio queda bloqueado. */
     const val LOCKED_HINT = "Pídele a un administrador"
@@ -45,6 +52,9 @@ interface OpsRepository {
 
     /** `PUT` (s.m) del interruptor del restaurante. */
     suspend fun setDiscountControl(enabled: Boolean): AppResult<OpsControls>
+
+    /** `PUT` (s.m) de «Mostrar stock en el POS». */
+    suspend fun setShowPosStock(enabled: Boolean): AppResult<OpsControls>
 
     suspend fun getBusinessHours(): AppResult<BusinessHours>
 

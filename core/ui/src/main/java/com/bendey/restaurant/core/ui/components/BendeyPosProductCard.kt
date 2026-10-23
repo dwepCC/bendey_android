@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +59,8 @@ fun BendeyPosProductCard(
     enabled: Boolean = true,
     variant: BendeyPosProductCardVariant = BendeyPosProductCardVariant.Standard,
     profile: BendeyAdaptiveProfile = BendeyAdaptiveProfile.CompactPortrait,
+    /** Ícono «ver stock» en la esquina (Ajustes → Stock en el POS). null = la tarjeta de siempre. */
+    onStockClick: (() -> Unit)? = null,
 ) {
     val resolvedUrl = resolvePublicAssetUrl(assetsBaseUrl, imageUrl).takeIf { it.isNotBlank() }
     val alpha = if (enabled) 1f else 0.5f
@@ -111,6 +116,19 @@ fun BendeyPosProductCard(
                             ),
                         ),
                 )
+                if (onStockClick != null) {
+                    // Toque propio: no agrega el producto (el clickable de la tarjeta no lo recibe).
+                    IconButton(
+                        onClick = onStockClick,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(BendeyColors.Surface.copy(alpha = 0.9f)),
+                    ) {
+                        Icon(Icons.Default.Inventory2, contentDescription = "Ver stock de $name", tint = BendeyColors.OnSurface)
+                    }
+                }
                 Text(
                     text = currency.format(price),
                     modifier = Modifier

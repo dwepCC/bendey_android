@@ -182,6 +182,11 @@ class ConfiguracionViewModel @Inject constructor(
     val discountControl: StateFlow<DiscountControlState> = discountControlPresenter.state
     fun setDiscountControl(value: Boolean) = discountControlPresenter.toggle(value)
 
+    /** «Stock en el POS»: lógica en [PosStockControlPresenter]. */
+    private val posStockPresenter = PosStockControlPresenter(viewModelScope, opsRepository)
+    val posStockControl: StateFlow<PosStockControlState> = posStockPresenter.state
+    fun setShowPosStock(value: Boolean) = posStockPresenter.toggle(value)
+
     /** «Pago con captura» (D2a): su lógica vive en [ManualPaymentSettingsPresenter] (testeable sin Android). */
     private val manualPayPresenter = ManualPaymentSettingsPresenter(viewModelScope, deliveryRepository, manualPaymentRepository, cashRepository::listPaymentMethods)
     val manualPay: StateFlow<ManualPaymentSettingsState> = manualPayPresenter.state
@@ -228,6 +233,7 @@ class ConfiguracionViewModel @Inject constructor(
                 rulesPresenter.setPermissions(perms)
                 zonesPresenter.setPermissions(perms)
                 discountControlPresenter.setPermissions(perms)
+                posStockPresenter.setPermissions(perms)
                 _uiState.update {
                     it.copy(
                         canManageRestaurantSettings = RestaurantPermissions.canManageRestaurantSettings(perms),
@@ -242,6 +248,7 @@ class ConfiguracionViewModel @Inject constructor(
         rulesPresenter.load()
         zonesPresenter.load()
         discountControlPresenter.load(forceRefresh = true)
+        posStockPresenter.load(forceRefresh = true)
         refresh(forceNetwork = false)
     }
 

@@ -97,6 +97,7 @@ import com.bendey.restaurant.core.domain.pos.PosComboItem
 import com.bendey.restaurant.core.ui.components.BendeyCompactIconButton
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyComandaPrintAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyProductStockDialog
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.components.BendeyLazyVerticalGrid
@@ -164,6 +165,9 @@ fun MesaScreen(
     // Antes este LaunchedEffect solo hacía consumeSnackMessage() — nunca llamaba a onShowMessage.
     // El mensaje se BORRABA sin mostrarse jamás: "Precuenta enviada", "Comanda reimpresa", etc.
     // desaparecían en silencio. Mismo patrón roto en PosScreen.kt.
+    val productStock by viewModel.productStock.collectAsStateWithLifecycle()
+    productStock?.let { BendeyProductStockDialog(state = it, onDismiss = viewModel::dismissProductStock) }
+
     BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
@@ -705,6 +709,7 @@ private fun CatalogSection(
                                 currency = currency,
                                 assetsBaseUrl = viewModel.assetsBaseUrl,
                                 onProductClick = viewModel::onProductClick,
+                                onProductStockClick = if (state.showPosStock) viewModel::openProductStock else null,
                                 profile = profile,
                                 workspaceMode = workspaceMode,
                                 modifier = it,
@@ -727,6 +732,7 @@ private fun CatalogSection(
                                 currency = currency,
                                 assetsBaseUrl = viewModel.assetsBaseUrl,
                                 onProductClick = viewModel::onProductClick,
+                                onProductStockClick = if (state.showPosStock) viewModel::openProductStock else null,
                                 modifier = it,
                                 hasMoreProducts = state.hasMoreProducts,
                                 productsLoadingMore = state.productsLoadingMore,

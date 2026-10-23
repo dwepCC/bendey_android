@@ -13,10 +13,15 @@ import retrofit2.http.Path
 data class OpsControlsDto(
     @SerialName("discount_control") val discountControl: Boolean = false,
     @SerialName("can_discount") val canDiscount: Boolean = true,
+    @SerialName("show_pos_stock") val showPosStock: Boolean = false,
 )
 
 @Serializable
-data class OpsControlsUpdateDto(@SerialName("discount_control") val discountControl: Boolean)
+data class OpsControlsUpdateDto(
+    // Parcial: el campo nulo no se toca en el servidor.
+    @SerialName("discount_control") val discountControl: Boolean? = null,
+    @SerialName("show_pos_stock") val showPosStock: Boolean? = null,
+)
 
 @Serializable
 data class BusinessHourIntervalDto(

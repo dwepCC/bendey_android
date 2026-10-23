@@ -98,6 +98,7 @@ fun OperacionTab(
         DeliveryRulesCard(viewModel)
         DeliveryZonesCard(viewModel)
         DiscountControlCard(viewModel)
+        PosStockControlCard(viewModel)
         ManualPaymentCard(viewModel)
         OperacionStaffList(state, viewModel, modifier = Modifier.weight(1f))
     }
@@ -470,6 +471,36 @@ private fun BranchMultiSelect(
                 onClick = { onToggle(branch.id) },
                 label = { Text(branch.name) },
             )
+        }
+    }
+}
+
+/** «Stock en el POS»: ícono de stock en las tarjetas del POS y de la mesa (solo `s.m`; apagado por defecto). */
+@Composable
+private fun PosStockControlCard(viewModel: ConfiguracionViewModel) {
+    val st by viewModel.posStockControl.collectAsState()
+    BendeyManagementCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xxs),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+            BendeySectionTitle(text = OpsControlsCopy.POS_STOCK_TITLE)
+            BendeySwitchRow(
+                label = OpsControlsCopy.POS_STOCK_LABEL,
+                checked = st.enabled,
+                onCheckedChange = viewModel::setShowPosStock,
+                enabled = st.canEdit && !st.saving && st.controls != null,
+            )
+            Text(OpsControlsCopy.POS_STOCK_HELP, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            if (!st.canEdit) {
+                Text(
+                    "Solo el administrador puede cambiar este control.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BendeyColors.OnSurfaceVariant,
+                )
+            }
+            st.error?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = BendeyColors.ErrorText) }
         }
     }
 }

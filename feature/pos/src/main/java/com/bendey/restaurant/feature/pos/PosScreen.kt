@@ -103,6 +103,7 @@ import com.bendey.restaurant.core.ui.pos.PosCatalogTabRow
 import com.bendey.restaurant.core.ui.pos.ProductConfigureDialog
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyComandaPrintAlertDialog
+import com.bendey.restaurant.core.ui.components.BendeyProductStockDialog
 import com.bendey.restaurant.core.ui.components.BendeySnackMessage
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
@@ -159,6 +160,9 @@ fun PosScreen(
     // Antes este LaunchedEffect solo hacía consumeSnackMessage() — nunca llamaba a onShowMessage.
     // El mensaje se BORRABA sin mostrarse jamás: "Precuenta enviada", "Comanda reimpresa", errores
     // de SUNAT o de impresión, todo desaparecía en silencio. Mismo patrón roto en MesaScreen.kt.
+    val productStock by viewModel.productStock.collectAsStateWithLifecycle()
+    productStock?.let { BendeyProductStockDialog(state = it, onDismiss = viewModel::dismissProductStock) }
+
     BendeySnackMessage(
         message = state.snackMessage,
         onShow = onShowMessage,
@@ -215,6 +219,7 @@ fun PosScreen(
                                     onCategory = viewModel::selectCategory,
                                     onPreparationArea = viewModel::setPreparationAreaFilter,
                                     onAdd = viewModel::onProductClick,
+                                    onProductStock = if (state.showPosStock) viewModel::openProductStock else null,
                                     onComboClick = viewModel::onComboClick,
                                     onCatalogTab = viewModel::setCatalogTab,
                                     onLoadMoreProducts = viewModel::loadMoreProducts,
@@ -267,6 +272,7 @@ fun PosScreen(
                             onCategory = viewModel::selectCategory,
                             onPreparationArea = viewModel::setPreparationAreaFilter,
                             onAdd = viewModel::onProductClick,
+                            onProductStock = if (state.showPosStock) viewModel::openProductStock else null,
                             onComboClick = viewModel::onComboClick,
                             onCatalogTab = viewModel::setCatalogTab,
                             onLoadMoreProducts = viewModel::loadMoreProducts,
@@ -305,6 +311,7 @@ fun PosScreen(
                     onCategory = viewModel::selectCategory,
                     onPreparationArea = viewModel::setPreparationAreaFilter,
                     onAdd = viewModel::onProductClick,
+                    onProductStock = if (state.showPosStock) viewModel::openProductStock else null,
                     onComboClick = viewModel::onComboClick,
                     onCatalogTab = viewModel::setCatalogTab,
                     onLoadMoreProducts = viewModel::loadMoreProducts,
@@ -717,6 +724,8 @@ private fun CatalogPane(
     onCategory: (Int?) -> Unit,
     onPreparationArea: (Int?) -> Unit,
     onAdd: (PosProduct) -> Unit,
+    /** Ajustes → «Mostrar stock en el POS»; null = sin ícono de stock. */
+    onProductStock: ((PosProduct) -> Unit)? = null,
     onComboClick: (PosComboItem) -> Unit,
     onCatalogTab: (PosCatalogTab) -> Unit,
     modifier: Modifier = Modifier,
@@ -775,6 +784,7 @@ private fun CatalogPane(
                             currency = currency,
                             assetsBaseUrl = assetsBaseUrl,
                             onProductClick = onAdd,
+                            onProductStockClick = onProductStock,
                             profile = profile,
                             workspaceMode = workspaceMode!!,
                             modifier = slotModifier,
@@ -812,6 +822,7 @@ private fun CatalogPane(
                             currency = currency,
                             assetsBaseUrl = assetsBaseUrl,
                             onProductClick = onAdd,
+                            onProductStockClick = onProductStock,
                             modifier = slotModifier,
                             hasMoreProducts = state.hasMoreProducts,
                             productsLoadingMore = state.productsLoadingMore,

@@ -151,6 +151,8 @@ data class MesaUiState(
     val allowCheckoutDiscount: Boolean = false,
     /** Control de descuentos encendido y sin permiso personal: sin descuento ni producto manual (precio libre). */
     val discountsLocked: Boolean = false,
+    /** Ajustes → «Mostrar stock en el POS»: ícono de stock en las tarjetas de productos que controlan stock. */
+    val showPosStock: Boolean = false,
     val checkoutSuccess: BillSessionResult? = null,
     val checkoutSessionClosed: Boolean = true,
     val checkoutPrintNote: String? = null,
@@ -298,6 +300,7 @@ class MesaViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
     private val settingsRepository: SettingsRepository,
     private val opsRepository: com.bendey.restaurant.core.domain.ops.OpsRepository,
+    productStockRepository: com.bendey.restaurant.core.domain.products.ProductStockRepository,
 ) : ViewModel() {
 
     val assetsBaseUrl: String?
@@ -954,10 +957,17 @@ class MesaViewModel @Inject constructor(
         }
     }
 
+    /** Diálogo «Stock de X» abierto desde la tarjeta del producto. */
+    private val productStockPresenter = com.bendey.restaurant.core.domain.products.ProductStockPresenter(viewModelScope, productStockRepository)
+    val productStock: StateFlow<com.bendey.restaurant.core.domain.products.ProductStockDialogState?> = productStockPresenter.state
+    fun openProductStock(product: PosProduct) = productStockPresenter.open(product.id, product.name)
+    fun dismissProductStock() = productStockPresenter.dismiss()
+
     private suspend fun refreshOpsControls() {
         val fresh = (opsRepository.getOpsControls(forceRefresh = true) as? AppResult.Success)?.data
         val locked = com.bendey.restaurant.core.domain.ops.OpsControlsRules.discountsLocked(fresh ?: opsRepository.peekOpsControls())
-        _uiState.update { it.copy(discountsLocked = locked) }
+        val showStock = (fresh ?: opsRepository.peekOpsControls())?.showPosStock == true
+        _uiState.update { it.copy(discountsLocked = locked, showPosStock = showStock) }
     }
 
     fun addManualProduct(input: ManualProductInput) {

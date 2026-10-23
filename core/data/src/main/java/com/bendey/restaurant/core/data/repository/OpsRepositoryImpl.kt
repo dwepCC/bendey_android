@@ -41,7 +41,11 @@ class OpsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setDiscountControl(enabled: Boolean): AppResult<OpsControls> = apiCall {
-        api.updateOpsControls(OpsControlsUpdateDto(enabled)).toDomain().also { operationalDataCache.opsControls.value = it }
+        api.updateOpsControls(OpsControlsUpdateDto(discountControl = enabled)).toDomain().also { operationalDataCache.opsControls.value = it }
+    }
+
+    override suspend fun setShowPosStock(enabled: Boolean): AppResult<OpsControls> = apiCall {
+        api.updateOpsControls(OpsControlsUpdateDto(showPosStock = enabled)).toDomain().also { operationalDataCache.opsControls.value = it }
     }
 
     override suspend fun getBusinessHours(): AppResult<BusinessHours> = apiCall {
@@ -62,7 +66,7 @@ class OpsRepositoryImpl @Inject constructor(
         }
 }
 
-internal fun OpsControlsDto.toDomain() = OpsControls(discountControl = discountControl, canDiscount = canDiscount)
+internal fun OpsControlsDto.toDomain() = OpsControls(discountControl = discountControl, canDiscount = canDiscount, showPosStock = showPosStock)
 
 internal fun BusinessHoursDto.toDomain() = BusinessHours(
     intervals = intervals.map { BusinessInterval(it.weekday, it.openAt, it.closeAt) },
