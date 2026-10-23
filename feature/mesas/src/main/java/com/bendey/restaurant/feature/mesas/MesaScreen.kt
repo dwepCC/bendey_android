@@ -410,6 +410,8 @@ fun MesaScreen(
                     onSelectionChange = viewModel::setSelectedComandaIds,
                     taxRatePercent = taxRate,
                     taxConfig = taxConfig,
+                    billQuantities = state.billQuantities,
+                    onBillQuantityChange = viewModel::setBillQuantity,
                 )
                 CheckoutDetailModeControl(
                     enabled = state.consumptionMode,

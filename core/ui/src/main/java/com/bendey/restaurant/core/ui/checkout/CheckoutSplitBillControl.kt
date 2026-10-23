@@ -18,6 +18,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.billing.ComandaCheckoutRow
 import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 
 @Composable
 fun CheckoutSplitBillControl(
@@ -30,6 +31,9 @@ fun CheckoutSplitBillControl(
     onSelectionChange: (List<Int>) -> Unit,
     taxRatePercent: Double,
     taxConfig: TaxConfig,
+    /** Dividir por unidades: cuántas unidades cobrar de cada línea marcada (sin entrada = completa). */
+    billQuantities: Map<Int, Int> = emptyMap(),
+    onBillQuantityChange: ((SessionComandaSummary, Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (!showOption) return
@@ -68,6 +72,8 @@ fun CheckoutSplitBillControl(
                 onSelectionChange = onSelectionChange,
                 taxRatePercent = taxRatePercent,
                 taxConfig = taxConfig,
+                billQuantities = billQuantities,
+                onBillQuantityChange = onBillQuantityChange,
             )
         }
     }

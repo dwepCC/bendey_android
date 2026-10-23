@@ -84,6 +84,8 @@ data class BillSessionInput(
     val cashSessionId: Int?,
     val closeSession: Boolean = true,
     val comandaIds: List<Int>,
+    /** Dividir por unidades: de esas líneas, cuántas unidades cobrar (sin entrada = la línea completa). */
+    val comandaQuantities: List<ComandaQuantity> = emptyList(),
     val discountAmount: Double? = null,
     val payments: List<CheckoutPaymentLine>,
     /** "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal. */
@@ -212,3 +214,6 @@ interface BillingRepository {
     /** Anulaciones que quedaron a medias (NC rechazada o colgada), solo lectura (R10.9). */
     suspend fun listStuckVoidCreditNotes(): AppResult<List<StuckVoidCreditNote>>
 }
+
+/** Una línea que se cobra solo en parte: «Lomo x3» y se cobran [quantity] unidades. */
+data class ComandaQuantity(val comandaId: Int, val quantity: Int)

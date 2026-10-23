@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,7 +31,9 @@ import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.billing.ComandaCheckoutRow
 import com.bendey.restaurant.core.domain.billing.TaxConfig
+import com.bendey.restaurant.core.domain.billing.SplitUnits
 import com.bendey.restaurant.core.domain.billing.comandaPayableTotal
+import com.bendey.restaurant.core.domain.restaurant.SessionComandaSummary
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -39,6 +45,9 @@ fun CheckoutComandaPicker(
     onSelectionChange: (List<Int>) -> Unit,
     taxRatePercent: Double,
     taxConfig: TaxConfig,
+    /** Dividir por unidades: cuántas unidades cobrar de cada línea marcada (sin entrada = completa). */
+    billQuantities: Map<Int, Int> = emptyMap(),
+    onBillQuantityChange: ((SessionComandaSummary, Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (pending.isEmpty() && billed.isEmpty()) return
@@ -119,14 +128,25 @@ fun CheckoutComandaPicker(
                                     )
                                 }
                                 Text(
-                                    text = "${row.comanda.quantity.toInt()}× ${row.comanda.productName}",
+                                    text = "${SplitUnits.qtyLabel(row.comanda.quantity)}× ${row.comanda.productName}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                 )
                                 Text(
-                                    text = currency.format(comandaPayableTotal(row.comanda, taxRatePercent, taxConfig)),
+                                    text = currency.format(
+                                        comandaPayableTotal(row.comanda, taxRatePercent, taxConfig, SplitUnits.billQuantity(row.comanda, billQuantities)),
+                                    ),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = BendeyColors.Primary,
+                                )
+                            }
+                            if (checked && onBillQuantityChange != null && SplitUnits.canSplit(row.comanda)) {
+                                // Fuera del Checkbox: tocar el selector no desmarca la línea.
+                                UnitStepper(
+                                    value = SplitUnits.billQuantity(row.comanda, billQuantities),
+                                    max = row.comanda.quantity,
+                                    name = row.comanda.productName,
+                                    onChange = { onBillQuantityChange(row.comanda, it) },
                                 )
                             }
                         }
@@ -187,7 +207,7 @@ fun CheckoutComandaPicker(
                                     )
                                 }
                                 Text(
-                                    text = "${row.comanda.quantity.toInt()}× ${row.comanda.productName}",
+                                    text = "${SplitUnits.qtyLabel(row.comanda.quantity)}× ${row.comanda.productName}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = BendeyColors.OnSurfaceVariant.copy(alpha = 0.75f),
                                 )
@@ -204,5 +224,22 @@ fun CheckoutComandaPicker(
                 }
             }
         }
+    }
+}
+
+/** «− 1 de 3 +»: cuántas unidades de la línea se cobran ahora (las demás quedan pendientes). */
+@Composable
+private fun UnitStepper(value: Double, max: Double, name: String, onChange: (Int) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onChange((kotlin.math.ceil(value).toInt() - 1).coerceAtLeast(1)) }, enabled = value > 1.0) {
+                Icon(Icons.Default.Remove, contentDescription = "Cobrar una unidad menos de $name")
+            }
+            Text(SplitUnits.qtyLabel(value), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            IconButton(onClick = { onChange((value + 1).coerceAtMost(max).let { kotlin.math.ceil(it).toInt() }) }, enabled = value < max) {
+                Icon(Icons.Default.Add, contentDescription = "Cobrar una unidad más de $name")
+            }
+        }
+        Text("de ${SplitUnits.qtyLabel(max)}", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
     }
 }

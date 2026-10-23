@@ -29,6 +29,7 @@ import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.billing.CheckoutPaymentDraft
 import com.bendey.restaurant.core.domain.billing.ComandaCheckoutRow
 import com.bendey.restaurant.core.domain.billing.partitionComandasFromSession
+import com.bendey.restaurant.core.domain.billing.SplitUnits
 import com.bendey.restaurant.core.domain.billing.sumComandasPayableTotal
 import com.bendey.restaurant.core.domain.billing.TaxConfig
 import com.bendey.restaurant.core.domain.billing.resolveTaxRatePercent
@@ -157,6 +158,8 @@ data class MesaUiState(
     val checkoutSessionClosed: Boolean = true,
     val checkoutPrintNote: String? = null,
     val selectedComandaIds: List<Int> = emptyList(),
+    /** Dividir por unidades: cuántas unidades cobrar de cada línea elegida (sin entrada = la línea completa). */
+    val billQuantities: Map<Int, Int> = emptyMap(),
     val splitBillEnabled: Boolean = false,
     // "Venta por consumo": el checkbox solo aparece si la sucursal lo tiene habilitado. El
     // backend igual revalida siempre — este ViewModel no decide nada por su cuenta.
@@ -205,6 +208,10 @@ data class MesaUiState(
     val pendingComandaRows: List<ComandaCheckoutRow> get() = partitionedComandas.pending
     val billedComandaRows: List<ComandaCheckoutRow> get() = partitionedComandas.billed
 
+    /** Líneas pendientes marcadas para este cobro. */
+    val selectedPendingComandas: List<SessionComandaSummary>
+        get() = pendingComandaRows.filter { selectedComandaIds.contains(it.comanda.id) }.map { it.comanda }
+
     val checkoutComandasTotal: Double
         get() {
             val selected = pendingComandaRows
@@ -216,7 +223,7 @@ data class MesaUiState(
                 isNRUS = checkoutMeta?.isNRUS ?: false,
                 hasAmazonBenefit = checkoutMeta?.hasAmazonBenefit ?: false,
             )
-            return sumComandasPayableTotal(selected, taxRate, taxConfig)
+            return sumComandasPayableTotal(selected, taxRate, taxConfig, billQuantities)
         }
 
     val checkoutRawTotal: Double
@@ -231,7 +238,8 @@ data class MesaUiState(
             val pending = pendingComandaRows
             if (pending.isEmpty()) return true
             return pending.all { selectedComandaIds.contains(it.comanda.id) } &&
-                selectedComandaIds.size == pending.size
+                selectedComandaIds.size == pending.size &&
+                !SplitUnits.hasPartial(selectedPendingComandas, billQuantities)
         }
 
     val allowDiscountInCheckout: Boolean
@@ -1050,6 +1058,7 @@ class MesaViewModel @Inject constructor(
                     checkoutDiscountValue = "0",
                     splitBillEnabled = false,
                     selectedComandaIds = emptyList(),
+                    billQuantities = emptyMap(),
                     // Antes: `roundMoney(state.sessionTotal + state.cartTotal)` — el subtotal PELADO,
                     // sin pasar por `checkoutPayableTotal` (el que sí suma el RC). El total del hero
                     // del diálogo sí mostraba el RC bien (lo calcula CheckoutDialog aparte, a partir
@@ -1285,6 +1294,15 @@ class MesaViewModel @Inject constructor(
         }
     }
 
+    /** Selector «− 1 de 3 +» de una línea marcada al dividir la cuenta. */
+    fun setBillQuantity(comanda: SessionComandaSummary, value: Int) {
+        _uiState.update { state ->
+            val next = state.copy(billQuantities = SplitUnits.set(state.billQuantities, comanda, value))
+            val withDiscount = if (next.splitBillEnabled && !next.allowDiscountInCheckout) next.copy(checkoutDiscountValue = "0") else next
+            syncSinglePaymentAmount(withDiscount)
+        }
+    }
+
     fun setSplitBillEnabled(enabled: Boolean) {
         _uiState.update { state ->
             val next = state.copy(
@@ -1295,6 +1313,7 @@ class MesaViewModel @Inject constructor(
                     emptyList()
                 },
                 checkoutDiscountValue = if (enabled) state.checkoutDiscountValue else "0",
+                billQuantities = emptyMap(),
             )
             syncSinglePaymentAmount(next)
         }
@@ -1376,7 +1395,8 @@ class MesaViewModel @Inject constructor(
                 pendingIds
             }
             val closeSession = if (state.splitBillEnabled) {
-                pendingIds.isNotEmpty() && pendingIds.all { idsToBill.contains(it) }
+                pendingIds.isNotEmpty() && pendingIds.all { idsToBill.contains(it) } &&
+                    !SplitUnits.hasPartial(state.selectedPendingComandas, state.billQuantities)
             } else {
                 true
             }
@@ -1395,6 +1415,11 @@ class MesaViewModel @Inject constructor(
                         cashSessionId = cashSessionIdForCheckout(state.canOperateCash, needsCashSession, cashSessionId),
                         closeSession = closeSession,
                         comandaIds = idsToBill,
+                        comandaQuantities = if (state.splitBillEnabled) {
+                            SplitUnits.payload(state.selectedPendingComandas, state.billQuantities)
+                        } else {
+                            emptyList()
+                        },
                         discountAmount = discountAmount,
                         payments = paymentLines,
                         detailMode = if (state.saleDetailEnabled && state.consumptionMode) "consumption" else "detailed",
@@ -1417,6 +1442,7 @@ class MesaViewModel @Inject constructor(
                             cart = emptyList(),
                             splitBillEnabled = false,
                             selectedComandaIds = emptyList(),
+                            billQuantities = emptyMap(),
                             // Sin aviso: el modal del comprobante ya confirma la venta (R8 paso 8). También
                             // descarta el "Comanda enviada" de la ronda que se mandó en este mismo cobro.
                             snackMessage = result.data.tipWarning,
@@ -1436,6 +1462,7 @@ class MesaViewModel @Inject constructor(
                             checkoutSubmitting = false,
                             error = result.message,
                             selectedComandaIds = pending,
+                            billQuantities = emptyMap(),
                         )
                     }
                 }

@@ -14,6 +14,8 @@ data class BillSessionRequestDto(
     @SerialName("cash_session_id") val cashSessionId: Int? = null,
     @SerialName("close_session") val closeSession: Boolean = true,
     @SerialName("comanda_ids") val comandaIds: List<Int>,
+    // Dividir por unidades (opcional; nulo = no viaja).
+    @SerialName("comanda_quantities") val comandaQuantities: List<ComandaQuantityDto>? = null,
     @SerialName("discount_amount") val discountAmount: Double? = null,
     val payments: List<BillPaymentDto>,
     // "detailed" (default) | "consumption". El backend revalida siempre contra la sucursal.
@@ -445,4 +447,10 @@ data class StuckVoidCreditNoteDto(
     val stalled: Boolean = false,
     /** La venta ya se anuló en el sistema (dinero y stock devueltos); falta solo que SUNAT acepte una NC. */
     @SerialName("original_cancelled") val originalCancelled: Boolean = false,
+)
+
+@Serializable
+data class ComandaQuantityDto(
+    @SerialName("comanda_id") val comandaId: Int,
+    val quantity: Int,
 )

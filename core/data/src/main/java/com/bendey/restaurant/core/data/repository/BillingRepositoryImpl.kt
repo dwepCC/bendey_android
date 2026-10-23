@@ -104,6 +104,8 @@ class BillingRepositoryImpl @Inject constructor(
                 cashSessionId = input.cashSessionId,
                 closeSession = input.closeSession,
                 comandaIds = input.comandaIds,
+                comandaQuantities = input.comandaQuantities.takeIf { it.isNotEmpty() }
+                    ?.map { com.bendey.restaurant.core.network.dto.ComandaQuantityDto(it.comandaId, it.quantity) },
                 discountAmount = input.discountAmount?.takeIf { it > 0 },
                 payments = input.payments.map {
                     BillPaymentDto(
