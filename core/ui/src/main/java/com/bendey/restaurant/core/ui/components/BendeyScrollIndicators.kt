@@ -567,6 +567,29 @@ fun BoxScope.BendeyLazyGridScrollHints(
     }
 }
 
+/** Igual que [BendeyLazyGridLoadMoreEffect], para listas (p. ej. Clientes por páginas). */
+@Composable
+fun BendeyLazyListLoadMoreEffect(
+    listState: LazyListState,
+    hasMore: Boolean,
+    loadingMore: Boolean,
+    onLoadMore: () -> Unit,
+    threshold: Int = 6,
+) {
+    LaunchedEffect(listState, hasMore, loadingMore) {
+        snapshotFlow {
+            val info = listState.layoutInfo
+            if (info.totalItemsCount == 0) return@snapshotFlow false
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            last >= info.totalItemsCount - threshold
+        }
+            .distinctUntilChanged()
+            .collect { nearEnd ->
+                if (nearEnd && hasMore && !loadingMore) onLoadMore()
+            }
+    }
+}
+
 @Composable
 fun BendeyLazyGridLoadMoreEffect(
     gridState: LazyGridState,

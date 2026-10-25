@@ -13,6 +13,7 @@ import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.ui.cash.OpenCashFormState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -74,6 +75,8 @@ class AppCashSessionViewModel @Inject constructor(
 
     private val _local = MutableStateFlow(AppCashSessionState())
     private var lastRefreshAt = 0L
+    private var lastReportAt = 0L
+    private var reportJob: Job? = null
 
     val state: StateFlow<AppCashSessionState> = combine(
         sessionStore.userSessionFlow,
@@ -98,7 +101,13 @@ class AppCashSessionViewModel @Inject constructor(
         refresh()
     }
 
-    fun refresh() {
+    /**
+     * [forceReport]: recargar el reporte aunque sea reciente (al abrir la hoja). Sin él, el reporte —la
+     * consulta más pesada de la caja, 1–2,7 s en el servidor— se pide como mucho cada
+     * [REPORT_MIN_INTERVAL_MS]: antes salía con cada entrada a POS/Mesas/Mesa (322 veces en 6 h en
+     * El Braserito, 24-oct) solo para el «Vendido» del chip.
+     */
+    fun refresh(forceReport: Boolean = false) {
         viewModelScope.launch {
             val userSession = sessionStore.userSessionFlow.first() ?: run {
                 _local.update { it.copy(loading = false, checkedForBranch = true, showOpenModal = false) }
@@ -119,6 +128,7 @@ class AppCashSessionViewModel @Inject constructor(
             when (val result = cashRepository.getOpenSession(branchId)) {
                 is AppResult.Success -> {
                     lastRefreshAt = System.currentTimeMillis()
+                    val sessionChanged = result.data?.id != _local.value.report?.session?.id
                     _local.update {
                         it.copy(
                             loading = false,
@@ -130,7 +140,8 @@ class AppCashSessionViewModel @Inject constructor(
                         )
                     }
                     // El "Vendido" del chip sale del reporte de la sesión (neto, sin anuladas).
-                    if (result.data != null) loadReport()
+                    val reportStale = System.currentTimeMillis() - lastReportAt >= REPORT_MIN_INTERVAL_MS
+                    if (result.data != null && (forceReport || sessionChanged || reportStale)) loadReport()
                 }
                 // Un timeout de red NO significa "caja cerrada": el chip dice "Caja…" y reintenta al tocar.
                 is AppResult.Error -> _local.update {
@@ -260,8 +271,9 @@ class AppCashSessionViewModel @Inject constructor(
 
     fun openSheet() {
         _local.update { it.copy(sheetOpen = true) }
-        refresh() // "Efectivo esperado" vivo, no el de hace un rato
-        loadReport()
+        // "Efectivo esperado" y reporte vivos, no los de hace un rato. Antes se llamaba además a
+        // loadReport() y el reporte se pedía dos veces.
+        refresh(forceReport = true)
     }
 
     fun closeSheet() {
@@ -269,11 +281,17 @@ class AppCashSessionViewModel @Inject constructor(
     }
 
     fun loadReport() {
-        val sessionId = state.value.session?.id ?: return
-        viewModelScope.launch {
+        // _local y no state: state es WhileSubscribed y sin pantalla suscrita puede ir atrasado.
+        val sessionId = _local.value.session?.id ?: return
+        // Uno a la vez: con red lenta no se apilan pedidos del mismo reporte.
+        if (reportJob?.isActive == true) return
+        reportJob = viewModelScope.launch {
             _local.update { it.copy(reportLoading = it.report == null, reportError = false) }
             when (val result = cashRepository.getSessionReport(sessionId)) {
-                is AppResult.Success -> _local.update { it.copy(reportLoading = false, report = result.data) }
+                is AppResult.Success -> {
+                    lastReportAt = System.currentTimeMillis()
+                    _local.update { it.copy(reportLoading = false, report = result.data) }
+                }
                 else -> _local.update { it.copy(reportLoading = false, reportError = true) }
             }
         }
@@ -281,6 +299,9 @@ class AppCashSessionViewModel @Inject constructor(
 
     private companion object {
         const val REFRESH_MIN_INTERVAL_MS = 15_000L
+
+        /** El «Vendido» del chip tolera unos minutos de atraso; la hoja siempre lo trae al momento. */
+        const val REPORT_MIN_INTERVAL_MS = 120_000L
     }
 
     private fun formatMoneyInput(value: Double): String =

@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.cache.OperationalDataCache
+import com.bendey.restaurant.core.domain.billing.ContactBrief
 import com.bendey.restaurant.core.domain.contacts.ConsultaDniResult
 import com.bendey.restaurant.core.domain.contacts.ConsultaRucResult
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
@@ -88,12 +89,48 @@ class ContactsRepositoryImpl @Inject constructor(
         ).data.map { it.toCustomer() }
     }
 
+    override suspend fun listCustomersPage(
+        query: String,
+        includeInactive: Boolean,
+        page: Int,
+        perPage: Int,
+        type: String,
+    ): AppResult<Pair<List<CustomerContact>, Int>> = apiCall {
+        val response = contactsApi.listContacts(
+            query = query,
+            type = type,
+            status = if (includeInactive) "all" else "active",
+            page = page,
+            perPage = perPage,
+        )
+        val items = response.data.map { it.toCustomer() }
+        items to (response.total ?: items.size)
+    }
+
     override suspend fun getCustomer(id: Int): AppResult<CustomerContact> = apiCall {
         contactsApi.getContact(id).data.toCustomer()
     }
 
-    override suspend fun createCustomer(input: ContactFormInput, type: String): AppResult<CustomerContact> = mutating {
-        contactsApi.createContact(input.toCreateDto(type)).data.toCustomer()
+    override suspend fun createCustomer(input: ContactFormInput, type: String): AppResult<CustomerContact> {
+        val dto = when (val result = apiCall { contactsApi.createContact(input.toCreateDto(type)).data }) {
+            is AppResult.Success -> result.data
+            is AppResult.Error -> return result
+            AppResult.Loading -> return AppResult.Loading
+        }
+        // Un cliente nuevo no cambia series ni métodos: se suma a la caché del cobro en vez de vaciarla.
+        // Los proveedores no van al cobro.
+        if (type == "customer" || type == "both") {
+            operationalDataCache.addContactToCheckoutMeta(
+                ContactBrief(
+                    id = dto.id,
+                    docType = dto.docType,
+                    docNumber = dto.docNumber,
+                    businessName = dto.businessName.ifBlank { dto.tradeName },
+                    active = dto.active,
+                ),
+            )
+        }
+        return AppResult.Success(dto.toCustomer())
     }
 
     override suspend fun updateCustomer(id: Int, input: ContactFormInput, type: String): AppResult<CustomerContact> = mutating {

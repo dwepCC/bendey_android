@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ListResponseDto<T>(
     val data: List<T> = emptyList(),
+    /** Solo cuando la petición es paginada (p. ej. contactos con per_page); si no, null. */
+    val total: Int? = null,
 )
 
 @Serializable

@@ -13,6 +13,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +28,12 @@ data class ClientesUiState(
     val actionLoading: Boolean = false,
     val consulting: Boolean = false,
     val contacts: List<CustomerContact> = emptyList(),
+    /** Total del servidor para la búsqueda actual (la lista carga de a [CLIENTES_PAGE_SIZE]). */
+    val total: Int = 0,
+    val page: Int = 1,
+    /** Búsqueda con la que se cargó la lista actual (searchQuery puede ir adelantada mientras escribe). */
+    val listQuery: String = "",
+    val loadingMore: Boolean = false,
     val searchQuery: String = "",
     val showInactive: Boolean = false,
     val tenantRuc: String = "",
@@ -38,7 +45,12 @@ data class ClientesUiState(
     val snackMessage: String? = null,
     /** Panel «Historial» del cliente abierto (null = cerrado). */
     val history: HistorialUiState? = null,
-)
+) {
+    val hasMore: Boolean get() = contacts.size < total
+}
+
+/** Antes la pantalla bajaba todos los clientes de una vez (609 en El Braserito). */
+const val CLIENTES_PAGE_SIZE = 50
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -51,6 +63,7 @@ class ClientesViewModel @Inject constructor(
     val uiState: StateFlow<ClientesUiState> = _uiState.asStateFlow()
 
     private val searchFlow = MutableStateFlow("")
+    private var listJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -83,19 +96,57 @@ class ClientesViewModel @Inject constructor(
         refresh()
     }
 
+    /** Primera página de la búsqueda actual; cancela la carga anterior (búsqueda vieja o «más»). */
     fun refresh() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(loading = true, error = null) }
-            when (val result = contactsRepository.listCustomers(
-                query = _uiState.value.searchQuery,
+        listJob?.cancel()
+        listJob = viewModelScope.launch {
+            val query = _uiState.value.searchQuery
+            _uiState.update { it.copy(loading = true, loadingMore = false, error = null) }
+            when (val result = contactsRepository.listCustomersPage(
+                query = query,
                 includeInactive = _uiState.value.showInactive,
+                page = 1,
+                perPage = CLIENTES_PAGE_SIZE,
             )) {
                 is AppResult.Success -> _uiState.update {
-                    it.copy(loading = false, contacts = result.data)
+                    it.copy(loading = false, contacts = result.data.first, total = result.data.second, page = 1, listQuery = query)
                 }
                 is AppResult.Error -> _uiState.update {
                     it.copy(loading = false, error = result.message)
                 }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /** Siguiente página al llegar al final de la lista. */
+    fun loadMore() {
+        val state = _uiState.value
+        if (state.loading || state.loadingMore || !state.hasMore) return
+        val next = state.page + 1
+        listJob = viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true) }
+            when (val result = contactsRepository.listCustomersPage(
+                query = state.listQuery,
+                includeInactive = state.showInactive,
+                page = next,
+                perPage = CLIENTES_PAGE_SIZE,
+            )) {
+                is AppResult.Success -> _uiState.update { current ->
+                    // Si mientras tanto cambió la búsqueda, refresh() ya canceló esto; por si acaso, no mezclar.
+                    if (current.listQuery != state.listQuery || current.showInactive != state.showInactive) {
+                        current.copy(loadingMore = false)
+                    } else {
+                        val seen = current.contacts.mapTo(HashSet()) { c -> c.id }
+                        current.copy(
+                            loadingMore = false,
+                            contacts = current.contacts + result.data.first.filterNot { c -> c.id in seen },
+                            total = result.data.second,
+                            page = next,
+                        )
+                    }
+                }
+                is AppResult.Error -> _uiState.update { it.copy(loadingMore = false, error = result.message) }
                 AppResult.Loading -> Unit
             }
         }

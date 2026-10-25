@@ -61,6 +61,9 @@ import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeySimpleSelect
 import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
+import com.bendey.restaurant.core.ui.components.BendeyLazyListLoadMoreEffect
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import com.bendey.restaurant.core.ui.components.BendeyScreenToolbar
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import com.bendey.restaurant.core.ui.layout.BendeyFlexibleContentSlot
@@ -117,6 +120,7 @@ fun ClientesScreen(
                 onShowInactiveChange = viewModel::setShowInactive,
                 onRetry = viewModel::refresh,
                 onCreate = viewModel::openCreate,
+                onLoadMore = viewModel::loadMore,
                 modifier = contentModifier,
             )
         }
@@ -157,7 +161,8 @@ fun ClientesScreen(
 }
 
 private fun clientesSubtitle(state: ClientesUiState): String {
-    val count = state.contacts.size
+    // El total del servidor: la lista carga por páginas y contacts.size solo dice cuántos van.
+    val count = maxOf(state.total, state.contacts.size)
     return when {
         state.showInactive -> if (count == 1) "1 cliente" else "$count clientes"
         count == 1 -> "1 cliente activo"
@@ -176,6 +181,7 @@ private fun ClientesListPane(
     onShowInactiveChange: (Boolean) -> Unit,
     onRetry: () -> Unit,
     onCreate: () -> Unit,
+    onLoadMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewState = ListStateDecider.decide(state.loading, state.error?.takeIf { !state.formOpen }, state.contacts.size, state.searchQuery.isNotBlank())
@@ -223,6 +229,12 @@ private fun ClientesListPane(
                     modifier = Modifier.align(Alignment.TopStart),
                 )
             } else {
+                BendeyLazyListLoadMoreEffect(
+                    listState = listState,
+                    hasMore = state.hasMore,
+                    loadingMore = state.loadingMore || state.loading,
+                    onLoadMore = onLoadMore,
+                )
                 BendeyLazyColumn(
                     modifier = it,
                     state = listState,
@@ -243,6 +255,16 @@ private fun ClientesListPane(
                             onDelete = { onDelete(contact.id) },
                             onToggle = { onToggle(contact.id) },
                         )
+                    }
+                    if (state.loadingMore) {
+                        item(key = "clientes-cargando-mas") {
+                            Box(
+                                Modifier.fillMaxWidth().padding(BendeySpacing.sm),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                            }
+                        }
                     }
                 }
             }

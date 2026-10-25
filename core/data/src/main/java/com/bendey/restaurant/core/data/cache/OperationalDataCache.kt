@@ -48,6 +48,19 @@ class OperationalDataCache @Inject constructor() {
         categories = value
     }
 
+    /**
+     * Cliente recién creado: se agrega a los datos de cobro ya cargados en vez de vaciarlos. Antes
+     * cada «+ Nuevo cliente» del cobro obligaba a bajar de nuevo todos los clientes, series y métodos
+     * (609 clientes en El Braserito) justo cuando el cajero está cobrando.
+     */
+    fun addContactToCheckoutMeta(contact: com.bendey.restaurant.core.domain.billing.ContactBrief) {
+        for ((branchId, meta) in checkoutMetaByBranch.entries.toList()) {
+            checkoutMetaByBranch[branchId] = meta.copy(
+                contacts = meta.contacts.filterNot { it.id == contact.id } + contact,
+            )
+        }
+    }
+
     fun clearCheckoutMeta(branchId: Int? = null) {
         if (branchId == null) checkoutMetaByBranch.clear()
         else checkoutMetaByBranch.remove(branchId)

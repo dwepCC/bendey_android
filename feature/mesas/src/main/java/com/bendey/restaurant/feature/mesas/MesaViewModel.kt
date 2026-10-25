@@ -107,6 +107,8 @@ import com.bendey.restaurant.core.realtime.store.SessionsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -319,6 +321,9 @@ class MesaViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MesaUiState())
     val uiState: StateFlow<MesaUiState> = _uiState.asStateFlow()
 
+    /** Carga del catálogo en curso (búsqueda/categoría): una nueva cancela la anterior. */
+    private var productsJob: Job? = null
+
     /**
      * Guard SINCRONO de "Enviar a cocina" y "Cobrar": se toma ANTES de lanzar la corrutina, así dos toques
      * seguidos (que llegan antes de que `sending`/`checkoutSubmitting` lleguen a la UI) no envían dos rondas.
@@ -425,12 +430,26 @@ class MesaViewModel @Inject constructor(
 
     fun setSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
-        viewModelScope.launch { loadProducts() }
+        reloadProducts(debounceMs = if (query.isBlank()) 0L else SEARCH_DEBOUNCE_MS)
     }
 
     fun selectCategory(categoryId: Int?) {
         _uiState.update { it.copy(selectedCategoryId = categoryId) }
-        viewModelScope.launch { loadProducts() }
+        reloadProducts()
+    }
+
+    /**
+     * Antes cada letra del buscador disparaba su propia consulta («a», «an», «ant»…) y todas corrían:
+     * con internet débil se encolaban y la pantalla esperaba varios segundos (El Braserito, 24-oct:
+     * el servidor respondía en 0,02 s y el celular veía 3–8 s). Ahora se espera a que el usuario deje
+     * de escribir y la búsqueda anterior se cancela (Retrofit corta la llamada HTTP al cancelar).
+     */
+    private fun reloadProducts(debounceMs: Long = 0L) {
+        productsJob?.cancel()
+        productsJob = viewModelScope.launch {
+            if (debounceMs > 0) delay(debounceMs)
+            loadProducts()
+        }
     }
 
     fun loadMoreProducts() {
@@ -442,6 +461,7 @@ class MesaViewModel @Inject constructor(
     fun setCatalogTab(tab: PosCatalogTab) {
         if (_uiState.value.catalogTab == tab) return
         _uiState.update { it.copy(catalogTab = tab, searchQuery = "") }
+        productsJob?.cancel()
         viewModelScope.launch {
             if (tab == PosCatalogTab.PRODUCTS) {
                 loadProducts()
@@ -1820,6 +1840,9 @@ class MesaViewModel @Inject constructor(
     private companion object {
         /** Cerrar una mesa vacía al salir no debe retener al mozo si la red va lenta. */
         const val CLOSE_EMPTY_TIMEOUT_MS = 4_000L
+
+        /** Pausa tras la última letra antes de buscar. */
+        const val SEARCH_DEBOUNCE_MS = 300L
     }
 }
 

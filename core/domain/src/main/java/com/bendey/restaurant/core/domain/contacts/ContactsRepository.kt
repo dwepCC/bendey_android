@@ -12,6 +12,25 @@ interface ContactsRepository {
         includeInactive: Boolean = false,
         type: String = "customer",
     ): AppResult<List<CustomerContact>>
+
+    /**
+     * Una página de clientes y el total. La pantalla Clientes la usa para no bajar cientos de
+     * contactos de golpe (El Braserito tiene 609). Por defecto cae a [listCustomers] completo,
+     * así las implementaciones de prueba no tienen que cambiar.
+     */
+    suspend fun listCustomersPage(
+        query: String = "",
+        includeInactive: Boolean = false,
+        page: Int = 1,
+        perPage: Int = 50,
+        type: String = "customer",
+    ): AppResult<Pair<List<CustomerContact>, Int>> =
+        when (val all = listCustomers(query, includeInactive, type)) {
+            is AppResult.Success -> AppResult.Success(all.data to all.data.size)
+            is AppResult.Error -> all
+            AppResult.Loading -> AppResult.Loading
+        }
+
     suspend fun getCustomer(id: Int): AppResult<CustomerContact>
     suspend fun createCustomer(input: ContactFormInput, type: String = "customer"): AppResult<CustomerContact>
     suspend fun updateCustomer(id: Int, input: ContactFormInput, type: String = "customer"): AppResult<CustomerContact>

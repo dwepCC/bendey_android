@@ -72,6 +72,9 @@ interface ContactsApi {
         @Query("q") query: String = "",
         @Query("type") type: String = "customer",
         @Query("status") status: String? = null,
+        // Paginación opcional del backend: sin per_page devuelve todos (lo que usa el cobro).
+        @Query("page") page: Int? = null,
+        @Query("per_page") perPage: Int? = null,
     ): ListResponseDto<ContactDto>
 
     @GET("/api/contacts/{id}")
