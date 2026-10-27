@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
@@ -73,11 +74,13 @@ object DeliveryFeeRules {
     const val LINE_CODE = "DELIVERY"
     const val LINE_NAME = "Servicio de delivery"
 
-    val affectations: List<Pair<String, String>> = listOf(
-        AFFECTATION_TAXED to "Gravado con IGV",
-        AFFECTATION_EXEMPT to "Exonerado",
-        AFFECTATION_UNAFFECTED to "Inafecto",
-    )
+    // Etiquetas por país (I5); en Perú «Gravado con IGV», «Exonerado», «Inafecto».
+    val affectations: List<Pair<String, String>>
+        get() = listOf(
+            AFFECTATION_TAXED to "${LabelKey.TAX_TAXED.text} con ${LabelKey.TAX_NAME.text}",
+            AFFECTATION_EXEMPT to LabelKey.TAX_EXEMPT.text,
+            AFFECTATION_UNAFFECTED to LabelKey.TAX_UNAFFECTED.text,
+        )
 
     fun affectationLabel(code: String?): String =
         affectations.firstOrNull { it.first == code }?.second ?: affectations.first().second
@@ -89,7 +92,7 @@ object DeliveryFeeCopy {
     const val SWITCH_LABEL = "Cobrar tarifa de delivery"
     const val AMOUNT_LABEL = "Tarifa de delivery (S/)"
     const val FISCAL_TITLE = "Opciones fiscales"
-    const val AFFECTATION_LABEL = "Afectación al IGV"
+    val AFFECTATION_LABEL: String get() = "Afectación al ${LabelKey.TAX_NAME.text}"
     const val FISCAL_HINT = "Consulta con tu contador antes de activar la tarifa: se emite como una línea del comprobante."
     const val NEW_ORDERS_NOTICE = "La tarifa nueva se aplica a los pedidos nuevos; los pedidos ya creados mantienen la suya."
     const val READ_ONLY_HINT = "Solo el administrador puede cambiar la tarifa de delivery."

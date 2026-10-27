@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.onboarding
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.activity.compose.BackHandler
@@ -403,7 +404,7 @@ private fun ManualPage(state: WizardUiState, vm: WizardViewModel, onOpenProducto
     }
     state.error?.let { BendeyAlert(message = it, severity = BendeyAlertSeverity.Danger) }
     BendeyPrimaryButton(text = "Guardar", onClick = vm::saveManual, loading = state.busy)
-    BendeyOutlinedButton(text = "Más opciones (IGV, código, stock…)", onClick = onOpenProductos, fillWidth = true)
+    BendeyOutlinedButton(text = "Más opciones (${LabelKey.TAX_NAME.text}, código, stock…)", onClick = onOpenProductos, fillWidth = true)
     BendeyTextButton(
         text = if (state.manualCreated > 0) "Listo" else "Volver",
         onClick = vm::backToChoose,

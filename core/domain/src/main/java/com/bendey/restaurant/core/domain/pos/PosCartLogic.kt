@@ -5,6 +5,7 @@ import com.bendey.restaurant.core.domain.catalog.ComboType
 import com.bendey.restaurant.core.domain.catalog.ModifierGroup
 import com.bendey.restaurant.core.domain.catalog.ModifierSelectionMode
 import com.bendey.restaurant.core.domain.catalog.ProductPresentation
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.products.ProductsRepository
 import com.bendey.restaurant.core.domain.products.toFormInput
@@ -457,10 +458,10 @@ fun manualCartLine(input: ManualProductInput): com.bendey.restaurant.core.domain
     val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull() ?: 0.0
     val lineId = "manual-${System.currentTimeMillis()}"
     val igvLabel = when (input.igvAffectationType.trim()) {
-        "10" -> "Gravado IGV"
-        "20" -> "Exonerado"
-        "30" -> "Inafecto"
-        else -> "IGV ${input.igvAffectationType}"
+        "10" -> "${LabelKey.TAX_TAXED.text} ${LabelKey.TAX_NAME.text}"
+        "20" -> LabelKey.TAX_EXEMPT.text
+        "30" -> LabelKey.TAX_UNAFFECTED.text
+        else -> "${LabelKey.TAX_NAME.text} ${input.igvAffectationType}"
     }
     return com.bendey.restaurant.core.domain.restaurant.PosCartLine(
         cartKey = lineId,

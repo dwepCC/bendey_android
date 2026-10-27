@@ -22,6 +22,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.delivery.DeliveryZone
 import com.bendey.restaurant.core.domain.delivery.DeliveryZoneCopy
 import com.bendey.restaurant.core.domain.delivery.DeliveryZoneRules
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyOption
@@ -77,7 +78,7 @@ fun DeliveryZonesCard(viewModel: ConfiguracionViewModel) {
         BendeyAlertDialog(
             onDismissRequest = viewModel::dismissZoneDelete,
             title = "Quitar «${t.name}»",
-            message = "Los pedidos de ese distrito volverán a usar la tarifa única" +
+            message = "Los pedidos de ese ${LabelKey.GEO_DISTRICT.text.lowercase()} volverán a usar la tarifa única" +
                 (if (st.restrictToZones) " o, como repartes solo en tus zonas, ya no se podrá pedir delivery allí" else "") + ". ¿Quitar la zona?",
             confirmText = "Quitar",
             onConfirm = viewModel::confirmZoneDelete,
@@ -94,7 +95,7 @@ private fun ZoneRow(z: DeliveryZone, canEdit: Boolean, viewModel: ConfiguracionV
             Column(Modifier.weight(1f)) {
                 Text(z.name, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Distrito ${z.ubigeoCode} · ${DeliveryZoneRules.describe(z)}",
+                    "${LabelKey.GEO_DISTRICT.text} ${z.ubigeoCode} · ${DeliveryZoneRules.describe(z)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -143,18 +144,18 @@ private fun ZoneFormDialog(viewModel: ConfiguracionViewModel) {
                 options = f.provincias.map { BendeyOption(it.id, it.nombre) },
                 selectedValue = f.provinciaId,
                 onSelect = viewModel::selectZoneProvincia,
-                label = "Provincia",
+                label = LabelKey.GEO_PROVINCE.text,
                 enabled = !f.saving && f.regionId.isNotBlank(),
             )
             BendeySimpleSelect(
                 options = f.distritos.map { BendeyOption(it.id, it.nombre) },
                 selectedValue = f.code,
                 onSelect = viewModel::selectZoneDistrito,
-                label = "Distrito",
+                label = LabelKey.GEO_DISTRICT.text,
                 enabled = !f.saving && f.provinciaId.isNotBlank(),
             )
         } else {
-            Text("Distrito ${f.code}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+            Text("${LabelKey.GEO_DISTRICT.text} ${f.code}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         }
         BendeyTextField(f.name, viewModel::setZoneName, "Nombre de la zona", enabled = !f.saving)
         BendeyTextField(

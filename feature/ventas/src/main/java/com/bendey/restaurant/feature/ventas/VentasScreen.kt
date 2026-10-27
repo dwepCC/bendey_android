@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.ventas
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.horizontalScroll
@@ -166,7 +167,7 @@ fun VentasScreen(
 
     // El aviso de «en vivo» corresponde a cualquier filtro que traiga comprobantes: el flujo de
     // eventos se conecta por capacidad, no por pestaña.
-    val billingHint = if (state.tab.incluyeElectronicos() && state.sunatEnabled) " · SUNAT en vivo" else ""
+    val billingHint = if (state.tab.incluyeElectronicos() && state.sunatEnabled) " · ${LabelKey.TAX_AUTHORITY.text} en vivo" else ""
     val detailError = if (state.voidDialogOpen || state.emitDialogOpen) null else state.error
 
     BendeyListScreenLayout(
@@ -508,7 +509,7 @@ private fun VentasFiltersSection(
         )
         if (state.tab.incluyeElectronicos() && state.sunatEnabled) {
             FilterDropdown(
-                label = "Estado SUNAT",
+                label = "Estado ${LabelKey.TAX_AUTHORITY.text}",
                 value = state.billingStatusFilter,
                 options = listOf("" to "Todos") + BILLING_FILTER_STATUSES.map {
                     it to billingStatusLabel(it)
@@ -557,7 +558,7 @@ private fun VentasListHintsAndSummary(
     // corresponde cuando el filtro elegido no puede devolver nada sin SUNAT.
     if (state.tab.incluyeElectronicos() && state.tab != VentasTab.TODAS && !state.sunatEnabled) {
         Text(
-            "La facturación electrónica no está habilitada. Actívala en Configuración para ver boletas y facturas.",
+            "La facturación electrónica no está habilitada. Actívala en Configuración para ver ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s.",
             color = BendeyColors.OnSurfaceVariant,
             modifier = Modifier.padding(horizontal = BendeySpacing.md, vertical = BendeySpacing.xs),
         )
@@ -794,7 +795,7 @@ private fun SaleDetailContent(
                     // Una nota de venta no va a SUNAT: mostrarle un estado seria inventarle un
                     // trámite que no tiene.
                     if (!isNotaVenta(detail.docType, detail.sunatCode) && sunatEnabled) {
-                        Text("Estado SUNAT: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
+                        Text("Estado ${LabelKey.TAX_AUTHORITY.text}: ${billingStatusLabel(it)}", color = BendeyColors.OnSurfaceVariant)
                     }
                 }
                 detail.contactName?.let { Text("Cliente: $it") }
@@ -826,7 +827,7 @@ private fun SaleDetailContent(
                 }
                 if (detail.taxAmount > 0) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("IGV")
+                        Text(LabelKey.TAX_NAME.text)
                         Text(currency.format(detail.taxAmount))
                     }
                 }
@@ -834,7 +835,7 @@ private fun SaleDetailContent(
                 // Se omite si es 0 (sucursal sin RC), así el detalle no cambia para quien no lo activó.
                 if (detail.serviceChargeAmount > 0) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatServiceChargeLabel(detail.serviceChargeRate, fallback = "Recargo al Consumo"))
+                        Text(formatServiceChargeLabel(detail.serviceChargeRate, fallback = LabelKey.SERVICE_CHARGE.peruAs("Recargo al Consumo")))
                         Text(currency.format(detail.serviceChargeAmount))
                     }
                 }
@@ -884,20 +885,20 @@ private fun SaleDetailContent(
                 if (isNotaVenta(detail.docType, detail.sunatCode)) {
                     if (detail.canIssueElectronicFromNota(sunatEnabled)) {
                         BendeyPrimaryButton(
-                            text = "Emitir boleta o factura",
+                            text = "Emitir ${LabelKey.DOC_RECEIPT.text.lowercase()} o ${LabelKey.DOC_INVOICE.text.lowercase()}",
                             onClick = onEmitElectronic,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
                     if (detail.canCancelNotaVenta()) {
                         OutlinedButton(onClick = onCancelNota, modifier = Modifier.fillMaxWidth()) {
-                            Text("Anular nota de venta", color = BendeyColors.Error)
+                            Text("Anular ${LabelKey.DOC_SALES_NOTE.text.lowercase()}", color = BendeyColors.Error)
                         }
                     }
                 } else {
                     if (canSendToSunat(detail.billingStatus)) {
                         BendeyPrimaryButton(
-                            text = if (billingBusy == "send") "Enviando a SUNAT…" else "Enviar a SUNAT",
+                            text = if (billingBusy == "send") "Enviando a ${LabelKey.TAX_AUTHORITY.text}…" else "Enviar a ${LabelKey.TAX_AUTHORITY.text}",
                             onClick = onSendSunat,
                             enabled = billingBusy == null,
                             modifier = Modifier.fillMaxWidth(),
@@ -928,7 +929,7 @@ private fun SaleDetailContent(
                     )
                     if (detail.canVoidWithCreditNote()) {
                         OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
-                            Text("Anular con nota de crédito", color = BendeyColors.Error)
+                            Text("Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}", color = BendeyColors.Error)
                         }
                     }
                 }
@@ -1032,7 +1033,7 @@ private fun EmitElectronicDialog(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Genera boleta o factura desde esta nota de venta. Puede cambiar el cliente antes de emitir.",
+                    "Genera ${LabelKey.DOC_RECEIPT.text.lowercase()} o ${LabelKey.DOC_INVOICE.text.lowercase()} desde esta ${LabelKey.DOC_SALES_NOTE.text.lowercase()}. Puede cambiar el cliente antes de emitir.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -1043,13 +1044,13 @@ private fun EmitElectronicDialog(
                         options = clientOptions.map { BendeySelectOption(it.id, it.displayLabel) },
                         selectedId = contactId,
                         onSelect = { onContactChange(it) },
-                        label = if (requiresRuc) "Cliente (RUC obligatorio)" else "Cliente",
-                        placeholder = if (requiresRuc) "Selecciona un cliente con RUC" else "Selecciona un cliente",
+                        label = if (requiresRuc) "Cliente (${LabelKey.TAX_ID.text} obligatorio)" else "Cliente",
+                        placeholder = if (requiresRuc) "Selecciona un cliente con ${LabelKey.TAX_ID.text}" else "Selecciona un cliente",
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (requiresRuc && clientOptions.isEmpty()) {
                         Text(
-                            "La factura requiere un cliente con RUC registrado.",
+                            "La ${LabelKey.DOC_INVOICE.text.lowercase()} requiere un cliente con ${LabelKey.TAX_ID.text} registrado.",
                             color = BendeyColors.WarningText,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -1064,7 +1065,7 @@ private fun EmitElectronicDialog(
                 // BendeySimpleSelect, así que se migró (BendeySelect ahora soporta `enabled` para
                 // no perder el bloqueo mientras se está emitiendo).
                 BendeySimpleSelect(
-                    options = listOf(BendeyOption("03", "Boleta (03)"), BendeyOption("01", "Factura (01)")),
+                    options = listOf(BendeyOption("03", "${LabelKey.DOC_RECEIPT.text} (03)"), BendeyOption("01", "${LabelKey.DOC_INVOICE.text} (01)")),
                     selectedValue = docKind,
                     onSelect = onDocKindChange,
                     label = "Tipo",
@@ -1153,7 +1154,7 @@ private fun EmitClientQuickAddDialog(
         BendeyTextField(
             value = form.businessName,
             onValueChange = { v -> onFormChange { it.copy(businessName = v) } },
-            label = "Nombre / Razón social *",
+            label = "Nombre / ${LabelKey.BUSINESS_NAME.text} *",
         )
         BendeyTextField(
             value = form.address,
@@ -1181,14 +1182,14 @@ private fun VoidReasonDialog(
     onConfirm: () -> Unit,
 ) {
     val title = when (action) {
-        VoidAction.CREDIT_NOTE -> "Anular con nota de crédito"
-        VoidAction.CANCEL_NOTA -> "Anular nota de venta"
+        VoidAction.CREDIT_NOTE -> "Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
+        VoidAction.CANCEL_NOTA -> "Anular ${LabelKey.DOC_SALES_NOTE.text.lowercase()}"
         VoidAction.REFUND -> "Registrar devolución"
         VoidAction.REOPEN -> ReopenRules.ACTION_LABEL
         null -> "Anular"
     }
     val confirmLabel = when (action) {
-        VoidAction.CREDIT_NOTE -> if (loading) "Procesando…" else "Generar nota de crédito"
+        VoidAction.CREDIT_NOTE -> if (loading) "Procesando…" else "Generar ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
         VoidAction.CANCEL_NOTA -> if (loading) "Anulando…" else "Confirmar anulación"
         // El boton nombra lo que hace: aca sale dinero, no es un "Aceptar" cualquiera.
         VoidAction.REFUND -> if (loading) "Procesando devolución…" else "Confirmar devolución"

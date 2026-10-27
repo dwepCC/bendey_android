@@ -47,6 +47,7 @@ import com.bendey.restaurant.core.designsystem.components.BendeyCard
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
 import com.bendey.restaurant.core.designsystem.theme.BendeyShapeTokens
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.onboarding.OnboardingAction
 import com.bendey.restaurant.core.domain.onboarding.OnboardingChecklist
 import com.bendey.restaurant.core.domain.onboarding.OnboardingCopy
@@ -153,8 +154,8 @@ internal fun OnboardingChecklistContent(
         )
         OnboardingConfirm.SUNAT_REQUEST -> BendeyAlertDialog(
             onDismissRequest = onDismissConfirm,
-            title = "Solicitar activación de SUNAT",
-            message = "Registraremos tu solicitud para emitir boletas y facturas electrónicas. " +
+            title = "Solicitar activación de ${LabelKey.TAX_AUTHORITY.text}",
+            message = "Registraremos tu solicitud para emitir ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s electrónicas. " +
                 "Te avisamos cuando esté lista.",
             confirmText = "Solicitar",
             onConfirm = onConfirm,

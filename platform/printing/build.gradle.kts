@@ -24,6 +24,8 @@ android {
 }
 
 dependencies {
+    // Etiquetas por país del ticket (LabelKey, incremento I5).
+    implementation(project(":core:domain"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)

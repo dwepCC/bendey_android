@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.billing
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 data class CheckoutDocTypeGroup(
     val key: String,
     val label: String,
@@ -12,17 +14,17 @@ fun normalizeDocTypeKey(docType: String): String =
 fun docTypeShortLabel(docType: String, sunatCode: String? = null): String {
     val code = sunatCode?.trim().orEmpty()
     when (code) {
-        "00" -> return "Nota de venta"
-        "03" -> return "Boleta"
-        "01" -> return "Factura"
+        "00" -> return LabelKey.DOC_SALES_NOTE.text
+        "03" -> return LabelKey.DOC_RECEIPT.text
+        "01" -> return LabelKey.DOC_INVOICE.text
     }
     val normalized = normalizeDocTypeKey(docType)
     return when {
         normalized.contains("credito") || normalized.contains("crédito") -> "N. Crédito"
         normalized.contains("debito") || normalized.contains("débito") -> "N. Débito"
-        (normalized.contains("nota") && normalized.contains("venta")) || normalized == "notadeventa" -> "Nota de venta"
-        normalized == "boleta" -> "Boleta"
-        normalized == "factura" -> "Factura"
+        (normalized.contains("nota") && normalized.contains("venta")) || normalized == "notadeventa" -> LabelKey.DOC_SALES_NOTE.text
+        normalized == "boleta" -> LabelKey.DOC_RECEIPT.text
+        normalized == "factura" -> LabelKey.DOC_INVOICE.text
         else -> {
             val trimmed = docType.trim()
             if (trimmed.length > 14) "${trimmed.take(12)}…" else trimmed

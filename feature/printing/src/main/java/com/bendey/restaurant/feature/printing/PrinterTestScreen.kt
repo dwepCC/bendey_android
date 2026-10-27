@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.ui.components.BendeyVerticalScrollColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -220,7 +221,7 @@ fun PrinterTestScreen(
                         "Solo comandas de ${preparationAreaDisplayLabel(state.editingAreaKey!!)}"
                     }
                     PrinterSlot.PRECUENTA -> "Tickets de precuenta antes de cobrar"
-                    PrinterSlot.DOCUMENTOS -> "Boletas, facturas y notas de venta"
+                    PrinterSlot.DOCUMENTOS -> "${LabelKey.DOC_RECEIPT.text}s, ${LabelKey.DOC_INVOICE.text.lowercase()}s y notas de venta"
                 },
                 connectionType = state.connectionType,
                 onConnectionType = viewModel::setConnectionType,

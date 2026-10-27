@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.billing
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * Anulaciones que quedaron a medias ante SUNAT (R10.9, SOLO LECTURA). Equivale a `StuckVoidCreditNotesPanel`
  * de Tauri (`GET /api/billing/stuck-void-credit-notes`): se emitió una nota de crédito para anular una venta
@@ -29,7 +31,7 @@ object StuckVoidCopy {
         if (count == 1) "1 comprobante necesita atención" else "$count comprobantes necesitan atención"
 
     fun description(rows: List<StuckVoidCreditNote>): String {
-        val sunat = "SUNAT no aceptó la nota de crédito: ante SUNAT " +
+        val sunat = "${LabelKey.TAX_AUTHORITY.text} no aceptó la ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}: ante ${LabelKey.TAX_AUTHORITY.text} " +
             (if (rows.size == 1) "este comprobante sigue vigente." else "estos comprobantes siguen vigentes.")
         val sistema = when {
             rows.size == 1 && rows[0].originalCancelled -> " En el sistema ya está anulada y el dinero devuelto."
@@ -47,7 +49,7 @@ object StuckVoidCopy {
     const val LOAD_ERROR_RETRY = "Reintentar"
 
     fun reason(row: StuckVoidCreditNote): String =
-        if (row.stalled) "sin respuesta de SUNAT" else "rechazada por SUNAT"
+        if (row.stalled) "sin respuesta de ${LabelKey.TAX_AUTHORITY.text}" else "rechazada por ${LabelKey.TAX_AUTHORITY.text}"
 
     fun systemState(row: StuckVoidCreditNote): String =
         if (row.originalCancelled) "anulada en el sistema" else "vigente en el sistema"

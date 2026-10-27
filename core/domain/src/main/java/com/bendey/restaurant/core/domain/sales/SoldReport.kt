@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.sales
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import com.bendey.restaurant.core.domain.delivery.ReportRange
@@ -97,11 +98,12 @@ enum class SoldReportPreset(val label: String) {
 object SoldReportRules {
     const val PER_PAGE = 25
 
-    val DOC_KINDS: List<Pair<String, String>> = listOf(
-        "boleta" to "Boleta",
-        "factura" to "Factura",
-        "nota_venta" to "Nota de venta",
-    )
+    val DOC_KINDS: List<Pair<String, String>>
+        get() = listOf(
+            "boleta" to LabelKey.DOC_RECEIPT.text,
+            "factura" to LabelKey.DOC_INVOICE.text,
+            "nota_venta" to LabelKey.DOC_SALES_NOTE.text,
+        )
 
     /** Hoy = solo hoy; Mes actual = del día 1 a hoy (en Lima). CUSTOM no tiene rango propio. */
     fun preset(preset: SoldReportPreset, today: LocalDate = ReportRangeRules.todayLima()): ReportRange? = when (preset) {
@@ -110,7 +112,7 @@ object SoldReportRules {
         SoldReportPreset.CUSTOM -> null
     }
 
-    fun docKindLabel(kind: String): String = DOC_KINDS.firstOrNull { it.first == kind }?.second ?: "Nota de venta"
+    fun docKindLabel(kind: String): String = DOC_KINDS.firstOrNull { it.first == kind }?.second ?: LabelKey.DOC_SALES_NOTE.text
 
     /** «Mesa 4», «Mesa» si no se sabe cuál, o el tipo de venta directa. */
     fun serviceLabel(service: String, orderType: String, tableName: String?): String {

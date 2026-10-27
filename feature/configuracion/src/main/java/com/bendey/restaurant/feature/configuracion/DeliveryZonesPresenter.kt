@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.domain.delivery.DeliveryZoneRules
 import com.bendey.restaurant.core.domain.delivery.DeliveryZonesRepository
 import com.bendey.restaurant.core.domain.delivery.canManageDeliverySettings
 import com.bendey.restaurant.core.domain.delivery.restrictWouldBlockAll
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,7 +172,7 @@ class DeliveryZonesPresenter(
         if (f.saving || !s.canEdit) return
         val invalid = DeliveryZoneRules.validate(f.code, f.name, f.feeText, f.minOrderText, f.etaText)
             ?: if (f.editingId == null && s.zones.any { it.ubigeoCode == f.code }) {
-                "Ya tienes una zona para ese distrito: edítala desde la lista."
+                "Ya tienes una zona para ese ${LabelKey.GEO_DISTRICT.text.lowercase()}: edítala desde la lista."
             } else {
                 null
             }

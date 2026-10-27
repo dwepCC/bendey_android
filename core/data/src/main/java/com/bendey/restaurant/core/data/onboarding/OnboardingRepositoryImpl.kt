@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.onboarding
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.onboarding.OnboardingPreferencesUpdate
 import com.bendey.restaurant.core.domain.onboarding.OnboardingRepository
@@ -126,7 +127,7 @@ class OnboardingRepositoryImpl internal constructor(
         const val MSG_SAMPLE_NOT_EMPTY = "Ya tienes productos; la carta de ejemplo solo se carga en una carta vacía."
         const val MSG_SAMPLE_DELETE = "No pudimos borrar los ejemplos. Inténtalo de nuevo."
         const val MSG_SUNAT_REQUEST = "No pudimos enviar tu solicitud. Inténtalo de nuevo en unos minutos."
-        const val MSG_SUNAT_STATUS = "No pudimos consultar el estado de tu solicitud de SUNAT."
+        val MSG_SUNAT_STATUS: String get() = "No pudimos consultar el estado de tu solicitud de ${LabelKey.TAX_AUTHORITY.text}."
     }
 }
 

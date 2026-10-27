@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.productos.reportes
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 
@@ -812,7 +813,7 @@ private fun SalesReportFilters(
 
                 ReportFilterDropdown(
 
-                    label = "Estado SUNAT",
+                    label = "Estado ${LabelKey.TAX_AUTHORITY.text}",
 
                     value = state.billingStatusFilter,
 

@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyOption
 import com.bendey.restaurant.core.ui.components.BendeyPrimaryButton
@@ -73,7 +74,7 @@ fun ClientQuickAddDialog(
             BendeyTextField(
                 value = form.businessName,
                 onValueChange = { value -> onFormChange { it.copy(businessName = value) } },
-                label = "Nombre / Razón social *",
+                label = "Nombre / ${LabelKey.BUSINESS_NAME.text} *",
                 modifier = Modifier.fillMaxWidth(),
             )
             BendeyTextField(

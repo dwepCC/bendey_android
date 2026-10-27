@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.repository
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.sales.CancelNotaResult
 import com.bendey.restaurant.core.domain.sales.IssueElectronicResult
@@ -99,7 +100,7 @@ class SalesRepositoryImpl @Inject constructor(
     override suspend fun cancelNotaVenta(saleId: Int, reason: String, pin: String): AppResult<CancelNotaResult> = apiCall(ErrorFlow.VOID_REFUND) {
         val response = tenantRetrofitProvider.create<SalesApi>()
             .cancelNota(saleId, CancelSaleRequestDto(reason = reason.trim(), pin = pin.trim()))
-        CancelNotaResult(message = response.message ?: "Nota de venta anulada")
+        CancelNotaResult(message = response.message ?: "${LabelKey.DOC_SALES_NOTE.text} anulada")
     }
 
     override suspend fun refundSale(saleId: Int, reason: String): AppResult<RefundResult> = apiCall(ErrorFlow.VOID_REFUND) {

@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.rcshare
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import com.bendey.restaurant.core.domain.delivery.ReportRange
@@ -150,11 +151,12 @@ object RcShareText {
 
     fun salesCount(n: Int): String = if (n == 1) "1 venta" else "$n ventas"
 
-    const val HELP =
-        "El recargo al consumo se cobra para repartirlo entre los trabajadores. Si no se reparte todo, SUNAT lo considera " +
-            "ingreso del negocio (Informe 049-2014). Aquí dejas constancia del reparto. Confirma el criterio con tu contador."
+    val HELP: String
+        get() =
+            "El ${LabelKey.SERVICE_CHARGE.text.lowercase()} se cobra para repartirlo entre los trabajadores. Si no se reparte todo, ${LabelKey.TAX_AUTHORITY.text} lo considera " +
+                "ingreso del negocio (Informe 049-2014). Aquí dejas constancia del reparto. Confirma el criterio con tu contador."
 
     fun overdueNotice(pending: Double): String =
-        "Quedan ${money(pending)} de recargo al consumo sin repartir en un mes que ya terminó. " +
-            "Si no se reparten, SUNAT los considera ingreso del negocio."
+        "Quedan ${money(pending)} de ${LabelKey.SERVICE_CHARGE.text.lowercase()} sin repartir en un mes que ya terminó. " +
+            "Si no se reparten, ${LabelKey.TAX_AUTHORITY.text} los considera ingreso del negocio."
 }

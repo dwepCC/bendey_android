@@ -35,6 +35,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
 import com.bendey.restaurant.core.domain.contacts.ContactFormInput
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyListPlaceholder
 import com.bendey.restaurant.core.domain.copy.EmptyStatesCopy
@@ -330,7 +331,7 @@ private fun ProveedorFormDialog(
         BendeyTextField(
             value = form.businessName,
             onValueChange = { value -> onFormChange { it.copy(businessName = value) } },
-            label = "Razón social / Nombre *",
+            label = "${LabelKey.BUSINESS_NAME.text} / Nombre *",
         )
         BendeyTextField(
             value = form.tradeName,
@@ -346,7 +347,7 @@ private fun ProveedorFormDialog(
         BendeyTextField(
             value = form.ubigeo,
             onValueChange = { value -> onFormChange { it.copy(ubigeo = value.filter { c -> c.isDigit() }.take(6)) } },
-            label = "Ubigeo (6 dígitos)",
+            label = "${LabelKey.GEO_CODE.text} (6 dígitos)",
         )
         BendeyTextField(
             value = form.phone,

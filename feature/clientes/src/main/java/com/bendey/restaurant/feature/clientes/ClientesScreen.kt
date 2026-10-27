@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ToggleOff
 import androidx.compose.material.icons.filled.ToggleOn
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyIconButton
 import com.bendey.restaurant.core.ui.components.BendeyListRow
@@ -364,7 +365,7 @@ private fun ContactFormFields(
     BendeyTextField(
         value = form.businessName,
         onValueChange = { value -> onFormChange { it.copy(businessName = value) } },
-        label = "Nombre / Razón social *",
+        label = "Nombre / ${LabelKey.BUSINESS_NAME.text} *",
     )
     BendeyTextField(
         value = form.tradeName,
@@ -380,7 +381,7 @@ private fun ContactFormFields(
     BendeyTextField(
         value = form.ubigeo,
         onValueChange = { value -> onFormChange { it.copy(ubigeo = value.filter { c -> c.isDigit() }.take(6)) } },
-        label = "Ubigeo (6 dígitos)",
+        label = "${LabelKey.GEO_CODE.text} (6 dígitos)",
     )
     BendeyTextField(
         value = form.phone,

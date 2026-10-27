@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.caja.reparto
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +75,7 @@ fun RcShareScreen(
     ) {
         item {
             Text(
-                "Reparto del recargo al consumo",
+                "Reparto del ${LabelKey.SERVICE_CHARGE.text.lowercase()}",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = BendeyColors.OnSurface,
@@ -133,8 +134,8 @@ fun RcShareScreen(
                 if (summary.collected <= 0.0) {
                     item {
                         BendeyEmptyState(
-                            title = "Sin recargo al consumo en este período",
-                            description = "No hay ventas con recargo al consumo en las fechas elegidas.",
+                            title = "Sin ${LabelKey.SERVICE_CHARGE.text.lowercase()} en este período",
+                            description = "No hay ventas con ${LabelKey.SERVICE_CHARGE.text.lowercase()} en las fechas elegidas.",
                         )
                     }
                 }
@@ -181,7 +182,7 @@ private fun DistributeDialog(st: RcShareUiState, vm: RcShareViewModel) {
         onDismiss = vm::closeDistribute,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.s8)) {
-            Muted("Indica cuánto recibió cada trabajador por el recargo al consumo de este período.")
+            Muted("Indica cuánto recibió cada trabajador por el ${LabelKey.SERVICE_CHARGE.text.lowercase()} de este período.")
             if (st.staffLoading) Muted("Cargando personal…")
             if (!st.staffLoading && st.staff.isEmpty()) Muted("No hay personal registrado. Agrégalo en Configuración.")
             st.staff.forEach { person ->
@@ -213,7 +214,7 @@ private fun DistributeDialog(st: RcShareUiState, vm: RcShareViewModel) {
                 onCheckedChange = vm::setPayFromCash,
             )
             Muted(
-                if (st.payFromCash) "El efectivo sale de tu caja abierta como «Reparto de recargo al consumo»."
+                if (st.payFromCash) "El efectivo sale de tu caja abierta como «Reparto de ${LabelKey.SERVICE_CHARGE.text.lowercase()}»."
                 else "Solo queda la constancia (por ejemplo, si lo pagaste por planilla u otro medio).",
             )
         }

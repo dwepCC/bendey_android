@@ -16,6 +16,7 @@ import com.bendey.restaurant.core.data.printer.printserver.RemotePrintResult
 import com.bendey.restaurant.core.data.printer.printserver.manualPrintServerSelection
 import com.bendey.restaurant.core.data.printer.printserver.toPrintOutcome
 import com.bendey.restaurant.core.data.printer.toPrintOutcome
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.print.PrintOutcome
 import com.bendey.restaurant.core.data.printer.printserver.withManualEndpoint
 import com.bendey.restaurant.core.data.kitchen.areaTicketLabel
@@ -504,7 +505,7 @@ class PrinterTestViewModel @Inject constructor(
                         companyRuc = "20123456789",
                         companyAddress = "Av. Principal 123",
                         branchName = "Local principal",
-                        clientName = "CLIENTES VARIOS",
+                        clientName = LabelKey.FINAL_CONSUMER.upper,
                         clientDocNumber = "00000000",
                         items = listOf(
                             DocumentPrintLine("Pollo a la brasa", 2.0, 38.0, 76.0),

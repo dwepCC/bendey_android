@@ -8,6 +8,7 @@ import com.bendey.restaurant.core.data.printer.DocumentPrintService
 import com.bendey.restaurant.core.data.printer.ComandaPrintAlert
 import com.bendey.restaurant.core.data.printer.KitchenPrintService
 import com.bendey.restaurant.core.data.printer.comandaPrintFeedback
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.print.PrintOutcome
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
 import com.bendey.restaurant.core.data.export.ExportShareResult
@@ -1176,16 +1177,16 @@ class MesaViewModel @Inject constructor(
         val num = sanitizeDocNumber(form.docType, form.docNumber)
         val tenantRuc = state.tenantRuc.filter { it.isDigit() }
         if (tenantRuc.length != 11) {
-            _uiState.update { it.copy(clientQuickAddError = "No se pudo obtener el RUC de la empresa") }
+            _uiState.update { it.copy(clientQuickAddError = "No se pudo obtener el ${LabelKey.TAX_ID.text} de la empresa") }
             return
         }
         when (form.docType) {
             ContactDocType.RUC -> if (num.length != 11) {
-                _uiState.update { it.copy(clientQuickAddError = "Ingresa un RUC de 11 dígitos") }
+                _uiState.update { it.copy(clientQuickAddError = "Ingresa un ${LabelKey.TAX_ID.text} de 11 dígitos") }
                 return
             }
             ContactDocType.DNI -> if (num.length != 8) {
-                _uiState.update { it.copy(clientQuickAddError = "Ingresa un DNI de 8 dígitos") }
+                _uiState.update { it.copy(clientQuickAddError = "Ingresa un ${LabelKey.NATIONAL_ID.text} de 8 dígitos") }
                 return
             }
             else -> return
@@ -1198,7 +1199,7 @@ class MesaViewModel @Inject constructor(
                         val data = result.data
                         val razonSocial = data.razonSocial
                         if (!data.success || razonSocial.isNullOrBlank()) {
-                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el RUC") }
+                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el ${LabelKey.TAX_ID.text}") }
                         } else {
                             _uiState.update {
                                 it.copy(
@@ -1222,7 +1223,7 @@ class MesaViewModel @Inject constructor(
                         val data = result.data
                         val nombreCompleto = data.nombreCompleto
                         if (!data.success || nombreCompleto.isNullOrBlank()) {
-                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el DNI") }
+                            _uiState.update { it.copy(clientQuickAddConsulting = false, clientQuickAddError = "No se encontró el ${LabelKey.NATIONAL_ID.text}") }
                         } else {
                             _uiState.update {
                                 it.copy(

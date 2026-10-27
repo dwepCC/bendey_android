@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.copy
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * Textos de los estados vacíos y de error de carga (R5, UX-REDESIGN §7.2). Un solo módulo para Android.
  * Las cadenas son las MISMAS que `src/content/emptyStates.ts` de Tauri: no cambies una sin cambiar la otra.
@@ -39,9 +41,9 @@ object EmptyStatesCopy {
         description = "Cuando cobres, el comprobante aparecerá aquí para reimprimir, enviar o anular.",
         action = "Ir a Vender",
     )
-    val clientes = EmptyCopy(
+    val clientes: EmptyCopy get() = EmptyCopy(
         title = "Aún no registras clientes",
-        description = "Los necesitas para emitir facturas con RUC; en boletas simples no hace falta.",
+        description = "Los necesitas para emitir ${LabelKey.DOC_INVOICE.text.lowercase()}s con ${LabelKey.TAX_ID.text}; en ${LabelKey.DOC_RECEIPT.text.lowercase()}s simples no hace falta.",
         action = "Nuevo",
     )
     val repartidores = EmptyCopy(

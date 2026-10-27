@@ -1,5 +1,7 @@
 package com.bendey.restaurant.platform.printing.escpos
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 data class DocumentPrintLine(
     val description: String,
     val quantity: Double,
@@ -71,7 +73,7 @@ object DocumentLayoutBuilder {
         input.companyLegalName?.takeIf { it.isNotBlank() }?.let { legal ->
             EscPosTextUtils.wrapText(legal, cols).forEach { b.line(it) }
         }
-        if (input.companyRuc.isNotBlank()) b.line("RUC: ${input.companyRuc}")
+        if (input.companyRuc.isNotBlank()) b.line("${LabelKey.TAX_ID.text}: ${input.companyRuc}")
         input.companyAddress?.takeIf { it.isNotBlank() }?.let { addr ->
             EscPosTextUtils.wrapText(addr, cols).forEach { b.line(it) }
         }
@@ -102,7 +104,7 @@ object DocumentLayoutBuilder {
 
         b.divider(cols)
         b.align(EscPosAlign.RIGHT)
-        if (input.taxAmount > 0) b.line("IGV: ${money(input.taxAmount)}")
+        if (input.taxAmount > 0) b.line("${LabelKey.TAX_NAME.text}: ${money(input.taxAmount)}")
         val descuentoTotal = input.items.sumOf { it.discount }
         if (descuentoTotal > 0.009) b.line("Descuento: -${money(descuentoTotal)}")
         b.bold(true)

@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 
 /** D2c fase 2: el cliente pidio boleta o factura en la puerta. */
@@ -11,7 +12,7 @@ data class DocRequest(
     val clientName: String,
     val amount: Double,
 ) {
-    val label: String get() = if (docKind == "factura") "Factura" else "Boleta"
+    val label: String get() = if (docKind == "factura") LabelKey.DOC_INVOICE.text else LabelKey.DOC_RECEIPT.text
 }
 
 /** Un pedido cobrado en efectivo contra entrega que aun no se rindio. */

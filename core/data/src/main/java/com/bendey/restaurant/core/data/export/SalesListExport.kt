@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.export
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import android.content.Context
@@ -42,7 +43,7 @@ fun exportSalesListCsv(
         val headers = mutableListOf(
             "Fecha", "Comprobante", "Atención", "Cliente", "Total (${Money.symbol})", "Métodos de pago", "Estado",
         )
-        if (includeBilling) headers += "Estado SUNAT"
+        if (includeBilling) headers += "Estado ${LabelKey.TAX_AUTHORITY.text}"
         rows += headers
         sales.forEach { sale ->
             val row = mutableListOf(
@@ -90,7 +91,7 @@ fun exportSalesListPdf(
             append(String.format("%10s", "Total"))
             append(String.format("%-28s", "Métodos de pago"))
             append(String.format("%-10s", "Estado"))
-            if (includeBilling) append(String.format("%-16s", "Estado SUNAT"))
+            if (includeBilling) append(String.format("%-16s", "Estado ${LabelKey.TAX_AUTHORITY.text}"))
         }
         val lines = mutableListOf(header, "-".repeat(header.length.coerceAtMost(140)))
         sales.forEach { sale ->

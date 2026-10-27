@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.onboarding
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * Lógica pura del checklist de activación (sin Android): combina los pasos del servidor con el
  * paso LOCAL de impresora y decide qué se muestra, en qué orden y con qué acción.
@@ -234,7 +236,7 @@ private fun copyFor(key: OnboardingStepKey): StepCopy = when (key) {
         nav(OnboardingDestination.CONFIG_MENU_DIGITAL),
     )
     OnboardingStepKey.SUNAT -> StepCopy(
-        "Emite boletas y facturas con SUNAT",
+        "Emite ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s con ${LabelKey.TAX_AUTHORITY.text}",
         "Te avisamos cuando esté lista.",
         "Solicitar activación",
         OnboardingAction.RequestSunat,

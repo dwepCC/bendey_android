@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.domain.delivery
 
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 
 /** Medio de pago que el restaurante ofrece para pagar con captura (Yape, Plin, transferencia...). */
@@ -51,7 +52,7 @@ data class PaymentReview(
     val expiresAtMs: Long?,
 ) {
     val wantsDocument: Boolean get() = docKind == "boleta" || docKind == "factura"
-    val docLabel: String get() = if (docKind == "factura") "Factura" else "Boleta"
+    val docLabel: String get() = if (docKind == "factura") LabelKey.DOC_INVOICE.text else LabelKey.DOC_RECEIPT.text
 }
 
 /** Resultado de validar un pago: la venta ya existe y el pedido está en cocina. */

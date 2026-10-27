@@ -14,6 +14,8 @@ import kotlinx.serialization.json.intOrNull
  * - Sin bloque (servidor anterior a I3), JSON roto o `locale` que no es objeto → null: quien llama
  *   se queda con lo que tenía (lo guardado o Perú).
  * - Campo ausente o de otro tipo → el valor peruano de ese campo (nunca se cae).
+ * - `labels` (I5): solo se toman los valores de texto no vacíos; si falta o no es un objeto, quedan
+ *   las etiquetas peruanas. Quien decide qué se muestra es `TenantLocale.label()` (Perú siempre PE).
  * - `identity_types`, `doc_kinds`, `geo_levels` y el resto de la respuesta se ignoran.
  */
 object TenantLocaleJson {

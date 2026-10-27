@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.ventas
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import android.content.Context
@@ -572,7 +573,7 @@ class VentasViewModel @Inject constructor(
         when (state.voidAction) {
             VoidAction.CREDIT_NOTE -> {
                 if (!detail.canVoidWithCreditNote()) {
-                    _uiState.update { it.copy(error = "Esta venta no puede anularse con nota de crédito") }
+                    _uiState.update { it.copy(error = "Esta venta no puede anularse con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}") }
                     return
                 }
                 submitVoidCreditNote(detail.id, reason, pin)
@@ -610,7 +611,7 @@ class VentasViewModel @Inject constructor(
                             selectedSaleId = null,
                             detail = null,
                             tab = VentasTab.CREDITOS,
-                            snackMessage = result.data.message ?: "Nota de crédito encolada",
+                            snackMessage = result.data.message ?: "${LabelKey.DOC_CREDIT_NOTE.text} encolada",
                         )
                     }
                     syncBillingStream(VentasTab.CREDITOS)
@@ -638,7 +639,7 @@ class VentasViewModel @Inject constructor(
                             voidPin = "",
                             selectedSaleId = null,
                             detail = null,
-                            snackMessage = result.data.message ?: "Nota de venta anulada",
+                            snackMessage = result.data.message ?: "${LabelKey.DOC_SALES_NOTE.text} anulada",
                         )
                     }
                     refresh()
@@ -776,23 +777,23 @@ class VentasViewModel @Inject constructor(
     fun consultEmitClientDoc() {
         val form = _uiState.value.emitClientForm
         if (!ContactDocType.supportsConsulta(form.docType.code)) {
-            _uiState.update { it.copy(emitClientError = "Consulta disponible solo para DNI o RUC") }
+            _uiState.update { it.copy(emitClientError = "Consulta disponible solo para ${LabelKey.NATIONAL_ID.text} o ${LabelKey.TAX_ID.text}") }
             return
         }
         val num = sanitizeDocNumber(form.docType, form.docNumber)
         viewModelScope.launch {
             val tenantRuc = sessionStore.tenantFlow.first()?.ruc.orEmpty().filter { it.isDigit() }
             if (tenantRuc.length != 11) {
-                _uiState.update { it.copy(emitClientError = "No se pudo obtener el RUC de la empresa") }
+                _uiState.update { it.copy(emitClientError = "No se pudo obtener el ${LabelKey.TAX_ID.text} de la empresa") }
                 return@launch
             }
             when (form.docType) {
                 ContactDocType.RUC -> if (num.length != 11) {
-                    _uiState.update { it.copy(emitClientError = "Ingresa un RUC de 11 dígitos") }
+                    _uiState.update { it.copy(emitClientError = "Ingresa un ${LabelKey.TAX_ID.text} de 11 dígitos") }
                     return@launch
                 }
                 ContactDocType.DNI -> if (num.length != 8) {
-                    _uiState.update { it.copy(emitClientError = "Ingresa un DNI de 8 dígitos") }
+                    _uiState.update { it.copy(emitClientError = "Ingresa un ${LabelKey.NATIONAL_ID.text} de 8 dígitos") }
                     return@launch
                 }
                 else -> return@launch
@@ -804,7 +805,7 @@ class VentasViewModel @Inject constructor(
                         val data = result.data
                         val razonSocial = data.razonSocial
                         if (!data.success || razonSocial.isNullOrBlank()) {
-                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el RUC") }
+                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el ${LabelKey.TAX_ID.text}") }
                         } else {
                             _uiState.update {
                                 it.copy(
@@ -827,7 +828,7 @@ class VentasViewModel @Inject constructor(
                         val data = result.data
                         val nombreCompleto = data.nombreCompleto
                         if (!data.success || nombreCompleto.isNullOrBlank()) {
-                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el DNI") }
+                            _uiState.update { it.copy(emitClientConsulting = false, emitClientError = "No se encontró el ${LabelKey.NATIONAL_ID.text}") }
                         } else {
                             _uiState.update {
                                 it.copy(
@@ -931,7 +932,7 @@ class VentasViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     error = if (isFacturaDocType(emitDocType, state.emitDocKind)) {
-                        "La factura requiere un cliente con RUC (11 dígitos)"
+                        "La ${LabelKey.DOC_INVOICE.text.lowercase()} requiere un cliente con ${LabelKey.TAX_ID.text} (11 dígitos)"
                     } else {
                         "Selecciona un cliente"
                     },
@@ -963,7 +964,7 @@ class VentasViewModel @Inject constructor(
                             selectedSaleId = null,
                             detail = null,
                             snackMessage = result.data.message
-                                ?: "Comprobante generado · revise el envío a SUNAT en Facturación",
+                                ?: "Comprobante generado · revise el envío a ${LabelKey.TAX_AUTHORITY.text} en Facturación",
                         )
                     }
                     selectTab(VentasTab.FACTURACION)
@@ -986,7 +987,7 @@ class VentasViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             billingBusy = null,
-                            snackMessage = result.data.message ?: "Enviado a SUNAT",
+                            snackMessage = result.data.message ?: "Enviado a ${LabelKey.TAX_AUTHORITY.text}",
                             detail = state.detail?.copy(billingStatus = status ?: state.detail.billingStatus),
                             sales = state.sales.map { sale ->
                                 if (sale.id == saleId) sale.copy(billingStatus = status ?: sale.billingStatus) else sale
@@ -1012,7 +1013,7 @@ class VentasViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             billingBusy = null,
-                            snackMessage = result.data.message ?: "Reenviado a SUNAT",
+                            snackMessage = result.data.message ?: "Reenviado a ${LabelKey.TAX_AUTHORITY.text}",
                             detail = state.detail?.copy(billingStatus = status ?: state.detail.billingStatus),
                             sales = state.sales.map { sale ->
                                 if (sale.id == saleId) sale.copy(billingStatus = status ?: sale.billingStatus) else sale

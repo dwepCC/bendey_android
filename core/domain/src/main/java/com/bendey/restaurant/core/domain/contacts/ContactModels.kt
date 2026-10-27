@@ -1,14 +1,25 @@
 package com.bendey.restaurant.core.domain.contacts
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
-enum class ContactDocType(val code: String, val label: String) {
-    SIN_RUC("0", "Sin RUC"),
-    DNI("1", "DNI"),
-    RUC("6", "RUC"),
-    CE("4", "Carnet extranjería"),
-    PASAPORTE("7", "Pasaporte"),
+enum class ContactDocType(val code: String) {
+    SIN_RUC("0"),
+    DNI("1"),
+    RUC("6"),
+    CE("4"),
+    PASAPORTE("7"),
     ;
+
+    /** Texto visible del tipo de documento, según el país de la sesión (I5). En Perú no cambia. */
+    val label: String
+        get() = when (this) {
+            SIN_RUC -> "Sin ${LabelKey.TAX_ID.text}"
+            DNI -> LabelKey.NATIONAL_ID.text
+            RUC -> LabelKey.TAX_ID.text
+            CE -> LabelKey.FOREIGN_ID.peruAs("Carnet extranjería")
+            PASAPORTE -> LabelKey.PASSPORT.text
+        }
 
     companion object {
         fun fromCode(code: String?): ContactDocType =
@@ -130,9 +141,9 @@ object PurchaseHistoryRules {
     }
 
     fun docLabel(code: String): String = when (code.lowercase()) {
-        "boleta", "03" -> "Boleta"
-        "factura", "01" -> "Factura"
-        "nota_venta", "nota de venta", "nv" -> "Nota de venta"
+        "boleta", "03" -> LabelKey.DOC_RECEIPT.text
+        "factura", "01" -> LabelKey.DOC_INVOICE.text
+        "nota_venta", "nota de venta", "nv" -> LabelKey.DOC_SALES_NOTE.text
         else -> code.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 

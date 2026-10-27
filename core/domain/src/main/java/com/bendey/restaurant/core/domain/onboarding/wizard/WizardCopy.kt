@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.onboarding.wizard
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * UN solo módulo de textos del wizard (R4). Las claves y las cadenas son IDÉNTICAS a las de Tauri
  * (`wizardCopy.ts`); si cambias un texto aquí, cámbialo allá. Tuteo siempre.
@@ -79,7 +81,7 @@ object WizardCopy {
     const val W3_STEP_ADD = "Agrega un plato"
     const val W3_STEP_KITCHEN = "Envía a cocina"
     const val W3_STEP_KITCHEN_BODY = "Así lo ve tu cocina."
-    const val W3_STEP_CHARGE = "Cobra como nota de venta"
+    val W3_STEP_CHARGE: String get() = "Cobra como ${LabelKey.DOC_SALES_NOTE.text.lowercase()}"
     const val W3_OPEN_CASH = "Abrir con S/ 0"
     const val W3_NEXT = "Siguiente"
     const val W3_CLOSE = "Cerrar guía"
@@ -98,11 +100,14 @@ object WizardCopy {
     const val NEXT_PRINTER_ACTION = "Ir a Impresoras"
     const val NEXT_QR_TITLE = "Que tus clientes pidan desde la mesa"
     const val NEXT_QR_ACTION = "Ir a Menú digital"
-    const val NEXT_SUNAT_TITLE = "Emite boletas y facturas electrónicas"
+    val NEXT_SUNAT_TITLE: String
+        get() = "Emite ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s electrónicas"
     const val NEXT_SUNAT_ACTION = "Solicitar activación"
-    const val NEXT_SUNAT_CONFIRM_TITLE = "¿Solicitar la activación de SUNAT?"
-    const val NEXT_SUNAT_CONFIRM_MESSAGE =
-        "Enviaremos tu solicitud para emitir boletas y facturas electrónicas. Te avisamos cuando esté lista."
+    val NEXT_SUNAT_CONFIRM_TITLE: String
+        get() = "¿Solicitar la activación de ${LabelKey.TAX_AUTHORITY.text}?"
+    val NEXT_SUNAT_CONFIRM_MESSAGE: String
+        get() =
+            "Enviaremos tu solicitud para emitir ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s electrónicas. Te avisamos cuando esté lista."
     const val NEXT_SUNAT_DONE = "Recibimos tu solicitud. Te avisamos cuando esté lista."
     const val NEXT_TEAM_TITLE = "Crea el PIN de tu mozo y tu cocinero"
     const val NEXT_TEAM_ACTION = "Crear usuario"

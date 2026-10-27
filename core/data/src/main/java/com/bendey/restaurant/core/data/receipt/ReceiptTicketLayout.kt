@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.data.receipt
 
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.platform.printing.escpos.EscPosTextUtils
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
 import com.bendey.restaurant.platform.printing.escpos.SunatPrintUtils
@@ -19,7 +20,7 @@ internal data class ReceiptTextLine(
  * Label corto del Recargo al Consumo para el ticket: "RC 5%" con el porcentaje YA CONGELADO, o
  * [fallback] genérico si no se conoce la tasa (ticket viejo, antes de que el backend la expusiera).
  */
-fun formatServiceChargeLabel(rate: Double, fallback: String = "Recargo Consumo"): String {
+fun formatServiceChargeLabel(rate: Double, fallback: String = LabelKey.SERVICE_CHARGE.peruAs("Recargo Consumo")): String {
     if (rate <= 0) return fallback
     val trimmed = "%.2f".format(rate).trimEnd('0').trimEnd('.')
     return "RC $trimmed%"
@@ -52,7 +53,7 @@ internal object ReceiptTicketLayout {
 
         wrapCenter(data.companyName.ifBlank { "EMPRESA" }, bold = true)
         data.companyLegalName?.takeIf { it.isNotBlank() }?.let { wrapCenter(it) }
-        if (data.companyRuc.isNotBlank()) center("RUC: ${data.companyRuc}")
+        if (data.companyRuc.isNotBlank()) center("${LabelKey.TAX_ID.text}: ${data.companyRuc}")
         data.companyAddress?.takeIf { it.isNotBlank() }?.let { wrapCenter(it) }
         data.branchName?.takeIf { it.isNotBlank() }?.let { center(it) }
         data.companyPhone?.takeIf { it.isNotBlank() }?.let { center("Telf: $it") }
@@ -78,7 +79,7 @@ internal object ReceiptTicketLayout {
         }
 
         divider()
-        if (data.taxAmount > 0) right("IGV: ${money.format(data.taxAmount)}")
+        if (data.taxAmount > 0) right("${LabelKey.TAX_NAME.text}: ${money.format(data.taxAmount)}")
         // Recargo al Consumo: monto YA CALCULADO por el backend — nunca se recalcula acá. Se omite
         // si es 0 (sucursal sin RC), así el ticket no cambia en absoluto para quien no lo activó.
         if (data.serviceChargeAmount > 0) {

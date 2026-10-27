@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.repartidores
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +64,7 @@ fun RendicionesPanel(
         ) {
             item {
                 Text(
-                    "Recibe el efectivo que cobraron los repartidores. Se factura como Nota de Venta y entra a tu caja abierta.",
+                    "Recibe el efectivo que cobraron los repartidores. Se factura como ${LabelKey.DOC_SALES_NOTE.peruAs("Nota de Venta")} y entra a tu caja abierta.",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )

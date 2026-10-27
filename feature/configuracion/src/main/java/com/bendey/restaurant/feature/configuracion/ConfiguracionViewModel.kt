@@ -18,6 +18,7 @@ import com.bendey.restaurant.core.domain.catalog.SeriesFormInput
 import com.bendey.restaurant.core.domain.catalog.SettingsRepository
 import com.bendey.restaurant.core.domain.catalog.SunatConfig
 import com.bendey.restaurant.core.domain.catalog.SunatConfigFormInput
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.onboarding.ConfigTabHint
 import com.bendey.restaurant.core.domain.onboarding.OnboardingPreferencesUpdate
@@ -505,7 +506,7 @@ class ConfiguracionViewModel @Inject constructor(
         if (!requireManageSettings()) return
         val rateOption = _uiState.value.sunatForm.taxRate
         if (rateOption !in IGV_RATE_OPTIONS) {
-            _uiState.update { it.copy(error = "Selecciona una tasa de IGV válida") }
+            _uiState.update { it.copy(error = "Selecciona una tasa de ${LabelKey.TAX_NAME.text} válida") }
             return
         }
         viewModelScope.launch {
@@ -771,7 +772,7 @@ class ConfiguracionViewModel @Inject constructor(
         val code = series.sunatCode.orEmpty()
         if (!billingModuleEnabled && code.isNotBlank() && code != "00") {
             _uiState.update {
-                it.copy(error = "Tu plan no incluye facturación electrónica: solo puedes editar series de nota de venta")
+                it.copy(error = "Tu plan no incluye facturación electrónica: solo puedes editar series de ${LabelKey.DOC_SALES_NOTE.text.lowercase()}")
             }
             return
         }
@@ -808,7 +809,7 @@ class ConfiguracionViewModel @Inject constructor(
         val billingModuleEnabled = _uiState.value.billingModuleEnabled
         val sunatCode = if (billingModuleEnabled) form.sunatCode.trim().ifBlank { "00" } else "00"
         if (!billingModuleEnabled && sunatCode != "00") {
-            _uiState.update { it.copy(error = "Tu plan no incluye facturación electrónica: solo se permiten series de nota de venta") }
+            _uiState.update { it.copy(error = "Tu plan no incluye facturación electrónica: solo se permiten series de ${LabelKey.DOC_SALES_NOTE.text.lowercase()}") }
             return
         }
         if (form.series.isBlank() || form.branchId == null) {

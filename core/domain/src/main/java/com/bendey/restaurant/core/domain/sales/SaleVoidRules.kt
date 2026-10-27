@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.sales
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * FILTRO DE DOCUMENTO DEL LISTADO DE VENTAS (paridad web).
  *
@@ -12,13 +14,33 @@ package com.bendey.restaurant.core.domain.sales
  *
  * `sunatCodes` viaja tal cual al backend en `sunat_code`: 00 nota de venta, 01 factura, 03 boleta.
  */
-enum class VentasTab(val label: String, val sunatCodes: String) {
-    TODAS("Todas las ventas", "00,01,03"),
-    NOTAS("Solo notas de venta", "00"),
-    BOLETAS("Solo boletas", "03"),
-    FACTURAS("Solo facturas", "01"),
-    FACTURACION("Facturas y boletas", "01,03"),
-    CREDITOS("Notas de crédito", ""),
+enum class VentasTab(val sunatCodes: String) {
+    TODAS("00,01,03"),
+    NOTAS("00"),
+    BOLETAS("03"),
+    FACTURAS("01"),
+    FACTURACION("01,03"),
+    CREDITOS(""),
+    ;
+
+    /**
+     * Texto del filtro, con las etiquetas del país (I5). En Perú: «Todas las ventas», «Solo notas de
+     * venta», «Solo boletas», «Solo facturas», «Facturas y boletas», «Notas de crédito». Los plurales
+     * «notas de venta» / «Notas de crédito» no salen de la forma corta y quedan fijos.
+     */
+    val label: String
+        get() {
+            val boletas = "${LabelKey.DOC_RECEIPT.text.lowercase()}s"
+            val facturas = "${LabelKey.DOC_INVOICE.text.lowercase()}s"
+            return when (this) {
+                TODAS -> "Todas las ventas"
+                NOTAS -> "Solo notas de venta"
+                BOLETAS -> "Solo $boletas"
+                FACTURAS -> "Solo $facturas"
+                FACTURACION -> "${facturas.replaceFirstChar { it.uppercase() }} y $boletas"
+                CREDITOS -> "Notas de crédito"
+            }
+        }
 }
 
 /** Si el filtro puede traer comprobantes electrónicos, y con ellos el estado de SUNAT. */

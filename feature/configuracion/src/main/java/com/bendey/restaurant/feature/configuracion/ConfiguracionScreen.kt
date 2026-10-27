@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.rememberScrollState
@@ -196,7 +197,7 @@ private fun GeneralTab(
                 Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeySectionTitle(text = "Empresa")
                     state.config?.let { config ->
-                        Text("RUC: ${config.ruc}", style = MaterialTheme.typography.bodySmall)
+                        Text("${LabelKey.TAX_ID.text}: ${config.ruc}", style = MaterialTheme.typography.bodySmall)
                         Text(config.businessName, style = MaterialTheme.typography.bodyMedium)
                         if (config.address.isNotBlank()) Text(config.address, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     }
@@ -207,12 +208,12 @@ private fun GeneralTab(
         item {
             BendeyManagementCard {
                 Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
-                    BendeySectionTitle(text = "SUNAT / IGV")
+                    BendeySectionTitle(text = "${LabelKey.TAX_AUTHORITY.text} / ${LabelKey.TAX_NAME.text}")
                     state.sunat?.let { sunat ->
-                        Text("IGV: ${sunat.taxRate}%", style = MaterialTheme.typography.bodySmall)
+                        Text("${LabelKey.TAX_NAME.text}: ${sunat.taxRate}%", style = MaterialTheme.typography.bodySmall)
                         Text(if (sunat.sunatEnabled) "Facturación electrónica activa" else "Facturación electrónica desactivada", style = MaterialTheme.typography.bodySmall)
                     }
-                    BendeyPrimaryButton("Editar configuración IGV", viewModel::openEditSunat, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings)
+                    BendeyPrimaryButton("Editar configuración ${LabelKey.TAX_NAME.text}", viewModel::openEditSunat, modifier = Modifier.fillMaxWidth(), enabled = state.canManageRestaurantSettings)
                 }
             }
         }
@@ -307,7 +308,7 @@ private fun BranchCard(
                 BendeyIconButton(
                     onClick = { viewModel.openServiceChargeDialog(branch.id) },
                     icon = Icons.Default.Percent,
-                    contentDescription = "Recargo al Consumo",
+                    contentDescription = LabelKey.SERVICE_CHARGE.peruAs("Recargo al Consumo"),
                 )
                 BendeyIconButton(
                     onClick = { viewModel.openSaleDetailDialog(branch.id) },
@@ -356,7 +357,7 @@ private fun SeriesTab(
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            "Solo puedes crear/editar series de nota de venta.",
+                            "Solo puedes crear/editar series de ${LabelKey.DOC_SALES_NOTE.text.lowercase()}.",
                             style = MaterialTheme.typography.bodySmall,
                             color = BendeyColors.OnSurfaceVariant,
                         )
@@ -418,7 +419,7 @@ private fun SeriesCard(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("${series.docType} · ${series.series}", fontWeight = FontWeight.SemiBold)
-                Text("SUNAT ${series.sunatCode ?: "—"} · Corr. ${series.currentNumber}", style = MaterialTheme.typography.bodySmall)
+                Text("${LabelKey.TAX_AUTHORITY.text} ${series.sunatCode ?: "—"} · Corr. ${series.currentNumber}", style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     BendeyStatusChip(if (series.active) "Activa" else "Inactiva", if (series.active) BendeyColors.Success else BendeyColors.OnSurfaceVariant)
                     if (series.locked) BendeyStatusChip("En uso", BendeyColors.Warning)
@@ -463,19 +464,19 @@ private fun SeriesCard(
             options = state.ubigeoRegiones.map { BendeyOption(it.id, it.nombre) },
             selectedValue = state.ubigeoRegionId,
             onSelect = { v -> viewModel.onUbigeoRegion(v) },
-            label = "Departamento",
+            label = LabelKey.GEO_REGION.text,
         )
         BendeySimpleSelect(
             options = state.ubigeoProvincias.map { BendeyOption(it.id, it.nombre) },
             selectedValue = state.ubigeoProvinciaId,
             onSelect = { v -> viewModel.onUbigeoProvincia(v) },
-            label = "Provincia",
+            label = LabelKey.GEO_PROVINCE.text,
         )
         BendeySimpleSelect(
             options = state.ubigeoDistritos.map { BendeyOption(it.id, it.nombre) },
             selectedValue = state.configForm.ubigeo,
             onSelect = { v -> viewModel.onUbigeoDistrito(v) },
-            label = "Distrito",
+            label = LabelKey.GEO_DISTRICT.text,
         )
         BendeyTextField(state.configForm.phone, { v -> viewModel.updateConfigForm { it.copy(phone = v) } }, "Teléfono")
         BendeyTextField(state.configForm.email, { v -> viewModel.updateConfigForm { it.copy(email = v) } }, "Email")
@@ -484,12 +485,12 @@ private fun SeriesCard(
 
 @Composable private fun SunatFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     val igvOptions = listOf(
-        BendeyOption("18", "IGV 18%"),
-        BendeyOption("10.5", "IGV 10.5%"),
+        BendeyOption("18", "${LabelKey.TAX_NAME.text} 18%"),
+        BendeyOption("10.5", "${LabelKey.TAX_NAME.text} 10.5%"),
     )
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissEditSunat,
-        title = "Configuración IGV",
+        title = "Configuración ${LabelKey.TAX_NAME.text}",
         confirmText = if (state.actionLoading) "Guardando…" else "Guardar",
         onConfirm = viewModel::saveSunat,
         onDismiss = viewModel::dismissEditSunat,
@@ -501,7 +502,7 @@ private fun SeriesCard(
             options = igvOptions,
             selectedValue = state.sunatForm.taxRate,
             onSelect = { value -> viewModel.updateSunatForm { it.copy(taxRate = value) } },
-            label = "Tasa IGV",
+            label = "Tasa ${LabelKey.TAX_NAME.text}",
         )
         // El «Regimen IGV» que habia aca no existe en SUNAT: mezclaba el regimen tributario del
         // contribuyente, la afectacion del IGV (que es por linea, catalogo 07) y un beneficio
@@ -598,7 +599,7 @@ private fun SeriesCard(
 @Composable private fun ServiceChargeFormDialog(state: ConfiguracionUiState, viewModel: ConfiguracionViewModel) {
     BendeyFormDialog(
         onDismissRequest = viewModel::dismissServiceChargeDialog,
-        title = "Recargo al Consumo",
+        title = LabelKey.SERVICE_CHARGE.peruAs("Recargo al Consumo"),
         confirmText = if (state.serviceChargeDialogSaving) "Guardando…" else "Guardar",
         onConfirm = viewModel::saveServiceChargeDialog,
         onDismiss = viewModel::dismissServiceChargeDialog,
@@ -610,7 +611,7 @@ private fun SeriesCard(
             Text("Cargando…", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
         } else {
             BendeySwitchRow(
-                label = "Activar Recargo al Consumo",
+                label = "Activar ${LabelKey.SERVICE_CHARGE.peruAs("Recargo al Consumo")}",
                 checked = state.serviceChargeDialogEnabled,
                 onCheckedChange = viewModel::setServiceChargeDialogEnabled,
             )
@@ -656,7 +657,7 @@ private fun SeriesCard(
             )
             Text(
                 "Al vender, se podrá elegir mostrar el detalle normal o un solo concepto agrupado " +
-                    "(ej. \"Consumo restaurante — S/85.00\") en la Nota de Venta, Boleta o Factura. " +
+                    "(ej. \"Consumo restaurante — S/85.00\") en la ${LabelKey.DOC_SALES_NOTE.peruAs("Nota de Venta")}, ${LabelKey.DOC_RECEIPT.text} o ${LabelKey.DOC_INVOICE.text}. " +
                     "Detallado sigue siendo lo predeterminado.",
                 style = MaterialTheme.typography.bodySmall,
                 color = BendeyColors.OnSurfaceVariant,
@@ -685,7 +686,7 @@ private fun SeriesCard(
     val fieldsLocked = form.locked && form.id != null
     if (!billingModuleEnabled) {
         Text(
-            "Tu plan no incluye facturación electrónica: solo series de nota de venta (código SUNAT 00)",
+            "Tu plan no incluye facturación electrónica: solo series de ${LabelKey.DOC_SALES_NOTE.peruAs("nota de venta")} (código ${LabelKey.TAX_AUTHORITY.text} 00)",
             style = MaterialTheme.typography.bodySmall,
             color = BendeyColors.OnSurfaceVariant,
         )
@@ -695,7 +696,7 @@ private fun SeriesCard(
     BendeyTextField(
         form.sunatCode,
         { v -> viewModel.updateSeriesForm { it.copy(sunatCode = v) } },
-        "Código SUNAT",
+        "Código ${LabelKey.TAX_AUTHORITY.text}",
         enabled = !fieldsLocked && billingModuleEnabled,
     )
     if (form.id != null) {
@@ -712,7 +713,7 @@ private fun SeriesCard(
         if (form.documentsCount > 0) {
             Text(
                 "Esta serie ya emitió ${form.documentsCount} comprobante(s); el último fue el " +
-                    "${form.lastCorrelativeUsed}. Cambiar la numeración afecta lo que se declara a SUNAT.",
+                    "${form.lastCorrelativeUsed}. Cambiar la numeración afecta lo que se declara a ${LabelKey.TAX_AUTHORITY.text}.",
                 style = MaterialTheme.typography.bodySmall,
                 color = BendeyColors.OnSurfaceVariant,
             )

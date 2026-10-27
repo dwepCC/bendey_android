@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.billing
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 /**
  * Previsualización del Recargo al Consumo (RC) en el checkout — mismo criterio que
  * `front_tenant_restaurant_tauri/src/utils/serviceChargePreview.ts`.
@@ -31,7 +33,7 @@ fun calcServiceChargePreview(
 
 /** Label corto del RC en pantalla: "RC 5%" con el porcentaje configurado, o genérico si es 0. */
 fun formatServiceChargeLabel(rate: Double): String {
-    if (rate <= 0) return "Recargo al Consumo"
+    if (rate <= 0) return LabelKey.SERVICE_CHARGE.peruAs("Recargo al Consumo")
     val trimmed = if (rate == rate.toLong().toDouble()) {
         rate.toLong().toString()
     } else {

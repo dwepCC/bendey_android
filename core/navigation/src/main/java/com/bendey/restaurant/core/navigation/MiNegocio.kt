@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.bendey.restaurant.core.domain.locale.LabelKey
 
 /** Grupos de "Mi negocio" (R2b), con los mismos nombres y orden que Tauri. */
 enum class MiNegocioGroup(val title: String) {
@@ -44,7 +45,7 @@ enum class MiNegocioGroup(val title: String) {
 enum class MiNegocioCard(
     val route: String,
     val title: String,
-    val description: String,
+    private val peDescription: String,
     val icon: ImageVector,
     val group: MiNegocioGroup,
 ) {
@@ -66,6 +67,16 @@ enum class MiNegocioCard(
     MI_PLAN(BendeyRoutes.SUSCRIPCION, "Mi plan", "Tu plan, comprobantes disponibles y pagos.", Icons.Default.WorkspacePremium, MiNegocioGroup.CUENTA),
     AYUDA(BendeyRoutes.AYUDA, "Ayuda", "Guías paso a paso y preguntas frecuentes.", Icons.AutoMirrored.Filled.HelpOutline, MiNegocioGroup.CUENTA),
     ;
+
+    /** Descripción visible; las de Ventas y del reparto del recargo usan las etiquetas del país (I5). */
+    val description: String
+        get() = when (this) {
+            VENTAS ->
+                "${LabelKey.DOC_RECEIPT.text}s, ${LabelKey.DOC_INVOICE.text.lowercase()}s, notas de crédito y devoluciones."
+            RC_REPARTO ->
+                "Deja constancia de cuánto recibió cada trabajador del ${LabelKey.SERVICE_CHARGE.text.lowercase()}."
+            else -> peDescription
+        }
 
     companion object {
         /** Tarjetas que el usuario puede abrir (mismo guard que la ruta). Vacío si no administra. */

@@ -1,7 +1,10 @@
 package com.bendey.restaurant.core.domain.billing
 
-const val BILLING_NOT_ENABLED_MESSAGE =
-    "La facturación electrónica no está habilitada. Use nota de venta o active SUNAT en configuración."
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
+val BILLING_NOT_ENABLED_MESSAGE: String
+    get() =
+        "La facturación electrónica no está habilitada. Use ${LabelKey.DOC_SALES_NOTE.text.lowercase()} o active ${LabelKey.TAX_AUTHORITY.text} en configuración."
 
 private val RESTAURANT_CHECKOUT_SUNAT = setOf("00", "01", "03")
 
@@ -100,8 +103,8 @@ fun exceedsSunatMaxMontoSinRuc(
 }
 
 fun sunatMaxMontoSinRucMessage(total: Double): String =
-    "Con cliente sin RUC (doc. tipo 0) el monto máximo permitido es S/ ${SUNAT_MAX_MONTO_CLIENTE_SIN_RUC.toInt()} " +
-        "para boleta. Total actual: S/ ${"%.2f".format(total)}"
+    "Con cliente sin ${LabelKey.TAX_ID.text} (doc. tipo 0) el monto máximo permitido es S/ ${SUNAT_MAX_MONTO_CLIENTE_SIN_RUC.toInt()} " +
+        "para ${LabelKey.DOC_RECEIPT.text.lowercase()}. Total actual: S/ ${"%.2f".format(total)}"
 
 fun normalizePaymentMethodCodeForLookup(code: String): String =
     when (code.trim().lowercase()) {

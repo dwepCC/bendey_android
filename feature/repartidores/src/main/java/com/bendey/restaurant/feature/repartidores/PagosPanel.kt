@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.repartidores
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.background
@@ -213,7 +214,7 @@ private fun ApproveDialog(p: PaymentReview, busy: Boolean, viewModel: PagosViewM
                 Text("Confirma que ya viste ${soles(p.amount)} en ${p.methodLabel}.", style = MaterialTheme.typography.bodyMedium)
                 Text(
                     "El pedido pasará a cocina y se generará " +
-                        (if (p.wantsDocument) "una ${p.docLabel.lowercase()}" else "una Nota de Venta") + ".",
+                        (if (p.wantsDocument) "una ${p.docLabel.lowercase()}" else "una ${LabelKey.DOC_SALES_NOTE.peruAs("Nota de Venta")}") + ".",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )

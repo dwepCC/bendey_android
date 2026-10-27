@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * sesión, servidor viejo, sin red) vale [PE], que reproduce exactamente lo que la app mostraba
  * antes del paquete de país («Perú idéntico»).
  *
- * Solo se modela lo que la app usa hoy: moneda, zona horaria y algunas etiquetas. Los catálogos
+ * Solo se modela lo que la app usa hoy: moneda, zona horaria y las etiquetas de [LabelKey] (I5). Los catálogos
  * (`identity_types`, `doc_kinds`, `geo_levels`) se ignoran hasta que haga falta.
  */
 data class TenantLocale(
@@ -32,9 +32,27 @@ data class TenantLocale(
     val zoneId: ZoneId
         get() = runCatching { ZoneId.of(timeZone) }.getOrDefault(LIMA)
 
-    /** Etiqueta del país (`labels`), con el texto peruano de siempre como respaldo. */
-    fun label(key: String, fallback: String = PE_LABELS[key].orEmpty()): String =
-        labels[key]?.takeIf { it.isNotBlank() } ?: fallback
+    /**
+     * Texto visible de [key] para este país (I5, BENDEY-PAQUETE-DE-PAIS-DISENO.md §6.3):
+     *  - Perú → SIEMPRE el texto peruano del catálogo ([LabelKey.pe]), aunque el servidor mande otra
+     *    cosa («Perú idéntico»).
+     *  - Otro país → lo que mande el servidor en `labels`; si falta la clave, el texto peruano.
+     */
+    fun label(key: LabelKey): String {
+        if (isPeru) return key.pe
+        return labels[key.key]?.takeIf { it.isNotBlank() } ?: key.pe
+    }
+
+    /** Igual que [label] con la clave en texto («doc.receipt»); una clave desconocida → [fallback]. */
+    fun label(key: String, fallback: String = PE_LABELS[key].orEmpty()): String {
+        LabelKey.of(key)?.let { return label(it) }
+        if (isPeru) return fallback
+        return labels[key]?.takeIf { it.isNotBlank() } ?: fallback
+    }
+
+    /** País Perú (o sin país): manda el catálogo peruano. */
+    val isPeru: Boolean
+        get() = country.trim().ifEmpty { "PE" }.equals("PE", ignoreCase = true)
 
     /** Corrige valores imposibles para que un dato raro del servidor nunca rompa un formato. */
     fun sanitized(): TenantLocale = copy(
@@ -48,12 +66,8 @@ data class TenantLocale(
     companion object {
         val LIMA: ZoneId = ZoneId.of("America/Lima")
 
-        val PE_LABELS: Map<String, String> = mapOf(
-            "final_consumer" to "Clientes Varios",
-            "national_id" to "DNI",
-            "service_charge" to "Recargo al consumo",
-            "tax_id" to "RUC",
-        )
+        /** Textos peruanos del catálogo completo ([LabelKey]); lo que trae `labels` por defecto. */
+        val PE_LABELS: Map<String, String> = LabelKey.LABELS_PE
 
         /** Perú: el valor por defecto y el de los montos de suscripción de Bendey (siempre en soles). */
         val PE = TenantLocale()

@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -68,7 +69,7 @@ object DeliveryZoneRules {
 
     /** Mensaje de la validación del formulario, o null si está bien. */
     fun validate(code: String, name: String, feeText: String, minOrderText: String, etaText: String): String? = when {
-        !isValidCode(code) -> "Elige el distrito (región, provincia y distrito)."
+        !isValidCode(code) -> "Elige el ${LabelKey.GEO_DISTRICT.text.lowercase()} (región, ${LabelKey.GEO_PROVINCE.text.lowercase()} y ${LabelKey.GEO_DISTRICT.text.lowercase()})."
         name.trim().isEmpty() -> "Escribe el nombre de la zona."
         parseAmount(feeText) == null -> "La tarifa debe estar entre S/ 0 y S/ 999.99, con hasta 2 decimales."
         parseAmount(minOrderText) == null -> "El pedido mínimo debe estar entre S/ 0 y S/ 999.99, con hasta 2 decimales."
@@ -88,9 +89,11 @@ object DeliveryZoneRules {
 object DeliveryZoneCopy {
     const val SECTION_TITLE = "Zonas de reparto"
     const val RESTRICT_LABEL = "Repartir solo en estas zonas"
-    const val RESTRICT_HELP = "Fuera de estas zonas el cliente no podrá pedir delivery; sin distrito en su dirección se le pedirá elegirlo."
+    val RESTRICT_HELP: String
+        get() = "Fuera de estas zonas el cliente no podrá pedir delivery; sin ${LabelKey.GEO_DISTRICT.text.lowercase()} en su dirección se le pedirá elegirlo."
     const val RESTRICT_WARNING = "No tienes ninguna zona activa: si enciendes esto, nadie podrá pedir delivery."
-    const val HELP = "La tarifa de la zona reemplaza a la tarifa única. Si no hay zona para el distrito del cliente se usa la tarifa única (salvo que repartas solo en tus zonas)."
+    val HELP: String
+        get() = "La tarifa de la zona reemplaza a la tarifa única. Si no hay zona para el ${LabelKey.GEO_DISTRICT.text.lowercase()} del cliente se usa la tarifa única (salvo que repartas solo en tus zonas)."
     const val EMPTY = "Aún no tienes zonas de reparto."
     const val FEE_LABEL = "Tarifa de envío (S/; 0 = envío gratis)"
     const val MIN_LABEL = "Pedido mínimo (S/; 0 = usa el general)"

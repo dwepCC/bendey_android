@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.sales
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
+
 fun isSaleConverted(convertedTo: String?, electronicIssueSaleId: Int?): Boolean =
     !convertedTo.isNullOrBlank() || electronicIssueSaleId != null
 
@@ -40,8 +42,8 @@ fun canResendToSunat(billingStatus: String?): Boolean {
  */
 fun sunatSendActionLabel(billingStatus: String?): String =
     when (normalizeBillingStatus(billingStatus)) {
-        "sent", "rejected" -> "Reenviar a SUNAT"
-        else -> "Reintentar envío a SUNAT"
+        "sent", "rejected" -> "Reenviar a ${LabelKey.TAX_AUTHORITY.text}"
+        else -> "Reintentar envío a ${LabelKey.TAX_AUTHORITY.text}"
     }
 
 fun canShowOfficialSunatPdf(billingStatus: String?): Boolean {

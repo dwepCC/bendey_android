@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.domain.contacts.PurchaseHistoryRules
 import com.bendey.restaurant.core.domain.contacts.CustomerContact
 import com.bendey.restaurant.core.domain.contacts.sanitizeDocNumber
 import com.bendey.restaurant.core.domain.contacts.toFormInput
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -243,22 +244,22 @@ class ClientesViewModel @Inject constructor(
         val state = _uiState.value
         val form = state.form
         if (!ContactDocType.supportsConsulta(form.docType.code)) {
-            _uiState.update { it.copy(error = "Consulta disponible solo para DNI o RUC") }
+            _uiState.update { it.copy(error = "Consulta disponible solo para ${LabelKey.NATIONAL_ID.text} o ${LabelKey.TAX_ID.text}") }
             return
         }
         val num = sanitizeDocNumber(form.docType, form.docNumber)
         val tenantRuc = state.tenantRuc.filter { it.isDigit() }
         if (tenantRuc.length != 11) {
-            _uiState.update { it.copy(error = "No se pudo obtener el RUC de la empresa") }
+            _uiState.update { it.copy(error = "No se pudo obtener el ${LabelKey.TAX_ID.text} de la empresa") }
             return
         }
         when (form.docType) {
             ContactDocType.RUC -> if (num.length != 11) {
-                _uiState.update { it.copy(error = "Ingresa un RUC de 11 dígitos") }
+                _uiState.update { it.copy(error = "Ingresa un ${LabelKey.TAX_ID.text} de 11 dígitos") }
                 return
             }
             ContactDocType.DNI -> if (num.length != 8) {
-                _uiState.update { it.copy(error = "Ingresa un DNI de 8 dígitos") }
+                _uiState.update { it.copy(error = "Ingresa un ${LabelKey.NATIONAL_ID.text} de 8 dígitos") }
                 return
             }
             else -> return
@@ -274,7 +275,7 @@ class ClientesViewModel @Inject constructor(
                         val razonSocial = data.razonSocial
                         if (!data.success || razonSocial.isNullOrBlank()) {
                             _uiState.update {
-                                it.copy(consulting = false, error = "No se encontró el RUC")
+                                it.copy(consulting = false, error = "No se encontró el ${LabelKey.TAX_ID.text}")
                             }
                         } else {
                             _uiState.update {
@@ -304,7 +305,7 @@ class ClientesViewModel @Inject constructor(
                         val nombreCompleto = data.nombreCompleto
                         if (!data.success || nombreCompleto.isNullOrBlank()) {
                             _uiState.update {
-                                it.copy(consulting = false, error = "No se encontró el DNI")
+                                it.copy(consulting = false, error = "No se encontró el ${LabelKey.NATIONAL_ID.text}")
                             }
                         } else {
                             _uiState.update {

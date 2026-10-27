@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.ui.pos
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.layout.Arrangement
@@ -26,11 +27,13 @@ import com.bendey.restaurant.core.ui.layout.adaptive.rememberBendeyAdaptiveProfi
 import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 
-private val MANUAL_IGV_OPTIONS = listOf(
-    "10" to "10 - Gravado IGV",
-    "20" to "20 - Exonerado",
-    "30" to "30 - Inafecto",
-)
+// Etiquetas por país (I5): en Perú «10 - Gravado IGV», «20 - Exonerado», «30 - Inafecto».
+private val MANUAL_IGV_OPTIONS: List<Pair<String, String>>
+    get() = listOf(
+        "10" to "10 - ${LabelKey.TAX_TAXED.text} ${LabelKey.TAX_NAME.text}",
+        "20" to "20 - ${LabelKey.TAX_EXEMPT.text}",
+        "30" to "30 - ${LabelKey.TAX_UNAFFECTED.text}",
+    )
 
 private fun isGravadoIgv(code: String): Boolean {
     val c = code.trim()
@@ -112,7 +115,7 @@ fun ManualProductDialog(
             label = "Observaciones",
             singleLine = false,
         )
-        ConfigureSectionHeader(title = "Afectación IGV")
+        ConfigureSectionHeader(title = "Afectación ${LabelKey.TAX_NAME.text}")
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
             modifier = Modifier.fillMaxWidth(),
@@ -127,16 +130,16 @@ fun ManualProductDialog(
         }
         if (isGravadoIgv(form.igvAffectationType)) {
             BendeySwitchRow(
-                label = "Precio incluye IGV",
+                label = "Precio incluye ${LabelKey.TAX_NAME.text}",
                 checked = form.priceIncludesIgv,
                 onCheckedChange = { checked -> form = form.copy(priceIncludesIgv = checked) },
             )
             if (form.unitPrice.trim().isNotBlank()) {
                 Text(
                     if (form.priceIncludesIgv) {
-                        "El monto es precio final con IGV incluido."
+                        "El monto es precio final con ${LabelKey.TAX_NAME.text} incluido."
                     } else {
-                        "El monto es base; se sumará IGV al total."
+                        "El monto es base; se sumará ${LabelKey.TAX_NAME.text} al total."
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
@@ -144,7 +147,7 @@ fun ManualProductDialog(
             }
         } else {
             Text(
-                "Esta afectación no aplica IGV al total.",
+                "Esta afectación no aplica ${LabelKey.TAX_NAME.text} al total.",
                 style = MaterialTheme.typography.bodySmall,
                 color = BendeyColors.OnSurfaceVariant,
             )

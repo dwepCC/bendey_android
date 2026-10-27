@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.compras
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.layout.Arrangement
@@ -354,7 +355,7 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
             BendeyTextButton(text = "Agregar ítem", onClick = viewModel::openProductPicker)
         }
         BendeySwitchRow(
-            label = "Los precios que agregue ya incluyen IGV (ítems nuevos; cada fila se ajusta aparte)",
+            label = "Los precios que agregue ya incluyen ${LabelKey.TAX_NAME.text} (ítems nuevos; cada fila se ajusta aparte)",
             checked = form.defaultPriceIncludesIgv,
             onCheckedChange = viewModel::setDefaultPriceIncludesIgv,
         )
@@ -378,7 +379,7 @@ private fun ComprasFormDialog(state: ComprasUiState, viewModel: ComprasViewModel
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Column(horizontalAlignment = Alignment.End) {
                 Text("Subtotal: ${currency.format(form.subtotal(state.taxRate, state.taxConfig))}", style = MaterialTheme.typography.bodySmall)
-                Text("IGV: ${currency.format(form.igv(state.taxRate, state.taxConfig))}", style = MaterialTheme.typography.bodySmall)
+                Text("${LabelKey.TAX_NAME.text}: ${currency.format(form.igv(state.taxRate, state.taxConfig))}", style = MaterialTheme.typography.bodySmall)
                 Text(
                     "Total: ${currency.format(form.total(state.taxRate, state.taxConfig))}",
                     fontWeight = FontWeight.Bold,
@@ -423,7 +424,7 @@ private fun PurchaseItemRow(
                 )
             }
             BendeySwitchRow(
-                label = "Incluye IGV",
+                label = "Incluye ${LabelKey.TAX_NAME.text}",
                 checked = item.priceIncludesIgv,
                 onCheckedChange = onPriceIncludesIgvChange,
             )

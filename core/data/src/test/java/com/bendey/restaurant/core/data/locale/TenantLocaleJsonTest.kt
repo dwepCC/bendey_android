@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.data.locale
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.TenantLocale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -17,7 +18,7 @@ class TenantLocaleJsonTest {
            "identity_types":[{"key":"national_id","code":"1","label":"DNI","min":8,"max":8,"numeric":true}],
            "doc_kinds":[{"kind":"receipt","code":"03","label":"Boleta de venta","requires_buyer_id":false,"final_consumer_max":0}],
            "geo_levels":[{"key":"region","label":"Departamento"}],
-           "labels":{"final_consumer":"Clientes Varios","national_id":"DNI","service_charge":"Recargo al consumo","tax_id":"RUC"}}}
+           "labels":{"tax_id":"RUC","national_id":"DNI","foreign_id":"Carnet de extranjería","passport":"Pasaporte","business_name":"Razón social","final_consumer":"Clientes Varios","tax_name":"IGV","tax_authority":"SUNAT","tax.taxed":"Gravado","tax.exempt":"Exonerado","tax.unaffected":"Inafecto","service_charge":"Recargo al consumo","doc.invoice":"Factura","doc.receipt":"Boleta","doc.sales_note":"Nota de venta","doc.credit_note":"Nota de crédito","doc.debit_note":"Nota de débito","doc.despatch":"Guía de remisión","geo.region":"Departamento","geo.province":"Provincia","geo.district":"Distrito","geo.code":"Ubigeo"}}}
     """.trimIndent()
 
     private val capabilitiesEC = """
@@ -73,5 +74,49 @@ class TenantLocaleJsonTest {
         val raw = TenantLocaleJson.localeObjectOf(capabilitiesEC)
         assertNotNull(raw)
         assertEquals(TenantLocaleJson.fromCapabilities(capabilitiesEC), TenantLocaleJson.fromLocaleJson(raw))
+    }
+
+    // --- I5: bloque `labels` -------------------------------------------------------------------
+
+    @Test fun peruGoldenLabelsAreTheCatalog() {
+        val pe = TenantLocaleJson.fromCapabilities(capabilitiesPE)!!
+        assertEquals(LabelKey.LABELS_PE, pe.labels)
+        for (key in LabelKey.entries) assertEquals(key.pe, pe.label(key))
+    }
+
+    @Test fun ecuadorLabelsAreReadAndMissingOnesFallBackToPeru() {
+        val ec = TenantLocaleJson.fromCapabilities(
+            """{"locale":{"country":"EC","labels":{"national_id":"Cédula","tax_name":"IVA","geo.district":"Parroquia"}}}""",
+        )!!
+        assertEquals("Cédula", ec.label(LabelKey.NATIONAL_ID))
+        assertEquals("IVA", ec.label(LabelKey.TAX_NAME))
+        assertEquals("Parroquia", ec.label(LabelKey.GEO_DISTRICT))
+        assertEquals("Ubigeo", ec.label(LabelKey.GEO_CODE))
+    }
+
+    @Test fun labelsAbsentOrOfAnotherTypeAreIgnored() {
+        val sinLabels = TenantLocaleJson.fromCapabilities("""{"locale":{"country":"EC"}}""")!!
+        assertEquals(LabelKey.LABELS_PE, sinLabels.labels)
+
+        val labelsLista = TenantLocaleJson.fromCapabilities("""{"locale":{"country":"EC","labels":["IVA"]}}""")!!
+        assertEquals(LabelKey.LABELS_PE, labelsLista.labels)
+
+        val labelsTexto = TenantLocaleJson.fromCapabilities("""{"locale":{"country":"EC","labels":"IVA"}}""")!!
+        assertEquals(LabelKey.LABELS_PE, labelsTexto.labels)
+
+        // Valores que no son texto (número, null, objeto) o vacíos se descartan uno a uno.
+        val mezclado = TenantLocaleJson.fromCapabilities(
+            """{"locale":{"country":"EC","labels":{"tax_name":18,"national_id":null,"tax_id":{"x":1},"geo.code":"","final_consumer":"Consumidor final"}}}""",
+        )!!
+        assertEquals("IGV", mezclado.label(LabelKey.TAX_NAME))
+        assertEquals("DNI", mezclado.label(LabelKey.NATIONAL_ID))
+        assertEquals("RUC", mezclado.label(LabelKey.TAX_ID))
+        assertEquals("Ubigeo", mezclado.label(LabelKey.GEO_CODE))
+        assertEquals("Consumidor final", mezclado.label(LabelKey.FINAL_CONSUMER))
+    }
+
+    @Test fun peruIgnoresServerLabelsThatDiffer() {
+        val pe = TenantLocaleJson.fromCapabilities("""{"locale":{"country":"PE","labels":{"tax_name":"IVA"}}}""")!!
+        assertEquals("IGV", pe.label(LabelKey.TAX_NAME))
     }
 }

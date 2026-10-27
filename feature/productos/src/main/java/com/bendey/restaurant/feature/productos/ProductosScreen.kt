@@ -1,5 +1,6 @@
 package com.bendey.restaurant.feature.productos
 
+import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
 import androidx.compose.foundation.layout.Arrangement
@@ -822,7 +823,7 @@ private fun ProductFormFields(
                 val igv = IgvAffectation.fromCode(code)
                 onFormChange { it.copy(igvAffectation = igv) }
             },
-            label = "Afectación IGV",
+            label = "Afectación ${LabelKey.TAX_NAME.text}",
         )
         BendeySimpleSelect(
             options = ProductType.entries.map { BendeyOption(it.code, it.label) },
@@ -873,7 +874,7 @@ private fun ProductFormFields(
         )
         if (IgvAffectation.isGravado(form.igvAffectation.code)) {
             BendeySwitchRow(
-                label = "Precio incluye IGV",
+                label = "Precio incluye ${LabelKey.TAX_NAME.text}",
                 checked = form.priceIncludesIgv,
                 onCheckedChange = { checked -> onFormChange { it.copy(priceIncludesIgv = checked) } },
             )

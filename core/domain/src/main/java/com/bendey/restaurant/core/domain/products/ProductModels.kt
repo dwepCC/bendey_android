@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.domain.products
 
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
+import com.bendey.restaurant.core.domain.locale.LabelKey
 
 enum class ProductosTab(val label: String) {
     PRODUCTOS("Productos"),
@@ -47,12 +48,21 @@ enum class UnitOfMeasure(val code: String, val label: String) {
     }
 }
 
-enum class IgvAffectation(val code: String, val label: String) {
-    GRAVADO("10", "10 - Gravado IGV"),
-    EXONERADO("20", "20 - Exonerado"),
-    INAFECTO("30", "30 - Inafecto"),
-    EXPORTACION("40", "40 - Exportación"),
+enum class IgvAffectation(val code: String) {
+    GRAVADO("10"),
+    EXONERADO("20"),
+    INAFECTO("30"),
+    EXPORTACION("40"),
     ;
+
+    /** Texto visible, según el país de la sesión (I5). En Perú: «10 - Gravado IGV», «20 - Exonerado»… */
+    val label: String
+        get() = when (this) {
+            GRAVADO -> "10 - ${LabelKey.TAX_TAXED.text} ${LabelKey.TAX_NAME.text}"
+            EXONERADO -> "20 - ${LabelKey.TAX_EXEMPT.text}"
+            INAFECTO -> "30 - ${LabelKey.TAX_UNAFFECTED.text}"
+            EXPORTACION -> "40 - Exportación"
+        }
 
     companion object {
         fun fromCode(code: String?): IgvAffectation =
