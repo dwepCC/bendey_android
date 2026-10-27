@@ -400,13 +400,13 @@ class SettingsRepositoryImpl @Inject constructor(
         }
 
     override suspend fun getUbigeoRegiones(): AppResult<List<UbiItem>> =
-        apiCall { api.getUbigeoRegiones().data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getGeo("region").data.map { UbiItem(it.code, it.name) } }
 
     override suspend fun getUbigeoProvincias(regionId: String): AppResult<List<UbiItem>> =
-        apiCall { api.getUbigeoProvincias(regionId).data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getGeo("province", regionId).data.map { UbiItem(it.code, it.name) } }
 
     override suspend fun getUbigeoDistritos(provinciaId: String): AppResult<List<UbiItem>> =
-        apiCall { api.getUbigeoDistritos(provinciaId).data.map { UbiItem(it.id, it.nombre) } }
+        apiCall { api.getGeo("district", provinciaId).data.map { UbiItem(it.code, it.name) } }
 
     override suspend fun getSunatConfig(): AppResult<SunatConfig> {
         operationalDataCache.getTenantSettings()?.sunat?.let { return AppResult.Success(it) }

@@ -8,12 +8,12 @@ import com.bendey.restaurant.core.network.dto.ComboResolveResponseDto
 import com.bendey.restaurant.core.network.dto.ComboUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigDto
 import com.bendey.restaurant.core.network.dto.CompanyConfigResponseDto
-import com.bendey.restaurant.core.network.dto.UbiItemDto
 import com.bendey.restaurant.core.network.dto.DeliveryBoardDto
 import com.bendey.restaurant.core.network.dto.DeliveryCancelRequestDto
 import com.bendey.restaurant.core.network.dto.DeliveryStatusRequestDto
 import com.bendey.restaurant.core.network.dto.DeliverySettingsDto
 import com.bendey.restaurant.core.network.dto.DeliverySettingsUpdateRequestDto
+import com.bendey.restaurant.core.network.dto.GeoNodeDto
 import com.bendey.restaurant.core.network.dto.SessionDeliveryFeeRequestDto
 import com.bendey.restaurant.core.network.dto.SessionPaymentRequestDto
 import com.bendey.restaurant.core.network.dto.SessionPaymentResponseDto
@@ -211,14 +211,10 @@ interface SettingsApi {
     @PUT("/api/company/config")
     suspend fun updateCompanyConfig(@Body body: CompanyConfigDto): CompanyConfigResponseDto
 
-    @GET("/api/ubigeo/regiones")
-    suspend fun getUbigeoRegiones(): ListResponseDto<UbiItemDto>
-
-    @GET("/api/ubigeo/provincias")
-    suspend fun getUbigeoProvincias(@Query("region_id") regionId: String): ListResponseDto<UbiItemDto>
-
-    @GET("/api/ubigeo/distritos")
-    suspend fun getUbigeoDistritos(@Query("provincia_id") provinciaId: String): ListResponseDto<UbiItemDto>
+    // Catálogo geográfico del país del tenant (paquete de país, I10): level es una clave de geo_levels
+    // del locale (Perú: region / province / district); parent es el código del nivel superior.
+    @GET("/api/geo/{level}")
+    suspend fun getGeo(@Path("level") level: String, @Query("parent") parent: String? = null): ListResponseDto<GeoNodeDto>
 
     @GET("/api/company/sunat")
     suspend fun getSunatConfig(): SunatConfigDto

@@ -483,10 +483,12 @@ data class CompanyConfigResponseDto(
     val data: CompanyConfigDto,
 )
 
+/** Unidad territorial de GET /api/geo/{level}. */
 @Serializable
-data class UbiItemDto(
-    val id: String = "",
-    val nombre: String = "",
+data class GeoNodeDto(
+    val code: String = "",
+    val name: String = "",
+    val parent: String = "",
 )
 
 @Serializable
