@@ -1,7 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
 import com.bendey.restaurant.core.domain.cash.CashSessionBrief
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -46,5 +46,5 @@ internal object CajaHistoryFilters {
  */
 internal fun formatSessionMoment(raw: String?): String? {
     if (raw.isNullOrBlank()) return null
-    return PeruDateTime.formatDateTimeOrRaw(raw)
+    return TenantDateTime.formatDateTimeOrRaw(raw)
 }

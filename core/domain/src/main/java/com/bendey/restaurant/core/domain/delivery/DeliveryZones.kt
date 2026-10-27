@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.model.AppResult
 import java.util.Locale
 
@@ -76,8 +78,8 @@ object DeliveryZoneRules {
 
     /** Resumen de una zona para la lista. */
     fun describe(z: DeliveryZone): String {
-        val fee = if (z.fee > 0) "Envío S/ ${formatAmount(z.fee)}" else "Envío gratis"
-        val min = if (z.minOrder > 0) "mínimo S/ ${formatAmount(z.minOrder)}" else "mínimo general"
+        val fee = if (z.fee > 0) "Envío ${Money.prefix()}${formatAmount(z.fee)}" else "Envío gratis"
+        val min = if (z.minOrder > 0) "mínimo ${Money.prefix()}${formatAmount(z.minOrder)}" else "mínimo general"
         val eta = if (z.etaMinutes > 0) "${z.etaMinutes} min" else "tiempo general"
         return "$fee · $min · $eta"
     }

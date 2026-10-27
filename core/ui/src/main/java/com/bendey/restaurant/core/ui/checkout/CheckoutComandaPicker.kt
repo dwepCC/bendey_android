@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.checkout
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,7 +54,7 @@ fun CheckoutComandaPicker(
 ) {
     if (pending.isEmpty() && billed.isEmpty()) return
 
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
     var billedOpen by remember { mutableStateOf(false) }
     val allPendingSelected = pending.isNotEmpty() && pending.all { selectedIds.contains(it.comanda.id) }
     val somePendingSelected = pending.any { selectedIds.contains(it.comanda.id) }

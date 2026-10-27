@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.productos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -102,7 +104,7 @@ fun ProductosScreen(
     viewModel: ProductosViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
 
     BendeySnackMessage(
         message = state.snackMessage,

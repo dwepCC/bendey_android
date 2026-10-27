@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.rcshare
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.delivery.ReportRange
 import com.bendey.restaurant.core.domain.delivery.ReportRangeRules
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -142,7 +144,7 @@ object RcShareRules {
 }
 
 object RcShareText {
-    fun money(v: Double): String = String.format(Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     fun percent(v: Double): String = String.format(Locale.US, "%.1f %%", v)
 

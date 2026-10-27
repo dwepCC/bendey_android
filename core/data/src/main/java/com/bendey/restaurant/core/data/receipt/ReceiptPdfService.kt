@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.data.receipt
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -70,7 +72,7 @@ class ReceiptPdfService @Inject constructor(
             textSize = bodySize
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        val money = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+        val money = Money.currencyFormat()
 
         // El tamaño elegido escala el logo (igual en 58 y 80 mm y en A4).
         val logoMaxWidthPt = contentWidth * 0.42f * logoScale

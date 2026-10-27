@@ -68,7 +68,7 @@ import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.VoidPinDialog
 import com.bendey.restaurant.core.ui.layout.BendeyOrientationPolicy
 import kotlinx.coroutines.delay
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import java.time.Instant
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
@@ -302,7 +302,7 @@ private fun KdsHeader(
     }
 }
 
-private fun hhmm(ms: Long): String = PeruDateTime.formatTime(ms)
+private fun hhmm(ms: Long): String = TenantDateTime.formatTime(ms)
 
 /** UNA sola fila: areas (recordada por dispositivo) y tipo de pedido. */
 @Composable

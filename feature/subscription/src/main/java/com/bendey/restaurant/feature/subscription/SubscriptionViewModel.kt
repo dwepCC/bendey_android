@@ -1,5 +1,8 @@
 package com.bendey.restaurant.feature.subscription
 
+// Paquete de país (I4c): los montos de planes y suscripción de Bendey son SIEMPRE en soles (PEN), sea cual
+// sea el país del tenant. Por eso aquí «S/» va fijo y NO se usa Money.format (que sigue al tenant).
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.model.AppResult

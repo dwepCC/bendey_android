@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.catalog.DeliveryRepository
 import com.bendey.restaurant.core.domain.delivery.DeliveryRulesRules
 import com.bendey.restaurant.core.domain.delivery.DeliverySettings
@@ -28,7 +30,7 @@ data class DeliveryRulesState(
     val summary: String
         get() {
             val s = settings ?: return if (loading) "Cargando…" else "Sin reglas"
-            val min = if (s.minOrderAmount > 0) "Pedido mínimo S/ ${DeliveryRulesRules.formatAmount(s.minOrderAmount)}" else "Sin pedido mínimo"
+            val min = if (s.minOrderAmount > 0) "Pedido mínimo ${Money.prefix()}${DeliveryRulesRules.formatAmount(s.minOrderAmount)}" else "Sin pedido mínimo"
             val eta = if (s.etaMinutes > 0) "entrega prometida en ${s.etaMinutes} min" else "sin hora prometida"
             return "$min · $eta"
         }
@@ -92,7 +94,7 @@ class DeliveryRulesPresenter(
         if (!s.canEdit || s.saving) return
         val min = DeliveryRulesRules.parseMinOrder(s.minOrderText)
         if (min == null) {
-            _state.update { it.copy(error = "El pedido mínimo debe estar entre S/ 0 y S/ ${DeliveryRulesRules.formatAmount(DeliveryRulesRules.MAX_MIN_ORDER)}, con hasta 2 decimales.") }
+            _state.update { it.copy(error = "El pedido mínimo debe estar entre ${Money.prefix()}0 y ${Money.prefix()}${DeliveryRulesRules.formatAmount(DeliveryRulesRules.MAX_MIN_ORDER)}, con hasta 2 decimales.") }
             return
         }
         val eta = DeliveryRulesRules.parseEta(s.etaText)

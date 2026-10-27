@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -712,7 +714,7 @@ private fun MockCard(
     showStock: Boolean,
 ) {
     val outOfStock = showStock && !available
-    val priceText = "S/ ${"%.2f".format(price)}"
+    val priceText = "${Money.prefix()}${"%.2f".format(price)}"
     val badge: @Composable () -> Unit = {
         if (outOfStock) {
             Text(

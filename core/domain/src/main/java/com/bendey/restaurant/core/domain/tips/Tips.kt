@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.tips
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.model.AppResult
 import java.util.Locale
 import kotlin.math.floor
@@ -127,7 +129,7 @@ fun canSeeTipsReport(permissions: List<String>?): Boolean {
 
 /** Textos de la pantalla (lógica pura). */
 object TipsText {
-    fun money(v: Double): String = String.format(Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     fun count(n: Int): String = if (n == 1) "1 propina" else "$n propinas"
 

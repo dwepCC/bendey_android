@@ -1,8 +1,10 @@
 package com.bendey.restaurant.feature.productos.reportes
 
+import com.bendey.restaurant.core.domain.locale.Money
 
 
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import androidx.compose.foundation.layout.Arrangement
 
 import androidx.compose.foundation.layout.Box
@@ -136,7 +138,7 @@ fun ReportesScreen(
 
     val context = LocalContext.current
 
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
 
     val bottomPadding = rememberBendeyBottomBarScrollPadding()
 
@@ -943,7 +945,7 @@ private fun KardexList(
 
                 Text(row.productName.orEmpty(), fontWeight = FontWeight.SemiBold)
 
-                Text("${PeruDateTime.formatDateTimeOrRaw(row.createdAt)} · ${row.type} · ${row.quantity}", style = MaterialTheme.typography.bodySmall)
+                Text("${TenantDateTime.formatDateTimeOrRaw(row.createdAt)} · ${row.type} · ${row.quantity}", style = MaterialTheme.typography.bodySmall)
 
                 Text(row.notes.orEmpty(), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
 

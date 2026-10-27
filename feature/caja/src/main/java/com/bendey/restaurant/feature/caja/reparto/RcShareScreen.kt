@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.caja.reparto
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -30,7 +32,7 @@ import com.bendey.restaurant.core.domain.rcshare.RcPeriodPreset
 import com.bendey.restaurant.core.domain.rcshare.RcShareRules
 import com.bendey.restaurant.core.domain.rcshare.RcShareText
 import com.bendey.restaurant.core.domain.rcshare.RcShareUiState
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.ui.components.BendeyAlert
 import com.bendey.restaurant.core.ui.components.BendeyAlertSeverity
 import com.bendey.restaurant.core.ui.components.BendeyDateField
@@ -154,9 +156,9 @@ fun RcShareScreen(
 @Composable
 private fun HistoryCard(h: RcDistribution) {
     SectionCard(RcShareText.money(h.amount)) {
-        val created = PeruDateTime.formatDateTime(h.createdAt)
+        val created = TenantDateTime.formatDateTime(h.createdAt)
         Muted(
-            "Período ${PeruDateTime.formatDate(h.periodFrom) ?: h.periodFrom} al ${PeruDateTime.formatDate(h.periodTo) ?: h.periodTo}" +
+            "Período ${TenantDateTime.formatDate(h.periodFrom) ?: h.periodFrom} al ${TenantDateTime.formatDate(h.periodTo) ?: h.periodTo}" +
                 (created?.let { " · registrado $it" } ?: ""),
         )
         Muted(if (h.paidFromCash) "Pagado en efectivo desde caja" else "Solo constancia (pagado por otro medio)")
@@ -187,7 +189,7 @@ private fun DistributeDialog(st: RcShareUiState, vm: RcShareViewModel) {
                 BendeyTextField(
                     value = line?.amount.orEmpty(),
                     onValueChange = { vm.setAmount(person.id, it) },
-                    label = "${person.name} (S/)",
+                    label = "${person.name} (${Money.symbol})",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )

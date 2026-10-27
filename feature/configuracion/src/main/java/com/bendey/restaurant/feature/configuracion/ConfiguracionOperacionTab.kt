@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -84,7 +86,7 @@ fun OperacionTab(
                 BendeySectionTitle(text = "Ganancia por entrega")
                 val earning = state.settings?.deliveryEarningPerOrder ?: 0.0
                 Text(
-                    if (earning > 0) "S/ %.2f por entrega, mostrado en Bendey Delivery".format(earning) else "Sin configurar",
+                    if (earning > 0) Money.prefix() + "%.2f por entrega, mostrado en Bendey Delivery".format(earning) else "Sin configurar",
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )

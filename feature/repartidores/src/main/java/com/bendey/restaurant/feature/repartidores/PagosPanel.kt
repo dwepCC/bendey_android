@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.repartidores
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +52,7 @@ import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import java.util.Locale
 
-private fun soles(v: Double) = String.format(Locale.US, "S/ %.2f", v)
+private fun soles(v: Double) = Money.format(v)
 
 /** Pestaña «Pagos» de Entregas (D2a): validar o rechazar las capturas de pago de los clientes. */
 @Composable

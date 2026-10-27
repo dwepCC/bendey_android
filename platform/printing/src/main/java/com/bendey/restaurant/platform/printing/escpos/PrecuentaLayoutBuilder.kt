@@ -11,6 +11,8 @@ data class PrecuentaPrintInput(
     val items: List<PrecuentaItem>,
     val total: Double,
     val paperWidth: PaperWidthMm = PaperWidthMm.W80,
+    /** Lo que va antes del monto: "S/ " en Perú (por defecto, igual que siempre); lo pone quien imprime según el país del tenant. */
+    val currencyPrefix: String = "S/ ",
 )
 
 /** Port de buildPrecuentaEscPos — printers.service.ts */
@@ -37,7 +39,7 @@ object PrecuentaLayoutBuilder {
         for (item in input.items) {
             val qty = formatQty(item.quantity)
             val subtotal = "%.2f".format(item.quantity * item.unitPrice)
-            val right = "S/ $subtotal"
+            val right = "${input.currencyPrefix}$subtotal"
             val leftCols = cols - right.length - 1
             val descWrapped = EscPosTextUtils.wrapText(
                 item.productName.trim(),
@@ -51,7 +53,7 @@ object PrecuentaLayoutBuilder {
         b.divider(cols)
         b.bold(true)
         b.size(2, 2)
-        val totalStr = "S/ ${"%.2f".format(input.total)}"
+        val totalStr = "${input.currencyPrefix}${"%.2f".format(input.total)}"
         val bigCols = maxOf(12, cols / 2)
         EscPosTextUtils.wrapText("TOTAL $totalStr", bigCols).forEach { b.line(it) }
         b.bold(false)

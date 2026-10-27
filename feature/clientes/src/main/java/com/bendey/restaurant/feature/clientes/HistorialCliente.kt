@@ -22,7 +22,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.contacts.PurchaseHistoryPage
 import com.bendey.restaurant.core.domain.contacts.PurchaseHistoryRules
 import com.bendey.restaurant.core.domain.contacts.PurchaseSale
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import com.bendey.restaurant.core.ui.components.BendeyLoadError
 import com.bendey.restaurant.core.ui.components.BendeyOutlinedButton
@@ -80,7 +80,7 @@ fun HistorialClienteSheet(
                             Stat("Visitas", page.summary.orders.toString())
                             Stat("Total gastado", PurchaseHistoryRules.money(page.summary.totalSpent))
                             Stat("Ticket promedio", PurchaseHistoryRules.money(page.summary.avgTicket))
-                            Stat("Última visita", PeruDateTime.formatDate(page.summary.lastVisit) ?: "—")
+                            Stat("Última visita", TenantDateTime.formatDate(page.summary.lastVisit) ?: "—")
                         }
                         if (page.topProducts.isNotEmpty()) {
                             Text("Lo que más pide", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = BendeyColors.OnSurface)
@@ -140,7 +140,7 @@ private fun SaleRow(s: PurchaseSale) {
                 color = BendeyColors.OnSurface,
             )
             Text(
-                PeruDateTime.formatDate(s.issueDate) ?: s.issueDate,
+                TenantDateTime.formatDate(s.issueDate) ?: s.issueDate,
                 style = MaterialTheme.typography.bodySmall,
                 color = BendeyColors.OnSurfaceVariant,
             )

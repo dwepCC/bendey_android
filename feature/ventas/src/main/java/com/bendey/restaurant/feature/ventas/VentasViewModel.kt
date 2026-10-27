@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.ventas
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -666,7 +668,7 @@ class VentasViewModel @Inject constructor(
                             voidPin = "",
                             selectedSaleId = null,
                             detail = null,
-                            snackMessage = "Devolucion registrada correctamente. Se devolvieron S/ $monto.",
+                            snackMessage = "Devolucion registrada correctamente. Se devolvieron ${Money.prefix()}$monto.",
                         )
                     }
                     refresh()

@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.mesas
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -138,7 +140,7 @@ fun MesaScreen(
     onShowMessage: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
     val profile = rememberBendeyAdaptiveProfile()
     val workspaceMode = rememberPosWorkspaceMode()
     val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||

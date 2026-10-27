@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.model.AppResult
 import java.util.Locale
 
@@ -34,7 +36,7 @@ object DeliveryEarningsCopy {
     const val NO_PAY_PERMISSION = "Para pagar ganancias necesitas permiso de cobro (caja)."
     const val PAY = "Pagar ganancias"
 
-    fun money(v: Double): String = String.format(Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     fun deliveriesLabel(n: Int): String = if (n == 1) "1 entrega" else "$n entregas"
 

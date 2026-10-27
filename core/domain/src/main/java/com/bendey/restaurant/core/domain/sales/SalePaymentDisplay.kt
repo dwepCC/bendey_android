@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.sales
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import java.util.Locale
 import kotlin.math.abs
 
@@ -72,7 +74,7 @@ fun formatPaymentsCompact(
     val payments = resolveSalePayments(sale)
     if (payments.isEmpty()) return "—"
     val detailed = payments.joinToString(", ") { payment ->
-        "${salePaymentMethodLabel(payment.method, customNames)} (S/ ${fmtMoney(payment.amount)})"
+        "${salePaymentMethodLabel(payment.method, customNames)} (${Money.format(payment.amount)})"
     }
     if (detailed.length <= maxChars) return detailed
     return payments.joinToString(" + ") { salePaymentMethodLabel(it.method, customNames) }.ifBlank { detailed }
@@ -86,8 +88,7 @@ fun formatOtherPaymentMethods(
     val others = resolveSalePayments(sale).filter { !paymentMethodMatchesFilter(it.method, filterCode) }
     if (others.isEmpty()) return "—"
     return others.joinToString(", ") { payment ->
-        "${salePaymentMethodLabel(payment.method, customNames)} S/ ${fmtMoney(payment.amount)}"
+        "${salePaymentMethodLabel(payment.method, customNames)} ${Money.format(payment.amount)}"
     }
 }
 
-private fun fmtMoney(value: Double): String = String.format(Locale.US, "%.2f", value)

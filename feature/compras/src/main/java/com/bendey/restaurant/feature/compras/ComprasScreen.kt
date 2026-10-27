@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.compras
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -71,7 +73,8 @@ import com.bendey.restaurant.core.ui.layout.rememberBendeyBottomBarScrollPadding
 import java.text.NumberFormat
 import java.util.Locale
 
-private val currency: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+// Getter (no val): el país del tenant puede llegar después de cargar la clase.
+private val currency: NumberFormat get() = Money.currencyFormat()
 
 /**
  * Compras a proveedores: registra el comprobante recibido, suma stock (comercial/insumo) y

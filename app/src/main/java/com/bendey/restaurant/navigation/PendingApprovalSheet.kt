@@ -1,5 +1,7 @@
 package com.bendey.restaurant.navigation
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -96,7 +98,7 @@ class PendingApprovalViewModel @Inject constructor(
     }
 }
 
-private fun money(value: Double) = String.format(Locale.US, "S/ %.2f", value)
+private fun money(value: Double) = Money.format(value)
 
 private fun createdAtMs(iso: String): Long? =
     runCatching { OffsetDateTime.parse(iso).toInstant().toEpochMilli() }.getOrNull()

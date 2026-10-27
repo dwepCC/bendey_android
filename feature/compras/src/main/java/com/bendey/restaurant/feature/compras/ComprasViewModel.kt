@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.compras
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.domain.billing.BillingRepository
@@ -366,7 +368,7 @@ class ComprasViewModel @Inject constructor(
         }
         val state = _uiState.value
         if (form.total(state.taxRate, state.taxConfig) <= 0.0) {
-            _uiState.update { it.copy(error = "El total de la compra debe ser mayor a S/ 0.00") }
+            _uiState.update { it.copy(error = "El total de la compra debe ser mayor a ${Money.format(0.0)}") }
             return
         }
         viewModelScope.launch {

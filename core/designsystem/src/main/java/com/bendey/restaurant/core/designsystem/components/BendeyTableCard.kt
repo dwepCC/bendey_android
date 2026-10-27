@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.designsystem.components
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -64,7 +66,7 @@ fun BendeyTableCard(
     val state = table.status.stateColors(browsingOnly = table.browsingOnly)
     val accent = state.fill
     val statusLabel = if (table.browsingOnly) "Viendo la carta" else table.status.label
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     var menuExpanded by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier

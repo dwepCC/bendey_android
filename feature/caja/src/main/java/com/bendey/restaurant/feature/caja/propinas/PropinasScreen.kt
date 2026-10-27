@@ -30,7 +30,7 @@ import com.bendey.restaurant.core.domain.tips.PendingTipStaff
 import com.bendey.restaurant.core.domain.tips.PropinasTab
 import com.bendey.restaurant.core.domain.tips.TipsReport
 import com.bendey.restaurant.core.domain.tips.TipsText
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.ui.components.BendeyAlert
 import com.bendey.restaurant.core.ui.components.BendeyAlertSeverity
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
@@ -255,7 +255,7 @@ private fun LazyListScope.misPropinas(mine: MyTips?, loading: Boolean, error: St
                 SectionCard("Mis últimas propinas") {
                     if (mine.recent.isEmpty()) Muted("Aún no tienes propinas registradas.")
                     mine.recent.forEach { t ->
-                        val date = PeruDateTime.formatDateTime(t.createdAt) ?: t.createdAt.take(10)
+                        val date = TenantDateTime.formatDateTime(t.createdAt) ?: t.createdAt.take(10)
                         LineRow(
                             date,
                             "${TipsText.money(t.amount)} · ${TipsText.methodLabel(t.method)} · " + if (t.paid) "Pagada" else "Por cobrar",

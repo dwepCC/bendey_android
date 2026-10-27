@@ -1,7 +1,9 @@
 package com.bendey.restaurant.feature.caja
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Intent
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,7 +114,7 @@ fun CajaScreen(
     viewModel: CajaViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     val context = LocalContext.current
     // En tablet (ancho Expanded, ~840dp+) Historial y Reporte se ven juntos en dos paneles, sin
     // saltar de pestaña para ver un cierre. En teléfono (Compact/Medium) sigue igual que siempre.
@@ -524,7 +526,7 @@ private fun MovementsTab(
                         fontWeight = FontWeight.Medium,
                         color = if (row.estaAnulado) BendeyColors.OnSurfaceVariant else Color.Unspecified,
                     )
-                    Text("${PeruDateTime.formatDateOrRaw(row.date)} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                    Text("${TenantDateTime.formatDateOrRaw(row.date)} · ${row.userName} · ${row.paymentMethod}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                     Text(
                         currency.format(row.amount),
                         fontWeight = FontWeight.Bold,
@@ -611,7 +613,7 @@ private fun MovementsTab(
                 BendeyManagementCard {
                     Column {
                         Text(row.saleNumber.ifBlank { row.orderCode }, fontWeight = FontWeight.Medium)
-                        Text("${PeruDateTime.formatDateOrRaw(row.date)} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        Text("${TenantDateTime.formatDateOrRaw(row.date)} · ${row.method}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
                         Text(currency.format(row.amount), fontWeight = FontWeight.Bold)
                     }
                 }
@@ -1058,8 +1060,8 @@ private fun ReportContent(
     ) {
         Text("Reporte de caja N°${session.id}", fontWeight = FontWeight.Bold)
         session.branchName?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        session.openedAt?.let { Text("Apertura: ${PeruDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
-        session.closedAt?.let { Text("Cierre: ${PeruDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
+        session.openedAt?.let { Text("Apertura: ${TenantDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
+        session.closedAt?.let { Text("Cierre: ${TenantDateTime.formatDateTimeOrRaw(it)}", style = MaterialTheme.typography.bodySmall) }
         ReportRow("Ventas netas", currency.format(report.totalNetSales))
         if (report.totalVoidedSales > 0) {
             ReportRow("Ventas anuladas", currency.format(report.totalVoidedSales))
@@ -1337,7 +1339,7 @@ private fun OpenCashDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Monto inicial en efectivo para iniciar el turno.")
-                BendeyTextField(form.openingBalance, { v -> onFormChange { it.copy(openingBalance = v) } }, "Monto de apertura (S/)")
+                BendeyTextField(form.openingBalance, { v -> onFormChange { it.copy(openingBalance = v) } }, "Monto de apertura (${Money.symbol})")
                 BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas (opcional)", singleLine = false)
                 // Mismo hallazgo que en CloseCashDialog: `error` vivía en el uiState pero nunca
                 // llegaba a este diálogo — un rechazo del backend (ej. "ya hay una sesión abierta")
@@ -1379,7 +1381,7 @@ private fun MovementDialog(
                         )
                     }
                 }
-                BendeyTextField(form.amount, { v -> onFormChange { it.copy(amount = v) } }, "Monto (S/)")
+                BendeyTextField(form.amount, { v -> onFormChange { it.copy(amount = v) } }, "Monto (${Money.symbol})")
                 if (paymentMethods.isNotEmpty()) {
                     Text("Método de pago", style = MaterialTheme.typography.labelMedium)
                     BendeyHorizontalScrollRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1687,7 +1689,7 @@ private fun BankMovementsDialog(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Column(Modifier.weight(1f)) {
                                 Text(mov.description, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(PeruDateTime.formatDateOrRaw(mov.date), style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
+                                Text(TenantDateTime.formatDateOrRaw(mov.date), style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
                             }
                             Text(
                                 "${if (mov.type == "credit") "+" else "-"}${currency.format(mov.amount)}",

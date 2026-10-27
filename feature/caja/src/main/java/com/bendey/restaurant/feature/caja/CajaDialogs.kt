@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -358,7 +360,7 @@ fun CloseCashDialog(
                     BendeyTextField(
                         value = form.closingBalance,
                         onValueChange = { v -> onFormChange { it.copy(closingBalance = v) } },
-                        label = "Efectivo contado (S/)",
+                        label = "Efectivo contado (${Money.symbol})",
                     )
                 }
                 BendeyTextField(

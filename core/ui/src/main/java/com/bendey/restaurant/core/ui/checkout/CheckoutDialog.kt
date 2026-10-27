@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.checkout
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,7 +133,7 @@ fun CheckoutDialog(
     val tabletLandscape = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
     val dialogPadding = PosPolishTokens.dialogPadding(profile, physicalPortrait)
     val sectionGap = PosPolishTokens.dialogSectionGap(profile, physicalPortrait)
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
     val series = meta?.series.orEmpty()
     val discountNumeric = discountValue.replace(',', '.').trim().toDoubleOrNull() ?: 0.0
     val discountAmount = calcCheckoutDiscountAmount(rawTotal, discountMode, discountNumeric, nonDiscountableAmount)
@@ -547,7 +549,7 @@ private fun DiscountInputWithToggle(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (mode == CheckoutDiscountMode.PERCENT) "%" else "S/",
+                text = if (mode == CheckoutDiscountMode.PERCENT) "%" else Money.symbol,
                 color = BendeyColors.OnPrimary,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelMedium,
@@ -979,7 +981,7 @@ fun CheckoutSuccessDialog(
     printNote: String? = null,
     onDismiss: () -> Unit,
 ) {
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
     BendeyFormDialog(
         onDismissRequest = onDismiss,
         title = "Venta generada",
@@ -1000,7 +1002,7 @@ fun CheckoutSuccessDialog(
 }
 
 private fun formatMoney(value: Double): String {
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     return currency.format(roundDisplay(value))
 }
 

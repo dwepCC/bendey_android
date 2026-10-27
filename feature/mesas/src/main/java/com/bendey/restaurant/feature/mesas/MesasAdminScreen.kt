@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.mesas
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -427,7 +429,7 @@ private fun AdminTableCard(
             Text("Cap. ${table.capacity}", style = MaterialTheme.typography.labelSmall, color = BendeyColors.OnSurfaceVariant)
             BendeyStatusChip(table.status.label, statusColor(table.status))
             table.totalAmount?.takeIf { it > 0 }?.let {
-                Text("Consumo: S/ ${"%.2f".format(it)}", style = MaterialTheme.typography.bodySmall)
+                Text("Consumo: ${Money.prefix()}${"%.2f".format(it)}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }

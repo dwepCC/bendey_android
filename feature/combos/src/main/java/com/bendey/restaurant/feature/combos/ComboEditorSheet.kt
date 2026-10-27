@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.combos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.clickable
@@ -851,7 +853,7 @@ private fun ProductPickerSection(
                         ) {
                             Text(product.name, fontWeight = FontWeight.Medium)
                             Text(
-                                "${product.code} · S/ ${product.salePrice}",
+                                "${product.code} · ${Money.prefix()}${product.salePrice}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = BendeyColors.OnSurfaceVariant,
                             )

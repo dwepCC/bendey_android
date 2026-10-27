@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.combos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,7 +61,7 @@ fun CombosScreen(
     viewModel: CombosViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     val listState = rememberLazyListState()
     val listContentPadding = rememberBendeyLazyListContentPadding(
         includeBottomBar = true,

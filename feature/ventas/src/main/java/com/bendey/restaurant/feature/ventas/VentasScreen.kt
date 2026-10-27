@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.ventas
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -132,7 +134,7 @@ fun VentasScreen(
     viewModel: VentasViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     val context = LocalContext.current
     val listState = rememberLazyListState()
 
@@ -1209,7 +1211,7 @@ private fun VoidReasonDialog(
                     // El importe no es editable ni lo calcula la app: llega en `refundableAmount`,
                     // derivado por el backend de lo que la venta cobro de verdad.
                     Text(
-                        "Importe a devolver: S/ %.2f".format(refundAmount),
+                        "Importe a devolver: " + Money.prefix() + "%.2f".format(refundAmount),
                         style = MaterialTheme.typography.titleMedium,
                         color = BendeyColors.Error,
                     )

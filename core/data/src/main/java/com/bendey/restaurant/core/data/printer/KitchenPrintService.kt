@@ -243,6 +243,7 @@ class KitchenPrintService @Inject constructor(
                     )
                 },
                 total = precuenta.total,
+                currencyPrefix = com.bendey.restaurant.core.domain.locale.Money.prefix(),
             ),
         ).toPrintOutcome()
     }

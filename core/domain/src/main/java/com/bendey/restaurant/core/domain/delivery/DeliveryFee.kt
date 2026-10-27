@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import kotlin.math.round
 
@@ -100,7 +102,7 @@ object DeliveryFeeCopy {
     const val INVALID_AMOUNT = "Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99."
 }
 
-fun deliveryMoney(value: Double): String = String.format(java.util.Locale.US, "S/ %.2f", value)
+fun deliveryMoney(value: Double): String = Money.format(value)
 
 /**
  * Convierte lo que el usuario escribió en un monto válido (0 a 999.99, máximo 2 decimales) o null.

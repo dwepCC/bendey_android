@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.modificadores
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -68,7 +70,7 @@ fun ModificadoresScreen(
     viewModel: ModificadoresViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
 
     PullToRefreshBox(
         isRefreshing = state.loading,

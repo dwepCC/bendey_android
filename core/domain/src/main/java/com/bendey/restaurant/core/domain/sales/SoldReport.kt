@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.sales
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.delivery.ReportRange
 import com.bendey.restaurant.core.domain.delivery.ReportRangeRules
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -120,7 +122,7 @@ object SoldReportRules {
         }
     }
 
-    fun money(value: Double): String = String.format(Locale.US, "S/ %.2f", value)
+    fun money(value: Double): String = Money.format(value)
 
     /** «Yape S/ 20.00 + Efectivo S/ 5.00». */
     fun paymentsLabel(payments: List<SoldPayment>): String =

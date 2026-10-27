@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.data.kitchen
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.catalog.normalizePreparationAreaName
 import com.bendey.restaurant.core.domain.pos.formatKitchenComponentDisplay
 import com.bendey.restaurant.core.domain.pos.groupSelections
@@ -212,7 +214,7 @@ private fun parseModifierElement(element: JsonElement): List<String> {
         "variant", "presentation" -> ""
         else -> "+ "
     }
-    val priceSuffix = price?.takeIf { it != 0.0 }?.let { " (+S/ ${"%.2f".format(it)})" }.orEmpty()
+    val priceSuffix = price?.takeIf { it != 0.0 }?.let { " (+${Money.prefix()}${"%.2f".format(it)})" }.orEmpty()
     return listOf("$prefix$name$priceSuffix")
 }
 

@@ -1,5 +1,7 @@
 package com.bendey.restaurant.navigation
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -286,7 +288,7 @@ private fun MainShell(
         }
     }
 
-    val cashCurrency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val cashCurrency = remember { Money.currencyFormat() }
     val cashChipContent: (@Composable () -> Unit)? =
         if (cashState.chip == CashChipState.Hidden) {
             null

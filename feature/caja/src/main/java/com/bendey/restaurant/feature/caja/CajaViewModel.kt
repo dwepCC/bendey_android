@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -210,7 +212,7 @@ class CajaViewModel @Inject constructor(
     private val cashStore: CashStore,
 ) : ViewModel() {
 
-    private val arqueoCurrency: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    private val arqueoCurrency: NumberFormat get() = Money.currencyFormat()
 
     private val _uiState = MutableStateFlow(CajaUiState())
     val uiState: StateFlow<CajaUiState> = _uiState.asStateFlow()

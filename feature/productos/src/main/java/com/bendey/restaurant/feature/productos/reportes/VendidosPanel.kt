@@ -28,7 +28,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.sales.SoldReportPreset
 import com.bendey.restaurant.core.domain.sales.SoldReportRules
 import com.bendey.restaurant.core.domain.sales.SoldSale
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.ui.components.BendeyAlert
 import com.bendey.restaurant.core.ui.components.BendeyAlertSeverity
 import com.bendey.restaurant.core.ui.components.BendeyCheckboxRow
@@ -206,7 +206,7 @@ private fun SaleCard(sale: SoldSale, expanded: Boolean, onToggle: () -> Unit) {
                 Text("Anulada", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = BendeyColors.Error)
             }
             Muted(
-                "${PeruDateTime.formatDateOrRaw(sale.issueDate)} · ${PeruDateTime.formatTimeOrRaw(sale.registeredAt)} · " +
+                "${TenantDateTime.formatDateOrRaw(sale.issueDate)} · ${TenantDateTime.formatTimeOrRaw(sale.registeredAt)} · " +
                     SoldReportRules.serviceLabel(sale.service, sale.orderType, sale.tableName),
             )
             Muted("Cobró: ${sale.cashierName.ifBlank { "—" }}" + (sale.waiterName?.let { " · Mozo: $it" } ?: ""))

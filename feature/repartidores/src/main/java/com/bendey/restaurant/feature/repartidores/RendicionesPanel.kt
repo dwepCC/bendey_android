@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.repartidores
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,7 +41,7 @@ import com.bendey.restaurant.core.ui.components.BendeyTextField
 import com.bendey.restaurant.core.ui.layout.rememberBendeyLazyListContentPadding
 import java.util.Locale
 
-private fun soles(v: Double) = String.format(Locale.US, "S/ %.2f", v)
+private fun soles(v: Double) = Money.format(v)
 
 /** Pestaña «Rendiciones» de Entregas (D2c): recibir el efectivo que cobraron los repartidores. */
 @Composable
@@ -185,7 +187,7 @@ private fun ReceiveDialog(d: ReceiveDialogState, viewModel: RendicionesViewModel
                 BendeyTextField(
                     value = d.receivedText,
                     onValueChange = viewModel::setReceived,
-                    label = "Efectivo que recibes (S/)",
+                    label = "Efectivo que recibes (${Money.symbol})",
                     enabled = !d.busy,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )

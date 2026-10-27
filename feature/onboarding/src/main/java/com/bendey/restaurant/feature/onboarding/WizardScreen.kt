@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.onboarding
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -346,7 +348,7 @@ private fun PreviewRow(row: PastePreviewRow, vm: WizardViewModel) {
                 BendeyTextField(
                     value = row.priceText,
                     onValueChange = { vm.editPreviewRow(row.id, priceText = it) },
-                    label = "Precio (S/)",
+                    label = "Precio (${Money.symbol})",
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
                     fillWidth = false,
@@ -379,7 +381,7 @@ private fun ManualPage(state: WizardUiState, vm: WizardViewModel, onOpenProducto
     BendeyTextField(
         value = state.manualPrice,
         onValueChange = { vm.onManualChange(price = it) },
-        label = "Precio (S/)",
+        label = "Precio (${Money.symbol})",
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
     )
     BendeyTextField(

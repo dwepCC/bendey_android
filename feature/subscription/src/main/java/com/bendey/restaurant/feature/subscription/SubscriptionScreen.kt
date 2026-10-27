@@ -1,5 +1,8 @@
 package com.bendey.restaurant.feature.subscription
 
+// Paquete de país (I4c): los montos de planes y suscripción de Bendey son SIEMPRE en soles (PEN), sea cual
+// sea el país del tenant. Por eso aquí «S/» va fijo y NO se usa Money.format (que sigue al tenant).
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +43,7 @@ import com.bendey.restaurant.core.domain.catalog.resolvePublicAssetUrl
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.SubscriptionPayment
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.ui.components.BendeyAlertDialog
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
 import com.bendey.restaurant.core.ui.components.BendeyEmptyState
@@ -120,7 +123,7 @@ fun SubscriptionScreen(
                                         fontWeight = FontWeight.SemiBold,
                                     )
                                     Text(
-                                        "Vence: ${hub.subscription.nextBillingDate?.let { PeruDateTime.formatDateOrRaw(it) } ?: "—"}",
+                                        "Vence: ${hub.subscription.nextBillingDate?.let { TenantDateTime.formatDateOrRaw(it) } ?: "—"}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = BendeyColors.OnSurfaceVariant,
                                     )
@@ -405,14 +408,14 @@ private fun InvoiceRow(inv: BillingInvoice) {
             // ancho y empuja «S/ 99.00» y el chip a una columna de una letra por línea en el teléfono.
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    PeruDateTime.formatDateOrRaw(inv.periodStart) + " → " + PeruDateTime.formatDateOrRaw(inv.periodEnd),
+                    TenantDateTime.formatDateOrRaw(inv.periodStart) + " → " + TenantDateTime.formatDateOrRaw(inv.periodEnd),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
                     // Pagado dice CUANDO; pendiente dice HASTA CUANDO. Es la pregunta distinta que
                     // tiene el cliente en cada caso.
-                    if (inv.paidAt.isNotBlank()) "Pagado el " + PeruDateTime.formatDateOrRaw(inv.paidAt) else "Vence " + PeruDateTime.formatDateOrRaw(inv.dueDate),
+                    if (inv.paidAt.isNotBlank()) "Pagado el " + TenantDateTime.formatDateOrRaw(inv.paidAt) else "Vence " + TenantDateTime.formatDateOrRaw(inv.dueDate),
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -443,7 +446,7 @@ private fun PaymentRow(payment: SubscriptionPayment, assetsBaseUrl: String?) {
                     fontWeight = FontWeight.Medium,
                 )
                 Text(
-                    PeruDateTime.formatDateTimeOrRaw(payment.createdAt),
+                    TenantDateTime.formatDateTimeOrRaw(payment.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = BendeyColors.OnSurfaceVariant,
                 )
@@ -545,7 +548,7 @@ private fun PaymentFormDialog(
         if (periodos.isNotEmpty()) {
             BendeySimpleSelect(
                 options = periodos.map {
-                    BendeyOption(it.id.toString(), "Vence " + PeruDateTime.formatDateOrRaw(it.periodEnd) + " · S/ " + "%.2f".format(it.amount))
+                    BendeyOption(it.id.toString(), "Vence " + TenantDateTime.formatDateOrRaw(it.periodEnd) + " · S/ " + "%.2f".format(it.amount))
                 },
                 selectedValue = form.cicloId?.toString(),
                 onSelect = { v -> v.toIntOrNull()?.let(onPeriodoChange) },

@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.productos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -157,6 +159,6 @@ private fun formatQty(value: Double): String {
 }
 
 private fun formatSoles(value: Double): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val format = Money.currencyFormat()
     return format.format(value)
 }

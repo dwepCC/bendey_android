@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.checkout
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -110,7 +112,7 @@ fun CheckoutTipSection(
         BendeyTextField(
             value = draft.amount,
             onValueChange = { state.onChange(draft.copy(amount = it)) },
-            label = "Monto de la propina (S/)",
+            label = "Monto de la propina (${Money.symbol})",
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             isError = amountError != null,
             supportingText = amountError,

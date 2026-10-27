@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.inventory
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.model.AppResult
 
 data class StockMovementItem(
@@ -133,7 +135,7 @@ object PhysicalCountRules {
 
     fun qty(v: Double): String = String.format(java.util.Locale.US, "%.3f", v).trimEnd('0').trimEnd('.').ifEmpty { "0" }
 
-    fun money(v: Double): String = String.format(java.util.Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     fun signedMoney(v: Double): String = (if (v < 0) "−" else if (v > 0) "+" else "") + money(Math.abs(v))
 

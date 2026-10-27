@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.productos.reportes
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import com.bendey.restaurant.core.data.export.BendeyExportPaths
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
@@ -103,7 +105,7 @@ fun exportProductsReportPdf(
     rows: List<ProductReportItem>,
 ): ExportShareResult = try {
     val lines = rows.map { row ->
-        "${row.code.take(12)} | ${row.name.take(22)} | ${row.categoryName.orEmpty().take(12)} | S/ ${fmt2(row.salePrice)} | ${if (row.manageStock) fmtQty(row.stockTotal) else "—"}"
+        "${row.code.take(12)} | ${row.name.take(22)} | ${row.categoryName.orEmpty().take(12)} | ${Money.format(row.salePrice)} | ${if (row.manageStock) fmtQty(row.stockTotal) else "—"}"
     }
     val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/reporte-productos.pdf")
     ReportPdfWriter.writePortraitA4(file, "Reporte de productos", lines)
@@ -120,7 +122,7 @@ fun exportSalesByProductCsv(
     to: String,
 ): ExportShareResult = try {
     val data = mutableListOf<List<String>>()
-    data += listOf("Categoría", "Código", "Producto", "Cantidad", "Total (S/)", "Comprobantes")
+    data += listOf("Categoría", "Código", "Producto", "Cantidad", "Total (${Money.symbol})", "Comprobantes")
     rows.forEach { row ->
         data += listOf(
             row.categoryName,
@@ -146,7 +148,7 @@ fun exportSalesByProductPdf(
     to: String,
 ): ExportShareResult = try {
     val lines = rows.map { row ->
-        "${row.productCode.take(10)} | ${row.productName.take(20)} | ${fmtQty(row.quantitySold)} | S/ ${fmt2(row.totalAmount)}"
+        "${row.productCode.take(10)} | ${row.productName.take(20)} | ${fmtQty(row.quantitySold)} | ${Money.format(row.totalAmount)}"
     }
     val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/ventas-por-producto-$from-$to.pdf")
     ReportPdfWriter.writePortraitA4(file, "Ventas por producto · $from — $to", lines)
@@ -181,9 +183,9 @@ fun exportValuationPdf(
     totalValue: Double,
 ): ExportShareResult = try {
     val lines = rows.map { row ->
-        "${row.code.take(10)} | ${row.name.take(22)} | ${fmtQty(row.quantity)} | S/ ${fmt2(row.averageCost)} | S/ ${fmt2(row.value)}" +
+        "${row.code.take(10)} | ${row.name.take(22)} | ${fmtQty(row.quantity)} | ${Money.format(row.averageCost)} | ${Money.format(row.value)}" +
             if (row.negative) " | NEGATIVO" else ""
-    } + "TOTAL VALORIZADO: S/ ${fmt2(totalValue)}"
+    } + "TOTAL VALORIZADO: ${Money.format(totalValue)}"
     val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/valorizacion-inventario.pdf")
     ReportPdfWriter.writePortraitA4(file, "Valorización de inventario", lines)
     fileShareService.shareFile(context, file, "application/pdf", "Exportar valorización PDF")
@@ -203,7 +205,7 @@ fun exportSoldCsv(
     to: String,
 ): ExportShareResult = try {
     val rules = com.bendey.restaurant.core.domain.sales.SoldReportRules
-    val time = com.bendey.restaurant.core.domain.time.PeruDateTime
+    val time = com.bendey.restaurant.core.domain.time.TenantDateTime
     val data = mutableListOf<List<String>>()
     data += listOf(
         "Fecha", "Hora", "Comprobante", "Número", "Estado", "Atención", "Cobró", "Mozo", "Pagos",
@@ -231,10 +233,10 @@ fun exportSoldPdf(
     to: String,
 ): ExportShareResult = try {
     val rules = com.bendey.restaurant.core.domain.sales.SoldReportRules
-    val time = com.bendey.restaurant.core.domain.time.PeruDateTime
+    val time = com.bendey.restaurant.core.domain.time.TenantDateTime
     val lines = rows.map { r ->
         "${time.formatTimeOrRaw(r.registeredAt)} | ${r.number}${if (r.valid) "" else " ANULADA"} | ${soldServiceLabel(r).take(14)} | " +
-            "${r.cashierName.take(14)} | ${rules.qty(r.quantity)}× ${r.description.take(28)} | S/ ${fmt2(r.lineTotal)}"
+            "${r.cashierName.take(14)} | ${rules.qty(r.quantity)}× ${r.description.take(28)} | ${Money.format(r.lineTotal)}"
     }
     val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/productos-vendidos-$from-$to.pdf")
     ReportPdfWriter.writePortraitA4(file, "Productos vendidos $from al $to", lines)

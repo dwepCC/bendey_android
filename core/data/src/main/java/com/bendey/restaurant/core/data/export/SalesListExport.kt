@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.data.export
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
@@ -38,7 +40,7 @@ fun exportSalesListCsv(
         val includeBilling = tab.incluyeElectronicos()
         val rows = mutableListOf<List<String>>()
         val headers = mutableListOf(
-            "Fecha", "Comprobante", "Atención", "Cliente", "Total (S/)", "Métodos de pago", "Estado",
+            "Fecha", "Comprobante", "Atención", "Cliente", "Total (${Money.symbol})", "Métodos de pago", "Estado",
         )
         if (includeBilling) headers += "Estado SUNAT"
         rows += headers

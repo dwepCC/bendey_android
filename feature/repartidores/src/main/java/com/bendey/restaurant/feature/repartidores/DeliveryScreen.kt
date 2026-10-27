@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.repartidores
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -92,7 +94,7 @@ import com.bendey.restaurant.core.domain.delivery.deliverySectionLabel
 import com.bendey.restaurant.core.domain.delivery.deliverySortDrivers
 import com.bendey.restaurant.core.domain.delivery.deliverySourceLabel
 import com.bendey.restaurant.core.domain.delivery.deliveryTelUri
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import com.bendey.restaurant.core.realtime.delivery.DeliveryBoardState
 import com.bendey.restaurant.core.ui.components.BendeyAlert
 import com.bendey.restaurant.core.ui.components.BendeyAlertAction
@@ -497,7 +499,7 @@ private fun chipColor(tone: DeliveryChipTone): Color = when (tone) {
     DeliveryChipTone.NEUTRAL -> BendeyColors.OnSurfaceVariant
 }
 
-private fun money(value: Double) = String.format(Locale.US, "S/ %.2f", value)
+private fun money(value: Double) = Money.format(value)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -569,7 +571,7 @@ private fun DeliveryCardView(
             if (clock.label.isNotEmpty()) {
                 if (section == DeliverySection.DELIVERED_TODAY) {
                     Text(
-                        PeruDateTime.formatTimeOrRaw(card.deliveredAt),
+                        TenantDateTime.formatTimeOrRaw(card.deliveredAt),
                         style = MaterialTheme.typography.labelLarge,
                         color = BendeyColors.OnSurfaceVariant,
                     )
@@ -620,7 +622,7 @@ private fun DeliveryCardView(
         if (paymentWarning.isNotEmpty()) {
             Text(paymentWarning, style = MaterialTheme.typography.bodySmall, color = BendeyColors.WarningText, modifier = Modifier.fillMaxWidth())
         }
-        val collectedLine = deliveryCollectedLine(card.payment, PeruDateTime.formatTimeOrRaw(card.payment?.collectedAt))
+        val collectedLine = deliveryCollectedLine(card.payment, TenantDateTime.formatTimeOrRaw(card.payment?.collectedAt))
         if (collectedLine.isNotEmpty()) {
             Text(collectedLine, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant, modifier = Modifier.fillMaxWidth())
         }
@@ -661,7 +663,7 @@ private fun DeliveryCardView(
                     color = BendeyColors.OnErrorContainer,
                 )
                 if (incident.reason.isNotBlank()) Text(incident.reason, style = MaterialTheme.typography.bodyMedium, color = BendeyColors.OnErrorContainer)
-                val whenText = PeruDateTime.formatDateTime(incident.at)
+                val whenText = TenantDateTime.formatDateTime(incident.at)
                 if (whenText != null) Text(whenText, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnErrorContainer)
             }
         }

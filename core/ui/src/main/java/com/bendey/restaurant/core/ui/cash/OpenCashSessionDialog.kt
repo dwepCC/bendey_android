@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.cash
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,7 +55,7 @@ fun OpenCashSessionDialog(
                 BendeyTextField(
                     value = form.openingBalance,
                     onValueChange = { onFormChange(form.copy(openingBalance = it)) },
-                    label = CashCopy.OPEN_AMOUNT_LABEL + " (S/)",
+                    label = CashCopy.OPEN_AMOUNT_LABEL + " (${Money.symbol})",
                 )
                 BendeyTextField(
                     value = form.notes,

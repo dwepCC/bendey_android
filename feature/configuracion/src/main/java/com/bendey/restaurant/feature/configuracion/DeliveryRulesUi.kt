@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,7 +40,7 @@ fun DeliveryRulesCard(viewModel: ConfiguracionViewModel) {
                 BendeyTextField(
                     value = st.minOrderText,
                     onValueChange = viewModel::setRulesMinOrder,
-                    label = "Pedido mínimo del delivery (S/, sin contar el envío; 0 = sin mínimo)",
+                    label = "Pedido mínimo del delivery (${Money.symbol}, sin contar el envío; 0 = sin mínimo)",
                     enabled = !st.saving,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )

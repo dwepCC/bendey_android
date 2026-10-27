@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.dashboard
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -83,7 +85,7 @@ import com.bendey.restaurant.core.domain.dashboard.DashboardTableSummary
 import com.bendey.restaurant.core.domain.dashboard.DashboardTopProduct
 import java.text.NumberFormat
 import java.time.LocalDate
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +104,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val adaptiveProfile = rememberBendeyAdaptiveProfile()
     val isExpanded = !adaptiveProfile.isCompact
-    val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+    val currency = Money.currencyFormat()
     val dash = state.dashboard
     val listState = rememberLazyListState()
     val contentPadding = rememberBendeyLazyListContentPadding(
@@ -760,7 +762,7 @@ private fun RevenueTrendChart(
                 .filter { it in points.indices }
             indices.forEach { i ->
                 val label = runCatching {
-                    PeruDateTime.formatDayMonth(LocalDate.parse(points[i].date))
+                    TenantDateTime.formatDayMonth(LocalDate.parse(points[i].date))
                 }.getOrDefault(points[i].date.take(5))
                 Text(
                     text = label,

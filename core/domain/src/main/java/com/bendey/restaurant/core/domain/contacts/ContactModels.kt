@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.contacts
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 enum class ContactDocType(val code: String, val label: String) {
     SIN_RUC("0", "Sin RUC"),
     DNI("1", "DNI"),
@@ -134,7 +136,7 @@ object PurchaseHistoryRules {
         else -> code.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 
-    fun money(v: Double): String = String.format(java.util.Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     fun quantity(q: Double): String =
         if (q == Math.floor(q)) q.toLong().toString() else String.format(java.util.Locale.US, "%.2f", q)

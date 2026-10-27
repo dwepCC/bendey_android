@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.checkout
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,7 +100,7 @@ fun ReceiptPrintModal(
     val physicalPortrait = rememberPhysicalPortrait()
     val tabletLandscape = PosPolishTokens.usesPosTabletDialogLayout(profile, physicalPortrait)
     val dialogPadding = PosPolishTokens.dialogPadding(profile, physicalPortrait)
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
 
     val paidTotal = remember(printData, total) {
         val payments = printData?.payments.orEmpty()

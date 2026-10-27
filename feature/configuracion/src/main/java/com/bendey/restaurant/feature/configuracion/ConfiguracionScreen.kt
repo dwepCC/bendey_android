@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.configuracion
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -546,7 +548,7 @@ private fun SeriesCard(
         BendeyTextField(
             state.earningValue,
             { v -> viewModel.setEarningValue(v.filter { it.isDigit() || it == '.' || it == ',' }) },
-            "Monto en S/ (ej. 5.00)",
+            "Monto en ${Money.symbol} (ej. 5.00)",
         )
     }
 }

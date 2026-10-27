@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.ui.pos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -88,7 +90,7 @@ fun ManualProductDialog(
                 BendeyTextField(
                     value = form.unitPrice,
                     onValueChange = { form = form.copy(unitPrice = it) },
-                    label = "Precio unit. (S/) *",
+                    label = "Precio unit. (${Money.symbol}) *",
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -101,7 +103,7 @@ fun ManualProductDialog(
             BendeyTextField(
                 value = form.unitPrice,
                 onValueChange = { form = form.copy(unitPrice = it) },
-                label = "Precio unit. (S/) *",
+                label = "Precio unit. (${Money.symbol}) *",
             )
         }
         BendeyTextField(

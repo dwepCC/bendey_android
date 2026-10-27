@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.pos
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -134,7 +136,7 @@ fun PosScreen(
     onNavigateToSubscription: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val currency = remember { NumberFormat.getCurrencyInstance(Locale("es", "PE")) }
+    val currency = remember { Money.currencyFormat() }
     val profile = rememberBendeyAdaptiveProfile()
     val workspaceMode = rememberPosWorkspaceMode()
     val isLandscapeWorkspace = workspaceMode == BendeyPosWorkspaceMode.MediumLandscape ||

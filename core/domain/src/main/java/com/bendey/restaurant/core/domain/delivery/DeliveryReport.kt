@@ -1,7 +1,9 @@
 package com.bendey.restaurant.core.domain.delivery
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import com.bendey.restaurant.core.domain.model.AppResult
-import com.bendey.restaurant.core.domain.time.PeruDateTime
+import com.bendey.restaurant.core.domain.time.TenantDateTime
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
@@ -110,7 +112,7 @@ object ReportRangeRules {
     const val MAX_DAYS = 92
 
     /** Hoy de Lima (nunca el del dispositivo). */
-    fun todayLima(): LocalDate = LocalDate.now(PeruDateTime.ZONE)
+    fun todayLima(): LocalDate = LocalDate.now(TenantDateTime.ZONE)
 
     /** Hoy = solo hoy; 7 días = hoy y los 6 anteriores; 30 días = hoy y los 29 anteriores. CUSTOM no tiene rango propio. */
     fun preset(preset: ReportPreset, today: LocalDate): ReportRange? = when (preset) {
@@ -129,7 +131,7 @@ object ReportRangeRules {
     }
 
     /** «dd/MM/yyyy» para mostrar. */
-    fun display(date: LocalDate): String = PeruDateTime.formatDate(date.toString()) ?: date.toString()
+    fun display(date: LocalDate): String = TenantDateTime.formatDate(date.toString()) ?: date.toString()
 }
 
 /** Reporte: lo ven c.v o s.m, y nunca el repartidor. */
@@ -141,7 +143,7 @@ fun canSeeDeliveryReport(permissions: List<String>?, employeeType: String?): Boo
 
 /** Textos y formatos del reporte (lógica pura). */
 object DeliveryReportText {
-    fun money(v: Double): String = String.format(java.util.Locale.US, "S/ %.2f", v)
+    fun money(v: Double): String = Money.format(v)
 
     /** 0.1234 -> "12.3 %". */
     fun percent(rate: Double): String = String.format(java.util.Locale.US, "%.1f %%", (rate * 100.0).coerceIn(0.0, 100.0))
@@ -173,7 +175,7 @@ object DeliveryLateness {
     /** «Prometido 14:35» (hora de Lima) solo si hay hora prometida y no está retrasado. */
     fun promisedLabel(card: DeliveryCard): String? {
         if (isLate(card)) return null
-        val t = PeruDateTime.formatTime(card.promisedAt) ?: return null
+        val t = TenantDateTime.formatTime(card.promisedAt) ?: return null
         return "Prometido $t"
     }
 }

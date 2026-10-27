@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.dashboard
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import com.bendey.restaurant.core.data.export.BendeyExportPaths
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
@@ -26,7 +28,7 @@ private fun rankSection(
     items: List<CatalogAnalyticsRow>,
 ) {
     lines += listOf(title)
-    lines += listOf("#", "Nombre", "Cantidad", "Ingresos (S/)")
+    lines += listOf("#", "Nombre", "Cantidad", "Ingresos (${Money.symbol})")
     items.forEachIndexed { index, item ->
         lines += listOf(
             (index + 1).toString(),
@@ -44,7 +46,7 @@ private fun topProductSection(
     items: List<DashboardTopProduct>,
 ) {
     lines += listOf(title)
-    lines += listOf("#", "Nombre", "Cantidad", "Ingresos (S/)")
+    lines += listOf("#", "Nombre", "Cantidad", "Ingresos (${Money.symbol})")
     items.forEachIndexed { index, item ->
         lines += listOf(
             (index + 1).toString(),
@@ -70,18 +72,18 @@ fun exportOperationalDashboardCsv(
         rows += listOf("Métrica", "Valor")
         rows += listOf("Período", periodLabel(from, to))
         rows += listOf("Sucursal", branchName ?: "Sucursal")
-        rows += listOf("Ingresos (S/)", fmt2(summary.totalRevenue))
+        rows += listOf("Ingresos (${Money.symbol})", fmt2(summary.totalRevenue))
         rows += listOf("Pedidos", summary.totalSessions.toString())
         rows += listOf("Cobrados", summary.paidSessions.toString())
         rows += listOf("Abiertos", summary.openSessions.toString())
         rows += listOf("Cancelados", summary.cancelledSessions.toString())
-        rows += listOf("Ticket promedio (S/)", fmt2(summary.avgTicket))
+        rows += listOf("Ticket promedio (${Money.symbol})", fmt2(summary.avgTicket))
         rows += listOf("Comensales", summary.totalGuests.toString())
         rows.add(emptyList())
         topProductSection(rows, "Top productos (comandas)", data.topProducts)
         if (data.orderTypes.isNotEmpty()) {
             rows += listOf("Por tipo de pedido")
-            rows += listOf("Tipo", "Cantidad", "Ingresos (S/)")
+            rows += listOf("Tipo", "Cantidad", "Ingresos (${Money.symbol})")
             data.orderTypes.forEach { slice: DashboardOrderTypeSlice ->
                 rows += listOf(slice.type, slice.count.toString(), fmt2(slice.revenue))
             }
@@ -89,7 +91,7 @@ fun exportOperationalDashboardCsv(
         }
         if (data.paymentMethods.isNotEmpty()) {
             rows += listOf("Por método de pago")
-            rows += listOf("Método", "Cantidad", "Monto (S/)")
+            rows += listOf("Método", "Cantidad", "Monto (${Money.symbol})")
             data.paymentMethods.forEach { slice: DashboardPaymentSlice ->
                 rows += listOf(slice.method, slice.count.toString(), fmt2(slice.amount))
             }
@@ -115,7 +117,7 @@ fun exportOperationalDashboardPdf(
         val lines = buildList {
             add("Top productos (comandas)")
             data.topProducts.forEachIndexed { index, product ->
-                add("${index + 1}. ${product.name} · qty ${product.quantity} · S/ ${fmt2(product.revenue)}")
+                add("${index + 1}. ${product.name} · qty ${product.quantity} · ${Money.format(product.revenue)}")
             }
         }
         val file = BendeyExportPaths.exportFile(context, "${BendeyExportPaths.EXPORTS}/operacion-$from-$to.pdf")
@@ -140,15 +142,15 @@ fun exportCatalogAnalyticsCsv(
         rows += listOf("Métrica", "Valor")
         rows += listOf("Período", periodLabel(from, to))
         rows += listOf("Sucursal", branchName ?: "Sucursal")
-        rows += listOf("Ventas del período (S/)", fmt2(kpi.totalRevenue))
+        rows += listOf("Ventas del período (${Money.symbol})", fmt2(kpi.totalRevenue))
         rows += listOf("Comprobantes", kpi.salesCount.toString())
         rows += listOf("Productos vendidos", kpi.productsSold.toString())
         rows += listOf("Combos vendidos", kpi.combosSold.toString())
-        rows += listOf("Ingresos extras (S/)", fmt2(kpi.extrasRevenue))
-        rows += listOf("Ticket promedio (S/)", fmt2(kpi.avgTicket))
+        rows += listOf("Ingresos extras (${Money.symbol})", fmt2(kpi.extrasRevenue))
+        rows += listOf("Ticket promedio (${Money.symbol})", fmt2(kpi.avgTicket))
         rows += listOf("Participación combos (%)", fmt2(data.comboParticipationPct))
-        rows += listOf("Ticket con combo (S/)", fmt2(data.avgTicketWithCombo))
-        rows += listOf("Ticket sin combo (S/)", fmt2(data.avgTicketWithoutCombo))
+        rows += listOf("Ticket con combo (${Money.symbol})", fmt2(data.avgTicketWithCombo))
+        rows += listOf("Ticket sin combo (${Money.symbol})", fmt2(data.avgTicketWithoutCombo))
         rows.add(emptyList())
         rankSection(rows, "Top productos", data.topProducts)
         rankSection(rows, "Top combos", data.topCombos)
@@ -172,7 +174,7 @@ fun exportCatalogAnalyticsPdf(
 ): ExportShareResult {
     return try {
         val title = "Catálogo · ${periodLabel(from, to)}${branchName?.let { " · $it" } ?: ""}"
-        val currency = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+        val currency = Money.currencyFormat()
         val lines = buildList {
             data.topProducts.forEachIndexed { index, row ->
                 add("${index + 1}. ${row.label} · ${row.quantity} · ${currency.format(row.revenue)}")

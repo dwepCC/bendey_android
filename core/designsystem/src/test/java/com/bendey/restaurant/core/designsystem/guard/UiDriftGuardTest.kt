@@ -191,17 +191,17 @@ class UiDriftGuardTest {
 
     /** Archivos que pueden usar formateadores/zonas directamente, con motivo. */
     private val dateExceptions = mapOf(
-        "PeruDateTime.kt" to "es EL helper",
+        "TenantDateTime.kt" to "es EL helper",
         "KdsLogic.kt" to "interpreta marcas del servidor SIN zona para medir antigüedad; no es formato visible",
     )
 
-    @Test fun visibleDatesGoThroughPeruDateTime() {
+    @Test fun visibleDatesGoThroughTenantDateTime() {
         val v = mutableListOf<String>()
         val re = Regex("""DateTimeFormatter\.ofPattern|SimpleDateFormat|DateFormat\.get|ZoneId\.systemDefault\(\)|TimeZone\.getDefault\(\)|Locale\.getDefault\(\)""")
         for (s in sources) {
             if (s.fileName in dateExceptions) continue
             re.findAll(s.code).forEach {
-                v += "${s.at(it.range.first)} ${it.value}: usa PeruDateTime (es-PE, America/Lima)"
+                v += "${s.at(it.range.first)} ${it.value}: usa TenantDateTime (es-PE, America/Lima)"
             }
         }
         report("Fechas/horas visibles con un único helper", v)

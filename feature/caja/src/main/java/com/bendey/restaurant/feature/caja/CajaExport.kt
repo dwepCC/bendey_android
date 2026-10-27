@@ -1,5 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 import android.content.Context
 import com.bendey.restaurant.core.data.export.BendeyExportPaths
 import com.bendey.restaurant.core.data.export.BendeyFileShareService
@@ -12,7 +14,8 @@ import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import java.text.NumberFormat
 import java.util.Locale
 
-private val currency: NumberFormat = NumberFormat.getCurrencyInstance(Locale("es", "PE"))
+// Getter (no val): el país del tenant puede llegar después de cargar la clase.
+private val currency: NumberFormat get() = Money.currencyFormat()
 
 private fun fmt2(value: Double): String = String.format(Locale.US, "%.2f", value)
 
@@ -27,7 +30,7 @@ fun exportCashMovementsCsv(
     return try {
         val rows = mutableListOf<List<String>>()
         rows += listOf("Movimientos efectivo")
-        rows += listOf("Fecha", "Tipo", "Comprobante", "Usuario", "Método", "Monto (S/)")
+        rows += listOf("Fecha", "Tipo", "Comprobante", "Usuario", "Método", "Monto (${Money.symbol})")
         cashRows.forEach { row ->
             rows += listOf(
                 row.date,
@@ -41,7 +44,7 @@ fun exportCashMovementsCsv(
         if (electronicRows.isNotEmpty()) {
             rows.add(emptyList())
             rows += listOf("Cobros electrónicos")
-            rows += listOf("Fecha", "Venta", "Pedido", "Usuario", "Método", "Monto (S/)")
+            rows += listOf("Fecha", "Venta", "Pedido", "Usuario", "Método", "Monto (${Money.symbol})")
             electronicRows.forEach { row ->
                 rows += listOf(
                     row.date,

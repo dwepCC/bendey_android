@@ -74,4 +74,4 @@ fun lastCountedCash(sessions: List<CashSessionBrief>): Double? =
         ?.closingBalance
 
 /** "2026-10-04T10:02:00-05:00" -> "10:02" (hora de Lima). Si no se puede leer, null: mejor omitirlo que inventarlo. */
-fun formatCashSince(iso: String?): String? = com.bendey.restaurant.core.domain.time.PeruDateTime.formatTime(iso)
+fun formatCashSince(iso: String?): String? = com.bendey.restaurant.core.domain.time.TenantDateTime.formatTime(iso)
