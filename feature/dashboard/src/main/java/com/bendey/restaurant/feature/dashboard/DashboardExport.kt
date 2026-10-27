@@ -85,14 +85,14 @@ fun exportOperationalDashboardCsv(
             rows += listOf("Por tipo de pedido")
             rows += listOf("Tipo", "Cantidad", "Ingresos (${Money.symbol})")
             data.orderTypes.forEach { slice: DashboardOrderTypeSlice ->
-                rows += listOf(slice.type, slice.count.toString(), fmt2(slice.revenue))
+                rows += listOf(dashboardOrderTypeLabel(slice.type), slice.count.toString(), fmt2(slice.revenue))
             }
             rows.add(emptyList())
         }
         if (data.paymentMethods.isNotEmpty()) {
             rows += listOf("Por método de pago")
             rows += listOf("Método", "Cantidad", "Monto (${Money.symbol})")
-            data.paymentMethods.forEach { slice: DashboardPaymentSlice ->
+            groupPaymentSlicesByLabel(data.paymentMethods).forEach { slice: DashboardPaymentSlice ->
                 rows += listOf(slice.method, slice.count.toString(), fmt2(slice.amount))
             }
         }
@@ -188,9 +188,40 @@ fun exportCatalogAnalyticsPdf(
     }
 }
 
+/** Tipo de pedido en pantalla; la venta sin mesa llega como «directo». */
+fun dashboardOrderTypeLabel(type: String): String = when (type.lowercase()) {
+    "mesa", "dine_in" -> "Mesa"
+    "takeaway", "llevar", "para_llevar" -> "Para llevar"
+    "delivery" -> "Delivery"
+    "directo", "pos", "quick_sale", "mostrador" -> "Venta directa"
+    "" -> "—"
+    else -> type.replace('_', ' ').replaceFirstChar { it.titlecase(Locale("es", "PE")) }
+}
+
+/** Método de pago en pantalla: el efectivo vive como `cash` en la mayoría de tenants. */
+fun dashboardPaymentMethodLabel(method: String): String = when (method.lowercase().trim()) {
+    "", "cash", "efectivo", "contado" -> "Efectivo"
+    "yape" -> "Yape"
+    "plin" -> "Plin"
+    "tarjeta", "card" -> "Tarjeta"
+    "debito" -> "Tarjeta débito"
+    "transferencia", "transfer" -> "Transferencia"
+    "credito", "credit" -> "Crédito"
+    "deposito" -> "Depósito"
+    else -> method.trim().replaceFirstChar { it.titlecase(Locale("es", "PE")) }
+}
+
+/** Junta `cash` y `efectivo` (u otros que se llamen igual) en una sola fila, por monto descendente. */
+fun groupPaymentSlicesByLabel(slices: List<DashboardPaymentSlice>): List<DashboardPaymentSlice> =
+    slices.groupBy { dashboardPaymentMethodLabel(it.method) }
+        .map { (label, rows) ->
+            rows.first().copy(method = label, count = rows.sumOf { it.count }, amount = rows.sumOf { it.amount })
+        }
+        .sortedByDescending { it.amount }
+
 fun recentSessionStatusLabel(status: String): String = when (status.lowercase()) {
     "open" -> "Abierta"
-    "paid" -> "Cobrada"
+    "paid", "billed", "issued" -> "Cobrada"
     "closed" -> "Cerrada"
     "cancelled" -> "Anulada"
     else -> status.ifBlank { "—" }

@@ -176,6 +176,20 @@ class DashboardViewModel @Inject constructor(
         refresh()
     }
 
+    private var firstResume = true
+
+    /**
+     * Al volver a «Hoy» desde otra pestaña el ViewModel sigue vivo (no se repite el init) y el panel
+     * mostraba los números de antes de vender. El primer ON_RESUME lo cubre el init.
+     */
+    fun onScreenResumed() {
+        if (firstResume) {
+            firstResume = false
+            return
+        }
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             val state = _uiState.value

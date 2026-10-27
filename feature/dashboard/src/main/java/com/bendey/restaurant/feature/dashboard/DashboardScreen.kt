@@ -62,6 +62,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bendey.restaurant.core.designsystem.components.BendeyManagementCard
 import com.bendey.restaurant.core.designsystem.theme.BendeyColors
@@ -86,7 +88,6 @@ import com.bendey.restaurant.core.domain.dashboard.DashboardTopProduct
 import java.text.NumberFormat
 import java.time.LocalDate
 import com.bendey.restaurant.core.domain.time.TenantDateTime
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +112,8 @@ fun DashboardScreen(
         includeBottomBar = true,
         extraBottom = -BendeySpacing.sm,
     )
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
 
     PullToRefreshBox(
         isRefreshing = state.loading || state.catalogLoading,
@@ -1079,9 +1082,10 @@ private fun PaymentMethodsSection(
         if (methods.isEmpty()) {
             Text("Sin pagos en el período", color = BendeyColors.OnSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         } else {
-            val max = methods.maxOf { it.amount }.coerceAtLeast(1.0)
+            val grouped = groupPaymentSlicesByLabel(methods)
+            val max = grouped.maxOf { it.amount }.coerceAtLeast(1.0)
             Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
-                methods.forEach { slice ->
+                grouped.forEach { slice ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1114,14 +1118,6 @@ private fun PaymentMethodsSection(
     }
 }
 
-private fun orderTypeLabel(type: String): String = when (type.lowercase()) {
-    "mesa", "dine_in" -> "Mesa"
-    "takeaway", "llevar", "para_llevar" -> "Para llevar"
-    "delivery" -> "Delivery"
-    "pos", "quick_sale", "mostrador" -> "Mostrador"
-    else -> type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("es", "PE")) else it.toString() }
-}
-
 @Composable
 private fun OrderTypesSection(
     slices: List<com.bendey.restaurant.core.domain.dashboard.DashboardOrderTypeSlice>,
@@ -1142,7 +1138,7 @@ private fun OrderTypesSection(
                     ) {
                         Column(modifier = Modifier.width(88.dp)) {
                             Text(
-                                orderTypeLabel(slice.type),
+                                dashboardOrderTypeLabel(slice.type),
                                 fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1,
@@ -1221,7 +1217,7 @@ private fun RecentSessionsSection(
                             listOfNotNull(
                                 session.tableName.takeIf { it.isNotBlank() },
                                 session.customerName.takeIf { it.isNotBlank() },
-                                session.orderType,
+                                dashboardOrderTypeLabel(session.orderType),
                                 recentSessionStatusLabel(session.orderStatus),
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,

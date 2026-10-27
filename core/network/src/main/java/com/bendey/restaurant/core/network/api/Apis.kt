@@ -99,16 +99,20 @@ interface AuthApi {
 }
 
 interface RestaurantApi {
+    // fresh=1: el backend cachea el dashboard 60 s sin invalidarlo al vender; quien abre el panel
+    // o tira para actualizar quiere la foto al día (antes seguía en 0 tras cobrar).
     @GET("/api/restaurant/dashboard")
     suspend fun getDashboard(
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("fresh") fresh: Int? = 1,
     ): DashboardResponseDto
 
     @GET("/api/restaurant/catalog-analytics")
     suspend fun getCatalogAnalytics(
         @Query("from") from: String? = null,
         @Query("to") to: String? = null,
+        @Query("fresh") fresh: Int? = 1,
     ): CatalogAnalyticsResponseDto
 
     @GET("/api/restaurant/operational-status")
