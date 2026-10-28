@@ -72,7 +72,7 @@ enum class MiNegocioCard(
     val description: String
         get() = when (this) {
             VENTAS ->
-                "${LabelKey.DOC_RECEIPT.text}s, ${LabelKey.DOC_INVOICE.text.lowercase()}s, notas de crédito y devoluciones."
+                com.bendey.restaurant.core.domain.locale.CountryText.localize("Boletas, facturas, notas de crédito y devoluciones.")
             RC_REPARTO ->
                 "Deja constancia de cuánto recibió cada trabajador del ${LabelKey.SERVICE_CHARGE.text.lowercase()}."
             else -> peDescription

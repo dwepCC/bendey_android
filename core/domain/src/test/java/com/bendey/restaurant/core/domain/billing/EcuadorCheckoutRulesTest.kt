@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.domain.billing
 
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
+import com.bendey.restaurant.core.domain.sales.availableInCountry
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeFormResult
 import com.bendey.restaurant.core.domain.delivery.DeliveryFeeRules
 import com.bendey.restaurant.core.domain.delivery.validateDeliveryFeeForm
@@ -100,5 +101,26 @@ class EcuadorCheckoutRulesTest {
         assertTrue(validateDeliveryFeeForm(true, "2.50", "0") is DeliveryFeeFormResult.Ok)
         // «20» (exonerado en Perú) no es una tarifa del SRI.
         assertTrue(validateDeliveryFeeForm(true, "2.50", "20") is DeliveryFeeFormResult.Invalid)
+    }
+
+    @Test fun textosFijosDePeruSeAdaptanAlPais() {
+        val peruano = "Emite boletas y facturas con SUNAT. Tarifa entre S/ 0 y S/ 999.99 con IGV."
+        assertEquals(peruano, com.bendey.restaurant.core.domain.locale.CountryText.localize(peruano))
+        assertTrue(com.bendey.restaurant.core.domain.locale.CountryText.hasReceiptDoc())
+
+        TenantLocaleHolder.set(
+            ec.copy(labels = mapOf("tax_authority" to "SRI", "tax_name" to "IVA", "doc.invoice" to "Factura", "doc.receipt" to "Factura")),
+        )
+        assertFalse(com.bendey.restaurant.core.domain.locale.CountryText.hasReceiptDoc())
+        assertEquals(
+            "Emite facturas con SRI. Tarifa entre \$0 y \$999.99 con IVA.",
+            com.bendey.restaurant.core.domain.locale.CountryText.localize(peruano),
+        )
+        assertEquals(
+            "Notas de venta y facturas en una sola lista",
+            com.bendey.restaurant.core.domain.locale.CountryText.localize("Notas de venta, boletas y facturas en una sola lista"),
+        )
+        assertFalse(com.bendey.restaurant.core.domain.sales.VentasTab.BOLETAS.availableInCountry())
+        assertTrue(com.bendey.restaurant.core.domain.sales.VentasTab.FACTURAS.availableInCountry())
     }
 }

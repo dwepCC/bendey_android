@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.network.error
 
+import com.bendey.restaurant.core.domain.locale.CountryText
 /**
  * Catalogo central de errores accionables (R5, UX-REDESIGN §15.3-§15.4). Funcion pura: sin Android,
  * sin Retrofit; el [NetworkErrorMapper] traduce la excepcion a [Failure] y este objeto decide el texto.
@@ -466,7 +467,8 @@ object ErrorCatalog {
                     in SERVER_TEXT_CODES -> readableServerMessage(failure.serverMessage) ?: entry.message
                     else -> entry.message
                 }
-                return ErrorInfo(entry.title, message, entry.actions, support)
+                // El catálogo está escrito para Perú; en otro país se adaptan SUNAT, boleta, IGV y S/.
+                return ErrorInfo(CountryText.localize(entry.title), CountryText.localize(message), entry.actions, support)
             }
         }
 

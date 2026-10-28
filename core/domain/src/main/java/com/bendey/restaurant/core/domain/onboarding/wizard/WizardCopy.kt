@@ -1,5 +1,6 @@
 package com.bendey.restaurant.core.domain.onboarding.wizard
 
+import com.bendey.restaurant.core.domain.locale.CountryText
 import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
 
@@ -115,13 +116,13 @@ object WizardCopy {
     const val NEXT_QR_TITLE = "Que tus clientes pidan desde la mesa"
     const val NEXT_QR_ACTION = "Ir a Menú digital"
     val NEXT_SUNAT_TITLE: String
-        get() = "Emite ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s electrónicas"
+        get() = CountryText.localize("Emite boletas y facturas electrónicas")
     const val NEXT_SUNAT_ACTION = "Solicitar activación"
     val NEXT_SUNAT_CONFIRM_TITLE: String
         get() = "¿Solicitar la activación de ${LabelKey.TAX_AUTHORITY.text}?"
     val NEXT_SUNAT_CONFIRM_MESSAGE: String
         get() =
-            "Enviaremos tu solicitud para emitir ${LabelKey.DOC_RECEIPT.text.lowercase()}s y ${LabelKey.DOC_INVOICE.text.lowercase()}s electrónicas. Te avisamos cuando esté lista."
+            CountryText.localize("Enviaremos tu solicitud para emitir boletas y facturas electrónicas. Te avisamos cuando esté lista.")
     const val NEXT_SUNAT_DONE = "Recibimos tu solicitud. Te avisamos cuando esté lista."
     const val NEXT_TEAM_TITLE = "Crea el PIN de tu mozo y tu cocinero"
     const val NEXT_TEAM_ACTION = "Crear usuario"

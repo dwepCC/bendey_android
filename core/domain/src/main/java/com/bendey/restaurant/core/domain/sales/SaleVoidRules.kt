@@ -43,6 +43,11 @@ enum class VentasTab(val sunatCodes: String) {
         }
 }
 
+/** Filtros del país: sin boleta (Ecuador) no se ofrecen «Solo boletas» ni «Facturas y boletas». */
+fun VentasTab.availableInCountry(): Boolean =
+    com.bendey.restaurant.core.domain.locale.CountryText.hasReceiptDoc() ||
+        (this != VentasTab.BOLETAS && this != VentasTab.FACTURACION)
+
 /** Si el filtro puede traer comprobantes electrónicos, y con ellos el estado de SUNAT. */
 fun VentasTab.incluyeElectronicos(): Boolean = this != VentasTab.NOTAS
 

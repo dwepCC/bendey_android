@@ -77,6 +77,7 @@ import com.bendey.restaurant.core.domain.sales.SaleSummary
 import com.bendey.restaurant.core.domain.sales.VentasTab
 import com.bendey.restaurant.core.domain.sales.atencionConMesa
 import com.bendey.restaurant.core.domain.sales.incluyeElectronicos
+import com.bendey.restaurant.core.domain.sales.availableInCountry
 import com.bendey.restaurant.core.domain.sales.isCreditNoteDoc
 import com.bendey.restaurant.core.domain.sales.isNotaVenta
 import com.bendey.restaurant.core.domain.sales.TipoDeAtencion
@@ -431,7 +432,7 @@ private fun VentasTabRow(
         horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),
     ) {
         VentasTab.entries.filter { tab ->
-            tab != VentasTab.CREDITOS || sunatEnabled
+            (tab != VentasTab.CREDITOS || sunatEnabled) && tab.availableInCountry()
         }.forEach { tab ->
             BendeyFilterChip(
                 selected = tab == selected,

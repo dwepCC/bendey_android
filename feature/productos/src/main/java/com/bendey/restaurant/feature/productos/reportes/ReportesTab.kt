@@ -20,7 +20,11 @@ enum class SalesReportSubTab(private val peLabel: String) {
     /** Texto de la pestaña; «Boletas / Facturas» se arma con las etiquetas del país (I5). */
     val label: String
         get() = when (this) {
-            DOCUMENTOS -> "${LabelKey.DOC_RECEIPT.text}s / ${LabelKey.DOC_INVOICE.text}s"
+            DOCUMENTOS -> if (com.bendey.restaurant.core.domain.locale.CountryText.hasReceiptDoc()) {
+                "${LabelKey.DOC_RECEIPT.text}s / ${LabelKey.DOC_INVOICE.text}s"
+            } else {
+                "${LabelKey.DOC_INVOICE.text}s"
+            }
             else -> peLabel
         }
 }
