@@ -35,6 +35,16 @@ object Money {
     val symbol: String
         get() = TenantLocaleHolder.current.currencySymbol
 
+    /**
+     * Símbolo de la moneda de un comprobante impreso. Perú: «S/» para soles y «USD» para dólares, como
+     * siempre. Otro país: si la moneda es la del tenant (o no viene), su símbolo («$» en Ecuador).
+     */
+    fun documentSymbol(currency: String?, locale: TenantLocale = TenantLocaleHolder.current): String {
+        val c = currency?.trim()?.uppercase().orEmpty()
+        if (!locale.isPeru && (c.isEmpty() || c == locale.currency.uppercase())) return locale.currencySymbol
+        return if (c == "USD") "USD" else "S/"
+    }
+
     /** Montos de planes/suscripción de Bendey: siempre soles, sea cual sea el país del tenant. */
     fun pen(value: Double): String = format(value, TenantLocale.PE)
 

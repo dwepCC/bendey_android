@@ -817,11 +817,12 @@ private fun ProductFormFields(
             color = BendeyColors.OnSurfaceVariant,
         )
         BendeySimpleSelect(
-            options = IgvAffectation.entries.map { BendeyOption(it.code, it.label) },
-            selectedValue = form.igvAffectation.code,
+            // Perú: catálogo SUNAT 07; Ecuador: tarifas del IVA del locale (el código es el del SRI).
+            options = IgvAffectation.formOptions().map { (code, label) -> BendeyOption(code, label) },
+            selectedValue = form.igvAffectationCode,
             onSelect = { code ->
-                val igv = IgvAffectation.fromCode(code)
-                onFormChange { it.copy(igvAffectation = igv) }
+                val igv = IgvAffectation.formCode(code)
+                onFormChange { it.copy(igvAffectationCode = igv) }
             },
             label = "Afectación ${LabelKey.TAX_NAME.text}",
         )
@@ -872,7 +873,7 @@ private fun ProductFormFields(
             checked = form.menuChannelEnabled,
             onCheckedChange = { checked -> onFormChange { it.copy(menuChannelEnabled = checked) } },
         )
-        if (IgvAffectation.isGravado(form.igvAffectation.code)) {
+        if (IgvAffectation.isGravado(form.igvAffectationCode)) {
             BendeySwitchRow(
                 label = "Precio incluye ${LabelKey.TAX_NAME.text}",
                 checked = form.priceIncludesIgv,

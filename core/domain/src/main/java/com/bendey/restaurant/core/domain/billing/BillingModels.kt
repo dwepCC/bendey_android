@@ -108,6 +108,8 @@ data class BillSessionResult(
 data class VoidCreditNoteResult(
     val message: String?,
     val async: Boolean,
+    /** Ecuador a consumidor final: devolución interna, sin nota de crédito (la factura sigue vigente). */
+    val internalReturn: Boolean = false,
 )
 
 data class BillingActionResult(

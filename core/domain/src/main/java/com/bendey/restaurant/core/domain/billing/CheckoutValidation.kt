@@ -1,6 +1,8 @@
 package com.bendey.restaurant.core.domain.billing
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
+import com.bendey.restaurant.core.domain.locale.Money
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 val BILLING_NOT_ENABLED_MESSAGE: String
     get() =
@@ -78,14 +80,60 @@ fun isFacturaDocType(docType: String, sunatCode: String?): Boolean {
     return key.contains("factura")
 }
 
+/**
+ * La factura de este país exige un cliente con RUC (reglas SUNAT, solo Perú). En Ecuador toda venta es
+ * factura y admite cédula, pasaporte o consumidor final (con tope): el filtro de RUC no aplica.
+ */
+fun invoiceRequiresTaxId(docType: String, sunatCode: String?): Boolean =
+    TenantLocaleHolder.current.usesSunatBuyerRules && isFacturaDocType(docType, sunatCode)
+
 fun checkoutContactIsValid(
     contact: ContactBrief?,
     docType: String,
     sunatCode: String?,
 ): Boolean {
     if (contact == null) return false
-    if (isFacturaDocType(docType, sunatCode)) return isRucContact(contact)
+    if (invoiceRequiresTaxId(docType, sunatCode)) return isRucContact(contact)
     return true
+}
+
+/**
+ * Ecuador: el cliente es consumidor final (tipo «other», EC 07) o el genérico «Clientes Varios» del POS,
+ * que conserva el documento peruano «0» (el backend lo trata igual ante el SRI). Con Perú siempre false.
+ */
+fun isFinalConsumerContact(docType: String?): Boolean {
+    val locale = TenantLocaleHolder.current
+    if (locale.usesSunatBuyerRules) return false
+    val d = docType?.trim().orEmpty()
+    if (d == "0") return true
+    val code = locale.finalConsumerIdentity?.code ?: return false
+    return d == code
+}
+
+/**
+ * Validación del comprador en un país sin reglas SUNAT (Ecuador): solo el consumidor final tiene tope
+ * (`final_consumer_max`, 50 USD). Devuelve el mensaje de error o null si pasa. Con Perú SIEMPRE null:
+ * ahí validan [checkoutContactIsValid] y [exceedsSunatMaxMontoSinRuc]. Manda el backend igual.
+ */
+fun countryBuyerError(contact: ContactBrief?, total: Double): String? {
+    val locale = TenantLocaleHolder.current
+    val max = locale.finalConsumerMax ?: return null
+    if (contact == null || !isFinalConsumerContact(contact.docType)) return null
+    if (total <= max + 0.005) return null
+    val finalConsumer = locale.finalConsumerIdentity?.label?.lowercase() ?: "consumidor final"
+    return "A $finalConsumer el monto máximo es ${Money.format(max)}. " +
+        "Identifique al cliente con su ${LabelKey.NATIONAL_ID.text} o ${LabelKey.TAX_ID.text}. " +
+        "Total: ${Money.format(total)}"
+}
+
+/**
+ * Ecuador: la venta fue a consumidor final (sin documento, con el 9999999999999 del SRI o con el
+ * 99999999 del cliente genérico). Al anularla no hay nota de crédito sino devolución interna. Perú: false.
+ */
+fun isFinalConsumerSale(docNumber: String?): Boolean {
+    if (TenantLocaleHolder.current.usesSunatBuyerRules) return false
+    val n = docNumber?.trim().orEmpty()
+    return n.isEmpty() || n == "99999999" || (n.length == 13 && n.all { it == '9' })
 }
 
 /** Monto máximo SUNAT para boleta con cliente doc. tipo 0 (paridad backend). */
@@ -96,6 +144,8 @@ fun exceedsSunatMaxMontoSinRuc(
     contact: ContactBrief?,
     sunatCode: String?,
 ): Boolean {
+    // Regla SUNAT: solo Perú. En Ecuador el tope es el de consumidor final ([countryBuyerError]).
+    if (!TenantLocaleHolder.current.usesSunatBuyerRules) return false
     val code = sunatCode?.trim().orEmpty()
     if (code != "03" && code != "00") return false
     if (contact == null || contact.docType.trim() != "0") return false

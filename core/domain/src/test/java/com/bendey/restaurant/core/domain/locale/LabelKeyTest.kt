@@ -80,7 +80,8 @@ class LabelKeyTest {
     }
 
     @Test fun peruVariantsBuiltAtCallSitesStayIdentical() {
-        assertEquals(listOf("Sin RUC", "DNI", "RUC", "Carnet extranjería", "Pasaporte"), ContactDocType.entries.map { it.label })
+        assertEquals(listOf("Sin RUC", "DNI", "RUC", "Carnet extranjería", "Pasaporte"), ContactDocType.options().map { it.label })
+        assertEquals(ContactDocType.options(), ContactDocType.options(includeFinalConsumer = false))
         assertEquals("Boleta", docTypeShortLabel("BOLETA", "03"))
         assertEquals("Nota de venta", docTypeShortLabel("NOTA DE VENTA", "00"))
         assertEquals(

@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
 import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import org.json.JSONObject
 
@@ -12,7 +13,7 @@ data class ArqueoDenomination(
 
 enum class ArqueoKind { BILL, COIN }
 
-val ARQUEO_DENOMINATIONS: List<ArqueoDenomination> = listOf(
+private val ARQUEO_DENOMINATIONS_PEN: List<ArqueoDenomination> = listOf(
     ArqueoDenomination("200", "Billete 200", ArqueoKind.BILL),
     ArqueoDenomination("100", "Billete 100", ArqueoKind.BILL),
     ArqueoDenomination("50", "Billete 50", ArqueoKind.BILL),
@@ -27,6 +28,29 @@ val ARQUEO_DENOMINATIONS: List<ArqueoDenomination> = listOf(
     ArqueoDenomination("0.05", "Moneda 0.05", ArqueoKind.COIN),
     ArqueoDenomination("0.01", "Moneda 0.01", ArqueoKind.COIN),
 )
+
+// Dólar (Ecuador): billetes de 100 a 5 y monedas de 1 dólar a 1 centavo (incluye la de 25).
+private val ARQUEO_DENOMINATIONS_USD: List<ArqueoDenomination> = listOf(
+    ArqueoDenomination("100", "Billete 100", ArqueoKind.BILL),
+    ArqueoDenomination("50", "Billete 50", ArqueoKind.BILL),
+    ArqueoDenomination("20", "Billete 20", ArqueoKind.BILL),
+    ArqueoDenomination("10", "Billete 10", ArqueoKind.BILL),
+    ArqueoDenomination("5", "Billete 5", ArqueoKind.BILL),
+    ArqueoDenomination("1", "Moneda 1", ArqueoKind.COIN),
+    ArqueoDenomination("0.5", "Moneda 0.50", ArqueoKind.COIN),
+    ArqueoDenomination("0.25", "Moneda 0.25", ArqueoKind.COIN),
+    ArqueoDenomination("0.1", "Moneda 0.10", ArqueoKind.COIN),
+    ArqueoDenomination("0.05", "Moneda 0.05", ArqueoKind.COIN),
+    ArqueoDenomination("0.01", "Moneda 0.01", ArqueoKind.COIN),
+)
+
+/** Denominaciones del arqueo según la moneda del tenant: soles en Perú (igual que siempre), dólar en Ecuador. */
+val ARQUEO_DENOMINATIONS: List<ArqueoDenomination>
+    get() = if (TenantLocaleHolder.current.currency.equals("USD", ignoreCase = true)) {
+        ARQUEO_DENOMINATIONS_USD
+    } else {
+        ARQUEO_DENOMINATIONS_PEN
+    }
 
 fun emptyArqueo(): Map<String, Int> =
     ARQUEO_DENOMINATIONS.associate { it.value to 0 }

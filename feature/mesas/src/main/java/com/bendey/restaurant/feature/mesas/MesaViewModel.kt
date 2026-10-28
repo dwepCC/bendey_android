@@ -1358,6 +1358,14 @@ class MesaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Selecciona un cliente") }
             return
         }
+        // Ecuador: factura a consumidor final solo hasta el tope del país (50 USD). Perú: siempre null.
+        com.bendey.restaurant.core.domain.billing.countryBuyerError(
+            state.checkoutMeta?.contacts?.firstOrNull { it.id == contactId },
+            payable,
+        )?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
+            return
+        }
         if (paymentLines == null) {
             _uiState.update { it.copy(error = "Revisa los montos de pago") }
             return

@@ -160,7 +160,7 @@ private fun SalePrintData.toInput(logoRaster: ByteArray?, openCashDrawer: Boolea
             unitPrice = it.unitPrice,
             total = it.total,
             detailLines = ReceiptModifierLines.of(it.modifiersJson) { monto ->
-                "${if (currency.uppercase() == "USD") "USD" else "S/"} ${"%.2f".format(monto)}"
+                "${com.bendey.restaurant.core.domain.locale.Money.documentSymbol(currency)} ${"%.2f".format(monto)}"
             },
             discount = it.discount,
         )

@@ -115,6 +115,39 @@ class TenantLocaleJsonTest {
         assertEquals("Consumidor final", mezclado.label(LabelKey.FINAL_CONSUMER))
     }
 
+    @Test fun ecuadorReadsIdentityTypesFinalConsumerMaxAndTaxRates() {
+        val ec = TenantLocaleJson.fromCapabilities(
+            """
+            {"locale":{"country":"EC","currency":"USD","currency_symbol":"$","symbol_spacing":false,
+              "identity_types":[
+                {"key":"tax_id","code":"04","label":"RUC","min":13,"max":13,"numeric":true},
+                {"key":"national_id","code":"05","label":"Cédula","min":10,"max":10,"numeric":true},
+                {"key":"other","code":"07","label":"Consumidor final","min":13,"max":13,"numeric":true},
+                {"label":"sin código"}],
+              "doc_kinds":[{"kind":"invoice","code":"01","label":"Factura","final_consumer_max":50}],
+              "tax_rates":[{"code":"4","label":"IVA 15%","rate":15,"default":true},{"code":"0","label":"IVA 0%","rate":0},
+                {"code":"x","label":"roto","rate":"quince"}]}}
+            """.trimIndent(),
+        )!!
+        assertEquals(listOf("04", "05", "07"), ec.identityTypes.map { it.code })
+        assertEquals(13, ec.identityByKey("tax_id")?.maxLength)
+        assertEquals("07", ec.finalConsumerIdentity?.code)
+        assertEquals(50.0, ec.finalConsumerMax!!, 0.0)
+        assertEquals(listOf("4", "0"), ec.taxRates.map { it.code })
+        assertEquals("4", ec.defaultTaxCode)
+        assertEquals(15.0, ec.taxRateOf("4")!!, 0.0)
+        assertNull(ec.taxRateOf("10"))
+    }
+
+    @Test fun peruKeepsCountryCatalogsEmpty() {
+        val pe = TenantLocaleJson.fromCapabilities(capabilitiesPE)!!
+        assertEquals(emptyList<Any>(), pe.identityTypes)
+        assertEquals(emptyList<Any>(), pe.taxRates)
+        assertNull(pe.finalConsumerMax)
+        assertNull(pe.countryTaxRates)
+        assertNull(pe.defaultTaxCode)
+    }
+
     @Test fun peruIgnoresServerLabelsThatDiffer() {
         val pe = TenantLocaleJson.fromCapabilities("""{"locale":{"country":"PE","labels":{"tax_name":"IVA"}}}""")!!
         assertEquals("IGV", pe.label(LabelKey.TAX_NAME))

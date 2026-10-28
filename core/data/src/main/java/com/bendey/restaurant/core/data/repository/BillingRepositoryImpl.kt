@@ -100,6 +100,8 @@ class BillingRepositoryImpl @Inject constructor(
             body = BillSessionRequestDto(
                 seriesId = input.seriesId,
                 docType = input.docType,
+                // Moneda del país del tenant («PEN» en Perú, como antes; «USD» en Ecuador).
+                currency = com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.currency,
                 contactId = input.contactId,
                 cashSessionId = input.cashSessionId,
                 closeSession = input.closeSession,
@@ -138,6 +140,7 @@ class BillingRepositoryImpl @Inject constructor(
             body = BillQuickSaleRequestDto(
                 seriesId = input.seriesId,
                 docType = input.docType,
+                currency = com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.currency,
                 contactId = input.contactId,
                 cashSessionId = input.cashSessionId,
                 discountAmount = input.discountAmount?.takeIf { it > 0 },
@@ -177,6 +180,7 @@ class BillingRepositoryImpl @Inject constructor(
         VoidCreditNoteResult(
             message = response.message,
             async = response.async,
+            internalReturn = response.internalReturn,
         )
     }
 

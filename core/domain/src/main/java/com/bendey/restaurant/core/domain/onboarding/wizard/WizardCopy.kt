@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.domain.onboarding.wizard
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
+import com.bendey.restaurant.core.domain.locale.Money
 
 /**
  * UN solo módulo de textos del wizard (R4). Las claves y las cadenas son IDÉNTICAS a las de Tauri
@@ -74,15 +75,15 @@ object WizardCopy {
     const val W3_TITLE = "Tu primera venta"
     const val W3_REAL_NOTICE = "Esta venta es real. Si te equivocas, puedes anularla con tu PIN de autorización."
     const val W3_STEP_CASH = "Abre la caja"
-    const val W3_STEP_CASH_BODY =
-        "Abre con S/ 0 si vas a cobrar en efectivo. Así sabrás cuánto efectivo debería haber al cerrar."
+    val W3_STEP_CASH_BODY: String get() =
+        "Abre con ${Money.prefix()}0 si vas a cobrar en efectivo. Así sabrás cuánto efectivo debería haber al cerrar."
     const val W3_STEP_TABLE = "Toca una mesa"
     const val W3_STEP_COUNTER = "Vender en mostrador"
     const val W3_STEP_ADD = "Agrega un plato"
     const val W3_STEP_KITCHEN = "Envía a cocina"
     const val W3_STEP_KITCHEN_BODY = "Así lo ve tu cocina."
     val W3_STEP_CHARGE: String get() = "Cobra como ${LabelKey.DOC_SALES_NOTE.text.lowercase()}"
-    const val W3_OPEN_CASH = "Abrir con S/ 0"
+    val W3_OPEN_CASH: String get() = "Abrir con ${Money.prefix()}0"
     const val W3_NEXT = "Siguiente"
     const val W3_CLOSE = "Cerrar guía"
 

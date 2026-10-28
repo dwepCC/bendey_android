@@ -11,7 +11,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Antes de vincular no se conoce el país: RUC de Perú (11 dígitos) o de Ecuador (13).
 private const val RUC_PERU_LENGTH = 11
+private const val RUC_ECUADOR_LENGTH = 13
+
+/** RUC de Perú (11 dígitos) o de Ecuador (13). */
+internal fun rucLengthOk(ruc: String): Boolean = ruc.length == RUC_PERU_LENGTH || ruc.length == RUC_ECUADOR_LENGTH
 
 data class WelcomeUiState(
     val ruc: String = "",
@@ -19,7 +24,7 @@ data class WelcomeUiState(
     val error: String? = null,
 ) {
     val canSubmit: Boolean
-        get() = ruc.length == RUC_PERU_LENGTH && !linking
+        get() = rucLengthOk(ruc) && !linking
 }
 
 @HiltViewModel
@@ -33,7 +38,7 @@ class WelcomeViewModel @Inject constructor(
     fun onRucChange(value: String) {
         _uiState.update {
             it.copy(
-                ruc = value.filter { char -> char.isDigit() }.take(RUC_PERU_LENGTH),
+                ruc = value.filter { char -> char.isDigit() }.take(RUC_ECUADOR_LENGTH),
                 error = null,
             )
         }
@@ -41,6 +46,10 @@ class WelcomeViewModel @Inject constructor(
 
     fun submit(onSuccess: () -> Unit) {
         val ruc = _uiState.value.ruc
+        if (!rucLengthOk(ruc)) {
+            _uiState.update { it.copy(error = "Ingresa un RUC válido (11 dígitos en Perú, 13 en Ecuador)") }
+            return
+        }
         if (!_uiState.value.canSubmit) return
         viewModelScope.launch {
             _uiState.update { it.copy(linking = true, error = null) }

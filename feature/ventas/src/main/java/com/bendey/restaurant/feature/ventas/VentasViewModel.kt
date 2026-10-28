@@ -19,7 +19,8 @@ import com.bendey.restaurant.core.domain.billing.DocumentSeries
 import com.bendey.restaurant.core.domain.billing.checkoutContactIsValid
 import com.bendey.restaurant.core.domain.billing.exceedsSunatMaxMontoSinRuc
 import com.bendey.restaurant.core.domain.billing.filterRestaurantCheckoutSeries
-import com.bendey.restaurant.core.domain.billing.isFacturaDocType
+import com.bendey.restaurant.core.domain.billing.countryBuyerError
+import com.bendey.restaurant.core.domain.billing.invoiceRequiresTaxId
 import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
 import com.bendey.restaurant.core.data.repository.pickVariosContactId
 import com.bendey.restaurant.core.domain.billing.SalePrintData
@@ -600,7 +601,24 @@ class VentasViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(voidSubmitting = true, error = null) }
             when (val result = billingRepository.voidWithCreditNote(saleId, reason, pin)) {
-                is AppResult.Success -> {
+                is AppResult.Success -> if (result.data.internalReturn) {
+                    // Ecuador, consumidor final: no hay nota de crédito que mirar; el dinero y el stock
+                    // vuelven y la factura sigue vigente ante la autoridad. Se queda en la pestaña actual.
+                    _uiState.update {
+                        it.copy(
+                            voidSubmitting = false,
+                            voidDialogOpen = false,
+                            voidAction = null,
+                            voidReason = "",
+                            voidPin = "",
+                            selectedSaleId = null,
+                            detail = null,
+                            snackMessage = result.data.message?.takeIf { m -> m.isNotBlank() }
+                                ?: "Devolución interna registrada: la ${LabelKey.DOC_INVOICE.text.lowercase()} sigue vigente ante el ${LabelKey.TAX_AUTHORITY.text}.",
+                        )
+                    }
+                    refresh()
+                } else {
                     _uiState.update {
                         it.copy(
                             voidSubmitting = false,
@@ -931,7 +949,7 @@ class VentasViewModel @Inject constructor(
         if (selectedContact == null || !checkoutContactIsValid(selectedContact, emitDocType, state.emitDocKind)) {
             _uiState.update {
                 it.copy(
-                    error = if (isFacturaDocType(emitDocType, state.emitDocKind)) {
+                    error = if (invoiceRequiresTaxId(emitDocType, state.emitDocKind)) {
                         "La ${LabelKey.DOC_INVOICE.text.lowercase()} requiere un cliente con ${LabelKey.TAX_ID.text} (11 dígitos)"
                     } else {
                         "Selecciona un cliente"
@@ -942,6 +960,11 @@ class VentasViewModel @Inject constructor(
         }
         if (exceedsSunatMaxMontoSinRuc(detail.total, selectedContact, state.emitDocKind)) {
             _uiState.update { it.copy(error = sunatMaxMontoSinRucMessage(detail.total)) }
+            return
+        }
+        // Ecuador: factura a consumidor final solo hasta el tope del país (50 USD). Perú: siempre null.
+        countryBuyerError(selectedContact, detail.total)?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
             return
         }
         viewModelScope.launch {

@@ -231,6 +231,10 @@ private fun SaleDto.toDomain() = SaleSummary(
  *  componer el numero al emitir. */
 private const val DIGITOS_DEL_CORRELATIVO = 8
 
+/** Ecuador (SRI): la serie es establecimiento-punto de emision «001-001» y el secuencial lleva 9 digitos. */
+private const val DIGITOS_DEL_SECUENCIAL_SRI = 9
+private val SERIE_SRI = Regex("[0-9]{3}-[0-9]{3}")
+
 /**
  * El numero de un comprobante, compuesto SIEMPRE igual: serie y correlativo.
  *
@@ -246,7 +250,7 @@ private const val DIGITOS_DEL_CORRELATIVO = 8
  * backend reserva de forma transaccional al emitir.
  */
 private fun numeroDeComprobante(series: String, correlative: Int): String =
-    "$series-${correlative.toString().padStart(DIGITOS_DEL_CORRELATIVO, '0')}"
+    "$series-${correlative.toString().padStart(if (SERIE_SRI.matches(series)) DIGITOS_DEL_SECUENCIAL_SRI else DIGITOS_DEL_CORRELATIVO, '0')}"
 
 private fun SaleContactDto.toDomain() = SaleContactBrief(
     id = id,

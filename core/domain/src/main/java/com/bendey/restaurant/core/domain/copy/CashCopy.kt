@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.copy
 
+import com.bendey.restaurant.core.domain.locale.Money
+
 /**
  * Textos de Caja (R9). Mismas claves y mismo texto que `src/content/cashCopy.ts` de Tauri: no cambies
  * uno sin cambiar el otro. Vocabulario fijo: "Abrir caja", "Contar el dinero", "Efectivo esperado"
@@ -28,7 +30,8 @@ object CashCopy {
 
     const val OPEN_TITLE = "Abrir caja"
     const val OPEN_AMOUNT_LABEL = "Efectivo con el que abres"
-    const val OPEN_ZERO = "Abrir con S/ 0"
+    // Moneda del país del tenant: en Perú «Abrir con S/ 0», en Ecuador «Abrir con $0».
+    val OPEN_ZERO: String get() = "Abrir con ${Money.prefix()}0"
     const val OPEN_SUBMIT = "Abrir caja"
     const val OPEN_SUCCESS = "Caja abierta"
 
@@ -36,7 +39,7 @@ object CashCopy {
     const val CLOSE_MODE_MANUAL = "Sin arqueo — digitar efectivo contado"
     const val CLOSE_EXPECTED = "Efectivo esperado"
     const val CLOSE_EMPTY_ERROR = "Ingresa el conteo de efectivo antes de cerrar."
-    const val CLOSE_EMPTY_ERROR_HINT = "Si no hay efectivo en la caja, digita S/ 0."
+    val CLOSE_EMPTY_ERROR_HINT: String get() = "Si no hay efectivo en la caja, digita ${Money.prefix()}0."
     const val CLOSE_ALREADY_CLOSED = "Esta caja ya estaba cerrada. Actualizamos la pantalla."
     const val CLOSE_SUCCESS = "Caja cerrada"
     const val CLOSE_NOT_COUNTED = "Cerrada sin contar el efectivo"

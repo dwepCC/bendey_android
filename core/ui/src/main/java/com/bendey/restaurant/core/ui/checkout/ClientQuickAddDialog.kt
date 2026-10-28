@@ -48,7 +48,7 @@ fun ClientQuickAddDialog(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             BendeySimpleSelect(
-                options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },
+                options = ContactDocType.options(includeFinalConsumer = false).map { BendeyOption(it.name, it.label) },
                 selectedValue = form.docType.name,
                 onSelect = { value ->
                     val docType = ContactDocType.entries.firstOrNull { it.name == value } ?: ContactDocType.RUC

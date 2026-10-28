@@ -2,6 +2,7 @@ package com.bendey.restaurant.feature.ventas
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -65,7 +66,9 @@ import com.bendey.restaurant.core.domain.billing.PaymentMethodOption
 import com.bendey.restaurant.core.domain.billing.exceedsSunatMaxMontoSinRuc
 import com.bendey.restaurant.core.domain.billing.sunatMaxMontoSinRucMessage
 import com.bendey.restaurant.core.ui.components.BendeySearchableSelect
-import com.bendey.restaurant.core.domain.billing.isFacturaDocType
+import com.bendey.restaurant.core.domain.billing.countryBuyerError
+import com.bendey.restaurant.core.domain.billing.invoiceRequiresTaxId
+import com.bendey.restaurant.core.domain.billing.isFinalConsumerSale
 import com.bendey.restaurant.core.ui.components.BendeySelectOption
 import com.bendey.restaurant.core.domain.sales.BILLING_FILTER_STATUSES
 import com.bendey.restaurant.core.domain.sales.SaleDetail
@@ -310,6 +313,7 @@ fun VentasScreen(
         VoidReasonDialog(
             action = state.voidAction,
             refundAmount = state.detail?.refundableAmount ?: 0.0,
+            internalReturn = state.voidAction == VoidAction.CREDIT_NOTE && isFinalConsumerSale(state.detail?.contact?.docNumber),
             reason = state.voidReason,
             pin = state.voidPin,
             loading = state.voidSubmitting,
@@ -332,7 +336,8 @@ fun VentasScreen(
         ) {
             sunatMaxMontoSinRucMessage(state.detail?.total ?: 0.0)
         } else {
-            null
+            // Ecuador: tope de la factura a consumidor final (en Perú siempre null).
+            countryBuyerError(selectedEmitContact, state.detail?.total ?: 0.0)
         }
         EmitElectronicDialog(
             docKind = state.emitDocKind,
@@ -929,7 +934,11 @@ private fun SaleDetailContent(
                     )
                     if (detail.canVoidWithCreditNote()) {
                         OutlinedButton(onClick = onVoidCreditNote, modifier = Modifier.fillMaxWidth()) {
-                            Text("Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}", color = BendeyColors.Error)
+                            // Ecuador a consumidor final: no hay nota de crédito, se registra una devolución interna.
+                            Text(
+                                if (isFinalConsumerSale(detail.contact?.docNumber)) "Anular (devolución interna)" else "Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}",
+                                color = BendeyColors.Error,
+                            )
                         }
                     }
                 }
@@ -1015,7 +1024,8 @@ private fun EmitElectronicDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val requiresRuc = isFacturaDocType(if (docKind == "01") "FACTURA" else "BOLETA", docKind)
+    // Solo Perú: la factura exige RUC. En Ecuador admite cédula y consumidor final (con tope).
+    val requiresRuc = invoiceRequiresTaxId(if (docKind == "01") "FACTURA" else "BOLETA", docKind)
     val clientOptions = if (requiresRuc) {
         contacts.filter { it.docType.trim() == "6" || it.docType.equals("ruc", ignoreCase = true) }
     } else {
@@ -1065,7 +1075,12 @@ private fun EmitElectronicDialog(
                 // BendeySimpleSelect, así que se migró (BendeySelect ahora soporta `enabled` para
                 // no perder el bloqueo mientras se está emitiendo).
                 BendeySimpleSelect(
-                    options = listOf(BendeyOption("03", "${LabelKey.DOC_RECEIPT.text} (03)"), BendeyOption("01", "${LabelKey.DOC_INVOICE.text} (01)")),
+                    // Ecuador no tiene boleta: toda venta electrónica es factura (01).
+                    options = if (TenantLocaleHolder.current.usesSunatBuyerRules) {
+                        listOf(BendeyOption("03", "${LabelKey.DOC_RECEIPT.text} (03)"), BendeyOption("01", "${LabelKey.DOC_INVOICE.text} (01)"))
+                    } else {
+                        listOf(BendeyOption("01", "${LabelKey.DOC_INVOICE.text} (01)"))
+                    },
                     selectedValue = docKind,
                     onSelect = onDocKindChange,
                     label = "Tipo",
@@ -1128,7 +1143,7 @@ private fun EmitClientQuickAddDialog(
         onDismiss = onDismiss,
     ) {
         BendeySimpleSelect(
-            options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },
+            options = ContactDocType.options(includeFinalConsumer = false).map { BendeyOption(it.name, it.label) },
             selectedValue = form.docType.name,
             onSelect = { value ->
                 val docType = ContactDocType.entries.firstOrNull { it.name == value } ?: ContactDocType.RUC
@@ -1180,16 +1195,22 @@ private fun VoidReasonDialog(
     onPinChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    /** Ecuador, factura a consumidor final: no hay nota de crédito, se registra una devolución interna. */
+    internalReturn: Boolean = false,
 ) {
     val title = when (action) {
-        VoidAction.CREDIT_NOTE -> "Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
+        VoidAction.CREDIT_NOTE -> if (internalReturn) "Devolución interna" else "Anular con ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
         VoidAction.CANCEL_NOTA -> "Anular ${LabelKey.DOC_SALES_NOTE.text.lowercase()}"
         VoidAction.REFUND -> "Registrar devolución"
         VoidAction.REOPEN -> ReopenRules.ACTION_LABEL
         null -> "Anular"
     }
     val confirmLabel = when (action) {
-        VoidAction.CREDIT_NOTE -> if (loading) "Procesando…" else "Generar ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
+        VoidAction.CREDIT_NOTE -> when {
+            loading -> "Procesando…"
+            internalReturn -> "Registrar devolución"
+            else -> "Generar ${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}"
+        }
         VoidAction.CANCEL_NOTA -> if (loading) "Anulando…" else "Confirmar anulación"
         // El boton nombra lo que hace: aca sale dinero, no es un "Aceptar" cualquiera.
         VoidAction.REFUND -> if (loading) "Procesando devolución…" else "Confirmar devolución"
@@ -1221,6 +1242,16 @@ private fun VoidReasonDialog(
                             "registra una salida real de dinero y afecta la caja o la cuenta correspondiente.",
                         style = MaterialTheme.typography.bodySmall,
                         color = BendeyColors.OnSurfaceVariant,
+                    )
+                }
+                if (internalReturn) {
+                    Text(
+                        "La ${LabelKey.DOC_INVOICE.text.lowercase()} es a consumidor final: no admite " +
+                            "${LabelKey.DOC_CREDIT_NOTE.text.lowercase()}. Se registra una devolución interna: el stock " +
+                            "vuelve y el dinero se registra como devuelto al cliente, pero la " +
+                            "${LabelKey.DOC_INVOICE.text.lowercase()} sigue vigente ante el ${LabelKey.TAX_AUTHORITY.text}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BendeyColors.WarningText,
                     )
                 }
                 Text(

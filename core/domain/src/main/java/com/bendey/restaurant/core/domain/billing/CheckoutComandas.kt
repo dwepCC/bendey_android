@@ -79,7 +79,7 @@ fun comandaPayableTotal(
     unitPrice = comanda.unitPrice,
     quantity = quantity,
     discount = 0.0,
-    igvAffectationType = comanda.igvAffectationType ?: "10",
+    igvAffectationType = comanda.igvAffectationType ?: defaultAffectation(null),
     priceIncludesIgv = comanda.priceIncludesIgv ?: true,
     taxRatePercent = taxRatePercent,
     taxConfig = taxConfig,

@@ -46,7 +46,8 @@ data class CreatePurchaseInput(
     val series: String = "",
     val number: String,
     val issueDate: String,
-    val currency: String = "PEN",
+    // Moneda del país del tenant («PEN» en Perú, «USD» en Ecuador).
+    val currency: String = com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.currency,
     val paymentMethod: String,
     val notes: String? = null,
     val items: List<PurchaseItem>,

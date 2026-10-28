@@ -1609,13 +1609,18 @@ class PosViewModel @Inject constructor(
         if (contactId == null || !checkoutContactIsValid(selectedContact, state.checkoutDocType, sunatCode)) {
             _uiState.update {
                 it.copy(
-                    error = if (com.bendey.restaurant.core.domain.billing.isFacturaDocType(state.checkoutDocType, sunatCode)) {
+                    error = if (com.bendey.restaurant.core.domain.billing.invoiceRequiresTaxId(state.checkoutDocType, sunatCode)) {
                         "La ${LabelKey.DOC_INVOICE.text.lowercase()} requiere un cliente con ${LabelKey.TAX_ID.text}"
                     } else {
                         "Selecciona un cliente"
                     },
                 )
             }
+            return
+        }
+        // Ecuador: factura a consumidor final solo hasta el tope del país (50 USD). Perú: siempre null.
+        com.bendey.restaurant.core.domain.billing.countryBuyerError(selectedContact, payable)?.let { msg ->
+            _uiState.update { it.copy(error = msg) }
             return
         }
         if (paymentLines == null) {

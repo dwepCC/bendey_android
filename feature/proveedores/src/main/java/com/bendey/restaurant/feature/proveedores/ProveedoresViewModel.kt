@@ -35,7 +35,7 @@ data class ProveedoresUiState(
     val tenantRuc: String = "",
     val formOpen: Boolean = false,
     val editingContactId: Int? = null,
-    val form: ContactFormInput = ContactFormInput(docType = ContactDocType.RUC),
+    val form: ContactFormInput = ContactFormInput(docType = ContactDocType.defaultForSupplier()),
     val deleteContactId: Int? = null,
     val error: String? = null,
     val snackMessage: String? = null,
@@ -110,7 +110,7 @@ class ProveedoresViewModel @Inject constructor(
             it.copy(
                 formOpen = true,
                 editingContactId = null,
-                form = ContactFormInput(docType = ContactDocType.RUC),
+                form = ContactFormInput(docType = ContactDocType.defaultForSupplier()),
                 error = null,
             )
         }

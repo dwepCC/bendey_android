@@ -249,6 +249,11 @@ data class VoidCreditNoteResponseDto(
     val success: Boolean = true,
     val message: String? = null,
     val async: Boolean = false,
+    /**
+     * Ecuador, factura a consumidor final: no hay nota de crédito; el backend registra una devolución
+     * interna (dinero y stock vuelven) y la factura sigue vigente ante el SRI. Backends viejos no lo mandan.
+     */
+    @SerialName("internal_return") val internalReturn: Boolean = false,
 )
 
 @Serializable

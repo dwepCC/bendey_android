@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.domain.delivery
 
 import com.bendey.restaurant.core.domain.kitchen.kdsElapsedLabel
+import com.bendey.restaurant.core.domain.locale.Money
 import com.bendey.restaurant.core.domain.kitchen.kdsElapsedMinutes
 import com.bendey.restaurant.core.domain.kitchen.kdsParseInstant
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
@@ -288,7 +289,9 @@ object DeliveryCopy {
     private fun numberText(v: Double): String = if (v == Math.floor(v)) v.toLong().toString() else v.toString()
 
     fun text(key: String, n: Int? = null): String {
-        val base = entries[key] ?: return ""
+        // Los textos son los de Tauri (con «S/»); la moneda del rótulo «(S/)» sale del país del tenant
+        // (en Perú queda igual).
+        val base = entries[key]?.replace("(S/)", "(${Money.symbol})") ?: return ""
         return if (n != null) base.replace("{n}", n.toString()) else base
     }
 

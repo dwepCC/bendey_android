@@ -71,8 +71,8 @@ object DeliveryZoneRules {
     fun validate(code: String, name: String, feeText: String, minOrderText: String, etaText: String): String? = when {
         !isValidCode(code) -> "Elige el ${LabelKey.GEO_DISTRICT.text.lowercase()} (región, ${LabelKey.GEO_PROVINCE.text.lowercase()} y ${LabelKey.GEO_DISTRICT.text.lowercase()})."
         name.trim().isEmpty() -> "Escribe el nombre de la zona."
-        parseAmount(feeText) == null -> "La tarifa debe estar entre S/ 0 y S/ 999.99, con hasta 2 decimales."
-        parseAmount(minOrderText) == null -> "El pedido mínimo debe estar entre S/ 0 y S/ 999.99, con hasta 2 decimales."
+        parseAmount(feeText) == null -> "La tarifa debe estar entre ${Money.prefix()}0 y ${Money.prefix()}999.99, con hasta 2 decimales."
+        parseAmount(minOrderText) == null -> "El pedido mínimo debe estar entre ${Money.prefix()}0 y ${Money.prefix()}999.99, con hasta 2 decimales."
         parseEta(etaText) == null -> "Los minutos deben ser un número entero entre 0 y $MAX_ETA."
         else -> null
     }
@@ -95,8 +95,8 @@ object DeliveryZoneCopy {
     val HELP: String
         get() = "La tarifa de la zona reemplaza a la tarifa única. Si no hay zona para el ${LabelKey.GEO_DISTRICT.text.lowercase()} del cliente se usa la tarifa única (salvo que repartas solo en tus zonas)."
     const val EMPTY = "Aún no tienes zonas de reparto."
-    const val FEE_LABEL = "Tarifa de envío (S/; 0 = envío gratis)"
-    const val MIN_LABEL = "Pedido mínimo (S/; 0 = usa el general)"
+    val FEE_LABEL: String get() = "Tarifa de envío (${Money.symbol}; 0 = envío gratis)"
+    val MIN_LABEL: String get() = "Pedido mínimo (${Money.symbol}; 0 = usa el general)"
     const val ETA_LABEL = "Minutos prometidos (0 = usa el general)"
     const val READ_ONLY = "Solo el administrador puede cambiar las zonas de reparto."
 }

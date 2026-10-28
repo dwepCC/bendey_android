@@ -42,7 +42,7 @@ object TipRules {
         val v = parse(text) ?: return "Escribe un monto válido."
         return when {
             v < 0.0 -> "La propina no puede ser negativa."
-            v > MAX_AMOUNT -> "La propina no puede pasar de S/ 5000."
+            v > MAX_AMOUNT -> "La propina no puede pasar de ${Money.prefix()}5000."
             else -> null
         }
     }

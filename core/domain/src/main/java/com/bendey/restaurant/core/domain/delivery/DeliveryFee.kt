@@ -90,7 +90,7 @@ object DeliveryFeeRules {
 object DeliveryFeeCopy {
     const val SECTION_TITLE = "Tarifa de delivery"
     const val SWITCH_LABEL = "Cobrar tarifa de delivery"
-    const val AMOUNT_LABEL = "Tarifa de delivery (S/)"
+    val AMOUNT_LABEL: String get() = "Tarifa de delivery (${Money.symbol})"
     const val FISCAL_TITLE = "Opciones fiscales"
     val AFFECTATION_LABEL: String get() = "Afectación al ${LabelKey.TAX_NAME.text}"
     const val FISCAL_HINT = "Consulta con tu contador antes de activar la tarifa: se emite como una línea del comprobante."
@@ -102,7 +102,7 @@ object DeliveryFeeCopy {
     const val SAVED = "Tarifa de delivery guardada."
     const val OFF = "Apagada"
     const val AMOUNT_REQUIRED_TO_ENABLE = "Escribe una tarifa mayor que 0 para encender la opción."
-    const val INVALID_AMOUNT = "Revisa la tarifa: usa un monto entre S/ 0 y S/ 999.99."
+    val INVALID_AMOUNT: String get() = "Revisa la tarifa: usa un monto entre ${Money.prefix()}0 y ${Money.prefix()}999.99."
 }
 
 fun deliveryMoney(value: Double): String = Money.format(value)

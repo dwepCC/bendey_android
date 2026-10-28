@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.asStateFlow
  * sesión, servidor viejo, sin red) vale [PE], que reproduce exactamente lo que la app mostraba
  * antes del paquete de país («Perú idéntico»).
  *
- * Solo se modela lo que la app usa hoy: moneda, zona horaria y las etiquetas de [LabelKey] (I5). Los catálogos
- * (`identity_types`, `doc_kinds`, `geo_levels`) se ignoran hasta que haga falta.
+ * Solo se modela lo que la app usa hoy: moneda, zona horaria, las etiquetas de [LabelKey] (I5) y, para
+ * los países que no siguen las reglas de SUNAT (Ecuador), los tipos de identificación, el tope de la
+ * factura a consumidor final (`doc_kinds[invoice].final_consumer_max`) y las tarifas del impuesto por
+ * producto (`tax_rates`). En Perú esos tres quedan vacíos y la app usa sus catálogos SUNAT de siempre.
+ * `geo_levels` se ignora.
  */
 data class TenantLocale(
     val country: String = "PE",
@@ -27,7 +30,55 @@ data class TenantLocale(
     val taxName: String = "IGV",
     val taxAuthority: String = "SUNAT",
     val labels: Map<String, String> = PE_LABELS,
+    /** Tipos de identificación del país (`identity_types`). Vacío = Perú (catálogo SUNAT 06 fijo de la app). */
+    val identityTypes: List<IdentityTypeOption> = emptyList(),
+    /** Tope de una factura a consumidor final sin identificar (EC: 50 USD); 0 = el país no lo fija. */
+    val invoiceFinalConsumerMax: Double = 0.0,
+    /** Tarifas del impuesto por producto (`tax_rates`, solo Ecuador). Vacío = catálogo SUNAT 07. */
+    val taxRates: List<TaxRateOption> = emptyList(),
 ) {
+    /**
+     * El país usa las reglas de comprador de SUNAT: factura solo con RUC de 11 dígitos, boleta con
+     * cliente sin documento hasta S/ 700. Solo Perú.
+     */
+    val usesSunatBuyerRules: Boolean
+        get() = isPeru
+
+    /** Tarifas del impuesto por producto, o null si el país usa el catálogo SUNAT 07 (Perú). */
+    val countryTaxRates: List<TaxRateOption>?
+        get() = taxRates.takeIf { !isPeru && it.isNotEmpty() }
+
+    /**
+     * Tarifa (%) del código de la línea en un país de tarifas; null en Perú o si el código no está en
+     * el catálogo. OJO Ecuador: el código es el codigoPorcentaje del SRI («4» = 15 %); «10» es IVA 13 %.
+     */
+    fun taxRateOf(code: String?): Double? {
+        val c = code?.trim().orEmpty()
+        return countryTaxRates?.firstOrNull { it.code == c }?.rate
+    }
+
+    /** Código con el que nace una línea o producto nuevo en un país de tarifas; null en Perú. */
+    val defaultTaxCode: String?
+        get() = countryTaxRates?.let { rates -> (rates.firstOrNull { it.isDefault } ?: rates.first()).code }
+
+    /** Tope de la factura a consumidor final, o null si el país no lo fija (Perú). */
+    val finalConsumerMax: Double?
+        get() = invoiceFinalConsumerMax.takeIf { !usesSunatBuyerRules && it > 0.0 }
+
+    /** Tipo de identificación de consumidor final del país (clave «other», EC 07), o null. */
+    val finalConsumerIdentity: IdentityTypeOption?
+        get() = identityTypes.firstOrNull { it.key == "other" }
+
+    /** Tipo de identificación por clave (`tax_id`, `national_id`…), o null si el país no lo define. */
+    fun identityByKey(key: String): IdentityTypeOption? = identityTypes.firstOrNull { it.key == key }
+
+    /** Tipo de identificación por código (`04`, `05`…), o null. */
+    fun identityByCode(code: String?): IdentityTypeOption? {
+        val c = code?.trim().orEmpty()
+        if (c.isEmpty()) return null
+        return identityTypes.firstOrNull { it.code == c }
+    }
+
     /** Zona del tenant; si el servidor manda una zona que el dispositivo no conoce, Lima. */
     val zoneId: ZoneId
         get() = runCatching { ZoneId.of(timeZone) }.getOrDefault(LIMA)
@@ -73,6 +124,27 @@ data class TenantLocale(
         val PE = TenantLocale()
     }
 }
+
+/** Un tipo de identificación del país (`identity_types` del locale). */
+data class IdentityTypeOption(
+    /** Código del país: EC «04» RUC, «05» Cédula, «06» Pasaporte, «07» Consumidor final, «08» Exterior. */
+    val code: String,
+    /** Clave estable: `tax_id`, `national_id`, `passport`, `foreign_id`, `other` (consumidor final). */
+    val key: String,
+    val label: String,
+    val minLength: Int = 0,
+    val maxLength: Int = 0,
+    val numeric: Boolean = false,
+)
+
+/** Una tarifa del impuesto elegible por producto (`tax_rates` del locale, solo Ecuador). */
+data class TaxRateOption(
+    /** codigoPorcentaje del SRI: «4» = 15 %, «5» = 5 %, «0» = 0 %, «6» no objeto, «7» exento. */
+    val code: String,
+    val label: String,
+    val rate: Double,
+    val isDefault: Boolean = false,
+)
 
 /**
  * Locale vigente del tenant de la sesión. Lo alimenta `LocaleRepository` (core/data): al arrancar

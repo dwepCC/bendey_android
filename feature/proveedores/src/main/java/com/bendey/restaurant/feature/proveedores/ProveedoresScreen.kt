@@ -305,7 +305,7 @@ private fun ProveedorFormDialog(
         validationError = error,
     ) {
         BendeySimpleSelect(
-            options = ContactDocType.entries.map { BendeyOption(it.name, it.label) },
+            options = ContactDocType.options().map { BendeyOption(it.name, it.label) },
             selectedValue = form.docType.name,
             onSelect = { value ->
                 val docType = ContactDocType.entries.firstOrNull { it.name == value } ?: ContactDocType.RUC

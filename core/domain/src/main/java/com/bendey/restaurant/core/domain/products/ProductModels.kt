@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.domain.products
 
 import com.bendey.restaurant.core.domain.catalog.PreparationAreaItem
 import com.bendey.restaurant.core.domain.locale.LabelKey
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 enum class ProductosTab(val label: String) {
     PRODUCTOS("Productos"),
@@ -68,7 +69,34 @@ enum class IgvAffectation(val code: String) {
         fun fromCode(code: String?): IgvAffectation =
             entries.firstOrNull { it.code == code?.trim() } ?: GRAVADO
 
+        /**
+         * Opciones (código, texto) del selector de impuesto de un producto, según el país: en Perú el
+         * catálogo SUNAT 07 de siempre ([entries]); en Ecuador las tarifas del IVA del locale
+         * (`tax_rates`: «4» IVA 15 %, «5» 5 %, «0» 0 %, «6» no objeto, «7» exento).
+         */
+        fun formOptions(): List<Pair<String, String>> =
+            TenantLocaleHolder.current.countryTaxRates?.map { it.code to it.label }
+                ?: entries.map { it.code to it.label }
+
+        /**
+         * Código que muestra el formulario para lo que trae el producto. Perú: igual que antes
+         * ([fromCode], un código fuera de 10/20/30/40 se ve como «10»). Ecuador: el código si está en el
+         * catálogo del país; si no, la tarifa por defecto («4»).
+         */
+        fun formCode(code: String?): String {
+            val locale = TenantLocaleHolder.current
+            val rates = locale.countryTaxRates ?: return fromCode(code).code
+            val c = code?.trim().orEmpty()
+            return if (rates.any { it.code == c }) c else locale.defaultTaxCode ?: c
+        }
+
+        /** Código con que nace un producto nuevo: «10» en Perú, la tarifa por defecto del país en Ecuador. */
+        fun defaultFormCode(): String = TenantLocaleHolder.current.defaultTaxCode ?: GRAVADO.code
+
         fun isGravado(code: String): Boolean {
+            // Ecuador: grava el código con tarifa mayor que 0 («0», «6» y «7» no llevan IVA).
+            val locale = TenantLocaleHolder.current
+            if (locale.countryTaxRates != null) return (locale.taxRateOf(code) ?: 0.0) > 0.0
             val c = code.trim()
             return c !in setOf("20", "21", "30", "31", "32", "33", "34", "35", "36", "40")
         }
@@ -110,7 +138,8 @@ data class ProductFormInput(
     val unit: String = "NIU",
     val categoryId: Int? = null,
     val preparationAreaId: Int? = null,
-    val igvAffectation: IgvAffectation = IgvAffectation.GRAVADO,
+    /** Código de impuesto de la línea: catálogo SUNAT 07 en Perú («10»), codigoPorcentaje del SRI en Ecuador («4»). */
+    val igvAffectationCode: String = IgvAffectation.defaultFormCode(),
     val priceIncludesIgv: Boolean = true,
     val availableForSale: Boolean = true,
     val menuChannelEnabled: Boolean = true,
@@ -207,7 +236,7 @@ fun ProductItem.toFormInput(
     unit = unit,
     categoryId = categoryId,
     preparationAreaId = preparationAreaId ?: preparationArea?.id,
-    igvAffectation = IgvAffectation.fromCode(igvAffectationType),
+    igvAffectationCode = IgvAffectation.formCode(igvAffectationType),
     priceIncludesIgv = priceIncludesIgv,
     availableForSale = availableForSale,
     productType = productType,

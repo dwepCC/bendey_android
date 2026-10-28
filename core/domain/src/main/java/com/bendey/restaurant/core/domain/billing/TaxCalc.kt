@@ -1,5 +1,7 @@
 package com.bendey.restaurant.core.domain.billing
 
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
+
 /** Fallback alineado con backend `pkg/tax.DefaultConfig()` cuando el tenant no tiene tasa. */
 const val DEFAULT_TAX_RATE_PERCENT = 18.0
 
@@ -21,6 +23,8 @@ data class TaxConfig(
 fun defaultAffectation(declared: String?, taxConfig: TaxConfig = TaxConfig()): String {
     val code = declared?.trim().orEmpty()
     if (code.isNotEmpty()) return code
+    // Ecuador: la tarifa general del catálogo del país («4» = IVA 15 %), no el «10» de SUNAT.
+    TenantLocaleHolder.current.defaultTaxCode?.let { return it }
     return if (taxConfig.hasAmazonBenefit) "20" else "10"
 }
 
@@ -38,6 +42,13 @@ fun effectiveRate(
     taxRatePercent: Double,
     taxConfig: TaxConfig = TaxConfig(),
 ): Double {
+    // Ecuador: cada código trae su tarifa (espejo de ec.taxes.Rate). Uno fuera del catálogo (o vacío)
+    // cae en la tasa general del emisor, como un producto peruano gravado.
+    val locale = TenantLocaleHolder.current
+    if (locale.countryTaxRates != null) {
+        val c = igvAffectationType.trim().ifEmpty { locale.defaultTaxCode.orEmpty() }
+        return locale.taxRateOf(c) ?: taxRatePercent
+    }
     val code = igvAffectationType.trim().ifEmpty { "10" }
     return when (code) {
         "20", "30", "40" -> 0.0

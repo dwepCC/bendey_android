@@ -98,7 +98,8 @@ data class BankAccountForm(
     val name: String = "",
     val bankName: String = "",
     val accountNumber: String = "",
-    val currency: String = "PEN",
+    // Moneda del país del tenant («PEN» en Perú, «USD» en Ecuador).
+    val currency: String = com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.currency,
     val type: String = "bank",
     val paymentMethod: String = "",
     val initialBalance: String = "0",

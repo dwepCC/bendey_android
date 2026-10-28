@@ -434,7 +434,7 @@ fun com.bendey.restaurant.core.domain.restaurant.PosCartLine.toOrderItemInput():
             unitPrice = effectiveUnitPrice,
             notes = notes.takeIf { it.isNotBlank() },
             modifiersJson = "",
-            igvAffectationType = product.igvAffectationType ?: "10",
+            igvAffectationType = product.igvAffectationType ?: com.bendey.restaurant.core.domain.billing.defaultAffectation(null),
             priceIncludesIgv = product.priceIncludesIgv ?: true,
         )
         else -> com.bendey.restaurant.core.domain.restaurant.OrderItemInput(
@@ -457,7 +457,10 @@ fun manualCartLine(input: ManualProductInput): com.bendey.restaurant.core.domain
     val qty = input.quantity.toIntOrNull()?.coerceAtLeast(1) ?: 1
     val price = input.unitPrice.replace(",", ".").trim().toDoubleOrNull() ?: 0.0
     val lineId = "manual-${System.currentTimeMillis()}"
-    val igvLabel = when (input.igvAffectationType.trim()) {
+    // Ecuador: el texto de la tarifa del locale («IVA 15%»); el código es el del SRI, no el de SUNAT.
+    val countryRateLabel = com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.countryTaxRates
+        ?.firstOrNull { it.code == input.igvAffectationType.trim() }?.label
+    val igvLabel = countryRateLabel ?: when (input.igvAffectationType.trim()) {
         "10" -> "${LabelKey.TAX_TAXED.text} ${LabelKey.TAX_NAME.text}"
         "20" -> LabelKey.TAX_EXEMPT.text
         "30" -> LabelKey.TAX_UNAFFECTED.text

@@ -1,6 +1,7 @@
 package com.bendey.restaurant.platform.printing.escpos
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
+import com.bendey.restaurant.core.domain.locale.Money
 
 data class DocumentPrintLine(
     val description: String,
@@ -187,8 +188,6 @@ object DocumentLayoutBuilder {
 
     private fun formatQty(qty: Double): String = qty.toString().replace(Regex("\\.0+$"), "")
 
-    private fun DocumentPrintInput.currencySymbol(): String = when (currency.uppercase()) {
-        "USD" -> "USD"
-        else -> "S/"
-    }
+    // Perú: «S/» o «USD» como siempre; Ecuador: «$» (moneda del país del tenant).
+    private fun DocumentPrintInput.currencySymbol(): String = Money.documentSymbol(currency)
 }

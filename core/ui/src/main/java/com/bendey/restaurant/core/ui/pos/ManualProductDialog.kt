@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.ui.pos
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -28,14 +29,20 @@ import com.bendey.restaurant.core.ui.layout.adaptive.rememberPhysicalPortrait
 import com.bendey.restaurant.core.ui.pos.PosPolishTokens
 
 // Etiquetas por país (I5): en Perú «10 - Gravado IGV», «20 - Exonerado», «30 - Inafecto».
+// Ecuador: las tarifas del IVA del locale (`tax_rates`; el código es el del SRI, «10» ahí es IVA 13 %).
 private val MANUAL_IGV_OPTIONS: List<Pair<String, String>>
-    get() = listOf(
+    get() = TenantLocaleHolder.current.countryTaxRates?.map { it.code to it.label } ?: listOf(
         "10" to "10 - ${LabelKey.TAX_TAXED.text} ${LabelKey.TAX_NAME.text}",
         "20" to "20 - ${LabelKey.TAX_EXEMPT.text}",
         "30" to "30 - ${LabelKey.TAX_UNAFFECTED.text}",
     )
 
 private fun isGravadoIgv(code: String): Boolean {
+    // Ecuador: grava lo que tiene tarifa > 0; sin elegir (vacío) cuenta la tarifa por defecto.
+    val locale = TenantLocaleHolder.current
+    if (locale.countryTaxRates != null) {
+        return (locale.taxRateOf(code.trim().ifEmpty { locale.defaultTaxCode.orEmpty() }) ?: 0.0) > 0.0
+    }
     val c = code.trim()
     return c !in setOf("20", "21", "30", "31", "32", "33", "34", "35", "36", "40")
 }
