@@ -1,6 +1,9 @@
 package com.bendey.restaurant.core.domain.billing
 
 import com.bendey.restaurant.core.domain.contacts.ContactDocType
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeFormResult
+import com.bendey.restaurant.core.domain.delivery.DeliveryFeeRules
+import com.bendey.restaurant.core.domain.delivery.validateDeliveryFeeForm
 import com.bendey.restaurant.core.domain.locale.IdentityTypeOption
 import com.bendey.restaurant.core.domain.locale.TaxRateOption
 import com.bendey.restaurant.core.domain.locale.TenantLocale
@@ -85,5 +88,17 @@ class EcuadorCheckoutRulesTest {
         assertEquals(ContactDocType.EC_CEDULA, ContactDocType.defaultForCustomer())
         assertEquals(ContactDocType.EC_RUC, ContactDocType.defaultForSupplier())
         assertEquals("Cédula", ContactDocType.EC_CEDULA.label)
+    }
+
+    @Test fun tarifaDeDeliveryUsaElIvaDelPais() {
+        assertEquals(listOf("10", "20", "30"), DeliveryFeeRules.affectations.map { it.first })
+        assertEquals("10", DeliveryFeeRules.defaultAffectation)
+
+        TenantLocaleHolder.set(ec)
+        assertEquals(listOf("4", "5", "0", "6", "7"), DeliveryFeeRules.affectations.map { it.first })
+        assertEquals("4", DeliveryFeeRules.defaultAffectation)
+        assertTrue(validateDeliveryFeeForm(true, "2.50", "0") is DeliveryFeeFormResult.Ok)
+        // «20» (exonerado en Perú) no es una tarifa del SRI.
+        assertTrue(validateDeliveryFeeForm(true, "2.50", "20") is DeliveryFeeFormResult.Invalid)
     }
 }

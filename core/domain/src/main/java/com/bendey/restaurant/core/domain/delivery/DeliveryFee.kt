@@ -2,6 +2,7 @@ package com.bendey.restaurant.core.domain.delivery
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.core.domain.locale.Money
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import kotlin.math.round
@@ -17,7 +18,7 @@ import kotlin.math.round
 data class DeliverySettings(
     val feeEnabled: Boolean = false,
     val deliveryFee: Double = 0.0,
-    /** `10` gravado con IGV (por defecto), `20` exonerado, `30` inafecto. */
+    /** Perú: `10` gravado con IGV (por defecto), `20` exonerado, `30` inafecto. Ecuador: la tarifa del IVA del SRI (`4` = 15 %; ojo, `10` es IVA 13 %). */
     val feeIgvAffectation: String = DeliveryFeeRules.AFFECTATION_TAXED,
     val codEnabled: Boolean = false,
     val manualPaymentEnabled: Boolean = false,
@@ -74,13 +75,18 @@ object DeliveryFeeRules {
     const val LINE_CODE = "DELIVERY"
     const val LINE_NAME = "Servicio de delivery"
 
-    // Etiquetas por país (I5); en Perú «Gravado con IGV», «Exonerado», «Inafecto».
+    // Opciones por país: en Ecuador, las tarifas del IVA del locale (`tax_rates`); en Perú (I5)
+    // «Gravado con IGV», «Exonerado», «Inafecto».
     val affectations: List<Pair<String, String>>
-        get() = listOf(
+        get() = TenantLocaleHolder.current.countryTaxRates?.map { it.code to it.label } ?: listOf(
             AFFECTATION_TAXED to "${LabelKey.TAX_TAXED.text} con ${LabelKey.TAX_NAME.text}",
             AFFECTATION_EXEMPT to LabelKey.TAX_EXEMPT.text,
             AFFECTATION_UNAFFECTED to LabelKey.TAX_UNAFFECTED.text,
         )
+
+    /** Con qué afectación nace la tarifa: la tarifa general del país (Ecuador: IVA 15 %) o gravado en Perú. */
+    val defaultAffectation: String
+        get() = TenantLocaleHolder.current.defaultTaxCode ?: AFFECTATION_TAXED
 
     fun affectationLabel(code: String?): String =
         affectations.firstOrNull { it.first == code }?.second ?: affectations.first().second
@@ -131,7 +137,7 @@ sealed interface DeliveryFeeFormResult {
 
 /**
  * Valida el formulario de Ajustes > Operación y arma el cuerpo parcial del PUT.
- * Reglas: monto 0 a 999.99 con 2 decimales; no se enciende con 0; afectación 10/20/30.
+ * Reglas: monto 0 a 999.99 con 2 decimales; no se enciende con 0; afectación del catálogo del país.
  */
 fun validateDeliveryFeeForm(enabled: Boolean, amountText: String, affectation: String): DeliveryFeeFormResult {
     if (affectation !in DeliveryFeeRules.affectations.map { it.first }) {
