@@ -49,6 +49,11 @@ class TenantRepositoryImpl @Inject constructor(
         tenantRetrofitProvider.invalidate()
     }
 
+    override suspend fun supportContact(): Result<com.bendey.restaurant.core.domain.subscription.SupportContact> = runCatching {
+        val dto = publicApi.getSupport()
+        com.bendey.restaurant.core.domain.subscription.SupportContact(dto.whatsapp, dto.email, dto.phone)
+    }
+
     override suspend fun validateRucWithSunat(ruc: String): Result<SunatRucValidation> = runCatching {
         val normalized = ruc.replace(Regex("\\D"), "").trim()
         require(normalized.length == 11) { "El RUC debe tener 11 dígitos" }

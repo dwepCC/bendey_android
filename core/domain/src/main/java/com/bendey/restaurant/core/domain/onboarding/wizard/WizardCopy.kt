@@ -19,6 +19,19 @@ object WizardCopy {
     const val REGISTER_LOGIN_FAILED_AFTER_CREATE =
         "Tu restaurante ya está creado. Inicia sesión con tu correo y tu contraseña para continuar."
 
+    // Registro: país. Ecuador está en piloto: el alta la hace el equipo de Bendey (Panel Central).
+    const val REGISTER_COUNTRY = "País de tu restaurante"
+    const val REGISTER_COUNTRY_PERU = "Perú"
+    const val REGISTER_COUNTRY_ECUADOR = "Ecuador"
+    const val REGISTER_ECUADOR_TITLE = "En Ecuador te activamos nosotros"
+    const val REGISTER_ECUADOR_BODY =
+        "Bendey Resto ya funciona en Ecuador. Por ahora el equipo de Bendey crea tu restaurante y deja lista la facturación con el SRI (RUC de 13 dígitos y firma electrónica). Escríbenos y lo coordinamos."
+    const val REGISTER_ECUADOR_WHATSAPP = "Escribir por WhatsApp"
+    const val REGISTER_ECUADOR_WHATSAPP_MESSAGE = "Hola, tengo un restaurante en Ecuador y quiero usar Bendey Resto."
+    const val REGISTER_ECUADOR_EMAIL = "Correo: {email}"
+    const val REGISTER_ECUADOR_PHONE = "Teléfono: {phone}"
+    const val REGISTER_ECUADOR_NO_CONTACT = "Pide a tu asesor de Bendey que active tu restaurante."
+
     // W0
     const val W0_TITLE = "Bienvenido a Bendey Resto"
     const val W0_BODY = "Vamos a dejar tu restaurante listo para vender. Te toma unos 8 minutos."

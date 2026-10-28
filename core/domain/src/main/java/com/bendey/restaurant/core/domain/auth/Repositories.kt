@@ -32,6 +32,10 @@ interface TenantRepository {
     suspend fun bindTenant(binding: TenantBinding)
     suspend fun registerRestaurant(input: RestaurantRegistrationInput): Result<RestaurantRegistrationResult>
     suspend fun clearTenant()
+
+    /** Contacto de soporte de Bendey (público). Con valor por defecto para no romper los fakes. */
+    suspend fun supportContact(): Result<com.bendey.restaurant.core.domain.subscription.SupportContact> =
+        Result.success(com.bendey.restaurant.core.domain.subscription.SupportContact())
 }
 
 interface AuthRepository {

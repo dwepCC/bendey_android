@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.auth.RegistrationCoordinator
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationInput
 import com.bendey.restaurant.core.domain.auth.TenantRepository
+import com.bendey.restaurant.core.domain.subscription.SupportContact
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +26,10 @@ private const val MIN_PASSWORD_LENGTH = 6
  * celular va vacío: ambos se completan en el wizard.
  */
 data class RegisterUiState(
+    /** "PE" o "EC". Ecuador está en piloto: no se registra aquí, se deriva al soporte de Bendey. */
+    val country: String = "PE",
+    /** Contacto de soporte (se pide al elegir Ecuador); null = aún no cargado. */
+    val support: SupportContact? = null,
     val ruc: String = "",
     val razonSocial: String = "",
     val rucValidated: Boolean = false,
@@ -70,6 +75,18 @@ class RegisterViewModel @Inject constructor(
             error = registration.error ?: form.error,
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, RegisterUiState())
+
+    fun chooseCountry(code: String) {
+        val state = uiState.value
+        if (state.rucValidated || state.loading) return
+        local.update { it.copy(country = code, error = null) }
+        if (code == "EC" && local.value.support == null) {
+            viewModelScope.launch {
+                val contact = tenantRepository.supportContact().getOrElse { SupportContact() }
+                local.update { it.copy(support = contact) }
+            }
+        }
+    }
 
     fun onRucChange(value: String) {
         if (local.value.rucValidated) return

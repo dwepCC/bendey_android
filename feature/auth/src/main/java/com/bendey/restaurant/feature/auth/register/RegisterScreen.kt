@@ -19,6 +19,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalUriHandler
+import com.bendey.restaurant.core.domain.auth.supportWhatsAppUrl
+import com.bendey.restaurant.core.ui.components.BendeySecondaryButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -56,7 +59,9 @@ fun RegisterScreen(
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(Unit) { rucFocusRequester.requestFocus() }
+    val uriHandler = LocalUriHandler.current
+
+    LaunchedEffect(state.country) { if (state.country == "PE") rucFocusRequester.requestFocus() }
     LaunchedEffect(state.rucValidated) {
         if (state.rucValidated) emailFocusRequester.requestFocus()
     }
@@ -90,6 +95,26 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(BendeySpacing.xs))
         AuthExpressiveCard(title = WizardCopy.REGISTER_TITLE) {
             Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.formFieldGap)) {
+                Text(
+                    text = WizardCopy.REGISTER_COUNTRY,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = BendeyColors.OnSurface,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
+                    listOf("PE" to WizardCopy.REGISTER_COUNTRY_PERU, "EC" to WizardCopy.REGISTER_COUNTRY_ECUADOR).forEach { (code, label) ->
+                        val enabled = !state.rucValidated && !state.loading
+                        if (state.country == code) {
+                            BendeyPrimaryButton(text = label, onClick = {}, enabled = enabled, modifier = Modifier.weight(1f))
+                        } else {
+                            BendeySecondaryButton(text = label, onClick = { viewModel.chooseCountry(code) }, enabled = enabled, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                if (state.country == "EC") {
+                    EcuadorContact(state = state, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
+                    return@Column
+                }
                 BendeyTextField(
                     value = state.ruc,
                     onValueChange = viewModel::onRucChange,
@@ -167,5 +192,32 @@ fun RegisterScreen(
                 }
             }
         }
+    }
+}
+
+/** Ecuador (piloto): el alta la hace el equipo de Bendey; aquí solo se explica y se ofrece el contacto. */
+@Composable
+private fun EcuadorContact(state: RegisterUiState, onOpen: (String) -> Unit) {
+    BendeyAlert(
+        title = WizardCopy.REGISTER_ECUADOR_TITLE,
+        message = WizardCopy.REGISTER_ECUADOR_BODY,
+        severity = BendeyAlertSeverity.Info,
+    )
+    val support = state.support ?: return
+    val wa = supportWhatsAppUrl(support.whatsapp, WizardCopy.REGISTER_ECUADOR_WHATSAPP_MESSAGE)
+    if (wa != null) {
+        BendeyPrimaryButton(
+            text = WizardCopy.REGISTER_ECUADOR_WHATSAPP,
+            onClick = { onOpen(wa) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    val lines = buildList {
+        if (support.email.isNotBlank()) add(WizardCopy.REGISTER_ECUADOR_EMAIL.replace("{email}", support.email))
+        if (support.phone.isNotBlank()) add(WizardCopy.REGISTER_ECUADOR_PHONE.replace("{phone}", support.phone))
+        if (wa == null && isEmpty()) add(WizardCopy.REGISTER_ECUADOR_NO_CONTACT)
+    }
+    lines.forEach { line ->
+        Text(text = line, style = MaterialTheme.typography.bodyMedium, color = BendeyColors.OnSurfaceVariant)
     }
 }

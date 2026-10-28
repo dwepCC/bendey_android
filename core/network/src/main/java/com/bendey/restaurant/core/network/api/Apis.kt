@@ -85,6 +85,10 @@ interface PublicApi {
 
     @GET("/api/public/applications")
     suspend fun listApplications(): PublicApplicationsResponseDto
+
+    /** Contacto de soporte de Bendey (público): el registro deriva ahí a un restaurante de Ecuador. */
+    @GET("/api/public/support")
+    suspend fun getSupport(): com.bendey.restaurant.core.network.dto.SupportConfigDto
 }
 
 interface AuthApi {
