@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.ventas
 
 import com.bendey.restaurant.core.domain.locale.LabelKey
+import com.bendey.restaurant.core.domain.billing.affectationTotalsRows
 import com.bendey.restaurant.core.domain.locale.Money
 import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
@@ -831,7 +832,17 @@ private fun SaleDetailContent(
                     Text("Subtotal")
                     Text(currency.format(detail.subtotal))
                 }
-                if (detail.taxAmount > 0) {
+                // Cada base por separado (Perú: gravada, exonerada…; Ecuador: tarifa por tarifa) si el backend
+                // mandó el desglose; si no, solo el impuesto, como antes.
+                val affectation = detail.printData?.affectationTotals.orEmpty()
+                if (affectation.isNotEmpty()) {
+                    affectationTotalsRows(affectation, detail.taxAmount, TenantLocaleHolder.current).forEach { row ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(row.label, style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                            Text(currency.format(row.amount), style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant)
+                        }
+                    }
+                } else if (detail.taxAmount > 0) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(LabelKey.TAX_NAME.text)
                         Text(currency.format(detail.taxAmount))
