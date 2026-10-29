@@ -114,6 +114,7 @@ class BillingRepositoryImpl @Inject constructor(
                         method = it.method,
                         amount = it.amount,
                         reference = it.reference,
+                        cardType = it.cardType.ifBlank { null },
                     )
                 },
                 detailMode = input.detailMode,
@@ -151,6 +152,7 @@ class BillingRepositoryImpl @Inject constructor(
                         method = it.method,
                         amount = it.amount,
                         reference = it.reference,
+                        cardType = it.cardType.ifBlank { null },
                     )
                 },
                 detailMode = input.detailMode,

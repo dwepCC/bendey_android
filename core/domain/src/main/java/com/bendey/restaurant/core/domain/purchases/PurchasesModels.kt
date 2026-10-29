@@ -68,13 +68,19 @@ val PURCHASE_DOC_TYPES = listOf("FACTURA", "BOLETA", "NOTA DE CRÉDITO", "TICKET
  * Los reales se piden en [com.bendey.restaurant.feature.compras.ComprasViewModel]; mismo criterio
  * que Bendey Resto (Tauri), donde esto es PAYMENT_METHODS_FALLBACK.
  */
-val PURCHASE_PAYMENT_METHODS_FALLBACK = listOf(
-    "efectivo" to "Efectivo",
-    "yape" to "Yape",
-    "plin" to "Plin",
-    "transferencia" to "Transferencia",
-    "tarjeta" to "Tarjeta",
-)
+val PURCHASE_PAYMENT_METHODS_FALLBACK: List<Pair<String, String>>
+    get() = if (com.bendey.restaurant.core.domain.locale.TenantLocaleHolder.current.isPeru) {
+        listOf(
+            "efectivo" to "Efectivo",
+            "yape" to "Yape",
+            "plin" to "Plin",
+            "transferencia" to "Transferencia",
+            "tarjeta" to "Tarjeta",
+        )
+    } else {
+        // Ecuador: los 4 métodos del país (backend pkg/country/ec).
+        listOf("efectivo" to "Efectivo", "tarjeta" to "Tarjeta", "transferencia" to "Transferencia", "cheque" to "Cheque")
+    }
 
 /** "" = todas. */
 val PURCHASE_STATUS_FILTERS = listOf("" to "Todas", "received" to "Recibidas", "cancelled" to "Anuladas")

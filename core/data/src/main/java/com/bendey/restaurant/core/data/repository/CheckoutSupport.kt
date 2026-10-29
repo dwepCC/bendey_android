@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.domain.billing.isPaymentMethodLinkedForSale
 import com.bendey.restaurant.core.domain.billing.needsCashSessionForPayments
 import com.bendey.restaurant.core.domain.billing.roundSunat
 import com.bendey.restaurant.core.domain.copy.CashCopy
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 fun parseCheckoutPayments(drafts: List<CheckoutPaymentDraft>): List<CheckoutPaymentLine>? {
     if (drafts.isEmpty()) return null
@@ -16,10 +17,13 @@ fun parseCheckoutPayments(drafts: List<CheckoutPaymentDraft>): List<CheckoutPaym
     for (draft in drafts) {
         val amount = draft.amount.replace(',', '.').trim().toDoubleOrNull() ?: return null
         if (amount <= 0) return null
+        val method = draft.method.ifBlank { "cash" }
         lines += CheckoutPaymentLine(
-            method = draft.method.ifBlank { "cash" },
+            method = method,
             amount = roundSunat(amount),
             reference = draft.reference.trim(),
+            // Ecuador: la tarjeta va como débito o crédito; sin elegir, crédito.
+            cardType = if (TenantLocaleHolder.current.asksCardType(method)) draft.cardType.ifBlank { "credit" } else "",
         )
     }
     return lines

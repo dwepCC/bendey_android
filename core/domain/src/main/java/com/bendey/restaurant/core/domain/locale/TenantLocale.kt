@@ -44,6 +44,10 @@ data class TenantLocale(
     val usesSunatBuyerRules: Boolean
         get() = isPeru
 
+    /** El método es la tarjeta y el país distingue débito/crédito en el comprobante (Ecuador: 16 / 19). */
+    fun asksCardType(methodCode: String?): Boolean =
+        !isPeru && methodCode?.trim().equals("tarjeta", ignoreCase = true)
+
     /** Tarifas del impuesto por producto, o null si el país usa el catálogo SUNAT 07 (Perú). */
     val countryTaxRates: List<TaxRateOption>?
         get() = taxRates.takeIf { !isPeru && it.isNotEmpty() }

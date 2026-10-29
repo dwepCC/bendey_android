@@ -19,6 +19,7 @@ private val PAYMENT_METHOD_ES = mapOf(
     "transfer" to "Transferencia",
     "tarjeta" to "Tarjeta",
     "card" to "Tarjeta",
+    "cheque" to "Cheque",
     "debito" to "Tarjeta débito",
     "credito" to "Crédito",
     "credit" to "Crédito",

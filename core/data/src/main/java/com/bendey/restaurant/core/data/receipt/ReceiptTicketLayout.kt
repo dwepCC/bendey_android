@@ -1,6 +1,9 @@
 package com.bendey.restaurant.core.data.receipt
 
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.billing.affectationTotalsRows
+import com.bendey.restaurant.core.domain.billing.sriTicketLines
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 import com.bendey.restaurant.core.domain.locale.LabelKey
 import com.bendey.restaurant.platform.printing.escpos.EscPosTextUtils
 import com.bendey.restaurant.platform.printing.escpos.PaperWidthMm
@@ -79,7 +82,15 @@ internal object ReceiptTicketLayout {
         }
 
         divider()
-        if (data.taxAmount > 0) right("${LabelKey.TAX_NAME.text}: ${money.format(data.taxAmount)}")
+        // Cada base por separado (Perú: gravada, exonerada, inafecta, exportación; Ecuador: tarifa por tarifa,
+        // como el RIDE) y el impuesto. Sin desglose del backend (versión vieja), solo el impuesto, como antes.
+        if (data.affectationTotals.isEmpty()) {
+            if (data.taxAmount > 0) right("${LabelKey.TAX_NAME.text}: ${money.format(data.taxAmount)}")
+        } else {
+            affectationTotalsRows(data.affectationTotals, data.taxAmount, TenantLocaleHolder.current).forEach {
+                right("${it.label}: ${money.format(it.amount)}")
+            }
+        }
         // Recargo al Consumo: monto YA CALCULADO por el backend — nunca se recalcula acá. Se omite
         // si es 0 (sucursal sin RC), así el ticket no cambia en absoluto para quien no lo activó.
         if (data.serviceChargeAmount > 0) {
@@ -109,6 +120,13 @@ internal object ReceiptTicketLayout {
             }
             center("Representacion impresa CPE")
             center("Consulte en sunat.gob.pe")
+        }
+        // Ecuador: el SRI no usa QR; van el ambiente y la clave de acceso.
+        val sri = sriTicketLines(data.accessKey, data.fiscalEnvironment)
+        if (sri.isNotEmpty()) {
+            divider()
+            sri.forEach { line -> EscPosTextUtils.wrapText(line, cols).forEach { center(it) } }
+            center("Consulte en srienlinea.sri.gob.ec")
         }
 
         left("")

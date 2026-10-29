@@ -51,6 +51,8 @@ data class BillPaymentDto(
     val amount: Double,
     val reference: String = "",
     val notes: String = "",
+    /** Ecuador: «debit» | «credit» en un pago con tarjeta. */
+    @SerialName("card_type") val cardType: String? = null,
 )
 
 @Serializable
@@ -102,6 +104,19 @@ data class PrintDataDto(
     @SerialName("qr_data") val qrData: String = "",
     @SerialName("sunat_hash") val sunatHash: String? = null,
     @SerialName("shows_bendey_branding") val showsBendeyBranding: Boolean? = null,
+    /** Base e impuesto por código de afectación (Perú 10/20/30/40; Ecuador la tarifa del SRI). */
+    @SerialName("totals_by_affectation") val totalsByAffectation: Map<String, PrintAffectTotalDto> = emptyMap(),
+    /** Ecuador: clave de acceso y ambiente del SRI (el comprobante no lleva QR ni hash). */
+    @SerialName("access_key") val accessKey: String? = null,
+    @SerialName("fiscal_environment") val fiscalEnvironment: String? = null,
+)
+
+@Serializable
+data class PrintAffectTotalDto(
+    val code: String = "",
+    val subtotal: Double = 0.0,
+    @SerialName("tax_amount") val taxAmount: Double = 0.0,
+    val total: Double = 0.0,
 )
 
 @Serializable

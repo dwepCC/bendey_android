@@ -75,4 +75,6 @@ data class CheckoutPaymentDraft(
     val method: String,
     val amount: String,
     val reference: String = "",
+    /** Ecuador: «debit» | «credit» en un pago con tarjeta (forma de pago del SRI 16 / 19). */
+    val cardType: String = "",
 )

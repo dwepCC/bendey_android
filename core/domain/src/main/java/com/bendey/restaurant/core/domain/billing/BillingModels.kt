@@ -64,6 +64,8 @@ data class CheckoutPaymentLine(
     val method: String,
     val amount: Double,
     val reference: String = "",
+    /** Ecuador: «debit» | «credit» en un pago con tarjeta; vacío en Perú. */
+    val cardType: String = "",
 )
 
 data class CheckoutMeta(
@@ -159,6 +161,11 @@ data class SalePrintData(
     val qrData: String? = null,
     val sunatHash: String? = null,
     val showsBendeyBranding: Boolean = true,
+    /** Base e impuesto por código de afectación (ver affectationTotalsRows). */
+    val affectationTotals: Map<String, AffectationTotal> = emptyMap(),
+    /** Ecuador: clave de acceso y ambiente del SRI. */
+    val accessKey: String? = null,
+    val fiscalEnvironment: String? = null,
 )
 
 data class SalePrintLine(

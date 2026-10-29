@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.ui.checkout
 
 import com.bendey.restaurant.core.domain.locale.Money
+import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -691,6 +692,16 @@ private fun PaymentLineEditor(
                 onSelect = { onUpdate(line.copy(method = it)) },
                 modifier = Modifier.weight(1f),
             )
+            // Ecuador: la tarjeta va al SRI como débito (16) o crédito (19).
+            if (TenantLocaleHolder.current.asksCardType(line.method)) {
+                BendeySimpleSelect(
+                    options = listOf(BendeyOption("credit", "Crédito"), BendeyOption("debit", "Débito")),
+                    selectedValue = line.cardType.ifBlank { "credit" },
+                    onSelect = { onUpdate(line.copy(cardType = it)) },
+                    label = "",
+                    modifier = Modifier.width(132.dp),
+                )
+            }
             if (canRemove) {
                 BendeyCompactIconButton(
                     onClick = onRemove,

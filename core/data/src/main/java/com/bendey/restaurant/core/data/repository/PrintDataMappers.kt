@@ -1,6 +1,7 @@
 package com.bendey.restaurant.core.data.repository
 
 import com.bendey.restaurant.core.data.receipt.resolvePrintCompanyNames
+import com.bendey.restaurant.core.domain.billing.AffectationTotal
 import com.bendey.restaurant.core.domain.billing.SalePrintData
 import com.bendey.restaurant.core.domain.billing.SalePrintLine
 import com.bendey.restaurant.core.domain.billing.SalePrintPayment
@@ -50,6 +51,11 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         qrData = qrData.takeIf { it.isNotBlank() },
         sunatHash = sunatHash?.takeIf { it.isNotBlank() },
         showsBendeyBranding = showsBendeyBranding != false,
+        affectationTotals = totalsByAffectation.mapValues { (code, v) ->
+            AffectationTotal(subtotal = v.subtotal, taxAmount = v.taxAmount)
+        }.mapKeys { (code, v) -> totalsByAffectation[code]?.code?.takeIf { it.isNotBlank() } ?: code },
+        accessKey = accessKey?.takeIf { it.isNotBlank() },
+        fiscalEnvironment = fiscalEnvironment?.takeIf { it.isNotBlank() },
     )
 }
 
