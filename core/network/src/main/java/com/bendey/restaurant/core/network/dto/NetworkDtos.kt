@@ -43,6 +43,11 @@ data class PublicRegisterRequestDto(
     val password: String,
     @SerialName("plan_id") val planId: Int = 0,
     @SerialName("referral_code") val referralCode: String = "",
+    /**
+     * País de la empresa (el backend lo exige desde el paquete de país). Sin valor por defecto a propósito:
+     * kotlinx no serializa los defaults y el campo no viajaría. El registro de autoservicio es solo de Perú.
+     */
+    val country: String,
 )
 
 @Serializable

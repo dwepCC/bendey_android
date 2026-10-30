@@ -86,6 +86,7 @@ class TenantRepositoryImpl @Inject constructor(
                 ubigeo = input.ubigeo.trim(),
                 password = input.password,
                 rubro = RESTAURANT_RUBRO,
+                country = REGISTRATION_COUNTRY,
             ),
         )
         // El PIN inicial solo se guarda en memoria (holder de vida corta) para la pantalla de éxito.
@@ -114,6 +115,9 @@ class TenantRepositoryImpl @Inject constructor(
 
     private companion object {
         const val RESTAURANT_RUBRO = "gastronomico"
+
+        /** El registro de autoservicio es solo de Perú (valida RUC de 11 dígitos); el backend exige el país. */
+        const val REGISTRATION_COUNTRY = "PE"
     }
 }
 
