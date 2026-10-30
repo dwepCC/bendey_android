@@ -50,6 +50,16 @@ class ReceiptPdfService @Inject constructor(
     fun uriFor(file: File) = fileShareService.uriForFile(file)
 
     private fun buildPdf(data: SalePrintData, format: ReceiptPdfFormat, logoScale: Float = 1f): PdfDocument {
+        // Ecuador (factura, nota de crédito y de débito): RIDE en A4 y ticket de la referencia, dibujados aquí.
+        if (EcRideModel.usesEcRide(data)) {
+            val money = Money.currencyFormat()
+            val logo = logoLoader.load(data.companyLogoUrl, if (format == ReceiptPdfFormat.A4) 600 else 400)
+            return if (format == ReceiptPdfFormat.A4) {
+                EcRidePdf.renderA4(data, money, logo)
+            } else {
+                EcRidePdf.renderTicket(data, money, logo)
+            }
+        }
         val pageWidthPt = when (format) {
             ReceiptPdfFormat.TICKET -> (80f / 25.4f * 72f).toInt()
             ReceiptPdfFormat.A4 -> 595
