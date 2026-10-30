@@ -109,6 +109,37 @@ data class PrintDataDto(
     /** Ecuador: clave de acceso y ambiente del SRI (el comprobante no lleva QR ni hash). */
     @SerialName("access_key") val accessKey: String? = null,
     @SerialName("fiscal_environment") val fiscalEnvironment: String? = null,
+    /** Ecuador: número de autorización del SRI (vacío mientras no autorice). */
+    @SerialName("authorization_number") val authorizationNumber: String? = null,
+    /** Ecuador: datos del RIDE que Perú no tiene (emisor, hora de autorización, formas de pago del SRI). */
+    val ec: PrintEcDto? = null,
+    /** Solo NC/ND: comprobante afectado, su fecha y el motivo. */
+    @SerialName("affected_doc_type") val affectedDocType: String? = null,
+    @SerialName("affected_doc_number") val affectedDocNumber: String? = null,
+    @SerialName("affected_issue_date") val affectedIssueDate: String? = null,
+    @SerialName("note_reason") val noteReason: String? = null,
+    val notes: String? = null,
+)
+
+/** Ecuador: `print_data.ec` del backend. Todo opcional; ausente en Perú. */
+@Serializable
+data class PrintEcDto(
+    /** dd/MM/yyyy HH:mm:ss; vacío mientras el SRI no autorice. */
+    @SerialName("authorized_at") val authorizedAt: String? = null,
+    @SerialName("matriz_address") val matrizAddress: String? = null,
+    @SerialName("accounting_required") val accountingRequired: Boolean = false,
+    @SerialName("special_contributor") val specialContributor: String? = null,
+    @SerialName("withholding_agent") val withholdingAgent: String? = null,
+    @SerialName("rimpe_legend") val rimpeLegend: String? = null,
+    @SerialName("client_email") val clientEmail: String? = null,
+    val payments: List<PrintEcPaymentDto> = emptyList(),
+)
+
+@Serializable
+data class PrintEcPaymentDto(
+    val code: String = "",
+    val label: String = "",
+    val amount: Double = 0.0,
 )
 
 @Serializable
@@ -125,6 +156,7 @@ data class PrintClientDto(
     @SerialName("doc_number") val docNumber: String = "",
     @SerialName("business_name") val businessName: String = "",
     val address: String? = null,
+    val phone: String? = null,
 )
 
 @Serializable
@@ -137,6 +169,8 @@ data class PrintCompanyDto(
     val email: String? = null,
     val website: String? = null,
     @SerialName("logo_url") val logoUrl: String? = null,
+    /** Nota adicional del comprobante (términos, política de devoluciones…). */
+    @SerialName("additional_notes") val additionalNotes: String? = null,
 )
 
 @Serializable
@@ -152,6 +186,8 @@ data class PrintItemDto(
     val quantity: Double = 0.0,
     @SerialName("unit_price") val unitPrice: Double = 0.0,
     val discount: Double = 0.0,
+    /** Base sin impuesto de la línea (el RIDE de Ecuador imprime este valor). */
+    val subtotal: Double = 0.0,
     val total: Double = 0.0,
     /** Presentación y extras elegidos; el nombre comercial vive acá, no en [description]. */
     @SerialName("modifiers_json") val modifiersJson: String? = null,

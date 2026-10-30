@@ -3,6 +3,8 @@ package com.bendey.restaurant.core.data.repository
 import com.bendey.restaurant.core.data.receipt.resolvePrintCompanyNames
 import com.bendey.restaurant.core.domain.billing.AffectationTotal
 import com.bendey.restaurant.core.domain.billing.SalePrintData
+import com.bendey.restaurant.core.domain.billing.SalePrintEc
+import com.bendey.restaurant.core.domain.billing.SalePrintEcPayment
 import com.bendey.restaurant.core.domain.billing.SalePrintLine
 import com.bendey.restaurant.core.domain.billing.SalePrintPayment
 import com.bendey.restaurant.core.network.dto.PrintDataDto
@@ -35,6 +37,8 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
                 unitPrice = it.unitPrice,
                 total = it.total,
                 discount = it.discount,
+                code = it.code,
+                subtotal = it.subtotal,
                 modifiersJson = it.modifiersJson,
             )
         },
@@ -56,6 +60,28 @@ internal fun PrintDataDto.toDomain(): SalePrintData {
         }.mapKeys { (code, v) -> totalsByAffectation[code]?.code?.takeIf { it.isNotBlank() } ?: code },
         accessKey = accessKey?.takeIf { it.isNotBlank() },
         fiscalEnvironment = fiscalEnvironment?.takeIf { it.isNotBlank() },
+        ec = ec?.let { e ->
+            SalePrintEc(
+                authorizedAt = e.authorizedAt?.takeIf { it.isNotBlank() },
+                matrizAddress = e.matrizAddress?.takeIf { it.isNotBlank() },
+                accountingRequired = e.accountingRequired,
+                specialContributor = e.specialContributor?.takeIf { it.isNotBlank() },
+                withholdingAgent = e.withholdingAgent?.takeIf { it.isNotBlank() },
+                rimpeLegend = e.rimpeLegend?.takeIf { it.isNotBlank() },
+                clientEmail = e.clientEmail?.takeIf { it.isNotBlank() },
+                payments = e.payments.map { SalePrintEcPayment(it.code, it.label, it.amount) },
+            )
+        },
+        authorizationNumber = authorizationNumber?.takeIf { it.isNotBlank() },
+        affectedDocNumber = affectedDocNumber?.takeIf { it.isNotBlank() },
+        affectedIssueDate = affectedIssueDate?.takeIf { it.isNotBlank() },
+        noteReason = noteReason?.takeIf { it.isNotBlank() },
+        notes = notes?.takeIf { it.isNotBlank() },
+        clientPhone = client?.phone?.takeIf { it.isNotBlank() },
+        clientAddress = client?.address?.takeIf { it.isNotBlank() },
+        clientDocType = client?.docType?.takeIf { it.isNotBlank() },
+        companyAdditionalNotes = company?.additionalNotes?.takeIf { it.isNotBlank() },
+        branchAddress = branch?.address?.takeIf { it.isNotBlank() },
     )
 }
 

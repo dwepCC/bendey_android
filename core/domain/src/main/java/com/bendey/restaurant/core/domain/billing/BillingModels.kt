@@ -166,7 +166,34 @@ data class SalePrintData(
     /** Ecuador: clave de acceso y ambiente del SRI. */
     val accessKey: String? = null,
     val fiscalEnvironment: String? = null,
+    /** Ecuador: datos que el RIDE imprime y Perú no tiene. Null en Perú y en notas de venta. */
+    val ec: SalePrintEc? = null,
+    val authorizationNumber: String? = null,
+    /** Solo NC/ND: comprobante que se modifica, su fecha y el motivo. */
+    val affectedDocNumber: String? = null,
+    val affectedIssueDate: String? = null,
+    val noteReason: String? = null,
+    val notes: String? = null,
+    val clientPhone: String? = null,
+    val clientAddress: String? = null,
+    val clientDocType: String? = null,
+    val companyAdditionalNotes: String? = null,
+    val branchAddress: String? = null,
 )
+
+/** Ecuador: `print_data.ec`. */
+data class SalePrintEc(
+    val authorizedAt: String? = null,
+    val matrizAddress: String? = null,
+    val accountingRequired: Boolean = false,
+    val specialContributor: String? = null,
+    val withholdingAgent: String? = null,
+    val rimpeLegend: String? = null,
+    val clientEmail: String? = null,
+    val payments: List<SalePrintEcPayment> = emptyList(),
+)
+
+data class SalePrintEcPayment(val code: String, val label: String, val amount: Double)
 
 data class SalePrintLine(
     val description: String,
@@ -174,6 +201,9 @@ data class SalePrintLine(
     val unitPrice: Double,
     val total: Double,
     val discount: Double = 0.0,
+    val code: String = "",
+    /** Base sin impuesto de la línea; 0 si el backend no la manda (versión vieja). */
+    val subtotal: Double = 0.0,
     /** Presentación y extras elegidos; el nombre comercial vive acá, no en [description]. */
     val modifiersJson: String? = null,
 )
