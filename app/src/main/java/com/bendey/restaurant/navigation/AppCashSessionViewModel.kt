@@ -8,6 +8,8 @@ import com.bendey.restaurant.core.domain.cash.CashSession
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.decideCashChip
 import com.bendey.restaurant.core.domain.cash.lastCountedCash
+import com.bendey.restaurant.core.domain.cash.methodBalanceInputs
+import com.bendey.restaurant.core.domain.cash.suggestedAmountText
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
@@ -210,6 +212,22 @@ class AppCashSessionViewModel @Inject constructor(
                 }
             }
         }
+        // Otros métodos (Yape, Plin…): cada uno con lo que el cajero cerró la última vez. Si no se puede
+        // leer, el bloque no aparece y el backend abre cada método con lo sugerido.
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
+            val methods = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data.orEmpty()
+            if (methods.isEmpty()) return@launch
+            _local.update {
+                if (!it.showOpenModal || it.openForm.methods.isNotEmpty()) it
+                else it.copy(
+                    openForm = it.openForm.copy(
+                        methods = methods,
+                        methodAmounts = methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
+                    ),
+                )
+            }
+        }
     }
 
     /** Guía de la primera venta (R4) y "Abrir con S/ 0": abre la caja con S/ 0 de un toque. */
@@ -238,7 +256,7 @@ class AppCashSessionViewModel @Inject constructor(
                     return@launch
                 }
             _local.update { it.copy(opening = true, error = null) }
-            when (val result = cashRepository.openSession(branchId, balance, form.notes)) {
+            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts))) {
                 is AppResult.Success -> _local.update {
                     it.copy(
                         opening = false,

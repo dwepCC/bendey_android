@@ -8,13 +8,17 @@ interface CashRepository {
         branchId: Int,
         openingBalance: Double,
         notes: String?,
+        methodBalances: List<CashMethodBalanceInput> = emptyList(),
     ): AppResult<CashSession>
     suspend fun closeSession(
         sessionId: Int,
         closingBalance: Double?,
         notes: String?,
         arqueo: Map<String, Int>? = null,
+        methodBalances: List<CashMethodBalanceInput> = emptyList(),
     ): AppResult<CashSession>
+    /** Con cuánto se sugiere abrir cada método no efectivo. Vacío si el backend es anterior. */
+    suspend fun openingSuggestions(branchId: Int): AppResult<List<CashSuggestedMethodBalance>>
     suspend fun listSessions(branchId: Int?): AppResult<List<CashSessionBrief>>
     suspend fun getSessionReport(sessionId: Int): AppResult<CashSessionReport>
     suspend fun saveArqueo(sessionId: Int, arqueo: Map<String, Int>): AppResult<Double>

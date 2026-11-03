@@ -9,7 +9,10 @@ import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
 import com.bendey.restaurant.core.domain.cash.CashCancelledSaleRow
+import com.bendey.restaurant.core.domain.cash.CashMethodBalance
+import com.bendey.restaurant.core.domain.cash.CashMethodBalanceInput
 import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.cash.CashSuggestedMethodBalance
 import com.bendey.restaurant.core.domain.cash.CashPendingRefundRow
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
@@ -49,6 +52,7 @@ import com.bendey.restaurant.core.network.dto.CashReportRowDto
 import com.bendey.restaurant.core.network.dto.CashSessionDto
 import com.bendey.restaurant.core.network.dto.CashSessionReportDto
 import com.bendey.restaurant.core.network.dto.CloseCashSessionRequestDto
+import com.bendey.restaurant.core.network.dto.MethodBalanceInputDto
 import com.bendey.restaurant.core.network.dto.OpenCashSessionRequestDto
 import com.bendey.restaurant.core.network.api.RestaurantApi
 import com.bendey.restaurant.core.network.dto.MovementReportRowDto
@@ -92,12 +96,14 @@ class CashRepositoryImpl @Inject constructor(
         branchId: Int,
         openingBalance: Double,
         notes: String?,
+        methodBalances: List<CashMethodBalanceInput>,
     ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
         val dto = tenantRetrofitProvider.create<CashbankApi>().openSession(
             OpenCashSessionRequestDto(
                 branchId = branchId,
                 openingBalance = openingBalance,
                 notes = notes?.takeIf { it.isNotBlank() },
+                methodBalances = methodBalances.toDtoOrNull(),
             ),
         ).data ?: error("No se pudo abrir la caja")
         dto.toDomain().also { persistSnapshot(it) }
@@ -108,6 +114,7 @@ class CashRepositoryImpl @Inject constructor(
         closingBalance: Double?,
         notes: String?,
         arqueo: Map<String, Int>?,
+        methodBalances: List<CashMethodBalanceInput>,
     ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
         val response = tenantRetrofitProvider.create<CashbankApi>().closeSession(
             sessionId = sessionId,
@@ -115,12 +122,24 @@ class CashRepositoryImpl @Inject constructor(
                 closingBalance = closingBalance,
                 notes = notes?.takeIf { it.isNotBlank() },
                 arqueo = arqueo?.takeIf { it.values.any { qty -> qty > 0 } },
+                methodBalances = methodBalances.toDtoOrNull(),
             ),
         )
         val dto = response.data ?: error("No se pudo cerrar la caja")
         sessionManager.setCashSession(null)
         dto.toDomain().let { it.copy(counted = response.counted ?: it.counted) }
     }
+
+    override suspend fun openingSuggestions(branchId: Int): AppResult<List<CashSuggestedMethodBalance>> = apiCall(ErrorFlow.CASH) {
+        tenantRetrofitProvider.create<CashbankApi>()
+            .openingSuggestions(branchId)
+            .data
+            .map { CashSuggestedMethodBalance(method = it.method, name = it.name, suggested = it.suggested) }
+    }
+
+    /** Sin montos no se manda el campo: el backend abre cada método con lo sugerido. */
+    private fun List<CashMethodBalanceInput>.toDtoOrNull(): List<MethodBalanceInputDto>? =
+        takeIf { it.isNotEmpty() }?.map { MethodBalanceInputDto(method = it.method, amount = it.amount) }
 
     override suspend fun listSessions(branchId: Int?): AppResult<List<CashSessionBrief>> = apiCall {
         tenantRetrofitProvider.create<CashbankApi>()
@@ -493,6 +512,19 @@ private fun CashSessionReportDto.toDomain(): CashSessionReport {
         salesByMethod = totalsByMethod?.sales?.map { it.toDomain() }.orEmpty(),
         nonCashSalesByMethod = nonCashSalesByMethod.map { it.toDomain() },
         nonCashByMethod = nonCashByMethod.map { it.toDomain() },
+        methodBalances = methodBalances.map {
+            CashMethodBalance(
+                method = it.method,
+                name = it.name,
+                openingSuggested = it.openingSuggested,
+                openingBalance = it.openingBalance,
+                inflows = it.inflows,
+                outflows = it.outflows,
+                expected = it.expected,
+                counted = it.counted,
+                difference = it.difference,
+            )
+        },
         totalIncome = totalsDto.totalIncome,
         totalExpense = totalsDto.totalExpense,
         totalSales = totalsDto.totalSales,

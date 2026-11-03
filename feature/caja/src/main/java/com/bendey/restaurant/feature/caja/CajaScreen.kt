@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
+import com.bendey.restaurant.core.ui.cash.CashMethodBalancesList
+import com.bendey.restaurant.core.ui.cash.CashMethodOpeningFields
 import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.layout.adaptive.BendeyWidthTier
@@ -1141,6 +1143,10 @@ private fun ReportContent(
                 ReportRow(salePaymentMethodLabelEs(row.method), currency.format(row.total))
             }
         }
+        if (report.methodBalances.isNotEmpty()) {
+            Text("Saldos por método de este cajero", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
+            CashMethodBalancesList(rows = report.methodBalances)
+        }
         if (report.incomeDetail.isNotEmpty()) {
             Text("Ingresos detalle", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = BendeySpacing.xs))
             report.incomeDetail.take(15).forEach { row ->
@@ -1337,9 +1343,19 @@ private fun OpenCashDialog(
         onDismissRequest = { if (!mandatory) onDismiss() },
         title = { Text("Abrir caja") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Con varios métodos el contenido no entra en un teléfono: se desplaza.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text("Monto inicial en efectivo para iniciar el turno.")
                 BendeyTextField(form.openingBalance, { v -> onFormChange { it.copy(openingBalance = v) } }, "Monto de apertura (${Money.symbol})")
+                CashMethodOpeningFields(
+                    methods = form.methods,
+                    values = form.methodAmounts,
+                    enabled = !loading,
+                    onChange = { method, value -> onFormChange { it.copy(methodAmounts = it.methodAmounts + (method to value)) } },
+                )
                 BendeyTextField(form.notes, { v -> onFormChange { it.copy(notes = v) } }, "Notas (opcional)", singleLine = false)
                 // Mismo hallazgo que en CloseCashDialog: `error` vivía en el uiState pero nunca
                 // llegaba a este diálogo — un rechazo del backend (ej. "ya hay una sesión abierta")

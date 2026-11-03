@@ -37,6 +37,8 @@ data class OpenCashSessionRequestDto(
     @SerialName("branch_id") val branchId: Int,
     @SerialName("opening_balance") val openingBalance: Double,
     val notes: String? = null,
+    /** Con cuánto abre cada método no efectivo; lo que falta abre con lo sugerido. */
+    @SerialName("method_balances") val methodBalances: List<MethodBalanceInputDto>? = null,
 )
 
 @Serializable
@@ -44,6 +46,34 @@ data class CloseCashSessionRequestDto(
     @SerialName("closing_balance") val closingBalance: Double? = null,
     val notes: String? = null,
     val arqueo: Map<String, Int>? = null,
+    /** Lo que el cajero confirmó de cada método no efectivo mirando su app. */
+    @SerialName("method_balances") val methodBalances: List<MethodBalanceInputDto>? = null,
+)
+
+@Serializable
+data class MethodBalanceInputDto(
+    val method: String,
+    val amount: Double,
+)
+
+@Serializable
+data class SuggestedMethodBalanceDto(
+    val method: String,
+    val name: String = "",
+    val suggested: Double = 0.0,
+)
+
+@Serializable
+data class MethodBalanceRowDto(
+    val method: String,
+    val name: String = "",
+    @SerialName("opening_suggested") val openingSuggested: Double = 0.0,
+    @SerialName("opening_balance") val openingBalance: Double = 0.0,
+    val inflows: Double = 0.0,
+    val outflows: Double = 0.0,
+    val expected: Double = 0.0,
+    val counted: Double? = null,
+    val difference: Double? = null,
 )
 
 @Serializable
@@ -124,6 +154,8 @@ data class CashSessionReportDto(
      * y no toca aquél.
      */
     @SerialName("non_cash_by_method") val nonCashByMethod: List<CashMethodTotalDto> = emptyList(),
+    /** Saldo de cada método no efectivo del cajero en la sesión. */
+    @SerialName("method_balances") val methodBalances: List<MethodBalanceRowDto> = emptyList(),
     val totals: CashReportTotalsDto = CashReportTotalsDto(),
 )
 

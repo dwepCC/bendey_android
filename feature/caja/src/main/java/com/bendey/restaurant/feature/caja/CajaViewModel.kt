@@ -29,6 +29,9 @@ import com.bendey.restaurant.core.domain.cash.CashMovementsReportSummary
 import com.bendey.restaurant.core.domain.cash.CashPaymentsReport
 import com.bendey.restaurant.core.domain.cash.CashSessionProductSold
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
+import com.bendey.restaurant.core.domain.cash.CashSuggestedMethodBalance
+import com.bendey.restaurant.core.domain.cash.methodBalanceInputs
+import com.bendey.restaurant.core.domain.cash.suggestedAmountText
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.session.UserSessionStore
@@ -72,6 +75,10 @@ enum class HistoryDateFilter(val label: String, val days: Long?) {
 data class OpenCashForm(
     val openingBalance: String = "0",
     val notes: String = "",
+    /** Otros métodos (Yape, Plin…) con lo que el cajero cerró la última vez. Vacío = no se muestran. */
+    val methods: List<CashSuggestedMethodBalance> = emptyList(),
+    /** Monto de apertura digitado por método; lo vacío abre con lo sugerido. */
+    val methodAmounts: Map<String, String> = emptyMap(),
 )
 
 data class MovementForm(
@@ -128,6 +135,8 @@ data class CloseCashForm(
     val notes: String = "",
     val useArqueo: Boolean = true,
     val arqueo: Map<String, Int> = emptyArqueo(),
+    /** Lo que el cajero confirmó de cada método no efectivo mirando su app; vacío = sin confirmar. */
+    val methodCounts: Map<String, String> = emptyMap(),
 )
 
 data class CajaUiState(
@@ -327,6 +336,7 @@ class CajaViewModel @Inject constructor(
                     }
                     session?.let { loadMovements(it.id) }
                         ?: _uiState.update { it.copy(movements = emptyList()) }
+                    if (session == null) loadOpeningSuggestions()
                     loadHistory(silent = true)
                 }
                 is AppResult.Error -> _uiState.update {
@@ -362,6 +372,28 @@ class CajaViewModel @Inject constructor(
 
     fun showOpenDialog() {
         _uiState.update { it.copy(showOpenDialog = true, openForm = OpenCashForm(), error = null) }
+        loadOpeningSuggestions()
+    }
+
+    /**
+     * Otros métodos (Yape, Plin…) para el diálogo de apertura, cada uno con lo que el cajero cerró la
+     * última vez. Si no se puede leer, el bloque no aparece y el backend abre cada método con lo sugerido.
+     */
+    private fun loadOpeningSuggestions() {
+        viewModelScope.launch {
+            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
+            val methods = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data.orEmpty()
+            if (methods.isEmpty()) return@launch
+            _uiState.update {
+                if (!it.showOpenDialog || it.openForm.methods.isNotEmpty()) it
+                else it.copy(
+                    openForm = it.openForm.copy(
+                        methods = methods,
+                        methodAmounts = methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
+                    ),
+                )
+            }
+        }
     }
 
     fun dismissOpenDialog() {
@@ -387,7 +419,7 @@ class CajaViewModel @Inject constructor(
                     _uiState.update { it.copy(actionLoading = false, error = "Sin sucursal activa") }
                     return@launch
                 }
-            when (val result = cashRepository.openSession(branchId, balance, form.notes)) {
+            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts))) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -707,7 +739,7 @@ class CajaViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             val arqueo = if (form.useArqueo && form.arqueo.values.any { it > 0 }) form.arqueo else null
-            when (val result = cashRepository.closeSession(session.id, closing, form.notes, arqueo)) {
+            when (val result = cashRepository.closeSession(session.id, closing, form.notes, arqueo, methodBalanceInputs(form.methodCounts))) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -716,11 +748,13 @@ class CajaViewModel @Inject constructor(
                             movements = emptyList(),
                             showCloseDialog = false,
                             showOpenDialog = true,
+                            openForm = OpenCashForm(),
                             snackMessage = if (result.data.counted == false) CashCopy.CLOSE_NOT_COUNTED else CashCopy.CLOSE_SUCCESS,
                             reportSessionId = result.data.id,
                         )
                     }
                     loadHistory(silent = true)
+                    loadOpeningSuggestions()
                 }
                 is AppResult.Error -> {
                     // "La sesión ya está cerrada" (backend, CashBankService.CloseSession) significa

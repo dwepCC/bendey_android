@@ -1,6 +1,7 @@
 package com.bendey.restaurant.feature.caja
 
 import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.cash.methodBalanceLines
 import com.bendey.restaurant.core.domain.locale.TenantLocaleHolder
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import org.json.JSONObject
@@ -173,6 +174,11 @@ fun formatSessionReportText(
         report.nonCashByMethod.forEach { row ->
             appendLine("  ${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}")
         }
+    }
+    if (report.methodBalances.isNotEmpty()) {
+        appendLine()
+        appendLine("Saldos por metodo de este cajero:")
+        methodBalanceLines(report.methodBalances) { currency.format(it) }.forEach { appendLine("  $it") }
     }
     if (report.incomeDetail.isNotEmpty()) {
         appendLine()

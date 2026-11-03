@@ -10,6 +10,7 @@ import com.bendey.restaurant.core.data.export.ReportCsvWriter
 import com.bendey.restaurant.core.data.export.ReportPdfWriter
 import com.bendey.restaurant.core.domain.cash.CashMovementReportRow
 import com.bendey.restaurant.core.domain.cash.CashPaymentDetailRow
+import com.bendey.restaurant.core.domain.cash.methodBalanceLines
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
 import java.text.NumberFormat
 import java.util.Locale
@@ -148,6 +149,11 @@ fun formatSessionReportLines(
         report.nonCashByMethod.forEach { row ->
             lines += "${salePaymentMethodLabelEs(row.method)}: ${currency.format(row.total)}"
         }
+    }
+    if (report.methodBalances.isNotEmpty()) {
+        lines += ""
+        lines += "Saldos por método de este cajero"
+        lines += methodBalanceLines(report.methodBalances) { currency.format(it) }
     }
     if (products.isNotEmpty()) {
         lines += ""

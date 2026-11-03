@@ -102,6 +102,7 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `CASH_OPENING_INVALID` | Monto no válido | El monto inicial no es un número válido. Corrígelo y vuelve a intentar. | [Volver a intentar] |
 | `CASH_OPENING_NEGATIVE` | Monto no válido | El monto inicial no puede ser negativo. Corrígelo y vuelve a intentar. | [Volver a intentar] |
 | `CASH_OPENING_TOO_LARGE` | Monto muy alto | El monto inicial es demasiado alto. Revisa que esté bien escrito. | [Volver a intentar] |
+| `CASH_METHOD_AMOUNT_INVALID` | Monto no válido | Revisa los montos de Yape, Plin u otros métodos: deben ser números mayores o iguales a 0. | [Volver a intentar] |
 | `MOVEMENT_ALREADY_VOIDED` | Movimiento anulado | Este movimiento ya estaba anulado. | [Actualizar] |
 | `MOVEMENT_AMOUNT_INVALID` | Monto no válido | El monto debe ser mayor a cero. | [Volver a intentar] |
 | `MOVEMENT_NOT_FOUND` | Movimiento no encontrado | No encontramos el movimiento. Actualiza la lista. | [Actualizar] |

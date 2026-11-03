@@ -40,6 +40,7 @@ import com.bendey.restaurant.core.designsystem.theme.BendeySpacing
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.sales.salePaymentMethodLabelEs
+import com.bendey.restaurant.core.ui.cash.CashMethodBalancesList
 import com.bendey.restaurant.core.ui.components.BendeyFormDialog
 import com.bendey.restaurant.core.ui.components.BendeyHorizontalScrollRow
 import com.bendey.restaurant.core.ui.components.BendeyTextButton
@@ -321,6 +322,19 @@ fun CloseCashDialog(
                         }
                     }
                     HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
+                    // Con cuánto cierra el cajero cada método (Yape, Plin…). Si confirma lo que ve en
+                    // su app, el próximo turno abre con eso.
+                    if (report.methodBalances.isNotEmpty()) {
+                        Text("Otros métodos de pago", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                        CashMethodBalancesList(
+                            rows = report.methodBalances,
+                            editable = true,
+                            values = form.methodCounts,
+                            enabled = !loading,
+                            onChange = { method, value -> onFormChange { it.copy(methodCounts = it.methodCounts + (method to value)) } },
+                        )
+                        HorizontalDivider(color = BendeyColors.Outline.copy(alpha = 0.35f))
+                    }
                 }
                 operationalStatus?.takeIf { it.hasActiveOperations }?.let { op ->
                     Text(

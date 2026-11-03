@@ -76,6 +76,8 @@ data class CashSessionReport(
     val nonCashSalesByMethod: List<CashMethodTotal> = emptyList(),
     /** Neto real por método no efectivo: ventas − compras − egresos. No solo cobros de venta. */
     val nonCashByMethod: List<CashMethodTotal> = emptyList(),
+    /** Saldo de cada método no efectivo del cajero en la sesión. Vacío si el backend es anterior. */
+    val methodBalances: List<CashMethodBalance> = emptyList(),
     val totalIncome: Double,
     val totalExpense: Double,
     val totalSales: Double,
@@ -139,6 +141,29 @@ data class CashBankMovement(
 )
 
 data class CashMethodTotal(val method: String, val total: Double)
+
+/** Monto de un método no efectivo (Yape, Plin…) al abrir la caja o al confirmar el cierre. */
+data class CashMethodBalanceInput(val method: String, val amount: Double)
+
+/** Con cuánto se sugiere abrir un método: lo que el cajero cerró en su sesión anterior. */
+data class CashSuggestedMethodBalance(val method: String, val name: String, val suggested: Double)
+
+/**
+ * Saldo de un método no efectivo del cajero en una sesión: con cuánto abrió, entradas, salidas, esperado
+ * y lo que confirmó al cerrar. Es un control por cajero; el saldo de la cuenta del negocio es otro.
+ */
+data class CashMethodBalance(
+    val method: String,
+    val name: String,
+    val openingSuggested: Double,
+    val openingBalance: Double,
+    val inflows: Double,
+    val outflows: Double,
+    val expected: Double,
+    /** null = no lo confirmó (no es lo mismo que 0). */
+    val counted: Double?,
+    val difference: Double?,
+)
 
 data class CashPendingRefundRow(
     val saleId: Int,

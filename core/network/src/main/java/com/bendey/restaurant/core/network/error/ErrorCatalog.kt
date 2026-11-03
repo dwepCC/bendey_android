@@ -241,6 +241,7 @@ object ErrorCatalog {
         "CASH_OPENING_INVALID" to e("Monto no válido", "El monto inicial no es un número válido. Corrígelo y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
         "CASH_OPENING_NEGATIVE" to e("Monto no válido", "El monto inicial no puede ser negativo. Corrígelo y vuelve a intentar.", ErrorAction.BACK_TO_TRY),
         "CASH_OPENING_TOO_LARGE" to e("Monto muy alto", "El monto inicial es demasiado alto. Revisa que esté bien escrito.", ErrorAction.BACK_TO_TRY),
+        "CASH_METHOD_AMOUNT_INVALID" to e("Monto no válido", "Revisa los montos de Yape, Plin u otros métodos: deben ser números mayores o iguales a 0.", ErrorAction.BACK_TO_TRY),
         "MOVEMENT_ALREADY_VOIDED" to e("Movimiento anulado", "Este movimiento ya estaba anulado.", ErrorAction.REFRESH),
         "MOVEMENT_AMOUNT_INVALID" to e("Monto no válido", "El monto debe ser mayor a cero.", ErrorAction.BACK_TO_TRY),
         "MOVEMENT_NOT_FOUND" to e("Movimiento no encontrado", "No encontramos el movimiento. Actualiza la lista.", ErrorAction.REFRESH),
