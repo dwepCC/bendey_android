@@ -16,6 +16,7 @@ data class TenantByRucDto(
 @Serializable
 data class ValidateRucRequestDto(
     val ruc: String,
+    val country: String,
 )
 
 @Serializable
@@ -27,6 +28,7 @@ data class ValidateRucResponseDto(
     val ubigeo: String = "",
     val estado: String = "",
     val condicion: String = "",
+    val warning: String = "",
 )
 
 @Serializable
@@ -45,7 +47,7 @@ data class PublicRegisterRequestDto(
     @SerialName("referral_code") val referralCode: String = "",
     /**
      * País de la empresa (el backend lo exige desde el paquete de país). Sin valor por defecto a propósito:
-     * kotlinx no serializa los defaults y el campo no viajaría. El registro de autoservicio es solo de Perú.
+     * kotlinx no serializa los defaults y el campo no viajaría.
      */
     val country: String,
 )

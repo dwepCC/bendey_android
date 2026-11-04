@@ -7,7 +7,8 @@ import com.bendey.restaurant.core.domain.auth.AuthRepository
 import com.bendey.restaurant.core.domain.auth.InitialAdminPinHolder
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationInput
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationResult
-import com.bendey.restaurant.core.domain.auth.SunatRucValidation
+import com.bendey.restaurant.core.domain.auth.RucValidation
+import com.bendey.restaurant.core.domain.auth.registrationRucLength
 import com.bendey.restaurant.core.domain.auth.TenantRepository
 import com.bendey.restaurant.core.network.dto.PublicRegisterRequestDto
 import com.bendey.restaurant.core.network.dto.ValidateRucRequestDto
@@ -54,17 +55,22 @@ class TenantRepositoryImpl @Inject constructor(
         com.bendey.restaurant.core.domain.subscription.SupportContact(dto.whatsapp, dto.email, dto.phone)
     }
 
-    override suspend fun validateRucWithSunat(ruc: String): Result<SunatRucValidation> = runCatching {
+    override suspend fun validateRuc(ruc: String, country: String): Result<RucValidation> = runCatching {
         val normalized = ruc.replace(Regex("\\D"), "").trim()
-        require(normalized.length == 11) { "El RUC debe tener 11 dígitos" }
-        val dto = publicApi.validateRuc(ValidateRucRequestDto(ruc = normalized))
-        require(dto.success) { "RUC no encontrado en SUNAT" }
-        require(dto.razonSocial.isNotBlank()) { "No se obtuvo la razón social del RUC" }
-        SunatRucValidation(
+        val length = registrationRucLength(country)
+        require(normalized.length == length) { "El RUC debe tener $length dígitos" }
+        val dto = publicApi.validateRuc(ValidateRucRequestDto(ruc = normalized, country = country))
+        // Ecuador no tiene consulta externa: la razón social viene vacía y la escribe quien se registra.
+        if (country != "EC") {
+            require(dto.success) { "RUC no encontrado en SUNAT" }
+            require(dto.razonSocial.isNotBlank()) { "No se obtuvo la razón social del RUC" }
+        }
+        RucValidation(
             ruc = dto.ruc.ifBlank { normalized },
             razonSocial = dto.razonSocial,
             direccion = dto.direccion,
             ubigeo = dto.ubigeo,
+            warning = dto.warning,
         )
     }.recoverCatching { error ->
         throw NetworkErrorMapper.map(error)
@@ -74,7 +80,8 @@ class TenantRepositoryImpl @Inject constructor(
         input: RestaurantRegistrationInput,
     ): Result<RestaurantRegistrationResult> = runCatching {
         val normalizedRuc = input.ruc.replace(Regex("\\D"), "").trim()
-        require(normalizedRuc.length == 11) { "El RUC debe tener 11 dígitos" }
+        val rucLength = registrationRucLength(input.country)
+        require(normalizedRuc.length == rucLength) { "El RUC debe tener $rucLength dígitos" }
         val response = publicApi.registerTenant(
             PublicRegisterRequestDto(
                 name = input.name.trim(),
@@ -86,7 +93,7 @@ class TenantRepositoryImpl @Inject constructor(
                 ubigeo = input.ubigeo.trim(),
                 password = input.password,
                 rubro = RESTAURANT_RUBRO,
-                country = REGISTRATION_COUNTRY,
+                country = input.country,
             ),
         )
         // El PIN inicial solo se guarda en memoria (holder de vida corta) para la pantalla de éxito.
@@ -115,9 +122,6 @@ class TenantRepositoryImpl @Inject constructor(
 
     private companion object {
         const val RESTAURANT_RUBRO = "gastronomico"
-
-        /** El registro de autoservicio es solo de Perú (valida RUC de 11 dígitos); el backend exige el país. */
-        const val REGISTRATION_COUNTRY = "PE"
     }
 }
 

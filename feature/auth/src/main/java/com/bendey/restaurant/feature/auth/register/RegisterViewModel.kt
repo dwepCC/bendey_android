@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bendey.restaurant.core.data.auth.RegistrationCoordinator
 import com.bendey.restaurant.core.domain.auth.RestaurantRegistrationInput
 import com.bendey.restaurant.core.domain.auth.TenantRepository
-import com.bendey.restaurant.core.domain.subscription.SupportContact
+import com.bendey.restaurant.core.domain.auth.registrationRucLength
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val RUC_LENGTH = 11
 private const val MIN_PASSWORD_LENGTH = 6
 
 /**
@@ -26,10 +25,10 @@ private const val MIN_PASSWORD_LENGTH = 6
  * celular va vacío: ambos se completan en el wizard.
  */
 data class RegisterUiState(
-    /** "PE" o "EC". Ecuador está en piloto: no se registra aquí, se deriva al soporte de Bendey. */
+    /** "PE" o "EC". Ecuador no tiene consulta: la razón social y la dirección las escribe quien se registra. */
     val country: String = "PE",
-    /** Contacto de soporte (se pide al elegir Ecuador); null = aún no cargado. */
-    val support: SupportContact? = null,
+    /** RUC posible pero dudoso (Ecuador). No bloquea el registro. */
+    val rucWarning: String = "",
     val ruc: String = "",
     val razonSocial: String = "",
     val rucValidated: Boolean = false,
@@ -44,11 +43,12 @@ data class RegisterUiState(
     val error: String? = null,
 ) {
     val canValidate: Boolean
-        get() = ruc.length == RUC_LENGTH && !validating && !loading && !rucValidated
+        get() = ruc.length == registrationRucLength(country) && !validating && !loading && !rucValidated
 
     val canSubmit: Boolean
         get() = rucValidated &&
             razonSocial.isNotBlank() &&
+            (country != "EC" || address.isNotBlank()) &&
             isPlausibleEmail(email) &&
             password.length >= MIN_PASSWORD_LENGTH &&
             !loading &&
@@ -78,29 +78,25 @@ class RegisterViewModel @Inject constructor(
 
     fun chooseCountry(code: String) {
         val state = uiState.value
-        if (state.rucValidated || state.loading) return
-        local.update { it.copy(country = code, error = null) }
-        if (code == "EC" && local.value.support == null) {
-            viewModelScope.launch {
-                val contact = tenantRepository.supportContact().getOrElse { SupportContact() }
-                local.update { it.copy(support = contact) }
-            }
-        }
+        if (state.rucValidated || state.loading || state.country == code) return
+        // El RUC digitado era del otro país: no se arrastra.
+        local.update { it.copy(country = code, ruc = "", error = null) }
     }
 
     fun onRucChange(value: String) {
         if (local.value.rucValidated) return
         local.update {
-            it.copy(ruc = value.filter { char -> char.isDigit() }.take(RUC_LENGTH), error = null)
+            it.copy(ruc = value.filter { char -> char.isDigit() }.take(registrationRucLength(it.country)), error = null)
         }
     }
 
     fun validateRuc() {
         val ruc = local.value.ruc
+        val country = local.value.country
         if (!uiState.value.canValidate) return
         viewModelScope.launch {
             local.update { it.copy(validating = true, error = null) }
-            tenantRepository.validateRucWithSunat(ruc)
+            tenantRepository.validateRuc(ruc, country)
                 .onSuccess { validation ->
                     local.update {
                         it.copy(
@@ -109,6 +105,7 @@ class RegisterViewModel @Inject constructor(
                             razonSocial = validation.razonSocial,
                             address = validation.direccion,
                             ubigeo = validation.ubigeo,
+                            rucWarning = validation.warning,
                         )
                     }
                 }
@@ -122,8 +119,18 @@ class RegisterViewModel @Inject constructor(
 
     fun clearRuc() {
         local.update {
-            it.copy(ruc = "", razonSocial = "", rucValidated = false, address = "", ubigeo = "", error = null)
+            it.copy(ruc = "", razonSocial = "", rucValidated = false, address = "", ubigeo = "", rucWarning = "", error = null)
         }
+    }
+
+    fun onRazonSocialChange(value: String) {
+        if (local.value.country != "EC") return
+        local.update { it.copy(razonSocial = value, error = null) }
+    }
+
+    fun onAddressChange(value: String) {
+        if (local.value.country != "EC") return
+        local.update { it.copy(address = value, error = null) }
     }
 
     fun onEmailChange(value: String) {
@@ -157,6 +164,7 @@ class RegisterViewModel @Inject constructor(
                 password = state.password,
                 address = state.address,
                 ubigeo = state.ubigeo,
+                country = state.country,
             ),
         )
     }

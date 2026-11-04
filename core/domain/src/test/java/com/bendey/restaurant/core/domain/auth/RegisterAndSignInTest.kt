@@ -16,7 +16,7 @@ class RegisterAndSignInTest {
         var registerCalls = 0
         var lastInput: RestaurantRegistrationInput? = null
         override suspend fun resolveTenantByRuc(ruc: String): Result<TenantBinding> = error("no se usa")
-        override suspend fun validateRucWithSunat(ruc: String): Result<SunatRucValidation> = error("no se usa")
+        override suspend fun validateRuc(ruc: String, country: String): Result<RucValidation> = error("no se usa")
         override suspend fun bindTenant(binding: TenantBinding) = Unit
         override suspend fun registerRestaurant(input: RestaurantRegistrationInput): Result<RestaurantRegistrationResult> {
             registerCalls++

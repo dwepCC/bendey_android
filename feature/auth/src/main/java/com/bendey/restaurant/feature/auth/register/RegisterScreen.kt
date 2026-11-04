@@ -19,8 +19,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalUriHandler
-import com.bendey.restaurant.core.domain.auth.supportWhatsAppUrl
 import com.bendey.restaurant.core.ui.components.BendeySecondaryButton
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -59,18 +57,25 @@ fun RegisterScreen(
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
 
-    val uriHandler = LocalUriHandler.current
+    val isEcuador = state.country == "EC"
+    val razonSocialFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(state.country) { if (state.country == "PE") rucFocusRequester.requestFocus() }
+    LaunchedEffect(state.country) { rucFocusRequester.requestFocus() }
     LaunchedEffect(state.rucValidated) {
-        if (state.rucValidated) emailFocusRequester.requestFocus()
+        if (state.rucValidated) {
+            if (isEcuador) razonSocialFocusRequester.requestFocus() else emailFocusRequester.requestFocus()
+        }
     }
 
     AuthWelcomeLayout(
         modifier = modifier,
         title = "Crea tu restaurante",
-        subtitle = "Empieza a vender en minutos.",
-        description = "Solo necesitamos tu RUC, un correo y una contraseña.",
+        subtitle = if (isEcuador) WizardCopy.REGISTER_SUBTITLE_ECUADOR else "Empieza a vender en minutos.",
+        description = if (isEcuador) {
+            "Solo necesitamos tu RUC, tus datos, un correo y una contraseña."
+        } else {
+            "Solo necesitamos tu RUC, un correo y una contraseña."
+        },
         scrollable = true,
     ) {
         Row(
@@ -111,14 +116,17 @@ fun RegisterScreen(
                         }
                     }
                 }
-                if (state.country == "EC") {
-                    EcuadorContact(state = state, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
-                    return@Column
-                }
                 BendeyTextField(
                     value = state.ruc,
                     onValueChange = viewModel::onRucChange,
                     label = "RUC",
+                    supportingText = if (state.rucValidated) {
+                        null
+                    } else if (isEcuador) {
+                        WizardCopy.REGISTER_RUC_HINT_ECUADOR
+                    } else {
+                        WizardCopy.REGISTER_RUC_HINT_PERU
+                    },
                     modifier = Modifier.focusRequester(rucFocusRequester),
                     enabled = !state.rucValidated && !state.validating && !state.loading,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Go),
@@ -126,7 +134,11 @@ fun RegisterScreen(
                 )
                 if (!state.rucValidated) {
                     BendeyPrimaryButton(
-                        text = if (state.validating) "Validando…" else "Validar",
+                        text = when {
+                            state.validating -> "Validando…"
+                            isEcuador -> WizardCopy.REGISTER_CONTINUE
+                            else -> "Validar"
+                        },
                         onClick = viewModel::validateRuc,
                         loading = state.validating,
                         enabled = state.canValidate,
@@ -143,13 +155,35 @@ fun RegisterScreen(
                             tint = BendeyColors.Success,
                         )
                         Text(
-                            text = state.razonSocial,
+                            // Ecuador: el RUC solo se revisó por estructura; la razón social se escribe abajo.
+                            text = if (isEcuador) state.ruc else state.razonSocial,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = BendeyColors.OnSurface,
                             modifier = Modifier.weight(1f),
                         )
                         BendeyTextButton(text = "Cambiar RUC", onClick = viewModel::clearRuc, enabled = !state.loading)
+                    }
+                    if (state.rucWarning.isNotBlank()) {
+                        BendeyAlert(message = state.rucWarning, severity = BendeyAlertSeverity.Warning)
+                    }
+                    if (isEcuador) {
+                        BendeyTextField(
+                            value = state.razonSocial,
+                            onValueChange = viewModel::onRazonSocialChange,
+                            label = WizardCopy.REGISTER_BUSINESS_NAME,
+                            modifier = Modifier.focusRequester(razonSocialFocusRequester),
+                            enabled = !state.loading,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        )
+                        BendeyTextField(
+                            value = state.address,
+                            onValueChange = viewModel::onAddressChange,
+                            label = WizardCopy.REGISTER_ADDRESS,
+                            enabled = !state.loading,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { emailFocusRequester.requestFocus() }),
+                        )
                     }
                     BendeyTextField(
                         value = state.email,
@@ -192,32 +226,5 @@ fun RegisterScreen(
                 }
             }
         }
-    }
-}
-
-/** Ecuador (piloto): el alta la hace el equipo de Bendey; aquí solo se explica y se ofrece el contacto. */
-@Composable
-private fun EcuadorContact(state: RegisterUiState, onOpen: (String) -> Unit) {
-    BendeyAlert(
-        title = WizardCopy.REGISTER_ECUADOR_TITLE,
-        message = WizardCopy.REGISTER_ECUADOR_BODY,
-        severity = BendeyAlertSeverity.Info,
-    )
-    val support = state.support ?: return
-    val wa = supportWhatsAppUrl(support.whatsapp, WizardCopy.REGISTER_ECUADOR_WHATSAPP_MESSAGE)
-    if (wa != null) {
-        BendeyPrimaryButton(
-            text = WizardCopy.REGISTER_ECUADOR_WHATSAPP,
-            onClick = { onOpen(wa) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-    val lines = buildList {
-        if (support.email.isNotBlank()) add(WizardCopy.REGISTER_ECUADOR_EMAIL.replace("{email}", support.email))
-        if (support.phone.isNotBlank()) add(WizardCopy.REGISTER_ECUADOR_PHONE.replace("{phone}", support.phone))
-        if (wa == null && isEmpty()) add(WizardCopy.REGISTER_ECUADOR_NO_CONTACT)
-    }
-    lines.forEach { line ->
-        Text(text = line, style = MaterialTheme.typography.bodyMedium, color = BendeyColors.OnSurfaceVariant)
     }
 }

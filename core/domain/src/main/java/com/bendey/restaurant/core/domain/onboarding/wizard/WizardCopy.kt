@@ -24,14 +24,12 @@ object WizardCopy {
     const val REGISTER_COUNTRY = "País de tu restaurante"
     const val REGISTER_COUNTRY_PERU = "Perú"
     const val REGISTER_COUNTRY_ECUADOR = "Ecuador"
-    const val REGISTER_ECUADOR_TITLE = "En Ecuador te activamos nosotros"
-    const val REGISTER_ECUADOR_BODY =
-        "Bendey Resto ya funciona en Ecuador. Por ahora el equipo de Bendey crea tu restaurante y deja lista la facturación con el SRI (RUC de 13 dígitos y firma electrónica). Escríbenos y lo coordinamos."
-    const val REGISTER_ECUADOR_WHATSAPP = "Escribir por WhatsApp"
-    const val REGISTER_ECUADOR_WHATSAPP_MESSAGE = "Hola, tengo un restaurante en Ecuador y quiero usar Bendey Resto."
-    const val REGISTER_ECUADOR_EMAIL = "Correo: {email}"
-    const val REGISTER_ECUADOR_PHONE = "Teléfono: {phone}"
-    const val REGISTER_ECUADOR_NO_CONTACT = "Pide a tu asesor de Bendey que active tu restaurante."
+    const val REGISTER_RUC_HINT_PERU = "11 dígitos; lo validamos con SUNAT."
+    const val REGISTER_RUC_HINT_ECUADOR = "13 dígitos; revisamos que sea un RUC posible."
+    const val REGISTER_CONTINUE = "Continuar"
+    const val REGISTER_BUSINESS_NAME = "Razón social"
+    const val REGISTER_ADDRESS = "Dirección del establecimiento"
+    const val REGISTER_SUBTITLE_ECUADOR = "Empieza a vender en minutos con 30 días gratis."
 
     // W0
     const val W0_TITLE = "Bienvenido a Bendey Resto"
