@@ -334,6 +334,27 @@ private fun SessionTab(
                 modifier = Modifier.weight(1f),
             )
         }
+        // Yape, Plin… con la misma lectura que el efectivo: cuánto debería haber y con cuánto abrió. Es el
+        // saldo de este cajero, no el de la cuenta del negocio. En fila desplazable para no quitarle alto
+        // a los movimientos.
+        if (state.sessionMethodBalances.isNotEmpty()) {
+            BendeyHorizontalScrollRow(
+                modifier = Modifier.fillMaxWidth().padding(start = BendeySpacing.md, end = BendeySpacing.md, bottom = BendeySpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm),
+            ) {
+                state.sessionMethodBalances.forEach { m ->
+                    BendeyKpiCard(
+                        title = "${m.name.ifBlank { salePaymentMethodLabelEs(m.method) }} esperado",
+                        value = currency.format(m.expected),
+                        hint = "Inicial ${currency.format(m.openingBalance)}",
+                        accentColor = BendeyColors.AccentPurple,
+                        icon = Icons.Default.Add,
+                        compact = true,
+                        modifier = Modifier.width(170.dp),
+                    )
+                }
+            }
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = BendeySpacing.md),
             horizontalArrangement = Arrangement.spacedBy(BendeySpacing.xs),

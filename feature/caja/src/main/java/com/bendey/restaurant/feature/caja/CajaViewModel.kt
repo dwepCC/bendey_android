@@ -12,6 +12,7 @@ import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.cash.AddCashMovementInput
 import com.bendey.restaurant.core.domain.cash.CashBankAccount
 import com.bendey.restaurant.core.domain.cash.CashBankMovement
+import com.bendey.restaurant.core.domain.cash.CashMethodBalance
 import com.bendey.restaurant.core.domain.cash.CashMovement
 import com.bendey.restaurant.core.domain.cash.CashMovementType
 import com.bendey.restaurant.core.domain.cash.CashPaymentMethod
@@ -147,6 +148,8 @@ data class CajaUiState(
     val movements: List<CashMovement> = emptyList(),
     val historySessions: List<CashSessionBrief> = emptyList(),
     val report: CashSessionReport? = null,
+    /** Saldo de cada método no efectivo en la caja abierta, para la pestaña Sesión. */
+    val sessionMethodBalances: List<CashMethodBalance> = emptyList(),
     val reportSessionId: Int? = null,
     val reportLoading: Boolean = false,
     val paymentMethods: List<CashPaymentMethod> = emptyList(),
@@ -337,6 +340,9 @@ class CajaViewModel @Inject constructor(
                     session?.let { loadMovements(it.id) }
                         ?: _uiState.update { it.copy(movements = emptyList()) }
                     if (session == null) loadOpeningSuggestions()
+                    // Saldos de Yape, Plin… de la caja abierta. Si falla, el bloque no aparece.
+                    val balances = session?.let { (cashRepository.getSessionReport(it.id) as? AppResult.Success)?.data?.methodBalances }
+                    _uiState.update { it.copy(sessionMethodBalances = balances.orEmpty()) }
                     loadHistory(silent = true)
                 }
                 is AppResult.Error -> _uiState.update {
