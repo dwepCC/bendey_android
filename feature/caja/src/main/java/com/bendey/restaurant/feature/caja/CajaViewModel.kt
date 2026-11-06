@@ -32,6 +32,7 @@ import com.bendey.restaurant.core.domain.cash.CashSessionProductSold
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.CashSuggestedMethodBalance
 import com.bendey.restaurant.core.domain.cash.methodBalanceInputs
+import com.bendey.restaurant.core.domain.cash.openingNeedsReason
 import com.bendey.restaurant.core.domain.cash.suggestedAmountText
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.model.AppResult
@@ -80,6 +81,10 @@ data class OpenCashForm(
     val methods: List<CashSuggestedMethodBalance> = emptyList(),
     /** Monto de apertura digitado por método; lo vacío abre con lo sugerido. */
     val methodAmounts: Map<String, String> = emptyMap(),
+    /** Con cuánto terminó la sesión anterior; null en la primera. */
+    val lastClosing: Double? = null,
+    /** Por qué abre con otro monto que el del último cierre. */
+    val openingReason: String = "",
 )
 
 data class MovementForm(
@@ -382,20 +387,24 @@ class CajaViewModel @Inject constructor(
     }
 
     /**
-     * Otros métodos (Yape, Plin…) para el diálogo de apertura, cada uno con lo que el cajero cerró la
-     * última vez. Si no se puede leer, el bloque no aparece y el backend abre cada método con lo sugerido.
+     * El efectivo del último cierre y los otros métodos (Yape, Plin…) para el diálogo de apertura. Si no se
+     * puede leer, los otros métodos no aparecen y el backend abre cada uno con lo sugerido.
      */
     private fun loadOpeningSuggestions() {
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
-            val methods = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data.orEmpty()
-            if (methods.isEmpty()) return@launch
+            val sug = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data ?: return@launch
             _uiState.update {
-                if (!it.showOpenDialog || it.openForm.methods.isNotEmpty()) it
-                else it.copy(
+                if (!it.showOpenDialog || it.openForm.lastClosing != null || it.openForm.methods.isNotEmpty()) return@update it
+                val last = sug.lastClosing
+                // No pisa lo que el cajero ya empezó a teclear.
+                val prellenar = last != null && last > 0.0 && it.openForm.openingBalance == "0"
+                it.copy(
                     openForm = it.openForm.copy(
-                        methods = methods,
-                        methodAmounts = methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
+                        lastClosing = last,
+                        openingBalance = if (prellenar) suggestedAmountText(last!!) else it.openForm.openingBalance,
+                        methods = sug.methods,
+                        methodAmounts = sug.methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
                     ),
                 )
             }
@@ -418,6 +427,10 @@ class CajaViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Ingresa un monto inicial válido") }
             return
         }
+        if (openingNeedsReason(form.lastClosing, form.openingBalance, form.openingReason)) {
+            _uiState.update { it.copy(error = CashCopy.OPEN_REASON_REQUIRED) }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(actionLoading = true, error = null) }
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
@@ -425,7 +438,7 @@ class CajaViewModel @Inject constructor(
                     _uiState.update { it.copy(actionLoading = false, error = "Sin sucursal activa") }
                     return@launch
                 }
-            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts))) {
+            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts), form.openingReason)) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(

@@ -12,6 +12,7 @@ import com.bendey.restaurant.core.domain.cash.CashCancelledSaleRow
 import com.bendey.restaurant.core.domain.cash.CashMethodBalance
 import com.bendey.restaurant.core.domain.cash.CashMethodBalanceInput
 import com.bendey.restaurant.core.domain.cash.CashMethodTotal
+import com.bendey.restaurant.core.domain.cash.CashOpeningSuggestions
 import com.bendey.restaurant.core.domain.cash.CashSuggestedMethodBalance
 import com.bendey.restaurant.core.domain.cash.CashPendingRefundRow
 import com.bendey.restaurant.core.domain.cash.CashMovement
@@ -97,6 +98,7 @@ class CashRepositoryImpl @Inject constructor(
         openingBalance: Double,
         notes: String?,
         methodBalances: List<CashMethodBalanceInput>,
+        openingReason: String?,
     ): AppResult<CashSession> = apiCall(ErrorFlow.CASH) {
         val dto = tenantRetrofitProvider.create<CashbankApi>().openSession(
             OpenCashSessionRequestDto(
@@ -104,6 +106,7 @@ class CashRepositoryImpl @Inject constructor(
                 openingBalance = openingBalance,
                 notes = notes?.takeIf { it.isNotBlank() },
                 methodBalances = methodBalances.toDtoOrNull(),
+                openingReason = openingReason?.trim()?.takeIf { it.isNotEmpty() },
             ),
         ).data ?: error("No se pudo abrir la caja")
         dto.toDomain().also { persistSnapshot(it) }
@@ -130,11 +133,12 @@ class CashRepositoryImpl @Inject constructor(
         dto.toDomain().let { it.copy(counted = response.counted ?: it.counted) }
     }
 
-    override suspend fun openingSuggestions(branchId: Int): AppResult<List<CashSuggestedMethodBalance>> = apiCall(ErrorFlow.CASH) {
-        tenantRetrofitProvider.create<CashbankApi>()
-            .openingSuggestions(branchId)
-            .data
-            .map { CashSuggestedMethodBalance(method = it.method, name = it.name, suggested = it.suggested) }
+    override suspend fun openingSuggestions(branchId: Int): AppResult<CashOpeningSuggestions> = apiCall(ErrorFlow.CASH) {
+        val response = tenantRetrofitProvider.create<CashbankApi>().openingSuggestions(branchId)
+        CashOpeningSuggestions(
+            methods = response.data.map { CashSuggestedMethodBalance(method = it.method, name = it.name, suggested = it.suggested) },
+            lastClosing = response.cash?.takeIf { it.hasPrevious }?.let { it.counted ?: it.expected },
+        )
     }
 
     /** Sin montos no se manda el campo: el backend abre cada método con lo sugerido. */

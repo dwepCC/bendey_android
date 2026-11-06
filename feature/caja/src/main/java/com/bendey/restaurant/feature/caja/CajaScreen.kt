@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.VerticalDivider
 import com.bendey.restaurant.core.ui.cash.CashMethodBalancesList
 import com.bendey.restaurant.core.ui.cash.CashMethodOpeningFields
+import com.bendey.restaurant.core.ui.cash.CashOpeningJumpFields
 import com.bendey.restaurant.core.ui.components.BendeyBottomSheet
 import com.bendey.restaurant.core.ui.components.BendeyLazyColumn
 import com.bendey.restaurant.core.ui.layout.adaptive.BendeyWidthTier
@@ -1370,7 +1371,15 @@ private fun OpenCashDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text("Monto inicial en efectivo para iniciar el turno.")
+                form.lastClosing?.let { Text("Último cierre: ${Money.format(it)}", style = MaterialTheme.typography.bodySmall, color = BendeyColors.OnSurfaceVariant) }
                 BendeyTextField(form.openingBalance, { v -> onFormChange { it.copy(openingBalance = v) } }, "Monto de apertura (${Money.symbol})")
+                CashOpeningJumpFields(
+                    lastClosing = form.lastClosing,
+                    openingBalance = form.openingBalance,
+                    reason = form.openingReason,
+                    onReasonChange = { v -> onFormChange { it.copy(openingReason = v) } },
+                    enabled = !loading,
+                )
                 CashMethodOpeningFields(
                     methods = form.methods,
                     values = form.methodAmounts,

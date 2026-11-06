@@ -149,6 +149,15 @@ data class CashMethodBalanceInput(val method: String, val amount: Double)
 data class CashSuggestedMethodBalance(val method: String, val name: String, val suggested: Double)
 
 /**
+ * Lo que hace falta para abrir caja: los otros métodos y con cuánto terminó la sesión anterior del cajero
+ * (lo contado o, si no se contó, lo esperado). `lastClosing` es null en su primera sesión.
+ */
+data class CashOpeningSuggestions(
+    val methods: List<CashSuggestedMethodBalance> = emptyList(),
+    val lastClosing: Double? = null,
+)
+
+/**
  * Saldo de un método no efectivo del cajero en una sesión: con cuánto abrió, entradas, salidas, esperado
  * y lo que confirmó al cerrar. Es un control por cajero; el saldo de la cuenta del negocio es otro.
  */

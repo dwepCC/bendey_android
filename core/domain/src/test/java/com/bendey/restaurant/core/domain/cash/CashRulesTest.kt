@@ -94,6 +94,25 @@ class CashRulesTest {
         assertNull(lastCountedCash(emptyList()))
     }
 
+    // ── Diferencia con el último cierre ──
+    @Test fun elSaltoEsLaDiferenciaConElUltimoCierre() {
+        assertEquals(-462.4, openingJump(462.4, "0"), 0.0001)
+        assertEquals(50.0, openingJump(10.0, "60"), 0.0001)
+        assertEquals(0.0, openingJump(80.5, "80,50"), 0.0001)
+    }
+
+    @Test fun sinCierreAnteriorOMontoIlegibleNoHaySalto() {
+        assertEquals(0.0, openingJump(null, "100"), 0.0001)
+        assertEquals(0.0, openingJump(100.0, "abc"), 0.0001)
+    }
+
+    @Test fun soloExigeMotivoSiHayDiferencia() {
+        assertTrue(openingNeedsReason(462.4, "0", "  "))
+        assertFalse(openingNeedsReason(462.4, "0", "Lo retiró el dueño"))
+        assertFalse(openingNeedsReason(462.4, "462.40", ""))
+        assertFalse(openingNeedsReason(null, "100", ""))
+    }
+
     @Test fun cajaRequeridaSoloConEfectivo() {
         assertTrue(cashSessionRequiredForPayments(true))
         assertFalse(cashSessionRequiredForPayments(false))

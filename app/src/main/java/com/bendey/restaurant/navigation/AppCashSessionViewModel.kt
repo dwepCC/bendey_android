@@ -7,9 +7,10 @@ import com.bendey.restaurant.core.domain.cash.CashRepository
 import com.bendey.restaurant.core.domain.cash.CashSession
 import com.bendey.restaurant.core.domain.cash.CashSessionReport
 import com.bendey.restaurant.core.domain.cash.decideCashChip
-import com.bendey.restaurant.core.domain.cash.lastCountedCash
 import com.bendey.restaurant.core.domain.cash.methodBalanceInputs
+import com.bendey.restaurant.core.domain.cash.openingNeedsReason
 import com.bendey.restaurant.core.domain.cash.suggestedAmountText
+import com.bendey.restaurant.core.domain.copy.CashCopy
 import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.permission.RestaurantPermissions
 import com.bendey.restaurant.core.domain.session.UserSessionStore
@@ -201,29 +202,23 @@ class AppCashSessionViewModel @Inject constructor(
     }
 
     private fun loadOpenPrefill() {
+        // El efectivo del último cierre y los otros métodos (Yape, Plin…). Si no se puede leer, los otros
+        // métodos no aparecen y el backend abre cada uno con lo sugerido.
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
-            val last = (cashRepository.listSessions(branchId) as? AppResult.Success)?.data?.let(::lastCountedCash)
-            if (last != null && last > 0.0) {
-                _local.update {
-                    // No pisa lo que el cajero ya empezó a teclear.
-                    if (!it.showOpenModal || it.openForm.openingBalance != "0") it
-                    else it.copy(openPrefill = last, openForm = it.openForm.copy(openingBalance = formatMoneyInput(last)))
-                }
-            }
-        }
-        // Otros métodos (Yape, Plin…): cada uno con lo que el cajero cerró la última vez. Si no se puede
-        // leer, el bloque no aparece y el backend abre cada método con lo sugerido.
-        viewModelScope.launch {
-            val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id ?: return@launch
-            val methods = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data.orEmpty()
-            if (methods.isEmpty()) return@launch
+            val sug = (cashRepository.openingSuggestions(branchId) as? AppResult.Success)?.data ?: return@launch
             _local.update {
-                if (!it.showOpenModal || it.openForm.methods.isNotEmpty()) it
-                else it.copy(
+                if (!it.showOpenModal || it.openForm.lastClosing != null || it.openForm.methods.isNotEmpty()) return@update it
+                val last = sug.lastClosing
+                // No pisa lo que el cajero ya empezó a teclear.
+                val prellenar = last != null && last > 0.0 && it.openForm.openingBalance == "0"
+                it.copy(
+                    openPrefill = if (prellenar) last else it.openPrefill,
                     openForm = it.openForm.copy(
-                        methods = methods,
-                        methodAmounts = methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
+                        lastClosing = last,
+                        openingBalance = if (prellenar) formatMoneyInput(last!!) else it.openForm.openingBalance,
+                        methods = sug.methods,
+                        methodAmounts = sug.methods.associate { m -> m.method to suggestedAmountText(m.suggested) },
                     ),
                 )
             }
@@ -234,7 +229,8 @@ class AppCashSessionViewModel @Inject constructor(
     fun openWithZero() {
         val current = state.value
         if (!current.canOperateCash || current.hasOpenSession || current.opening) return
-        _local.update { it.copy(openForm = OpenCashFormState()) }
+        // Conserva el último cierre: abrir en 0 teniendo dinero también pide el motivo.
+        _local.update { it.copy(openForm = it.openForm.copy(openingBalance = "0")) }
         confirmOpenSession()
     }
 
@@ -249,6 +245,10 @@ class AppCashSessionViewModel @Inject constructor(
             _local.update { it.copy(error = "Ingresa un monto inicial válido") }
             return
         }
+        if (openingNeedsReason(form.lastClosing, form.openingBalance, form.openingReason)) {
+            _local.update { it.copy(error = CashCopy.OPEN_REASON_REQUIRED) }
+            return
+        }
         viewModelScope.launch {
             val branchId = sessionStore.userSessionFlow.first()?.activeBranch?.id
                 ?: run {
@@ -256,7 +256,7 @@ class AppCashSessionViewModel @Inject constructor(
                     return@launch
                 }
             _local.update { it.copy(opening = true, error = null) }
-            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts))) {
+            when (val result = cashRepository.openSession(branchId, balance, form.notes, methodBalanceInputs(form.methodAmounts), form.openingReason)) {
                 is AppResult.Success -> _local.update {
                     it.copy(
                         opening = false,

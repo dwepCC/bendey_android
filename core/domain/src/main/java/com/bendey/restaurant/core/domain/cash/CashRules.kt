@@ -73,5 +73,19 @@ fun lastCountedCash(sessions: List<CashSessionBrief>): Double? =
         .maxByOrNull { it.closedAt ?: it.openedAt ?: "" }
         ?.closingBalance
 
+/**
+ * Lo que entra (+) o sale (−) de la caja entre el último cierre y esta apertura. El backend lo registra como
+ * ingreso o retiro. 0 si no hay cierre anterior o el monto aún no se puede leer.
+ */
+fun openingJump(lastClosing: Double?, openingBalance: String): Double {
+    val apertura = openingBalance.trim().replace(",", ".").toDoubleOrNull()
+    if (lastClosing == null || apertura == null) return 0.0
+    return Math.round((apertura - lastClosing) * 100) / 100.0
+}
+
+/** Abrir con otro monto que el del último cierre exige decir por qué. */
+fun openingNeedsReason(lastClosing: Double?, openingBalance: String, reason: String): Boolean =
+    Math.abs(openingJump(lastClosing, openingBalance)) >= 0.01 && reason.isBlank()
+
 /** "2026-10-04T10:02:00-05:00" -> "10:02" (hora de Lima). Si no se puede leer, null: mejor omitirlo que inventarlo. */
 fun formatCashSince(iso: String?): String? = com.bendey.restaurant.core.domain.time.TenantDateTime.formatTime(iso)

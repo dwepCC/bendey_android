@@ -39,6 +39,8 @@ data class OpenCashSessionRequestDto(
     val notes: String? = null,
     /** Con cuánto abre cada método no efectivo; lo que falta abre con lo sugerido. */
     @SerialName("method_balances") val methodBalances: List<MethodBalanceInputDto>? = null,
+    /** Por qué se abre con otro monto que el del último cierre. */
+    @SerialName("opening_reason") val openingReason: String? = null,
 )
 
 @Serializable
@@ -61,6 +63,20 @@ data class SuggestedMethodBalanceDto(
     val method: String,
     val name: String = "",
     val suggested: Double = 0.0,
+)
+
+/** Cómo terminó la sesión anterior del cajero; `counted` es null si se cerró sin contar. */
+@Serializable
+data class SuggestedCashOpeningDto(
+    @SerialName("has_previous") val hasPrevious: Boolean = false,
+    val expected: Double? = null,
+    val counted: Double? = null,
+)
+
+@Serializable
+data class OpeningSuggestionsResponseDto(
+    val data: List<SuggestedMethodBalanceDto> = emptyList(),
+    val cash: SuggestedCashOpeningDto? = null,
 )
 
 @Serializable

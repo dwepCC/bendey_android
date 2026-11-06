@@ -52,7 +52,13 @@ object CashCopy {
     const val CHECKOUT_NEED_OPEN = "Para cobrar en efectivo necesitas abrir tu caja."
 
     fun openPrefillHint(amount: String) =
-        "Prellenado con el efectivo que contaste al cerrar la última caja ($amount)."
+        "Prellenado con el efectivo del último cierre ($amount)."
+
+    const val OPEN_REASON_LABEL = "Motivo *"
+    const val OPEN_REASON_REQUIRED = "Indica el motivo de la diferencia con el último cierre."
+
+    fun openJumpOut(amount: String) = "Faltan $amount respecto al último cierre: se registrará como retiro de la caja."
+    fun openJumpIn(amount: String) = "Hay $amount más que en el último cierre: se registrará como ingreso a la caja."
 
     fun chipOpenFull(time: String, amount: String) = "Caja abierta · desde $time · Vendido $amount"
     fun chipOpenShort(amount: String) = "Vendido $amount"

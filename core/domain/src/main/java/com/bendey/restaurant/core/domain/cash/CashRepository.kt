@@ -9,6 +9,8 @@ interface CashRepository {
         openingBalance: Double,
         notes: String?,
         methodBalances: List<CashMethodBalanceInput> = emptyList(),
+        /** Por qué se abre con otro monto que el del último cierre. */
+        openingReason: String? = null,
     ): AppResult<CashSession>
     suspend fun closeSession(
         sessionId: Int,
@@ -17,8 +19,8 @@ interface CashRepository {
         arqueo: Map<String, Int>? = null,
         methodBalances: List<CashMethodBalanceInput> = emptyList(),
     ): AppResult<CashSession>
-    /** Con cuánto se sugiere abrir cada método no efectivo. Vacío si el backend es anterior. */
-    suspend fun openingSuggestions(branchId: Int): AppResult<List<CashSuggestedMethodBalance>>
+    /** Con cuánto se sugiere abrir: cada método no efectivo y el efectivo del último cierre. */
+    suspend fun openingSuggestions(branchId: Int): AppResult<CashOpeningSuggestions>
     suspend fun listSessions(branchId: Int?): AppResult<List<CashSessionBrief>>
     suspend fun getSessionReport(sessionId: Int): AppResult<CashSessionReport>
     suspend fun saveArqueo(sessionId: Int, arqueo: Map<String, Int>): AppResult<Double>

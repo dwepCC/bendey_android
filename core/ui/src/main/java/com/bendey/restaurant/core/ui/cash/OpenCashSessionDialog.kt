@@ -27,6 +27,10 @@ data class OpenCashFormState(
     val methods: List<CashSuggestedMethodBalance> = emptyList(),
     /** Monto de apertura digitado por método; lo vacío abre con lo sugerido. */
     val methodAmounts: Map<String, String> = emptyMap(),
+    /** Con cuánto terminó la sesión anterior; null en la primera. */
+    val lastClosing: Double? = null,
+    /** Por qué abre con otro monto que el del último cierre. */
+    val openingReason: String = "",
 )
 
 @Composable
@@ -68,6 +72,13 @@ fun OpenCashSessionDialog(
                     value = form.openingBalance,
                     onValueChange = { onFormChange(form.copy(openingBalance = it)) },
                     label = CashCopy.OPEN_AMOUNT_LABEL + " (${Money.symbol})",
+                )
+                CashOpeningJumpFields(
+                    lastClosing = form.lastClosing,
+                    openingBalance = form.openingBalance,
+                    reason = form.openingReason,
+                    onReasonChange = { onFormChange(form.copy(openingReason = it)) },
+                    enabled = !loading,
                 )
                 CashMethodOpeningFields(
                     methods = form.methods,

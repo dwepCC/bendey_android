@@ -21,7 +21,7 @@ import com.bendey.restaurant.core.network.dto.BankAccountDto
 import com.bendey.restaurant.core.network.dto.BankAccountUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.PaymentMethodUpsertRequestDto
 import com.bendey.restaurant.core.network.dto.SuccessResponseDto
-import com.bendey.restaurant.core.network.dto.SuggestedMethodBalanceDto
+import com.bendey.restaurant.core.network.dto.OpeningSuggestionsResponseDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -39,7 +39,7 @@ interface CashbankApi {
     @GET("/api/cashbank/sessions/opening-suggestions")
     suspend fun openingSuggestions(
         @Query("branch_id") branchId: Int,
-    ): ListResponseDto<SuggestedMethodBalanceDto>
+    ): OpeningSuggestionsResponseDto
 
     @POST("/api/cashbank/sessions")
     suspend fun openSession(
