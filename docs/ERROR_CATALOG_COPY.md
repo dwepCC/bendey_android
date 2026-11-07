@@ -133,7 +133,7 @@ Reglas (UX-REDESIGN §15.2-§15.4): tuteo, sin jerga; todo error de comanda, cob
 | `REFUND_NO_PAYMENT` | Sin cobro que devolver | Esta venta no tiene un cobro registrado que se pueda devolver. | [Ver Ventas] |
 | `REFUND_USER_REQUIRED` | Sesión incompleta | No pudimos saber quién registra la devolución. Vuelve a iniciar sesión e intenta de nuevo. | [Iniciar sesión] |
 | `SUMMARY_ALREADY_EXISTS` | Ya enviado a SUNAT | La anulación de este comprobante ya fue enviada a SUNAT. Revisa su estado en Ventas. | [Ver Ventas] |
-| `LOGIN_PIN_INCORRECT` | PIN incorrecto | PIN incorrecto o no corresponde a esta estación. Vuelve a intentar o cambia de estación. | [Volver a intentar] · [Cambiar estación] |
+| `LOGIN_PIN_INCORRECT` | PIN incorrecto | PIN incorrecto o no corresponde a esta estación. Vuelve a intentar o cambia de estación. Si aún no tienes PIN, actívalo en Bendey ERP → Usuarios → Perfil restaurante. | [Volver a intentar] · [Cambiar estación] |
 | `LOGIN_PIN_FORMAT` | PIN no válido | El PIN debe tener entre 4 y 6 dígitos, solo números. | [Volver a intentar] |
 | `LOGIN_PIN_AMBIGUOUS` | PIN repetido | Este PIN está repetido en el sistema. Avisa a tu administrador para que lo cambie. | [Hablar con el administrador] |
 | `LOGIN_PIN_RATE_LIMITED` | Demasiados intentos | Demasiados intentos. Espera unos minutos y vuelve a intentar. | [Volver a intentar] |

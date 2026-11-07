@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bendey.restaurant.core.domain.session.StaffProfileNotice
 import com.bendey.restaurant.core.domain.session.UserSessionStore
 import com.bendey.restaurant.core.domain.subscription.PlanNoticePolicy
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,6 +32,20 @@ class PlanNoticePreferencesStore @Inject constructor(
     suspend fun saveDismissedDay(day: String) {
         runCatching {
             val k = key()
+            dataStore.edit { it[k] = day }
+        }
+    }
+
+    /** Dia de Lima en que el usuario cerro el aviso de perfil de restaurante (por tenant y usuario). */
+    private suspend fun staffProfileKey(userId: Int): Preferences.Key<String> =
+        stringPreferencesKey(StaffProfileNotice.dismissKey(sessionStore.tenantFlow.first()?.slug, userId))
+
+    suspend fun staffProfileNoticeDismissedDay(userId: Int): String? =
+        runCatching { dataStore.data.first()[staffProfileKey(userId)] }.getOrNull()
+
+    suspend fun saveStaffProfileNoticeDismissedDay(userId: Int, day: String) {
+        runCatching {
+            val k = staffProfileKey(userId)
             dataStore.edit { it[k] = day }
         }
     }

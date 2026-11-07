@@ -697,6 +697,7 @@ private fun MainShell(
     SubscriptionExpiryDialog(
         onGoToSubscription = { goToSubscription() },
     )
+    StaffProfileNoticeDialog()
     }
 }
 
@@ -717,7 +718,7 @@ private fun RestaurantNoAccessScreen(onLogout: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "No tienes un perfil operativo asignado. Contacta al administrador para configurar tu tipo de empleado en el restaurante.",
+            text = "Tu usuario no tiene perfil de restaurante. Pide al administrador que lo active en Bendey ERP → Usuarios → Perfil restaurante; luego vuelve a iniciar sesión.",
             style = MaterialTheme.typography.bodyMedium,
             color = BendeyColors.OnPrimary.copy(alpha = 0.75f),
         )

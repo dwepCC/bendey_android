@@ -318,7 +318,7 @@ object ErrorCatalog {
         // --- Login por PIN ---
         "LOGIN_PIN_INCORRECT" to e(
             "PIN incorrecto",
-            "PIN incorrecto o no corresponde a esta estación. Vuelve a intentar o cambia de estación.",
+            "PIN incorrecto o no corresponde a esta estación. Vuelve a intentar o cambia de estación. Si aún no tienes PIN, actívalo en Bendey ERP → Usuarios → Perfil restaurante.",
             ErrorAction.BACK_TO_TRY, ErrorAction.CHANGE_STATION,
         ),
         "LOGIN_PIN_FORMAT" to e("PIN no válido", "El PIN debe tener entre 4 y 6 dígitos, solo números.", ErrorAction.BACK_TO_TRY),
