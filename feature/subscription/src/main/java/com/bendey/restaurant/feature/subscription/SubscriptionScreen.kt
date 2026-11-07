@@ -174,13 +174,13 @@ fun SubscriptionScreen(
                                 )
                             } else if (hub.subscription.canSubmitPayment && porPagar > 0) {
                                 BendeyPrimaryButton(
-                                    text = "Reportar pago",
+                                    text = "Pagar mi plan",
                                     onClick = viewModel::openPaymentDialog,
                                     modifier = Modifier.padding(top = BendeySpacing.sm),
                                 )
                             } else if (hub.subscription.hasSubscription) {
                                 BendeyPrimaryButton(
-                                    text = "Contratar próximo período",
+                                    text = if (hub.billingContext?.urgencyTier == "suspended") "Reactivar mi plan" else "Pagar por adelantado",
                                     onClick = viewModel::pedirConfirmacionDeRenovacion,
                                     loading = state.renovando,
                                     modifier = Modifier.padding(top = BendeySpacing.sm),
@@ -277,35 +277,34 @@ fun SubscriptionScreen(
     // es legitimo y el backend no puede distinguirlo de un descuido.
     if (state.confirmarRenovacion) {
         val sub = state.hub?.subscription
+        val suspendido = state.hub?.billingContext?.urgencyTier == "suspended"
         BendeyAlertDialog(
             onDismissRequest = viewModel::cancelarRenovacion,
-            title = { Text("¿Contratar el siguiente período?") },
+            title = { Text(if (suspendido) "¿Reactivar tu plan?" else "¿Pagar el siguiente período?") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(BendeySpacing.xs)) {
                     Text(
                         buildString {
-                            append("Se agregará un período de ")
+                            append("Vas a pagar un período de ")
                             append(sub?.planName?.ifBlank { "tu plan" } ?: "tu plan")
                             val monto = state.hub?.billingContext?.planAmount ?: 0.0
                             if (monto > 0) append(" por S/ " + "%.2f".format(monto))
-                            append(". Empieza cuando termina el que tienes ahora")
-                            sub?.nextBillingDate?.takeIf { it.isNotBlank() }?.let {
-                                append(" (vence el " + it + ")")
+                            if (suspendido) {
+                                append(". Empieza el día que pagues y vuelves a trabajar al subir tu comprobante.")
+                            } else {
+                                append(". Empieza cuando termina el que tienes ahora")
+                                sub?.nextBillingDate?.takeIf { it.isNotBlank() }?.let {
+                                    append(" (vence el " + it + ")")
+                                }
+                                append(", así que no pierdes los días que ya pagaste.")
                             }
-                            append(", así que no pierdes los días que ya pagaste.")
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        "Si ya lo contrataste hace un momento, revisa tu estado de cuenta antes de " +
-                            "seguir: cada confirmación agrega un período más.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BendeyColors.OnSurfaceVariant,
                     )
                 }
             },
             confirmButton = {
-                BendeyTextButton(text = "Sí, contratar", onClick = viewModel::renovar)
+                BendeyTextButton(text = "Continuar al pago", onClick = viewModel::renovar)
             },
             dismissButton = {
                 BendeyTextButton(text = "Cancelar", onClick = viewModel::cancelarRenovacion)
@@ -671,6 +670,7 @@ private fun invoiceStatusLabel(status: String) = when (status.lowercase()) {
     "paid" -> "Pagado"
     "pending" -> "Por pagar"
     "overdue" -> "Vencido"
+    "voided" -> "Anulado"
     "cancelled" -> "Anulado"
     else -> status.ifBlank { "—" }
 }
