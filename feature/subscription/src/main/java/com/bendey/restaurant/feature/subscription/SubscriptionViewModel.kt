@@ -100,7 +100,8 @@ class SubscriptionViewModel @Inject constructor(
      */
     fun openPaymentDialog() {
         val hub = _uiState.value.hub
-        val pendiente = hub?.invoices?.firstOrNull { it.status == "pending" || it.status == "overdue" }
+        // La lista viene del mas nuevo al mas antiguo, y el backend exige pagar primero el mas antiguo.
+        val pendiente = hub?.invoices?.lastOrNull { it.status == "pending" || it.status == "overdue" }
         val monto = pendiente?.let { totalDelPeriodo(it, hub) }
             ?: hub?.subscription?.pendingAmount
             ?: hub?.billingContext?.planAmount

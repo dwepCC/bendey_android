@@ -118,7 +118,9 @@ class SubscriptionRepositoryImpl @Inject constructor(
             AppResult.Success(
                 SubscriptionActionResult(
                     success = true,
-                    message = "Ya tienes ese periodo contratado. Registra tu pago para confirmarlo.",
+                    // Un 409 tambien es "tienes un periodo sin pagar": el backend sabe cual de los casos es.
+                    message = NetworkErrorMapper.map(e).message?.takeIf { it.isNotBlank() }
+                        ?: "Ya tienes ese periodo contratado. Registra tu pago para confirmarlo.",
                     hub = null,
                 ),
             )

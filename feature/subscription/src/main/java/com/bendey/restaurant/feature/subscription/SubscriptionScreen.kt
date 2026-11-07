@@ -441,7 +441,7 @@ private fun PaymentRow(payment: SubscriptionPayment, assetsBaseUrl: String?) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(BendeySpacing.sm)) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    payment.newPlanName?.let { "Cambio a $it" } ?: "Renovación",
+                    payment.newPlanName?.let { "Cambio a $it" } ?: "Pago del período",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
