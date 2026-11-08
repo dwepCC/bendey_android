@@ -331,15 +331,11 @@ class SubscriptionViewModel @Inject constructor(
 }
 
 /**
- * Lo que cuesta pagar ese periodo hoy.
- *
- * A un tenant suspendido se le suma la reconexion: es lo mismo que calcula el backend, y proponer el
- * monto sin ella haria que el cliente transfiera de menos y el pago quede corto.
+ * Lo que cuesta pagar ese periodo hoy. Volver tras dejar de pagar no tiene cargo de reconexion: se paga
+ * solo el mes, igual que calcula el backend.
  */
-private fun totalDelPeriodo(inv: BillingInvoice, hub: BillingHub): Double {
-    val suspendido = hub.subscription.isSuspended || hub.subscription.tenantStatus == "suspended"
-    return inv.amount + if (suspendido) inv.reconnectionFee else 0.0
-}
+@Suppress("UNUSED_PARAMETER")
+private fun totalDelPeriodo(inv: BillingInvoice, hub: BillingHub): Double = inv.amount
 
 private fun formatAmount(value: Double): String = if (value == value.toLong().toDouble()) {
     value.toLong().toString()
