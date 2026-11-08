@@ -10,6 +10,7 @@ import com.bendey.restaurant.core.domain.subscription.BillingInvoice
 import com.bendey.restaurant.core.domain.subscription.DocumentUsage
 import com.bendey.restaurant.core.domain.subscription.PaymentConfig
 import com.bendey.restaurant.core.domain.subscription.PaymentMethodOption
+import com.bendey.restaurant.core.domain.subscription.PlanChangeEstimate
 import com.bendey.restaurant.core.domain.subscription.PlanChangeInput
 import com.bendey.restaurant.core.domain.subscription.StatusBanner
 import com.bendey.restaurant.core.domain.subscription.SubmitPaymentInput
@@ -97,6 +98,20 @@ class SubscriptionRepositoryImpl @Inject constructor(
             receiptFileName = input.receiptFileName,
         )
 
+    override suspend fun planChangeEstimate(planId: Int): AppResult<PlanChangeEstimate> = apiCall {
+        val dto = api.planChangeEstimate(planId)
+        PlanChangeEstimate(dto.direction, dto.amount, dto.daysRemaining, dto.periodEnd)
+    }
+
+    override suspend fun scheduleDowngrade(planId: Int): AppResult<SubscriptionActionResult> =
+        postMultipart(
+            path = "/api/subscription/plan-change",
+            fields = mapOf("plan_id" to planId.toString()),
+            receiptBytes = null,
+            receiptMimeType = "",
+            receiptFileName = "",
+        )
+
     /**
      * Contrata el proximo periodo.
      *
@@ -133,7 +148,7 @@ class SubscriptionRepositoryImpl @Inject constructor(
     private suspend fun postMultipart(
         path: String,
         fields: Map<String, String>,
-        receiptBytes: ByteArray,
+        receiptBytes: ByteArray?,
         receiptMimeType: String,
         receiptFileName: String,
     ): AppResult<SubscriptionActionResult> {
@@ -144,11 +159,14 @@ class SubscriptionRepositoryImpl @Inject constructor(
             val url = "$normalizedBase$path"
             val bodyBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
             fields.forEach { (key, value) -> bodyBuilder.addFormDataPart(key, value) }
-            bodyBuilder.addFormDataPart(
-                "receipt",
-                receiptFileName,
-                receiptBytes.toRequestBody(receiptMimeType.toMediaType()),
-            )
+            // Bajar de plan va sin comprobante.
+            if (receiptBytes != null) {
+                bodyBuilder.addFormDataPart(
+                    "receipt",
+                    receiptFileName,
+                    receiptBytes.toRequestBody(receiptMimeType.toMediaType()),
+                )
+            }
             val requestBuilder = Request.Builder().url(url).post(bodyBuilder.build())
             sessionProvider.token()?.let { requestBuilder.header("Authorization", "Bearer $it") }
             val response = client.newCall(requestBuilder.build()).execute()

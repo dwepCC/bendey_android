@@ -8,6 +8,12 @@ interface SubscriptionRepository {
     suspend fun submitPayment(input: SubmitPaymentInput): AppResult<SubscriptionActionResult>
     suspend fun requestPlanChange(input: PlanChangeInput): AppResult<SubscriptionActionResult>
 
+    /** Cuánto cuesta pasar a `planId` y cuándo aplica. */
+    suspend fun planChangeEstimate(planId: Int): AppResult<PlanChangeEstimate>
+
+    /** Bajar de plan: sin pago ni comprobante; empieza con el período siguiente. */
+    suspend fun scheduleDowngrade(planId: Int): AppResult<SubscriptionActionResult>
+
     /**
      * Contrata el proximo periodo. `planId` nulo repite el plan actual.
      *

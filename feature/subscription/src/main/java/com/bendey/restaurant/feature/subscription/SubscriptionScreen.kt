@@ -330,9 +330,31 @@ fun SubscriptionScreen(
         )
     }
 
-    if (state.planChangeDialogOpen) {
+    val cotizacion = state.planChangeEstimate
+    if (state.planChangeDialogOpen && cotizacion?.esBaja == true) {
+        // Bajar de plan no se paga: se confirma y empieza con el período siguiente.
+        BendeyAlertDialog(
+            onDismissRequest = viewModel::dismissPlanChangeDialog,
+            title = { Text("Cambiar a ${state.planChangeTarget?.name.orEmpty()}") },
+            text = {
+                Text(
+                    "No pagas nada ahora. Sigues con tu plan actual hasta el " +
+                        fechaCorta(cotizacion.periodEnd) + " y desde tu próximo período pasas a " +
+                        state.planChangeTarget?.name.orEmpty() + ".",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            },
+            confirmButton = {
+                BendeyTextButton(text = "Programar cambio", onClick = viewModel::submitPlanChange)
+            },
+            dismissButton = {
+                BendeyTextButton(text = "Cancelar", onClick = viewModel::dismissPlanChangeDialog)
+            },
+        )
+    } else if (state.planChangeDialogOpen && cotizacion != null) {
         PaymentFormDialog(
-            title = "Cambiar a ${state.planChangeTarget?.name.orEmpty()}",
+            title = "Cambiar a ${state.planChangeTarget?.name.orEmpty()}: pagas S/ " + "%.2f".format(cotizacion.amount) +
+                " por ${cotizacion.daysRemaining} días",
             state = state,
             // Un cambio de plan no se cobra contra un período existente: lo aprueba el Panel Central.
             periodos = emptyList(),
@@ -347,6 +369,12 @@ fun SubscriptionScreen(
             onReceiptPicked = viewModel::pickReceipt,
         )
     }
+}
+
+/** "2026-12-06T23:59:59-05:00" → "06/12/2026". */
+private fun fechaCorta(iso: String): String {
+    val d = iso.take(10).split("-")
+    return if (d.size == 3) "${d[2]}/${d[1]}/${d[0]}" else iso
 }
 
 @Composable

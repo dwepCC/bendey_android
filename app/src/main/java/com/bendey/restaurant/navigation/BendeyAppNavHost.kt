@@ -257,6 +257,16 @@ private fun MainShell(
         }
     }
 
+    // Plan suspendido (402): quien administra va directo a "Mi plan" para pagar; el resto ve el
+    // aviso de su pantalla, porque no puede pagar.
+    LaunchedEffect(permissions.permissions) {
+        com.bendey.restaurant.core.network.session.SubscriptionBlockedSignal.eventos.collect {
+            if (canAccessRoute(BendeyRoutes.SUSCRIPCION, permissions.permissions, permissions.employeeType)) {
+                mainNavController.navigate(BendeyRoutes.SUSCRIPCION) { launchSingleTop = true }
+            }
+        }
+    }
+
     LaunchedEffect(sessionKey) {
         if (sessionKey.isNullOrBlank() || permissions.permissions.isEmpty()) return@LaunchedEffect
         val start = RestaurantPermissions.defaultRoute(permissions.permissions, permissions.employeeType)

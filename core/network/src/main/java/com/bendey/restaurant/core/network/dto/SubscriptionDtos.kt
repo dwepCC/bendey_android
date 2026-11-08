@@ -195,3 +195,12 @@ data class RenewResponseDto(
     val message: String = "",
     val hub: BillingHubDto? = null,
 )
+
+/** Respuesta de `GET /api/subscription/plan-change-estimate`: cuánto cuesta cambiar y desde cuándo. */
+@Serializable
+data class PlanChangeEstimateDto(
+    val direction: String = "up",
+    val amount: Double = 0.0,
+    @SerialName("days_remaining") val daysRemaining: Int = 0,
+    @SerialName("period_end") val periodEnd: String = "",
+)

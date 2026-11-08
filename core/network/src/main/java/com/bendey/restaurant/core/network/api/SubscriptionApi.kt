@@ -2,11 +2,13 @@ package com.bendey.restaurant.core.network.api
 
 import com.bendey.restaurant.core.network.dto.AvailablePlansResponseDto
 import com.bendey.restaurant.core.network.dto.BillingHubDto
+import com.bendey.restaurant.core.network.dto.PlanChangeEstimateDto
 import com.bendey.restaurant.core.network.dto.RenewResponseDto
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface SubscriptionApi {
     @GET("/api/subscription/summary")
@@ -19,4 +21,8 @@ interface SubscriptionApi {
     @FormUrlEncoded
     @POST("/api/subscription/renew")
     suspend fun renovar(@Field("plan_id") planId: Int?): RenewResponseDto
+
+    /** Subir paga la diferencia por los días que quedan; bajar aplica el período siguiente, sin pago. */
+    @GET("/api/subscription/plan-change-estimate")
+    suspend fun planChangeEstimate(@Query("plan_id") planId: Int): PlanChangeEstimateDto
 }

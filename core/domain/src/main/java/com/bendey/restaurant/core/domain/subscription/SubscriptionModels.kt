@@ -165,3 +165,13 @@ class PlanChangeInput(
     val receiptMimeType: String,
     val receiptFileName: String,
 )
+
+/** Cotización de un cambio de plan: `direction` es "up" (paga ahora) o "down" (empieza el período siguiente). */
+data class PlanChangeEstimate(
+    val direction: String,
+    val amount: Double,
+    val daysRemaining: Int,
+    val periodEnd: String,
+) {
+    val esBaja: Boolean get() = direction == "down"
+}

@@ -9,6 +9,7 @@ import com.bendey.restaurant.core.domain.model.AppResult
 import com.bendey.restaurant.core.domain.subscription.AvailablePlan
 import com.bendey.restaurant.core.domain.subscription.BillingHub
 import com.bendey.restaurant.core.domain.subscription.BillingInvoice
+import com.bendey.restaurant.core.domain.subscription.PlanChangeEstimate
 import com.bendey.restaurant.core.domain.subscription.PlanChangeInput
 import com.bendey.restaurant.core.domain.subscription.SubmitPaymentInput
 import com.bendey.restaurant.core.domain.subscription.SubscriptionRepository
@@ -46,6 +47,8 @@ data class SubscriptionUiState(
     val paymentDialogOpen: Boolean = false,
     val planChangeDialogOpen: Boolean = false,
     val planChangeTarget: AvailablePlan? = null,
+    /** Lo que cuesta el cambio elegido; null mientras se calcula. */
+    val planChangeEstimate: PlanChangeEstimate? = null,
     val paymentForm: PaymentFormState = PaymentFormState(),
     val submitting: Boolean = false,
     val renovando: Boolean = false,
@@ -138,13 +141,26 @@ class SubscriptionViewModel @Inject constructor(
             it.copy(
                 planChangeDialogOpen = true,
                 planChangeTarget = plan,
-                paymentForm = PaymentFormState(amount = formatAmount(plan.price)),
+                planChangeEstimate = null,
+                paymentForm = PaymentFormState(),
             )
+        }
+        // El monto lo calcula el sistema: la diferencia por los días que quedan, o nada si baja.
+        viewModelScope.launch {
+            when (val r = repository.planChangeEstimate(plan.id)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(planChangeEstimate = r.data, paymentForm = it.paymentForm.copy(amount = formatAmount(r.data.amount)))
+                }
+                is AppResult.Error -> _uiState.update {
+                    it.copy(planChangeDialogOpen = false, planChangeTarget = null, snackMessage = r.message)
+                }
+                AppResult.Loading -> Unit
+            }
         }
     }
 
     fun dismissPlanChangeDialog() {
-        _uiState.update { it.copy(planChangeDialogOpen = false, planChangeTarget = null, paymentForm = PaymentFormState()) }
+        _uiState.update { it.copy(planChangeDialogOpen = false, planChangeTarget = null, planChangeEstimate = null, paymentForm = PaymentFormState()) }
     }
 
     fun updatePaymentForm(transform: (PaymentFormState) -> PaymentFormState) {
@@ -246,6 +262,10 @@ class SubscriptionViewModel @Inject constructor(
 
     fun submitPlanChange() {
         val plan = _uiState.value.planChangeTarget ?: return
+        if (_uiState.value.planChangeEstimate?.esBaja == true) {
+            programarBaja(plan)
+            return
+        }
         val form = _uiState.value.paymentForm
         val receipt = form.receipt ?: run {
             _uiState.update { it.copy(error = "Adjunta el comprobante de pago") }
@@ -280,6 +300,27 @@ class SubscriptionViewModel @Inject constructor(
                         paymentForm = PaymentFormState(),
                         hub = result.data.hub ?: it.hub,
                         snackMessage = result.data.message ?: "Solicitud de cambio de plan enviada",
+                    )
+                }
+                is AppResult.Error -> _uiState.update { it.copy(submitting = false, error = result.message) }
+                AppResult.Loading -> Unit
+            }
+        }
+    }
+
+    /** Bajar de plan: sin pago; el plan nuevo empieza con el período siguiente. */
+    private fun programarBaja(plan: AvailablePlan) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(submitting = true, error = null) }
+            when (val result = repository.scheduleDowngrade(plan.id)) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(
+                        submitting = false,
+                        planChangeDialogOpen = false,
+                        planChangeTarget = null,
+                        planChangeEstimate = null,
+                        hub = result.data.hub ?: it.hub,
+                        snackMessage = result.data.message ?: "Cambio de plan programado",
                     )
                 }
                 is AppResult.Error -> _uiState.update { it.copy(submitting = false, error = result.message) }

@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import com.bendey.restaurant.core.network.session.NetworkSessionProvider
 import com.bendey.restaurant.core.network.session.SessionExpiryReporter
 import com.bendey.restaurant.core.network.session.SessionInvalidationGate
+import com.bendey.restaurant.core.network.session.SubscriptionBlockedSignal
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.Interceptor
 import okhttp3.Protocol
@@ -81,6 +82,10 @@ class AuthInterceptor @Inject constructor(
         if (response.code == 401 && hadAuth) {
             invalidationGate.markInvalidated()
             sessionExpiryReporter.reportSessionExpired()
+        }
+        // Plan suspendido: la navegación lleva a "Mi plan", donde se paga.
+        if (response.code == 402 && !request.url.encodedPath.startsWith("/api/subscription")) {
+            SubscriptionBlockedSignal.report()
         }
 
         return response
